@@ -31,7 +31,10 @@ class ExtractionPipelineServiceTest {
 
         PipelineRunResult result = service.run(request(List.of(segment("seg-1", 0, "Alice", "We decided to ship Friday."))));
 
-        assertTrue(result.success());
+        assertTrue(
+                result.success(),
+                () -> "pipeline failed: " + result.failureCategory() + " / " + result.failureMessage()
+        );
         assertEquals("pv-meeting-chunk-extraction-v1", result.promptVersionId());
         assertEquals(Qwen27BModelAdapter.MODEL_VERSION, result.modelVersion());
         assertTrue(result.metrics().inputTokens() > 0);

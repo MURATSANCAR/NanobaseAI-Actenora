@@ -34,6 +34,7 @@ import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryBusine
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingParticipantRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingSeriesRepository;
+import com.nanobaseai.actenora.meeting.infrastructure.quota.NoOpMeetingQuotaPort;
 import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
 import com.nanobaseai.actenora.meeting.application.collaboration.port.MeetingAppTokenValidator.UntrustedTeamsContext;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
@@ -76,7 +77,8 @@ class MeetingCollaborationServiceTest {
         InMemoryMeetingAuditPort audit = new InMemoryMeetingAuditPort();
 
         MeetingApplicationService meetingService = new MeetingApplicationService(
-                tenantContext, contexts, series, occurrences, participants, events, audit, clock
+                tenantContext, contexts, series, occurrences, participants, events, audit,
+                new NoOpMeetingQuotaPort(), clock
         );
         businessContexts = new BusinessContextApplicationService(tenantContext, contexts, audit, clock);
         meetingApi = new MeetingApiFacade(meetingService, businessContexts);

@@ -37,7 +37,12 @@ public class CorsAllowlistConfig {
                 "Accept",
                 "X-Actenora-Tenant-Id",
                 "X-Request-Id",
-                "Idempotency-Key"));
+                "Idempotency-Key",
+                "X-Mock-Entra-Oid",
+                "X-Mock-Entra-Tid",
+                "X-Mock-Email",
+                "X-Mock-Display-Name",
+                "X-Mock-Global-Admin"));
         config.setExposedHeaders(List.of("X-Request-Id", "Retry-After"));
         config.setAllowCredentials(true);
         config.setMaxAge(600L);

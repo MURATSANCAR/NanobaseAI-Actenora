@@ -62,12 +62,15 @@ management:
 
 actenora:
   object-storage:
+    enabled: ${ACTENORA_OBJECT_STORAGE_ENABLED:false}
     endpoint: ${OBJECT_STORAGE_ENDPOINT:}
     access-key: ${OBJECT_STORAGE_ACCESS_KEY:}
     secret-key: ${OBJECT_STORAGE_SECRET_KEY:}
     bucket: ${OBJECT_STORAGE_BUCKET:actenora}
     tenant-prefix-root: ${OBJECT_STORAGE_TENANT_PREFIX_ROOT:tenants}
   security:
+    auth:
+      mode: ${ACTENORA_AUTH_MODE:mock}
     cors:
       allowed-origins: ${ACTENORA_CORS_ALLOWED_ORIGINS:}
     rate-limit:

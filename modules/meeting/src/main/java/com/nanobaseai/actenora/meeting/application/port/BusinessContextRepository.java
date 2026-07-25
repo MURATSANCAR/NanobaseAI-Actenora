@@ -13,5 +13,7 @@ public interface BusinessContextRepository {
 
     Optional<BusinessContext> findByIdAndTenantId(UUID id, TenantId tenantId);
 
+    Optional<BusinessContext> findByTenantIdAndReferenceCode(TenantId tenantId, String referenceCode);
+
     List<BusinessContext> listByTenantId(TenantId tenantId);
 }

@@ -8,6 +8,7 @@ import com.nanobaseai.actenora.transcript.api.TranscriptDeploymentMode;
 import com.nanobaseai.actenora.transcript.api.TranscriptApi;
 import com.nanobaseai.actenora.transcript.application.TranscriptIngestionService;
 import com.nanobaseai.actenora.transcript.application.TranscriptNormalizationService;
+import com.nanobaseai.actenora.transcript.application.TenantDictionaryApplicationService;
 import com.nanobaseai.actenora.transcript.application.VttUploadValidator;
 import com.nanobaseai.actenora.transcript.application.port.out.KnownMeetingOccurrenceStore;
 import com.nanobaseai.actenora.transcript.application.port.out.NormalizationRunRepository;
@@ -45,12 +46,13 @@ public class TranscriptModuleConfiguration {
 
     @Bean
     @ConditionalOnProperty(name = "actenora.object-storage.enabled", havingValue = "true")
+    @ConditionalOnMissingBean(ObjectStorage.class)
     ObjectStorage s3CompatibleObjectStorage(
-            @Value("${OBJECT_STORAGE_ENDPOINT:http://localhost:9000}") String endpoint,
-            @Value("${OBJECT_STORAGE_REGION:us-east-1}") String region,
-            @Value("${OBJECT_STORAGE_ACCESS_KEY}") String accessKey,
-            @Value("${OBJECT_STORAGE_SECRET_KEY}") String secretKey,
-            @Value("${OBJECT_STORAGE_BUCKET:actenora}") String bucket) {
+            @Value("${actenora.object-storage.endpoint:${OBJECT_STORAGE_ENDPOINT:http://localhost:9000}}") String endpoint,
+            @Value("${actenora.object-storage.region:${OBJECT_STORAGE_REGION:us-east-1}}") String region,
+            @Value("${actenora.object-storage.access-key:${OBJECT_STORAGE_ACCESS_KEY}}") String accessKey,
+            @Value("${actenora.object-storage.secret-key:${OBJECT_STORAGE_SECRET_KEY}}") String secretKey,
+            @Value("${actenora.object-storage.bucket:${OBJECT_STORAGE_BUCKET:actenora}}") String bucket) {
         return new S3CompatibleObjectStorage(URI.create(endpoint), region, accessKey, secretKey, bucket);
     }
 
@@ -120,28 +122,42 @@ public class TranscriptModuleConfiguration {
     }
 
     @Bean
+    TenantDictionaryApplicationService tenantDictionaryApplicationService(
+            TenantDictionaryRepository dictionaryRepository,
+            InstantClock clock) {
+        return new TenantDictionaryApplicationService(dictionaryRepository, clock);
+    }
+
+    @Bean
     TranscriptIngestionService transcriptIngestionService(
             TranscriptRepository transcriptRepository,
-            TranscriptSegmentRepository segmentRepository,
+            TranscriptSegmentRepository transcriptSegmentRepository,
             ObjectStorage objectStorage,
             VttUploadValidator validator,
             InstantClock clock,
-            TranscriptEventPublisher eventPublisher) {
+            TranscriptEventPublisher eventPublisher,
+            KnownMeetingOccurrenceStore knownMeetingOccurrenceStore) {
         return new TranscriptIngestionService(
-                transcriptRepository, segmentRepository, objectStorage, validator, clock, eventPublisher);
+                transcriptRepository,
+                transcriptSegmentRepository,
+                objectStorage,
+                validator,
+                clock,
+                eventPublisher,
+                knownMeetingOccurrenceStore);
     }
 
     @Bean
     TranscriptNormalizationService transcriptNormalizationService(
             TranscriptRepository transcriptRepository,
-            TranscriptSegmentRepository segmentRepository,
+            TranscriptSegmentRepository transcriptSegmentRepository,
             TenantDictionaryRepository dictionaryRepository,
             NormalizationRunRepository normalizationRunRepository,
             ObjectStorage objectStorage,
             InstantClock clock) {
         return new TranscriptNormalizationService(
                 transcriptRepository,
-                segmentRepository,
+                transcriptSegmentRepository,
                 dictionaryRepository,
                 normalizationRunRepository,
                 objectStorage,
@@ -149,7 +165,9 @@ public class TranscriptModuleConfiguration {
     }
 
     @Bean
-    TranscriptApi transcriptApi(TranscriptIngestionService ingestionService) {
-        return new TranscriptApi(ingestionService);
+    TranscriptApi transcriptApi(
+            TranscriptIngestionService ingestionService,
+            TranscriptNormalizationService normalizationService) {
+        return new TranscriptApi(ingestionService, normalizationService);
     }
 }

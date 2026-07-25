@@ -24,15 +24,24 @@ spring:
       port: ${REDIS_PORT}
   flyway:
     enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ACTENORA_ENTRA_ISSUER_URI}
+          audiences: ${ACTENORA_ENTRA_AUDIENCE}
 
 actenora:
   object-storage:
     endpoint: ${OBJECT_STORAGE_ENDPOINT}
     access-key: ${OBJECT_STORAGE_ACCESS_KEY}
     secret-key: ${OBJECT_STORAGE_SECRET_KEY}
+    enabled: ${ACTENORA_OBJECT_STORAGE_ENABLED:true}
   allow-default-secrets: false
   env: ${ACTENORA_ENV:production}
   security:
+    auth:
+      mode: ${ACTENORA_AUTH_MODE:entra}
     cors:
       allowed-origins: ${ACTENORA_CORS_ALLOWED_ORIGINS}
     rate-limit:

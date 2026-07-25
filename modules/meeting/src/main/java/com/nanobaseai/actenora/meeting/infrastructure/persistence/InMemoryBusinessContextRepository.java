@@ -28,6 +28,17 @@ public final class InMemoryBusinessContextRepository implements BusinessContextR
     }
 
     @Override
+    public Optional<BusinessContext> findByTenantIdAndReferenceCode(TenantId tenantId, String referenceCode) {
+        if (referenceCode == null || referenceCode.isBlank()) {
+            return Optional.empty();
+        }
+        return store.values().stream()
+                .filter(c -> c.tenantId().equals(tenantId))
+                .filter(c -> referenceCode.equalsIgnoreCase(c.referenceCode()))
+                .findFirst();
+    }
+
+    @Override
     public List<BusinessContext> listByTenantId(TenantId tenantId) {
         return store.values().stream()
                 .filter(c -> c.tenantId().equals(tenantId))

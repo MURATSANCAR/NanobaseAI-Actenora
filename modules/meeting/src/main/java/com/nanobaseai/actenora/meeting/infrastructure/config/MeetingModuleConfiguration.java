@@ -20,6 +20,7 @@ import com.nanobaseai.actenora.meeting.application.port.MeetingAuditPort;
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.application.port.MeetingParticipantRepository;
+import com.nanobaseai.actenora.meeting.application.port.MeetingQuotaPort;
 import com.nanobaseai.actenora.meeting.application.port.MeetingSeriesRepository;
 import com.nanobaseai.actenora.meeting.application.port.TenantContextPort;
 import com.nanobaseai.actenora.meeting.infrastructure.audit.InMemoryMeetingAuditPort;
@@ -35,14 +36,26 @@ import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryBusine
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingParticipantRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingSeriesRepository;
+import com.nanobaseai.actenora.meeting.infrastructure.quota.NoOpMeetingQuotaPort;
+import com.nanobaseai.actenora.meeting.infrastructure.relation.InMemoryMeetingRelationRepository;
+import com.nanobaseai.actenora.meeting.infrastructure.relation.InMemoryMeetingRelationSuggestionRepository;
+import com.nanobaseai.actenora.meeting.infrastructure.relation.MeetingAuditRelationAuditPort;
+import com.nanobaseai.actenora.meeting.infrastructure.relation.RepositoryOccurrenceContinuityPort;
 import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
 import com.nanobaseai.actenora.meeting.infrastructure.time.SystemClockPort;
+import com.nanobaseai.actenora.meeting.api.relation.MeetingRelationApi;
+import com.nanobaseai.actenora.meeting.application.relation.MeetingRelationService;
+import com.nanobaseai.actenora.meeting.application.relation.port.MeetingRelationRepository;
+import com.nanobaseai.actenora.meeting.application.relation.port.MeetingRelationSuggestionRepository;
+import com.nanobaseai.actenora.meeting.application.relation.port.OccurrenceContinuityPort;
+import com.nanobaseai.actenora.meeting.application.relation.port.RelationAuditPort;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Clock;
 import java.util.UUID;
 
 @Configuration
@@ -82,6 +95,12 @@ public class MeetingModuleConfiguration {
     @ConditionalOnMissingBean(MeetingAuditPort.class)
     MeetingAuditPort meetingAuditPort() {
         return new InMemoryMeetingAuditPort();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(MeetingQuotaPort.class)
+    MeetingQuotaPort meetingQuotaPort() {
+        return new NoOpMeetingQuotaPort();
     }
 
     @Bean
@@ -188,6 +207,7 @@ public class MeetingModuleConfiguration {
             MeetingParticipantRepository meetingParticipantRepository,
             MeetingEventPublisher meetingEventPublisher,
             MeetingAuditPort meetingAuditPort,
+            MeetingQuotaPort meetingQuotaPort,
             ClockPort clockPort
     ) {
         return new MeetingApplicationService(
@@ -198,6 +218,7 @@ public class MeetingModuleConfiguration {
                 meetingParticipantRepository,
                 meetingEventPublisher,
                 meetingAuditPort,
+                meetingQuotaPort,
                 clockPort
         );
     }
@@ -220,5 +241,62 @@ public class MeetingModuleConfiguration {
             BusinessContextApplicationService businessContextApplicationService
     ) {
         return new MeetingApiFacade(meetingApplicationService, businessContextApplicationService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(MeetingRelationRepository.class)
+    MeetingRelationRepository meetingRelationRepository() {
+        return new InMemoryMeetingRelationRepository();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(MeetingRelationSuggestionRepository.class)
+    MeetingRelationSuggestionRepository meetingRelationSuggestionRepository() {
+        return new InMemoryMeetingRelationSuggestionRepository();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(OccurrenceContinuityPort.class)
+    OccurrenceContinuityPort occurrenceContinuityPort(
+            MeetingOccurrenceRepository meetingOccurrenceRepository,
+            MeetingSeriesRepository meetingSeriesRepository
+    ) {
+        return new RepositoryOccurrenceContinuityPort(meetingOccurrenceRepository, meetingSeriesRepository);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(RelationAuditPort.class)
+    RelationAuditPort relationAuditPort(MeetingAuditPort meetingAuditPort) {
+        return new MeetingAuditRelationAuditPort(meetingAuditPort);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(Clock.class)
+    Clock meetingClock() {
+        return Clock.systemUTC();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(MeetingRelationService.class)
+    MeetingRelationService meetingRelationService(
+            MeetingRelationRepository meetingRelationRepository,
+            MeetingRelationSuggestionRepository meetingRelationSuggestionRepository,
+            OccurrenceContinuityPort occurrenceContinuityPort,
+            RelationAuditPort relationAuditPort,
+            Clock clock
+    ) {
+        return new MeetingRelationService(
+                meetingRelationRepository,
+                meetingRelationSuggestionRepository,
+                occurrenceContinuityPort,
+                relationAuditPort,
+                clock
+        );
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(MeetingRelationApi.class)
+    MeetingRelationApi meetingRelationApi(MeetingRelationService meetingRelationService) {
+        return new MeetingRelationApi(meetingRelationService);
     }
 }

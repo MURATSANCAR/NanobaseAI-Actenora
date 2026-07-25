@@ -4,6 +4,8 @@ import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.transcript.application.port.out.TenantDictionaryRepository;
 import com.nanobaseai.actenora.transcript.domain.dictionary.TenantDictionary;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,6 +31,15 @@ public class InMemoryTenantDictionaryRepository implements TenantDictionaryRepos
     public Optional<TenantDictionary> findActiveByTenant(TenantId tenantId) {
         return byId.values().stream()
                 .filter(d -> d.tenantId().equals(tenantId))
-                .max((a, b) -> Long.compare(a.revision(), b.revision()));
+                .max(Comparator.comparingLong(TenantDictionary::revision)
+                        .thenComparing(TenantDictionary::updatedAt));
+    }
+
+    @Override
+    public List<TenantDictionary> findAllByTenant(TenantId tenantId) {
+        return byId.values().stream()
+                .filter(d -> d.tenantId().equals(tenantId))
+                .sorted(Comparator.comparing(TenantDictionary::name))
+                .toList();
     }
 }

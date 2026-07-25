@@ -31,4 +31,20 @@ class AuditAppendServiceTest {
         assertEquals("APPROVAL_DECISION_APPROVE", timeline.get(1).action());
         assertEquals("ok", timeline.get(1).metadata().get("comment"));
     }
+
+    @Test
+    void appendStripsForbiddenTranscriptKeys() {
+        InMemoryAuditEntryStore store = new InMemoryAuditEntryStore();
+        AuditAppendService service = new AuditAppendService(store);
+        UUID tenantId = UUID.randomUUID();
+        UUID resourceId = UUID.randomUUID();
+
+        service.append(tenantId, "a", "NOTE_VIEWED", "MeetingNote", resourceId,
+                Map.of("transcript", "should-not-persist", "noteId", "n1"),
+                Instant.parse("2026-07-25T10:00:00Z"));
+
+        Map<String, Object> metadata = service.timeline(tenantId, resourceId).getFirst().metadata();
+        assertEquals(false, metadata.containsKey("transcript"));
+        assertEquals("n1", metadata.get("noteId"));
+    }
 }

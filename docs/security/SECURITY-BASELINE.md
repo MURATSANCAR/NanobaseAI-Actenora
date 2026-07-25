@@ -7,14 +7,16 @@
 
 | Pillar | Baseline |
 |--------|----------|
-| AuthN | Strong authentication for operators; hashed API keys |
-| AuthZ | Workspace-scoped RBAC |
+| AuthN | Entra ID OIDC (JWT resource server) in production; local mock IdP headers only on non-prod (`actenora.security.auth.mode`) |
+| AuthZ | Tenant-scoped RBAC via Identity roles → permission catalog; never trust body/query tenant IDs |
 | Delivery | Human approval before external side effects (ADR-010) |
 | LLM | Local-only default (ADR-005) |
 | Secrets | Env/file/Vault refs — never commit secrets |
 | Data | Classification labels + least privilege (see DATA-CLASSIFICATION) |
 | Audit | Append-only audit for security-relevant actions |
 | Supply chain | Lockfiles / dependency scanning in Phase 1+ CI |
+
+Suspended tenants are **full-blocked** — see [SUSPENDED-TENANT-POLICY.md](./SUSPENDED-TENANT-POLICY.md).
 
 ## 2. Secret & config methods (target)
 

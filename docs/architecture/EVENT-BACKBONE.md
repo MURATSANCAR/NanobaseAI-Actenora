@@ -1,6 +1,6 @@
 # EVENT-BACKBONE
 
-**Status:** Implemented (FAZ 10)  
+**Status:** Implemented (FAZ 10) — InMemory runtime wired in platform; Rabbit/JDBC adapters deferred  
 **Date:** 2026-07-25  
 **ADRs:** ADR-004 (outbox/inbox), ADR-008 (RabbitMQ / DLX)
 

@@ -19,12 +19,15 @@ public final class LimitedJsonRepair {
                     "Empty model output"
             );
         }
-        String candidate = raw.trim();
-        for (int pass = 0; pass <= MAX_REPAIR_PASSES; pass++) {
-            if (looksLikeJsonObject(candidate)) {
+        String candidate = applyRepair(raw.trim());
+        for (int pass = 0; pass < MAX_REPAIR_PASSES; pass++) {
+            if (looksLikeJsonObject(candidate) && !hasTrailingComma(candidate)) {
                 return candidate;
             }
             candidate = applyRepair(candidate);
+        }
+        if (looksLikeJsonObject(candidate) && !hasTrailingComma(candidate)) {
+            return candidate;
         }
         throw new PipelineException(
                 FailureCategory.INVALID_JSON,
@@ -34,7 +37,47 @@ public final class LimitedJsonRepair {
     }
 
     public boolean needsRepair(String raw) {
-        return raw == null || !looksLikeJsonObject(raw.trim());
+        if (raw == null) {
+            return true;
+        }
+        String trimmed = raw.trim();
+        return !looksLikeJsonObject(trimmed) || hasTrailingComma(trimmed);
+    }
+
+    private static boolean hasTrailingComma(String text) {
+        // Detect ,} or ,] outside of strings.
+        boolean inString = false;
+        boolean escape = false;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (inString) {
+                if (escape) {
+                    escape = false;
+                } else if (c == '\\') {
+                    escape = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+                continue;
+            }
+            if (c == ',') {
+                int j = i + 1;
+                while (j < text.length() && Character.isWhitespace(text.charAt(j))) {
+                    j++;
+                }
+                if (j < text.length()) {
+                    char next = text.charAt(j);
+                    if (next == '}' || next == ']') {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private String applyRepair(String input) {

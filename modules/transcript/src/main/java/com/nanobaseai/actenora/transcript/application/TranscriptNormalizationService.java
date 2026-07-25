@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.transcript.domain.StructuralVttParser;
 import com.nanobaseai.actenora.transcript.domain.Transcript;
 import com.nanobaseai.actenora.transcript.domain.TranscriptDomainException;
 import com.nanobaseai.actenora.transcript.domain.TranscriptSegment;
+import com.nanobaseai.actenora.transcript.domain.TenantObjectKeys;
 import com.nanobaseai.actenora.transcript.domain.dictionary.TenantDictionary;
 import com.nanobaseai.actenora.transcript.domain.event.TranscriptDomainEvents;
 import com.nanobaseai.actenora.transcript.domain.normalization.NormalizationRun;
@@ -101,7 +102,7 @@ public class TranscriptNormalizationService {
     public NormalizeResult normalize(NormalizeTranscriptCommand command) {
         Transcript transcript = requireOwned(command.tenantId(), command.transcriptId());
         TenantDictionary dictionary = resolveDictionary(command);
-        String normalizationVersion = NormalizationVersion.compose(dictionary.revision());
+        String normalizationVersion = NormalizationVersion.compose(dictionary.id(), dictionary.revision());
 
         Optional<NormalizationRun> existing = normalizationRunRepository.findIdempotent(
                 command.tenantId(), command.transcriptId(), normalizationVersion);
@@ -157,11 +158,17 @@ public class TranscriptNormalizationService {
             normalizationRunRepository.save(run);
 
             byte[] payload = CanonicalNormalizedPayload.toBytes(run);
-            String key = transcript.normalizedStorageKey().orElseThrow();
+            String key = TenantObjectKeys.normalizedRun(
+                    transcript.tenantId(),
+                    transcript.meetingOccurrenceId(),
+                    transcript.id().value(),
+                    run.id());
             Map<String, String> metadata = new HashMap<>();
             metadata.put("tenant-id", command.tenantId().value().toString());
             metadata.put("transcript-id", transcript.id().value().toString());
             metadata.put("normalization-version", normalizationVersion);
+            metadata.put("normalization-run-id", run.id().toString());
+            metadata.put("dictionary-id", dictionary.id().toString());
             metadata.put("normalized-hash-sha256", outcome.normalizedTranscriptHash().sha256Hex());
             metadata.put("immutable", "true");
             objectStorage.put(ObjectPutRequest.builder()
@@ -173,7 +180,7 @@ public class TranscriptNormalizationService {
                     .immutable(true)
                     .build());
 
-            transcript.markNormalized(now);
+            transcript.markNormalized(now, key);
             transcriptRepository.save(transcript);
             events.addAll(run.pullDomainEvents());
 

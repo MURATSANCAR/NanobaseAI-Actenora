@@ -14,6 +14,7 @@ import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryBusine
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingParticipantRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingSeriesRepository;
+import com.nanobaseai.actenora.meeting.infrastructure.quota.NoOpMeetingQuotaPort;
 import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
 import com.nanobaseai.actenora.meeting.infrastructure.time.SystemClockPort;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
@@ -60,7 +61,8 @@ class DailyMeetingLoadScenarioTest {
         InMemoryMeetingAuditPort audit = new InMemoryMeetingAuditPort();
         ClockPortAdapter clock = new ClockPortAdapter();
         MeetingApplicationService meetingService = new MeetingApplicationService(
-                tenantContext, businessContexts, series, occurrences, participants, events, audit, clock
+                tenantContext, businessContexts, series, occurrences, participants, events, audit,
+                new NoOpMeetingQuotaPort(), clock
         );
         businessContextsService = new BusinessContextApplicationService(
                 tenantContext, businessContexts, audit, clock

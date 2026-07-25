@@ -1,33 +1,66 @@
 package com.nanobaseai.actenora.meeting.infrastructure.web;
 
+import com.nanobaseai.actenora.meeting.api.MeetingProblemDetails;
+import com.nanobaseai.actenora.meeting.domain.relation.CrossTenantRelationException;
+import com.nanobaseai.actenora.meeting.domain.relation.CyclicRelationException;
+import com.nanobaseai.actenora.meeting.domain.relation.DuplicateRelationException;
+import com.nanobaseai.actenora.meeting.domain.relation.SuggestionNotFoundException;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
-import org.springframework.http.HttpStatus;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.Map;
-import java.util.UUID;
+import java.net.URI;
 
 @RestControllerAdvice(basePackages = "com.nanobaseai.actenora.meeting.infrastructure.web")
 public class MeetingExceptionHandler {
 
     @ExceptionHandler(ActenoraException.class)
-    public ResponseEntity<Map<String, Object>> handleActenora(ActenoraException ex) {
-        HttpStatus status = switch (ex.code()) {
-            case "MEETING_NOT_FOUND", "BUSINESS_CONTEXT_NOT_FOUND", "TENANT_ISOLATION_VIOLATION" -> HttpStatus.NOT_FOUND;
-            case "OPTIMISTIC_LOCK_CONFLICT" -> HttpStatus.CONFLICT;
-            case "DUPLICATE_GRAPH_IDENTITY", "DUPLICATE_OCCURRENCE_IDENTITY" -> HttpStatus.CONFLICT;
-            case "INVALID_MEETING_TRANSITION", "INVALID_DATE_RANGE", "INVALID_PARTICIPANT" -> HttpStatus.UNPROCESSABLE_ENTITY;
-            case "UNAUTHORIZED_MEETING_ACCESS", "PRIVATE_NOTE_ACCESS_DENIED", "PRIVATE_NOTE_AI_ACCESS_DENIED",
-                 "INVALID_MEETING_APP_TOKEN" -> HttpStatus.FORBIDDEN;
-            default -> HttpStatus.BAD_REQUEST;
-        };
-        return ResponseEntity.status(status).body(Map.of(
-                "code", ex.code(),
-                "message", ex.getMessage(),
-                "correlationId", UUID.randomUUID().toString(),
-                "details", Map.of()
+    public ResponseEntity<String> handleActenora(ActenoraException ex, HttpServletRequest request) {
+        return problem(MeetingProblemDetails.from(ex, URI.create(request.getRequestURI())));
+    }
+
+    @ExceptionHandler(DuplicateRelationException.class)
+    public ResponseEntity<String> duplicateRelation(DuplicateRelationException ex, HttpServletRequest request) {
+        return problem(MeetingProblemDetails.fromCode(
+                ex.code(),
+                ex.getMessage(),
+                URI.create(request.getRequestURI())
         ));
+    }
+
+    @ExceptionHandler(CyclicRelationException.class)
+    public ResponseEntity<String> cyclicRelation(CyclicRelationException ex, HttpServletRequest request) {
+        return problem(MeetingProblemDetails.fromCode(
+                ex.code(),
+                ex.getMessage(),
+                URI.create(request.getRequestURI())
+        ));
+    }
+
+    @ExceptionHandler(CrossTenantRelationException.class)
+    public ResponseEntity<String> crossTenantRelation(CrossTenantRelationException ex, HttpServletRequest request) {
+        return problem(MeetingProblemDetails.fromCode(
+                ex.code(),
+                ex.getMessage(),
+                URI.create(request.getRequestURI())
+        ));
+    }
+
+    @ExceptionHandler(SuggestionNotFoundException.class)
+    public ResponseEntity<String> suggestionNotFound(SuggestionNotFoundException ex, HttpServletRequest request) {
+        return problem(MeetingProblemDetails.fromCode(
+                ex.code(),
+                ex.getMessage(),
+                URI.create(request.getRequestURI())
+        ));
+    }
+
+    private static ResponseEntity<String> problem(MeetingProblemDetails problem) {
+        return ResponseEntity.status(problem.status())
+                .contentType(MediaType.parseMediaType(MeetingProblemDetails.MEDIA_TYPE))
+                .body(problem.toJson());
     }
 }

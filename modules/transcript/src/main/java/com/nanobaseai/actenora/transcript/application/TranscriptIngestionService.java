@@ -11,6 +11,7 @@ import com.nanobaseai.actenora.transcript.application.port.in.ReparseTranscriptC
 import com.nanobaseai.actenora.transcript.application.port.in.RenormalizeTranscriptCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.UploadManualVttCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.UploadManualVttResult;
+import com.nanobaseai.actenora.transcript.application.port.out.KnownMeetingOccurrenceStore;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptEventPublisher;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptRepository;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
@@ -30,6 +31,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -46,6 +48,7 @@ public class TranscriptIngestionService {
     private final VttUploadValidator validator;
     private final InstantClock clock;
     private final TranscriptEventPublisher eventPublisher;
+    private final KnownMeetingOccurrenceStore knownMeetings;
 
     public TranscriptIngestionService(
             TranscriptRepository transcriptRepository,
@@ -54,7 +57,7 @@ public class TranscriptIngestionService {
             VttUploadValidator validator,
             InstantClock clock) {
         this(transcriptRepository, segmentRepository, objectStorage, validator, clock,
-                TranscriptEventPublisher.noop());
+                TranscriptEventPublisher.noop(), KnownMeetingOccurrenceStore.allowAll());
     }
 
     public TranscriptIngestionService(
@@ -64,16 +67,35 @@ public class TranscriptIngestionService {
             VttUploadValidator validator,
             InstantClock clock,
             TranscriptEventPublisher eventPublisher) {
+        this(transcriptRepository, segmentRepository, objectStorage, validator, clock,
+                eventPublisher, KnownMeetingOccurrenceStore.allowAll());
+    }
+
+    public TranscriptIngestionService(
+            TranscriptRepository transcriptRepository,
+            TranscriptSegmentRepository segmentRepository,
+            ObjectStorage objectStorage,
+            VttUploadValidator validator,
+            InstantClock clock,
+            TranscriptEventPublisher eventPublisher,
+            KnownMeetingOccurrenceStore knownMeetings) {
         this.transcriptRepository = transcriptRepository;
         this.segmentRepository = segmentRepository;
         this.objectStorage = objectStorage;
         this.validator = validator;
         this.clock = clock;
         this.eventPublisher = eventPublisher == null ? TranscriptEventPublisher.noop() : eventPublisher;
+        this.knownMeetings = Objects.requireNonNullElseGet(knownMeetings, KnownMeetingOccurrenceStore::allowAll);
     }
 
     public UploadManualVttResult uploadManualVtt(UploadManualVttCommand command) {
         validator.validate(command.originalFilename(), command.declaredMimeType(), command.content());
+
+        if (!knownMeetings.isKnown(command.tenantId(), command.meetingOccurrenceId())) {
+            throw new TranscriptDomainException(
+                    "UNKNOWN_MEETING_OCCURRENCE",
+                    "Meeting occurrence is not known for this tenant");
+        }
 
         ContentHash hash = ContentHash.ofBytes(command.content());
         Optional<Transcript> existing = transcriptRepository.findByTenantAndContentHash(
@@ -246,5 +268,9 @@ public class TranscriptIngestionService {
                 .orElseThrow(() -> new TranscriptDomainException(
                         "TRANSCRIPT_NOT_FOUND",
                         "Transcript not found for tenant"));
+    }
+
+    public Transcript get(TenantId tenantId, TranscriptId id) {
+        return requireOwned(tenantId, id);
     }
 }

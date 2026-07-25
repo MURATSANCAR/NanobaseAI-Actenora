@@ -130,9 +130,7 @@ public final class ExtractionPipelineService {
             contextWindowGuard.assertTranscriptFitsBudget(normalized, chunkingConfig);
 
             List<TranscriptChunk> chunks = chunker.chunk(normalized, chunkingConfig);
-            String corpus = normalized.stream()
-                    .map(SegmentInput::content)
-                    .collect(Collectors.joining("\n"));
+            String corpus = groundingCorpus(normalized);
 
             List<ExtractionBundle> perChunk = new ArrayList<>();
             for (TranscriptChunk chunk : chunks) {
@@ -286,6 +284,18 @@ public final class ExtractionPipelineService {
             sb.append('[').append(segment.segmentId()).append("] ");
             segment.speakerDisplayNameOptional().ifPresent(name -> sb.append(name).append(": "));
             sb.append(segment.content()).append('\n');
+        }
+        return sb.toString();
+    }
+
+    private static String groundingCorpus(List<SegmentInput> segments) {
+        StringBuilder sb = new StringBuilder();
+        for (SegmentInput segment : segments) {
+            if (!sb.isEmpty()) {
+                sb.append('\n');
+            }
+            segment.speakerDisplayNameOptional().ifPresent(name -> sb.append(name).append(' '));
+            sb.append(segment.content());
         }
         return sb.toString();
     }

@@ -8,6 +8,8 @@ import com.nanobaseai.actenora.meeting.api.dto.MeetingStatusTransitionRequest;
 import com.nanobaseai.actenora.meeting.api.dto.ParticipantResponse;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
 import com.nanobaseai.actenora.meeting.api.event.MeetingIntegrationEvents;
+import com.nanobaseai.actenora.meeting.domain.exception.BusinessContextNotFoundException;
+import com.nanobaseai.actenora.meeting.domain.exception.DuplicateBusinessContextException;
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateGraphIdentityException;
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateOccurrenceIdentityException;
 import com.nanobaseai.actenora.meeting.domain.exception.InvalidDateRangeException;
@@ -23,6 +25,7 @@ import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryBusine
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingParticipantRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetingSeriesRepository;
+import com.nanobaseai.actenora.meeting.infrastructure.quota.NoOpMeetingQuotaPort;
 import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
 import com.nanobaseai.actenora.meeting.infrastructure.time.SystemClockPort;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
@@ -66,7 +69,8 @@ class MeetingApplicationServiceTest {
         audit = new InMemoryMeetingAuditPort();
         ClockPortAdapter clock = new ClockPortAdapter();
         MeetingApplicationService meetingService = new MeetingApplicationService(
-                tenantContext, businessContexts, series, occurrences, participants, events, audit, clock
+                tenantContext, businessContexts, series, occurrences, participants, events, audit,
+                new NoOpMeetingQuotaPort(), clock
         );
         businessContextsService = new BusinessContextApplicationService(
                 tenantContext, businessContexts, audit, clock
@@ -225,6 +229,24 @@ class MeetingApplicationServiceTest {
         api.transitionMeetingStatus(meeting.id(),
                 new MeetingStatusTransitionRequest(MeetingOccurrenceStatus.CANCELLED, meeting.version()));
         assertTrue(events.published().stream().anyMatch(MeetingIntegrationEvents.MeetingCancelled.class::isInstance));
+    }
+
+    @Test
+    void duplicateBusinessContextReferenceCodeRejected() {
+        businessContextsService.create(new CreateBusinessContextRequest(
+                "PROJECT", "PRJ-DUP", "First", "desc"
+        ));
+        assertThrows(DuplicateBusinessContextException.class, () ->
+                businessContextsService.create(new CreateBusinessContextRequest(
+                        "PROJECT", "prj-dup", "Second", "desc"
+                )));
+    }
+
+    @Test
+    void businessContextTenantIsolationPreventsCrossTenantRead() {
+        var context = createContext();
+        tenantContext.use(tenantB, actorB);
+        assertThrows(BusinessContextNotFoundException.class, () -> businessContextsService.get(context.id()));
     }
 
     private com.nanobaseai.actenora.meeting.api.dto.BusinessContextResponse createContext() {

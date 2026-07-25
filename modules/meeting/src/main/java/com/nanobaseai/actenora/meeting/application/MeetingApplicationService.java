@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.meeting.application.port.MeetingAuditPort;
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.application.port.MeetingParticipantRepository;
+import com.nanobaseai.actenora.meeting.application.port.MeetingQuotaPort;
 import com.nanobaseai.actenora.meeting.application.port.MeetingSeriesRepository;
 import com.nanobaseai.actenora.meeting.application.port.TenantContextPort;
 import com.nanobaseai.actenora.meeting.domain.exception.BusinessContextNotFoundException;
@@ -44,6 +45,7 @@ public final class MeetingApplicationService {
     private final MeetingParticipantRepository participantRepository;
     private final MeetingEventPublisher eventPublisher;
     private final MeetingAuditPort auditPort;
+    private final MeetingQuotaPort meetingQuotaPort;
     private final ClockPort clock;
 
     public MeetingApplicationService(
@@ -54,6 +56,7 @@ public final class MeetingApplicationService {
             MeetingParticipantRepository participantRepository,
             MeetingEventPublisher eventPublisher,
             MeetingAuditPort auditPort,
+            MeetingQuotaPort meetingQuotaPort,
             ClockPort clock
     ) {
         this.tenantContext = Objects.requireNonNull(tenantContext);
@@ -63,6 +66,7 @@ public final class MeetingApplicationService {
         this.participantRepository = Objects.requireNonNull(participantRepository);
         this.eventPublisher = Objects.requireNonNull(eventPublisher);
         this.auditPort = Objects.requireNonNull(auditPort);
+        this.meetingQuotaPort = Objects.requireNonNull(meetingQuotaPort);
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -71,6 +75,8 @@ public final class MeetingApplicationService {
         UUID actor = tenantContext.requireActorUserId();
         Objects.requireNonNull(request, "request");
         Objects.requireNonNull(request.businessContextId(), "businessContextId");
+
+        meetingQuotaPort.assertCanCreateMeeting(tenantId);
 
         businessContextRepository.findByIdAndTenantId(request.businessContextId(), tenantId)
                 .orElseThrow(() -> new BusinessContextNotFoundException(request.businessContextId()));
@@ -137,6 +143,7 @@ public final class MeetingApplicationService {
         }
 
         eventPublisher.publishAll(events);
+        meetingQuotaPort.recordMeetingCreated(tenantId);
         auditPort.record(tenantId, actor, "MEETING_CREATED", "MeetingOccurrence", saved.id(),
                 Map.of("title", saved.title(), "status", saved.status().name()));
         return MeetingMapper.toResponse(saved);

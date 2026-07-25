@@ -38,6 +38,9 @@ management:
 
 actenora:
   allow-default-secrets: true
+  security:
+    auth:
+      mode: mock
   transcript:
     mode: embedded
   env: test

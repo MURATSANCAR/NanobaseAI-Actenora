@@ -21,6 +21,15 @@ Dağıtık çalışmaya hazır event altyapısı `shared-kernel` içinde kuruldu
 
 Her şemada `outbox_event`, `inbox_event`, `dead_letter_event` + due/tenant indexleri.
 
+2026-07-25 gap-close doğrulamasında üç duplicate Flyway sürümü giderildi:
+
+- Approval event backbone: `V191` → `V192`
+- Meeting Intelligence event backbone: `V181` → `V185`
+- Audit event backbone: `V222` → `V223`
+- Transcript event backbone: `V153` (FAZ 9 sırasında düzeltilmişti)
+
+Böylece domain migration'larıyla event backbone migration'ları aynı sürüm numarasını paylaşmıyor.
+
 ## 5. API değişiklikleri
 
 Yok (HTTP). Application API: `OutboxPublisher`, `OutboxRelay`, `IdempotentEventConsumer`, `EventReplayer`.
@@ -50,6 +59,8 @@ mvn -pl modules/shared-kernel clean test
 
 `EventBackboneTest` + `MessagingResilienceScenarioTest`: **20 tests, 0 failures**
 
+Gap-close turunda aynı 20 test JDK 21 ile yeniden çalıştırıldı: **BUILD SUCCESS**.
+
 Kapsanan senaryolar: duplicate event, TX rollback, publisher crash after publish, consumer crash before inbox commit, retry→DLQ, malformed payload, unsupported version, correlation continuity, replay idempotency, large payload, graceful shutdown, tenant fairness, concurrency config.
 
 ## 11. Bilinen riskler
@@ -64,4 +75,9 @@ Outbox/inbox/DLQ per-schema; `EventTransport` broker-agnostic — extraction’t
 
 ## 13. Sonraki faza geçiş durumu
 
-**Hazır:** BC’ler `TransactionalOutboxPublisher` + `IdempotentEventConsumer` ile event üretebilir/tüketebilir. RabbitMQ Spring AMQP adaptörü ve JDBC store wiring bir sonraki altyapı adımı.
+**Hazır (InMemory):** Platform `EventBackbonePlatformConfiguration` shared stores + relay start +
+`OutboxMeetingEventPublisher` + transcript inbox choreography için occurrence upsert.
+
+**Bekleyen:** JDBC `OutboxStore`/`InboxStore`, Spring AMQP `EventTransport`, Micrometer outbox lag.
+
+Sonraki ürün fazı: FAZ 11 — Model Management.

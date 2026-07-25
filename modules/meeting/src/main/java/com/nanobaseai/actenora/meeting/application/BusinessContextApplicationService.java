@@ -8,6 +8,7 @@ import com.nanobaseai.actenora.meeting.application.port.ClockPort;
 import com.nanobaseai.actenora.meeting.application.port.MeetingAuditPort;
 import com.nanobaseai.actenora.meeting.application.port.TenantContextPort;
 import com.nanobaseai.actenora.meeting.domain.exception.BusinessContextNotFoundException;
+import com.nanobaseai.actenora.meeting.domain.exception.DuplicateBusinessContextException;
 import com.nanobaseai.actenora.meeting.domain.model.BusinessContext;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
@@ -38,6 +39,8 @@ public final class BusinessContextApplicationService {
     public BusinessContextResponse create(CreateBusinessContextRequest request) {
         TenantId tenantId = tenantContext.requireTenantId();
         UUID actor = tenantContext.requireActorUserId();
+        Objects.requireNonNull(request, "request");
+        assertUniqueReferenceCode(tenantId, request.referenceCode(), null);
         BusinessContext created = BusinessContext.create(
                 tenantId,
                 request.type(),
@@ -57,11 +60,22 @@ public final class BusinessContextApplicationService {
         return repository.listByTenantId(tenantId).stream().map(MeetingMapper::toResponse).toList();
     }
 
+    public BusinessContextResponse get(UUID id) {
+        TenantId tenantId = tenantContext.requireTenantId();
+        BusinessContext existing = repository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new BusinessContextNotFoundException(id));
+        return MeetingMapper.toResponse(existing);
+    }
+
     public BusinessContextResponse update(UUID id, UpdateBusinessContextRequest request) {
         TenantId tenantId = tenantContext.requireTenantId();
         UUID actor = tenantContext.requireActorUserId();
         BusinessContext existing = repository.findByIdAndTenantId(id, tenantId)
                 .orElseThrow(() -> new BusinessContextNotFoundException(id));
+        if (request.referenceCode() != null
+                && !request.referenceCode().equalsIgnoreCase(existing.referenceCode())) {
+            assertUniqueReferenceCode(tenantId, request.referenceCode(), existing.id());
+        }
         existing.update(
                 request.type(),
                 request.referenceCode(),
@@ -75,5 +89,13 @@ public final class BusinessContextApplicationService {
         auditPort.record(tenantId, actor, "BUSINESS_CONTEXT_UPDATED", "BusinessContext", saved.id(),
                 Map.of("version", saved.version()));
         return MeetingMapper.toResponse(saved);
+    }
+
+    private void assertUniqueReferenceCode(TenantId tenantId, String referenceCode, UUID excludingId) {
+        repository.findByTenantIdAndReferenceCode(tenantId, referenceCode).ifPresent(existing -> {
+            if (excludingId == null || !existing.id().equals(excludingId)) {
+                throw new DuplicateBusinessContextException(referenceCode);
+            }
+        });
     }
 }

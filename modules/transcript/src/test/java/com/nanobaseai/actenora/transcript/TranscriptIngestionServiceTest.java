@@ -187,7 +187,6 @@ class TranscriptIngestionServiceTest {
         Transcript pendingNorm = service.renormalize(
                 new RenormalizeTranscriptCommand(tenantA, uploaded.transcriptId()));
         assertEquals(TranscriptStatus.PENDING_NORMALIZE, pendingNorm.status());
-        assertTrue(pendingNorm.normalizedStorageKey().isPresent());
     }
 
     @Test
@@ -290,6 +289,39 @@ class TranscriptIngestionServiceTest {
                 TranscriptDomainException.class,
                 () -> com.nanobaseai.actenora.transcript.domain.TenantObjectKeys.assertTenantOwnsKey(
                         tenantB, uploaded.rawStorageKey()));
+    }
+
+    @Test
+    void unknownMeetingOccurrenceRejected() {
+        TranscriptIngestionService guarded = new TranscriptIngestionService(
+                transcriptRepository,
+                segmentRepository,
+                objectStorage,
+                new VttUploadValidator(1024),
+                new InstantClock(Clock.fixed(FIXED, ZoneOffset.UTC)),
+                com.nanobaseai.actenora.transcript.application.port.out.TranscriptEventPublisher.noop(),
+                new com.nanobaseai.actenora.transcript.infrastructure.persistence.InMemoryKnownMeetingOccurrenceStore());
+
+        TranscriptDomainException ex = assertThrows(
+                TranscriptDomainException.class,
+                () -> guarded.uploadManualVtt(new UploadManualVttCommand(
+                        tenantA,
+                        UUID.randomUUID(),
+                        "meeting.vtt",
+                        "text/vtt",
+                        validVtt,
+                        "en",
+                        30)));
+        assertEquals("UNKNOWN_MEETING_OCCURRENCE", ex.code());
+    }
+
+    @Test
+    void getReturnsMetadataWithoutContent() {
+        UploadManualVttResult uploaded = upload(tenantA, validVtt, "meeting.vtt", "text/vtt");
+        Transcript detail = service.get(tenantA, uploaded.transcriptId());
+        assertEquals(uploaded.transcriptId(), detail.id());
+        assertEquals(TranscriptStatus.PENDING_PARSE, detail.status());
+        assertEquals(ContentHash.ofBytes(validVtt), detail.contentHash());
     }
 
     private UploadManualVttResult upload(TenantId tenant, byte[] bytes, String filename, String mime) {

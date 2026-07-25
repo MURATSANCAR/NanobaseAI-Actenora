@@ -2,13 +2,15 @@ package com.nanobaseai.actenora.meeting.infrastructure.tenancy;
 
 import com.nanobaseai.actenora.meeting.application.port.TenantContextPort;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
 
 import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Explicit tenant/actor holder for tests and local wiring.
- * Production resolves from authenticated identity (FAZ 4).
+ * Tenant/actor holder. Prefers {@link TenantSecurityContext} when authenticated identity
+ * is bound (FAZ 4). Falls back to explicit {@link #use} values for Teams meeting-app tokens
+ * and local/test wiring.
  */
 public final class FixedTenantContext implements TenantContextPort {
 
@@ -27,11 +29,15 @@ public final class FixedTenantContext implements TenantContextPort {
 
     @Override
     public TenantId requireTenantId() {
-        return tenantId;
+        return TenantSecurityContext.current()
+                .map(principal -> principal.tenantId())
+                .orElse(tenantId);
     }
 
     @Override
     public UUID requireActorUserId() {
-        return actorUserId;
+        return TenantSecurityContext.current()
+                .map(principal -> principal.userId())
+                .orElse(actorUserId);
     }
 }

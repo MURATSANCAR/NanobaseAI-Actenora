@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.audit.application;
 
 import com.nanobaseai.actenora.audit.application.port.AuditEntryStore;
+import com.nanobaseai.actenora.audit.domain.AuditContentGuard;
 import com.nanobaseai.actenora.audit.domain.AuditEntry;
 
 import java.time.Instant;
@@ -26,8 +27,9 @@ public final class AuditAppendService {
             Map<String, Object> metadata,
             Instant occurredAt
     ) {
+        Map<String, Object> safeMetadata = AuditContentGuard.sanitize(metadata);
         return store.append(AuditEntry.append(
-                tenantId, actorId, action, resourceType, resourceId, metadata, occurredAt
+                tenantId, actorId, action, resourceType, resourceId, safeMetadata, occurredAt
         ));
     }
 

@@ -20,8 +20,8 @@ Shared contracts:
 1. Aggregate mutates inside the owning module transaction.
 2. Domain event recorded on the aggregate (optional, internal).
 3. Application service maps to an **integration event** DTO in `api.event`.
-4. Integration event is appended to the owning schema’s `outbox_messages` (ADR-004).
-5. Outbox relay publishes to RabbitMQ; consumers use inbox idempotency in their schema.
+4. Integration event is appended to the owning schema’s `outbox_event` (ADR-004 / FAZ 10).
+5. Outbox relay publishes to RabbitMQ (`actenora.domain`); consumers use inbox idempotency in their schema.
 
 ## Consumer rules
 

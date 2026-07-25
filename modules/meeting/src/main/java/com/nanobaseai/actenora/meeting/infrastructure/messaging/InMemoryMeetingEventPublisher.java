@@ -11,8 +11,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Test/local publisher that maps domain events to integration events.
- * Production will write to meeting.outbox_messages (FAZ 10).
+ * Test/local publisher that maps domain events to integration events in memory.
+ * Prefer {@link OutboxMeetingEventPublisher} when an outbox is available (FAZ 10).
  */
 public final class InMemoryMeetingEventPublisher implements MeetingEventPublisher {
 

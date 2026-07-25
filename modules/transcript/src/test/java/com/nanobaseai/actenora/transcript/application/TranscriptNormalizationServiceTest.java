@@ -112,7 +112,7 @@ class TranscriptNormalizationServiceTest {
         assertEquals(NormalizationRunStatus.SUCCEEDED, first.run().status());
         assertTrue(first.run().normalizedTranscriptHash().isPresent());
         assertEquals(
-                NormalizationVersion.compose(dictionary.revision()),
+                NormalizationVersion.compose(dictionary.id(), dictionary.revision()),
                 first.run().normalizationVersion());
         assertTrue(first.domainEvents().stream()
                 .anyMatch(e -> e instanceof TranscriptDomainEvents.TranscriptNormalizationRequested));
@@ -142,5 +142,31 @@ class TranscriptNormalizationServiceTest {
                 result.run().segments().getFirst().originalSegmentId(),
                 segments.findByTranscript(tenantId, transcript.id()).getFirst().id());
         assertTrue(storage.exists(transcript.normalizedStorageKey().orElseThrow()));
+    }
+
+    @Test
+    void dictionaryRevisionCreatesNewImmutableRun() {
+        service.parse(new ParseTranscriptCommand(tenantId, transcript.id()));
+        TranscriptNormalizationService.NormalizeResult first =
+                service.normalize(new NormalizeTranscriptCommand(tenantId, transcript.id(), dictionary.id()));
+        String firstKey = first.transcript().normalizedStorageKey().orElseThrow();
+
+        TenantDictionary revised = dictionary.addEntry(
+                DictionaryEntry.of(DictionaryEntryKind.COMPANY, "Nanobase", List.of("nano base")), fixed);
+        dictionaries.save(revised);
+
+        TranscriptNormalizationService.NormalizeResult second =
+                service.normalize(new NormalizeTranscriptCommand(tenantId, transcript.id(), revised.id()));
+
+        assertFalse(second.idempotentHit());
+        assertEquals(NormalizationRunStatus.SUCCEEDED, second.run().status());
+        String secondKey = second.transcript().normalizedStorageKey().orElseThrow();
+        assertTrue(storage.exists(firstKey));
+        assertTrue(storage.exists(secondKey));
+        assertTrue(secondKey.contains("/normalized/"));
+        assertTrue(!firstKey.equals(secondKey));
+        assertEquals(
+                NormalizationVersion.compose(revised.id(), revised.revision()),
+                second.run().normalizationVersion());
     }
 }

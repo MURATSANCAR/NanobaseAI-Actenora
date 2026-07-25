@@ -56,9 +56,12 @@ actenora:
     secret-key: ${OBJECT_STORAGE_SECRET_KEY:actenora_minio_change_me}
     bucket: ${OBJECT_STORAGE_BUCKET:actenora}
     tenant-prefix-root: ${OBJECT_STORAGE_TENANT_PREFIX_ROOT:tenants}
+    enabled: ${ACTENORA_OBJECT_STORAGE_ENABLED:true}
   allow-default-secrets: true
   env: ${ACTENORA_ENV:local}
   security:
+    auth:
+      mode: ${ACTENORA_AUTH_MODE:mock}
     cors:
       allowed-origins: ${ACTENORA_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
     rate-limit:

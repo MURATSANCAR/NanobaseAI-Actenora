@@ -100,16 +100,17 @@ public final class Transcript {
                     "Renormalize requires PARSED or NORMALIZED status, was " + status);
         }
         this.status = TranscriptStatus.PENDING_NORMALIZE;
-        this.normalizedStorageKey = TenantObjectKeys.normalized(tenantId, meetingOccurrenceId, id.value());
         touch(now);
     }
 
     public void markNormalized(Instant now) {
+        markNormalized(now, TenantObjectKeys.normalized(tenantId, meetingOccurrenceId, id.value()));
+    }
+
+    public void markNormalized(Instant now, String storageKey) {
         this.status = TranscriptStatus.NORMALIZED;
         this.normalizedAt = now;
-        if (this.normalizedStorageKey == null) {
-            this.normalizedStorageKey = TenantObjectKeys.normalized(tenantId, meetingOccurrenceId, id.value());
-        }
+        this.normalizedStorageKey = Objects.requireNonNull(storageKey, "storageKey");
         touch(now);
     }
 

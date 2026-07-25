@@ -34,6 +34,19 @@ public final class TenantObjectKeys {
                 + "/normalized.json";
     }
 
+    /** Immutable per-run normalized payload key (FAZ 9 — avoids overwrite on dictionary revision). */
+    public static String normalizedRun(
+            TenantId tenantId, UUID meetingOccurrenceId, UUID transcriptId, UUID runId) {
+        Objects.requireNonNull(tenantId, "tenantId");
+        Objects.requireNonNull(meetingOccurrenceId, "meetingOccurrenceId");
+        Objects.requireNonNull(transcriptId, "transcriptId");
+        Objects.requireNonNull(runId, "runId");
+        return "tenants/" + tenantId.value()
+                + "/transcripts/" + meetingOccurrenceId
+                + "/" + transcriptId
+                + "/normalized/" + runId + ".json";
+    }
+
     public static void assertTenantOwnsKey(TenantId tenantId, String key) {
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(key, "key");

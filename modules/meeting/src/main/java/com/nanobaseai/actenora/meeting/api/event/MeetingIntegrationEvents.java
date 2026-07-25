@@ -18,6 +18,8 @@ public final class MeetingIntegrationEvents {
     public static final String MEETING_ENDED = "meeting.MeetingEnded.v1";
     public static final String MEETING_CANCELLED = "meeting.MeetingCancelled.v1";
     public static final String MEETING_PRIORITY_CHANGED = "meeting.MeetingPriorityChanged.v1";
+    /** Contract event for transcript KnownMeetingOccurrenceStore (opaque ID only). */
+    public static final String MEETING_OCCURRENCE_UPSERTED = "meeting.MeetingOccurrenceUpserted.v1";
 
     private MeetingIntegrationEvents() {
     }
