@@ -1,0 +1,196 @@
+package com.nanobaseai.actenora.security.model;
+
+import com.nanobaseai.actenora.aiprocessing.application.port.LocalDeploymentCatalogPort;
+import com.nanobaseai.actenora.aiprocessing.domain.routing.LocalDeploymentRef;
+import com.nanobaseai.actenora.aiprocessing.domain.routing.ModelRole;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.routing.DefaultModelRoleBootstrap;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.routing.InMemoryLocalDeploymentCatalog;
+import com.nanobaseai.actenora.audit.api.AuditApi;
+import com.nanobaseai.actenora.modelmanagement.application.DeploymentHealthSettings;
+import com.nanobaseai.actenora.modelmanagement.application.ModelDefinitionRepository;
+import com.nanobaseai.actenora.modelmanagement.application.ModelDeploymentRepository;
+import com.nanobaseai.actenora.modelmanagement.application.ModelRegistryAuditPort;
+import com.nanobaseai.actenora.modelmanagement.domain.ModelCapability;
+import com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType;
+import com.nanobaseai.actenora.modelmanagement.domain.ModelDefinition;
+import com.nanobaseai.actenora.modelmanagement.domain.ModelDeployment;
+import com.nanobaseai.actenora.modelmanagement.domain.ModelStatus;
+import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
+import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * FAZ 11 — bind model-management to AuditApi and project registry into AI routing catalog.
+ */
+@Configuration
+public class ModelManagementPlatformConfiguration {
+
+    @Bean
+    @Primary
+    ModelRegistryAuditPort auditBackedModelRegistryAuditPort(AuditApi auditApi) {
+        return (actorUserId, action, resourceType, resourceId, metadata, occurredAt) -> {
+            UUID tenantId = TenantSecurityContext.current()
+                    .map(p -> p.tenantId().value())
+                    .orElseGet(() -> UUID.fromString("00000000-0000-0000-0000-000000000001"));
+            UUID resourceUuid = UUID.nameUUIDFromBytes(resourceId.getBytes(StandardCharsets.UTF_8));
+            auditApi.append(
+                    tenantId,
+                    actorUserId,
+                    action,
+                    resourceType,
+                    resourceUuid,
+                    metadata == null ? Map.of() : metadata,
+                    occurredAt
+            );
+        };
+    }
+
+    @Bean
+    @Primary
+    LocalDeploymentCatalogPort modelRegistryLocalDeploymentCatalog(
+            ModelDefinitionRepository modelDefinitions,
+            ModelDeploymentRepository deployments,
+            DeploymentHealthSettings healthSettings,
+            InstantClock clock
+    ) {
+        InMemoryLocalDeploymentCatalog seed = new InMemoryLocalDeploymentCatalog();
+        DefaultModelRoleBootstrap.seed(seed, false);
+        return new PreferRegistryLocalDeploymentCatalog(
+                modelDefinitions, deployments, healthSettings, clock, seed);
+    }
+
+    /**
+     * Prefers healthy ENABLED registry deployments; falls back to bootstrap seed catalog.
+     */
+    public static final class PreferRegistryLocalDeploymentCatalog implements LocalDeploymentCatalogPort {
+
+        private final ModelDefinitionRepository modelDefinitions;
+        private final ModelDeploymentRepository deployments;
+        private final DeploymentHealthSettings healthSettings;
+        private final InstantClock clock;
+        private final InMemoryLocalDeploymentCatalog seed;
+
+        public PreferRegistryLocalDeploymentCatalog(
+                ModelDefinitionRepository modelDefinitions,
+                ModelDeploymentRepository deployments,
+                DeploymentHealthSettings healthSettings,
+                InstantClock clock,
+                InMemoryLocalDeploymentCatalog seed
+        ) {
+            this.modelDefinitions = modelDefinitions;
+            this.deployments = deployments;
+            this.healthSettings = healthSettings;
+            this.clock = clock;
+            this.seed = seed;
+        }
+
+        @Override
+        public List<LocalDeploymentRef> listLocalDeployments() {
+            List<LocalDeploymentRef> fromRegistry = projectRegistry();
+            if (!fromRegistry.isEmpty()) {
+                return fromRegistry;
+            }
+            return seed.listLocalDeployments();
+        }
+
+        @Override
+        public Optional<LocalDeploymentRef> findByDeploymentId(UUID deploymentId) {
+            return listLocalDeployments().stream()
+                    .filter(d -> d.deploymentId().equals(deploymentId))
+                    .findFirst()
+                    .or(() -> seed.findByDeploymentId(deploymentId));
+        }
+
+        @Override
+        public List<LocalDeploymentRef> findByRole(ModelRole role) {
+            return listLocalDeployments().stream().filter(d -> d.role() == role).toList();
+        }
+
+        @Override
+        public void upsert(LocalDeploymentRef deployment) {
+            seed.upsert(deployment);
+        }
+
+        @Override
+        public void markHealthy(UUID deploymentId, boolean healthy) {
+            Optional<ModelDeployment> registry = deployments.findAll().stream()
+                    .filter(d -> d.id().equals(deploymentId))
+                    .findFirst();
+            if (registry.isPresent()) {
+                ModelDeployment deployment = registry.get();
+                if (healthy) {
+                    deployment.heartbeat(clock.now());
+                } else {
+                    deployment.applyHeartbeatTimeout(
+                            clock.now().plus(healthSettings.heartbeatTimeout()).plusSeconds(1),
+                            healthSettings.heartbeatTimeout());
+                }
+                deployments.save(deployment);
+                return;
+            }
+            seed.markHealthy(deploymentId, healthy);
+        }
+
+        private List<LocalDeploymentRef> projectRegistry() {
+            Instant now = clock.now();
+            List<LocalDeploymentRef> refs = new ArrayList<>();
+            for (ModelDefinition definition : modelDefinitions.findAll()) {
+                if (definition.status() != ModelStatus.ENABLED) {
+                    continue;
+                }
+                ModelRole role = resolveRole(definition);
+                for (ModelDeployment deployment : deployments.findByModelDefinitionId(definition.id())) {
+                    if (deployment.isHeartbeatTimedOut(now, healthSettings.heartbeatTimeout())) {
+                        deployment.applyHeartbeatTimeout(now, healthSettings.heartbeatTimeout());
+                        deployments.save(deployment);
+                    }
+                    if (!deployment.acceptsNewWork()) {
+                        continue;
+                    }
+                    refs.add(new LocalDeploymentRef(
+                            deployment.id(),
+                            definition.id(),
+                            definition.modelKey(),
+                            deployment.deploymentKey(),
+                            role,
+                            definition.qualityScore(),
+                            true,
+                            false,
+                            definition.priority()
+                    ));
+                }
+            }
+            refs.sort(Comparator.comparingInt(LocalDeploymentRef::priority)
+                    .thenComparing(LocalDeploymentRef::deploymentKey));
+            return List.copyOf(refs);
+        }
+
+        static ModelRole resolveRole(ModelDefinition definition) {
+            if (capabilityEnabled(definition, ModelCapabilityType.VALIDATION)) {
+                return ModelRole.VALIDATION;
+            }
+            if (capabilityEnabled(definition, ModelCapabilityType.FINAL_NOTE)) {
+                return ModelRole.QWEN27_FINAL;
+            }
+            if (capabilityEnabled(definition, ModelCapabilityType.TRANSCRIPT_EXTRACTION)) {
+                return ModelRole.FAST_EXTRACTION;
+            }
+            return ModelRole.QWEN27_FINAL;
+        }
+
+        private static boolean capabilityEnabled(ModelDefinition definition, ModelCapabilityType type) {
+            return definition.capability(type).map(ModelCapability::enabled).orElse(false);
+        }
+    }
+}

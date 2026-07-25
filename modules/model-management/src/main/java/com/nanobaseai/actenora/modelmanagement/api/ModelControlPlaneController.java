@@ -12,6 +12,8 @@ import com.nanobaseai.actenora.modelmanagement.application.UpdateModelCommand;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelRegistryException;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
+import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
+import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -21,22 +23,21 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 /**
  * HTTP control-plane endpoints for model / capability / deployment registry.
- * Actor headers are temporary until FAZ 4 Identity filters own principal resolution.
+ * Actor is resolved from {@link TenantSecurityContext} (FAZ 4); requires {@code MODEL_CONTROL}.
  */
 @RestController
 @RequestMapping("/api/v1/model-control")
 public class ModelControlPlaneController {
+
+    public static final String MODEL_CONTROL_PERMISSION = "MODEL_CONTROL";
 
     private final ModelManagementApi api;
 
@@ -45,34 +46,32 @@ public class ModelControlPlaneController {
     }
 
     @PostMapping("/models")
-    public ModelDefinitionView register(
-            @RequestHeader("X-Actor-User-Id") UUID userId,
-            @RequestHeader(value = "X-Actor-Role", defaultValue = "OPERATIONS") String role,
-            @RequestBody RegisterModelRequest body
-    ) {
-        return api.registerModel(actor(userId, role), body.toCommand());
+    public ModelDefinitionView register(@RequestBody RegisterModelRequest body) {
+        return api.registerModel(requireActor(), body.toCommand());
     }
 
     @PutMapping("/models/{modelKey}")
     public ModelDefinitionView update(
-            @RequestHeader("X-Actor-User-Id") UUID userId,
-            @RequestHeader(value = "X-Actor-Role", defaultValue = "OPERATIONS") String role,
             @PathVariable String modelKey,
             @RequestBody UpdateModelRequest body
     ) {
-        return api.updateModel(actor(userId, role), modelKey, body.toCommand());
+        return api.updateModel(requireActor(), modelKey, body.toCommand());
+    }
+
+    @GetMapping("/models/{modelKey}")
+    public ModelDefinitionView get(@PathVariable String modelKey) {
+        requireActor();
+        return api.getModel(modelKey);
     }
 
     @PutMapping("/models/{modelKey}/capabilities/{capability}")
     public ModelDefinitionView configureCapability(
-            @RequestHeader("X-Actor-User-Id") UUID userId,
-            @RequestHeader(value = "X-Actor-Role", defaultValue = "OPERATIONS") String role,
             @PathVariable String modelKey,
             @PathVariable ModelCapabilityType capability,
             @RequestBody ConfigureCapabilityRequest body
     ) {
         return api.configureCapability(
-                actor(userId, role),
+                requireActor(),
                 modelKey,
                 new ConfigureCapabilityCommand(
                         capability,
@@ -85,56 +84,33 @@ public class ModelControlPlaneController {
     }
 
     @PostMapping("/models/{modelKey}/enable")
-    public ModelDefinitionView enable(
-            @RequestHeader("X-Actor-User-Id") UUID userId,
-            @RequestHeader(value = "X-Actor-Role", defaultValue = "OPERATIONS") String role,
-            @PathVariable String modelKey
-    ) {
-        return api.enableModel(actor(userId, role), modelKey);
+    public ModelDefinitionView enable(@PathVariable String modelKey) {
+        return api.enableModel(requireActor(), modelKey);
     }
 
     @PostMapping("/models/{modelKey}/disable")
-    public ModelDefinitionView disable(
-            @RequestHeader("X-Actor-User-Id") UUID userId,
-            @RequestHeader(value = "X-Actor-Role", defaultValue = "OPERATIONS") String role,
-            @PathVariable String modelKey
-    ) {
-        return api.disableModel(actor(userId, role), modelKey);
+    public ModelDefinitionView disable(@PathVariable String modelKey) {
+        return api.disableModel(requireActor(), modelKey);
     }
 
     @PostMapping("/models/{modelKey}/drain")
-    public ModelDefinitionView drain(
-            @RequestHeader("X-Actor-User-Id") UUID userId,
-            @RequestHeader(value = "X-Actor-Role", defaultValue = "OPERATIONS") String role,
-            @PathVariable String modelKey
-    ) {
-        return api.drainModel(actor(userId, role), modelKey);
+    public ModelDefinitionView drain(@PathVariable String modelKey) {
+        return api.drainModel(requireActor(), modelKey);
     }
 
     @PostMapping("/deployments")
-    public ModelDeploymentView registerDeployment(
-            @RequestHeader("X-Actor-User-Id") UUID userId,
-            @RequestHeader(value = "X-Actor-Role", defaultValue = "OPERATIONS") String role,
-            @RequestBody RegisterDeploymentRequest body
-    ) {
-        return api.registerDeployment(actor(userId, role), body.toCommand());
+    public ModelDeploymentView registerDeployment(@RequestBody RegisterDeploymentRequest body) {
+        return api.registerDeployment(requireActor(), body.toCommand());
     }
 
     @PostMapping("/deployments/{deploymentKey}/heartbeat")
-    public ModelDeploymentView heartbeat(
-            @RequestHeader("X-Actor-User-Id") UUID userId,
-            @RequestHeader(value = "X-Actor-Role", defaultValue = "OPERATIONS") String role,
-            @PathVariable String deploymentKey
-    ) {
-        return api.heartbeat(actor(userId, role), deploymentKey);
+    public ModelDeploymentView heartbeat(@PathVariable String deploymentKey) {
+        return api.heartbeat(requireActor(), deploymentKey);
     }
 
     @GetMapping("/health")
-    public ModelHealthView health(
-            @RequestHeader("X-Actor-User-Id") UUID userId,
-            @RequestHeader(value = "X-Actor-Role", defaultValue = "OPERATIONS") String role
-    ) {
-        return api.healthView(actor(userId, role));
+    public ModelHealthView health() {
+        return api.healthView(requireActor());
     }
 
     @ExceptionHandler(ModelRegistryException.class)
@@ -143,8 +119,8 @@ public class ModelControlPlaneController {
             case "DUPLICATE_MODEL_KEY", "DUPLICATE_DEPLOYMENT_KEY" -> HttpStatus.CONFLICT;
             case "MODEL_NOT_FOUND", "DEPLOYMENT_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "PERMISSION_DENIED" -> HttpStatus.FORBIDDEN;
-            case "INVALID_CONTEXT_SIZE", "INVALID_MODEL_STATE", "MODEL_NOT_ALLOWED_FOR_TENANT" ->
-                    HttpStatus.UNPROCESSABLE_ENTITY;
+            case "INVALID_CONTEXT_SIZE", "INVALID_MODEL_STATE", "MODEL_NOT_ALLOWED_FOR_TENANT",
+                 "CLOUD_PROVIDER_REJECTED" -> HttpStatus.UNPROCESSABLE_ENTITY;
             default -> HttpStatus.BAD_REQUEST;
         };
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
@@ -161,12 +137,21 @@ public class ModelControlPlaneController {
         return ResponseEntity.badRequest().body(problem);
     }
 
-    private static ActorPrincipal actor(UUID userId, String role) {
-        Set<ModelControlPermission> permissions = "OPERATIONS".equalsIgnoreCase(role)
-                || "SUPER_ADMIN".equalsIgnoreCase(role)
-                ? EnumSet.allOf(ModelControlPermission.class)
-                : Set.of(ModelControlPermission.HEALTH_VIEW, ModelControlPermission.DEPLOYMENT_HEARTBEAT);
-        return ActorPrincipal.of(userId, role, permissions);
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ProblemDetail> handleUnauthenticated(IllegalStateException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setTitle("UNAUTHENTICATED");
+        problem.setProperty("code", "UNAUTHENTICATED");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problem);
+    }
+
+    static ActorPrincipal requireActor() {
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
+        if (!principal.hasPermission(MODEL_CONTROL_PERMISSION)) {
+            throw ModelRegistryException.permissionDenied(MODEL_CONTROL_PERMISSION);
+        }
+        String role = principal.roles().stream().findFirst().orElse("OPERATIONS");
+        return ActorPrincipal.of(principal.userId(), role, EnumSet.allOf(ModelControlPermission.class));
     }
 
     public record RegisterModelRequest(
@@ -184,7 +169,7 @@ public class ModelControlPlaneController {
             double qualityScore,
             double speedScore
     ) {
-        RegisterModelCommand toCommand() {
+        public RegisterModelCommand toCommand() {
             return new RegisterModelCommand(
                     modelKey,
                     displayName,
@@ -217,7 +202,7 @@ public class ModelControlPlaneController {
             Double qualityScore,
             Double speedScore
     ) {
-        UpdateModelCommand toCommand() {
+        public UpdateModelCommand toCommand() {
             return new UpdateModelCommand(
                     displayName,
                     providerType,
@@ -256,7 +241,7 @@ public class ModelControlPlaneController {
             int memoryGb,
             int maxConcurrency
     ) {
-        RegisterDeploymentCommand toCommand() {
+        public RegisterDeploymentCommand toCommand() {
             return new RegisterDeploymentCommand(
                     modelKey,
                     deploymentKey,

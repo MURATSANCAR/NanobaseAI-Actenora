@@ -60,4 +60,11 @@ public final class ModelRegistryException extends ActenoraException {
     public static ModelRegistryException invalidState(String detail) {
         return new ModelRegistryException("INVALID_MODEL_STATE", detail);
     }
+
+    public static ModelRegistryException cloudProviderRejected(String detail) {
+        return new ModelRegistryException(
+                "CLOUD_PROVIDER_REJECTED",
+                "Only local model providers are allowed: " + detail
+        );
+    }
 }

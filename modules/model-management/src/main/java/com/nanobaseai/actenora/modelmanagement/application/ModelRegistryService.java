@@ -47,6 +47,7 @@ public final class ModelRegistryService {
 
     public ModelDefinitionView registerModel(ActorPrincipal actor, RegisterModelCommand command) {
         permissions.require(actor, ModelControlPermission.MODEL_REGISTER);
+        LocalProviderGuard.assertLocalProvider(command.providerType());
         if (modelDefinitions.existsByKey(command.modelKey())) {
             throw ModelRegistryException.duplicateModelKey(command.modelKey());
         }
@@ -85,6 +86,7 @@ public final class ModelRegistryService {
 
     public ModelDefinitionView updateModel(ActorPrincipal actor, String modelKey, UpdateModelCommand command) {
         permissions.require(actor, ModelControlPermission.MODEL_UPDATE);
+        LocalProviderGuard.assertLocalProvider(command.providerType());
         ModelDefinition definition = requireModel(modelKey);
         Map<String, Object> before = snapshot(definition);
         Instant now = clock.now();
@@ -210,6 +212,7 @@ public final class ModelRegistryService {
 
     public ModelDeploymentView registerDeployment(ActorPrincipal actor, RegisterDeploymentCommand command) {
         permissions.require(actor, ModelControlPermission.DEPLOYMENT_REGISTER);
+        LocalProviderGuard.assertLocalEndpoint(command.endpoint());
         ModelDefinition definition = requireModel(command.modelKey());
         if (deployments.existsByKey(command.deploymentKey())) {
             throw ModelRegistryException.duplicateDeploymentKey(command.deploymentKey());
