@@ -155,9 +155,8 @@ public class ModelManagementPlatformConfiguration {
                         deployment.applyHeartbeatTimeout(now, healthSettings.heartbeatTimeout());
                         deployments.save(deployment);
                     }
-                    if (!deployment.acceptsNewWork()) {
-                        continue;
-                    }
+                    // Keep unhealthy / draining deployments so FAZ 15 can fall back
+                    // SAME_MODEL_OTHER_DEPLOYMENT with accurate provenance.
                     refs.add(new LocalDeploymentRef(
                             deployment.id(),
                             definition.id(),
@@ -165,7 +164,7 @@ public class ModelManagementPlatformConfiguration {
                             deployment.deploymentKey(),
                             role,
                             definition.qualityScore(),
-                            true,
+                            deployment.acceptsNewWork(),
                             false,
                             definition.priority()
                     ));
