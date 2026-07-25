@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Produce SBOMs for buildable applications (CycloneDX via syft when available).
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+
+SBOM_DIR="${REPO_ROOT}/artifacts/sbom"
+mkdir -p "${SBOM_DIR}"
+
+SYFT_BIN=""
+if command -v syft >/dev/null 2>&1; then
+  SYFT_BIN="$(command -v syft)"
+elif [[ -x "${TOOLS_DIR}/syft/syft" ]]; then
+  SYFT_BIN="${TOOLS_DIR}/syft/syft"
+fi
+
+generate_dir_sbom() {
+  local name="$1"
+  local path="$2"
+  if [[ -z "${SYFT_BIN}" ]]; then
+    warn "syft not installed — writing placeholder manifest for ${name}"
+    printf '{"bomFormat":"CycloneDX","specVersion":"1.5","metadata":{"component":{"name":"%s","type":"application"},"tools":[{"name":"actenora-generate-sbom","description":"syft unavailable"}]}}\n' "${name}" >"${SBOM_DIR}/${name}.cdx.json"
+    return
+  fi
+  log "SBOM ${name} from ${path}"
+  "${SYFT_BIN}" packages "dir:${path}" -o cyclonedx-json="${SBOM_DIR}/${name}.cdx.json"
+}
+
+main() {
+  generate_dir_sbom "platform-backend" "${REPO_ROOT}/apps/platform-backend"
+  generate_dir_sbom "ai-orchestrator" "${REPO_ROOT}/apps/ai-orchestrator"
+  generate_dir_sbom "web-portal" "${REPO_ROOT}/apps/web-portal"
+  generate_dir_sbom "teams-meeting-app" "${REPO_ROOT}/apps/teams-meeting-app"
+  generate_dir_sbom "workspace-root" "${REPO_ROOT}"
+  log "SBOMs written to ${SBOM_DIR}"
+}
+
+main "$@"

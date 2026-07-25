@@ -1,0 +1,88 @@
+# Build outputs
+target/
+build/
+out/
+dist/
+*.class
+*.jar
+!**/maven-wrapper.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+.DS_Store
+
+# Env / secrets — never commit
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+!.env.example
+!.env.*.example
+secrets/
+*.pem
+*.p12
+*.jks
+*.keystore
+credentials.json
+service-account*.json
+*.secret
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+*.egg-info/
+.coverage
+htmlcov/
+.uv/
+
+# Node
+node_modules/
+.pnpm-store/
+.turbo/
+*.tsbuildinfo
+.npm/
+.yarn/
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Local toolchains (bootstrap installs here)
+.tools/
+
+# Local runtime / data
+data/
+tmp/
+*.log
+.logs/
+coverage/
+.nyc_output/
+sbom/
+artifacts/local/
+
+# Docker
+docker-data/
+
+# OS
+Thumbs.db
+Desktop.ini

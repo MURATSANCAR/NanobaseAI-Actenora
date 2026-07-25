@@ -1,0 +1,86 @@
+# Actenora monorepo project registry.
+# Scripts discover buildable units from this map. Reserved (absent) units are skipped.
+
+version: 1
+
+package_managers:
+  java: maven-wrapper
+  python: uv
+  node: pnpm
+
+build_order:
+  - packages/event-contracts
+  - packages/api-contracts
+  - packages/observability
+  - packages/test-support
+  - modules
+  - apps/platform-backend
+  - apps/ai-orchestrator
+  - apps/web-portal
+  - apps/teams-meeting-app
+
+projects:
+  - id: event-contracts
+    path: packages/event-contracts
+    type: contracts
+    build: node
+  - id: api-contracts
+    path: packages/api-contracts
+    type: contracts
+    build: node
+  - id: observability
+    path: packages/observability
+    type: library
+    build: polyglot
+  - id: test-support
+    path: packages/test-support
+    type: library
+    build: polyglot
+  - id: modules
+    path: modules
+    type: java-aggregator
+    build: maven
+  - id: platform-backend
+    path: apps/platform-backend
+    type: app
+    build: maven
+    dockerfile: apps/platform-backend/Dockerfile
+  - id: ai-orchestrator
+    path: apps/ai-orchestrator
+    type: app
+    build: python
+    dockerfile: apps/ai-orchestrator/Dockerfile
+  - id: web-portal
+    path: apps/web-portal
+    type: app
+    build: node
+    dockerfile: apps/web-portal/Dockerfile
+  - id: teams-meeting-app
+    path: apps/teams-meeting-app
+    type: app
+    build: node
+    dockerfile: apps/teams-meeting-app/Dockerfile
+
+# Extraction targets — intentionally absent until cut from the modular monolith.
+reserved_services:
+  - services/teams-integration-service
+  - services/transcript-worker
+  - services/model-worker
+  - services/document-renderer
+  - services/delivery-worker
+
+modules:
+  - identity
+  - tenant
+  - policy
+  - microsoft-connection
+  - meeting
+  - transcript
+  - model-management
+  - ai-processing
+  - meeting-intelligence
+  - approval
+  - template
+  - delivery
+  - audit
+  - operations

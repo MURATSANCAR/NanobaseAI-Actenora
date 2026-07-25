@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>ai.nanobase.actenora</groupId>
+        <artifactId>actenora</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>modules</artifactId>
+    <packaging>pom</packaging>
+    <name>Actenora Modules</name>
+    <modules>
+        <module>shared-kernel</module>
+        <module>identity</module>
+        <module>tenant</module>
+        <module>policy</module>
+        <module>microsoft-connection</module>
+        <module>meeting</module>
+        <module>transcript</module>
+        <module>model-management</module>
+        <module>ai-processing</module>
+        <module>meeting-intelligence</module>
+        <module>approval</module>
+        <module>template</module>
+        <module>delivery</module>
+        <module>audit</module>
+        <module>operations</module>
+    </modules>
+</project>

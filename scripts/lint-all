@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Lint all languages / packages that declare a lint target.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+
+main() {
+  local start
+  start="$(date +%s)"
+  require_cmd pnpm
+  require_cmd uv
+
+  run_timed "lint:node" bash -c 'cd "${REPO_ROOT}" && pnpm -r run lint'
+  run_timed "lint:python" bash -c 'cd "${REPO_ROOT}" && uv run ruff check apps/ai-orchestrator/src packages/observability/python/src packages/test-support/python/src'
+  if command -v java >/dev/null 2>&1 && [[ -x "${REPO_ROOT}/mvnw" ]]; then
+    run_timed "lint:java" bash -c 'cd "${REPO_ROOT}" && ./mvnw -B -DskipTests validate'
+  else
+    warn "Skipping Java validate (JDK/mvnw unavailable)"
+  fi
+
+  record_timing "lint-all" "$(elapsed_ms "${start}")" "ok"
+  log "lint-all complete"
+}
+
+main "$@"

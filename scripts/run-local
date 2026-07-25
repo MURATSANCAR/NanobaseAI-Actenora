@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Start local development stack.
+# Prefer Docker Compose when Docker is available; otherwise start process-mode apps.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+
+PID_DIR="${ARTIFACTS_DIR}/pids"
+LOG_DIR="${ARTIFACTS_DIR}/logs"
+mkdir -p "${PID_DIR}" "${LOG_DIR}"
+
+load_env() {
+  if [[ -f "${REPO_ROOT}/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "${REPO_ROOT}/.env"
+    set +a
+  fi
+}
+
+start_compose() {
+  log "Starting infrastructure via Docker Compose"
+  (cd "${REPO_ROOT}" && docker compose -f infrastructure/compose/docker-compose.yml up -d)
+}
+
+start_process() {
+  local name="$1"
+  local logfile="${LOG_DIR}/${name}.log"
+  local pidfile="${PID_DIR}/${name}.pid"
+  shift
+  if [[ -f "${pidfile}" ]] && kill -0 "$(cat "${pidfile}")" 2>/dev/null; then
+    log "${name} already running (pid $(cat "${pidfile}"))"
+    return
+  fi
+  log "Starting ${name}"
+  (
+    cd "${REPO_ROOT}"
+    nohup "$@" >"${logfile}" 2>&1 &
+    echo $! >"${pidfile}"
+  )
+}
+
+main() {
+  load_env
+  PLATFORM_BACKEND_PORT="${PLATFORM_BACKEND_PORT:-8080}"
+  WEB_PORTAL_PORT="${WEB_PORTAL_PORT:-3000}"
+  TEAMS_APP_PORT="${TEAMS_APP_PORT:-3978}"
+  AI_ORCHESTRATOR_PORT="${AI_ORCHESTRATOR_PORT:-8000}"
+
+  if docker_ok; then
+    start_compose
+  else
+    warn "Docker unavailable — skipping compose (Postgres/RabbitMQ/MinIO not started)"
+  fi
+
+  start_process platform-backend ./mvnw -pl apps/platform-backend -am spring-boot:run -Dspring-boot.run.arguments="--server.port=${PLATFORM_BACKEND_PORT}"
+  start_process ai-orchestrator uv run --package actenora-orchestrator uvicorn actenora_orchestrator.main:app --host 127.0.0.1 --port "${AI_ORCHESTRATOR_PORT}"
+  start_process web-portal pnpm --filter @actenora/web-portal exec vite --host 127.0.0.1 --port "${WEB_PORTAL_PORT}"
+  start_process teams-meeting-app pnpm --filter @actenora/teams-meeting-app exec tsx src/index.ts
+
+  log "Local processes started. Logs: ${LOG_DIR}"
+  log "  platform-backend  http://127.0.0.1:${PLATFORM_BACKEND_PORT}/api/health"
+  log "  ai-orchestrator   http://127.0.0.1:${AI_ORCHESTRATOR_PORT}/health"
+  log "  web-portal        http://127.0.0.1:${WEB_PORTAL_PORT}"
+  log "  teams-meeting-app http://127.0.0.1:${TEAMS_APP_PORT}/health"
+  log "Stop with: ./scripts/stop-local"
+}
+
+main "$@"

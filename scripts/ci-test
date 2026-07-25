@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# CI entrypoint: lint + test suite.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CI=1
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+"${SCRIPT_DIR}/lint-all"
+"${SCRIPT_DIR}/test-all"

@@ -1,0 +1,15 @@
+package	display	owner	readiness	note	schema	allowed
+identity	Identity	Platform Security	P3	Stable principal API; extract when multi-product IdP needed.	identity	sharedkernel
+tenant	Tenant	Platform Security	P3	Tenant lifecycle; keep with identity until clear tenancy scale pain.	tenant	sharedkernel, identity :: api
+policy	Policy	Platform Governance	P3	Quota/SLA/allowlists; extract with compliance boundary.	policy	sharedkernel, tenant :: api
+microsoftconnection	Microsoft Connection	Integrations	P2	Graph credentials isolation candidate.	microsoftconnection	sharedkernel, tenant :: api
+meeting	Meeting	Meetings	P2	Core meeting aggregate; extract with transcript only if needed.	meeting	sharedkernel, tenant :: api, microsoftconnection :: api
+transcript	Transcript	Meetings	P1	I/O heavy worker candidate (transcript-worker).	transcript	sharedkernel, tenant :: api, meeting :: api
+modelmanagement	Model Management	AI Platform	P1	Catalog/routing; pairs with model-worker extraction.	modelmanagement	sharedkernel, tenant :: api, policy :: api
+aiprocessing	AI Processing	AI Platform	P1	Inference jobs; scale independently of intelligence persistence.	aiprocessing	sharedkernel, tenant :: api, modelmanagement :: api, transcript :: api
+meetingintelligence	Meeting Intelligence	Meetings	P2	Insights store; keep after AI processing split.	meetingintelligence	sharedkernel, tenant :: api, meeting :: api, transcript :: api, aiprocessing :: api
+approval	Approval	Governance	P2	Human gate; compliance extraction candidate.	approval	sharedkernel, tenant :: api, policy :: api
+template	Template	Delivery	P3	Document templates; extract with document-renderer.	template	sharedkernel, tenant :: api
+delivery	Delivery	Delivery	P1	Side-effect adapters; credential isolation priority.	delivery	sharedkernel, tenant :: api, approval :: api, template :: api
+audit	Audit	Platform Governance	P3	Append-only; SIEM export extract later.	audit	sharedkernel
+operations	Operations	Platform Ops	P3	Ops tooling; keep in monolith longest.	operations	sharedkernel, tenant :: api

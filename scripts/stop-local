@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Stop local development stack started by run-local.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+
+PID_DIR="${ARTIFACTS_DIR}/pids"
+
+stop_pidfile() {
+  local name="$1"
+  local pidfile="${PID_DIR}/${name}.pid"
+  if [[ ! -f "${pidfile}" ]]; then
+    return
+  fi
+  local pid
+  pid="$(cat "${pidfile}")"
+  if kill -0 "${pid}" 2>/dev/null; then
+    log "Stopping ${name} (pid ${pid})"
+    kill "${pid}" 2>/dev/null || true
+    sleep 1
+    kill -9 "${pid}" 2>/dev/null || true
+  fi
+  rm -f "${pidfile}"
+}
+
+main() {
+  stop_pidfile platform-backend
+  stop_pidfile ai-orchestrator
+  stop_pidfile web-portal
+  stop_pidfile teams-meeting-app
+
+  if docker_ok; then
+    log "Stopping Docker Compose infrastructure"
+    (cd "${REPO_ROOT}" && docker compose -f infrastructure/compose/docker-compose.yml down) || warn "compose down failed"
+  else
+    log "Docker unavailable — no compose stack to stop"
+  fi
+  log "stop-local complete"
+}
+
+main "$@"

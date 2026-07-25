@@ -1,0 +1,38 @@
+[project]
+name = "actenora-workspace"
+version = "0.1.0"
+description = "Actenora Python workspace root"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv.workspace]
+members = [
+    "apps/ai-orchestrator",
+    "packages/observability/python",
+    "packages/test-support/python",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.11.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "apps/ai-orchestrator/tests",
+    "packages/observability/python/tests",
+    "packages/test-support/python/tests",
+]
+pythonpath = [
+    "apps/ai-orchestrator/src",
+    "packages/observability/python/src",
+    "packages/test-support/python/src",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

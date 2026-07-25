@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Run unit/contract tests across the monorepo.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+
+main() {
+  local start
+  start="$(date +%s)"
+  require_cmd java
+  require_cmd pnpm
+  require_cmd uv
+
+  run_timed "test:contracts" bash -c 'cd "${REPO_ROOT}" && pnpm --filter @actenora/event-contracts test && pnpm --filter @actenora/api-contracts test'
+  run_timed "test:packages-node" bash -c 'cd "${REPO_ROOT}" && pnpm --filter @actenora/observability test && pnpm --filter @actenora/test-support test'
+  run_timed "test:packages-python" bash -c 'cd "${REPO_ROOT}" && uv run pytest packages/observability/python/tests packages/test-support/python/tests apps/ai-orchestrator/tests -q'
+  run_timed "test:java" bash -c 'cd "${REPO_ROOT}" && ./mvnw -B test'
+  run_timed "test:node-apps" bash -c 'cd "${REPO_ROOT}" && pnpm --filter @actenora/web-portal test && pnpm --filter @actenora/teams-meeting-app test'
+
+  record_timing "test-all" "$(elapsed_ms "${start}")" "ok"
+  log "test-all complete"
+}
+
+main "$@"

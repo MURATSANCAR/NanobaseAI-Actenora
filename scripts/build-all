@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Build all projects in repo-map dependency order.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+
+CI_MODE="${CI:-0}"
+MVN_FLAGS=(-B)
+if [[ "${CI_MODE}" == "1" || "${1:-}" == "--ci" ]]; then
+  MVN_FLAGS+=(-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn)
+fi
+
+build_contracts() {
+  (cd "${REPO_ROOT}" && pnpm --filter @actenora/event-contracts run build)
+  (cd "${REPO_ROOT}" && pnpm --filter @actenora/api-contracts run build)
+}
+
+build_observability() {
+  (cd "${REPO_ROOT}" && pnpm --filter @actenora/observability run build)
+  (cd "${REPO_ROOT}" && uv run --package actenora-observability python -c "import actenora_observability; print(actenora_observability.__version__)")
+}
+
+build_test_support() {
+  (cd "${REPO_ROOT}" && pnpm --filter @actenora/test-support run build)
+  (cd "${REPO_ROOT}" && uv run --package actenora-test-support python -c "import actenora_test_support; print(actenora_test_support.__version__)")
+}
+
+build_java() {
+  mvnw "${MVN_FLAGS[@]}" -DskipTests package
+}
+
+build_python_apps() {
+  (cd "${REPO_ROOT}" && uv sync --package actenora-orchestrator)
+  (cd "${REPO_ROOT}/apps/ai-orchestrator" && uv run python -m compileall -q src)
+}
+
+build_node_apps() {
+  (cd "${REPO_ROOT}" && pnpm --filter @actenora/web-portal run build)
+  (cd "${REPO_ROOT}" && pnpm --filter @actenora/teams-meeting-app run build)
+}
+
+main() {
+  local start
+  start="$(date +%s)"
+  require_cmd java
+  require_cmd pnpm
+  require_cmd uv
+  [[ -x "${REPO_ROOT}/mvnw" ]] || die "Maven Wrapper missing (./mvnw)"
+
+  run_timed "build:contracts" build_contracts
+  run_timed "build:observability" build_observability
+  run_timed "build:test-support" build_test_support
+  run_timed "build:java" build_java
+  run_timed "build:python-apps" build_python_apps
+  run_timed "build:node-apps" build_node_apps
+
+  record_timing "build-all" "$(elapsed_ms "${start}")" "ok"
+  log "build-all complete"
+}
+
+main "$@"

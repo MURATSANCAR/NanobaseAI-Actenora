@@ -1,0 +1,15 @@
+{
+  "name": "@actenora/event-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/validate.mjs",
+    "test": "node scripts/validate.mjs",
+    "lint": "node -e \"process.exit(0)\""
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}

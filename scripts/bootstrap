@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# Install / verify local toolchains for the Actenora monorepo.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+
+ensure_path_tools
+mkdir -p "${TOOLS_DIR}"
+OS="$(uname -s)"
+ARCH="$(uname -m)"
+
+install_jdk() {
+  if java_ok; then
+    log "Java OK: $(java -version 2>&1 | head -1)"
+    return
+  fi
+  log "Installing Temurin JDK 21 into .tools/"
+  local url tarball dest
+  case "${OS}-${ARCH}" in
+    Darwin-arm64) url="https://api.adoptium.net/v3/binary/latest/21/ga/mac/aarch64/jdk/hotspot/normal/eclipse?project=jdk" ;;
+    Darwin-x86_64) url="https://api.adoptium.net/v3/binary/latest/21/ga/mac/x64/jdk/hotspot/normal/eclipse?project=jdk" ;;
+    Linux-aarch64) url="https://api.adoptium.net/v3/binary/latest/21/ga/linux/aarch64/jdk/hotspot/normal/eclipse?project=jdk" ;;
+    Linux-x86_64) url="https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/normal/eclipse?project=jdk" ;;
+    *) die "Unsupported OS/arch for JDK bootstrap: ${OS}-${ARCH}" ;;
+  esac
+  tarball="${TOOLS_DIR}/jdk21.tar.gz"
+  curl -fsSL -o "${tarball}" "${url}"
+  tar -xzf "${tarball}" -C "${TOOLS_DIR}"
+  rm -f "${tarball}"
+  ensure_path_tools
+  java_ok || die "JDK install failed"
+  log "Java OK: $(java -version 2>&1 | head -1)"
+}
+
+install_node() {
+  if command -v node >/dev/null 2>&1 && [[ "$(node -v)" == v22* || "$(node -v)" == v20* ]]; then
+    log "Node OK: $(node -v)"
+  else
+    log "Installing Node.js 22 into .tools/"
+    local ver="v22.17.1" file url
+    case "${OS}-${ARCH}" in
+      Darwin-arm64) file="node-${ver}-darwin-arm64.tar.gz" ;;
+      Darwin-x86_64) file="node-${ver}-darwin-x64.tar.gz" ;;
+      Linux-aarch64) file="node-${ver}-linux-arm64.tar.gz" ;;
+      Linux-x86_64) file="node-${ver}-linux-x64.tar.gz" ;;
+      *) die "Unsupported OS/arch for Node bootstrap: ${OS}-${ARCH}" ;;
+    esac
+    url="https://nodejs.org/dist/${ver}/${file}"
+    curl -fsSL -o "${TOOLS_DIR}/node.tar.gz" "${url}"
+    tar -xzf "${TOOLS_DIR}/node.tar.gz" -C "${TOOLS_DIR}"
+    rm -f "${TOOLS_DIR}/node.tar.gz"
+    ensure_path_tools
+  fi
+  require_cmd node
+  require_cmd npm
+  if ! command -v pnpm >/dev/null 2>&1; then
+    corepack enable
+    corepack prepare pnpm@9.15.9 --activate
+  fi
+  require_cmd pnpm
+  log "pnpm OK: $(pnpm -v)"
+}
+
+install_uv() {
+  if command -v uv >/dev/null 2>&1; then
+    log "uv OK: $(uv --version)"
+    return
+  fi
+  log "Installing uv"
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ensure_path_tools
+  require_cmd uv
+  log "uv OK: $(uv --version)"
+}
+
+install_syft() {
+  if command -v syft >/dev/null 2>&1; then
+    log "syft OK: $(syft version 2>/dev/null | head -1 || true)"
+    return
+  fi
+  log "Installing syft (SBOM) into .tools/"
+  local ver="v1.20.0" asset url
+  case "${OS}-${ARCH}" in
+    Darwin-arm64) asset="syft_${ver#v}_darwin_arm64.tar.gz" ;;
+    Darwin-x86_64) asset="syft_${ver#v}_darwin_amd64.tar.gz" ;;
+    Linux-aarch64) asset="syft_${ver#v}_linux_arm64.tar.gz" ;;
+    Linux-x86_64) asset="syft_${ver#v}_linux_amd64.tar.gz" ;;
+    *) warn "Skipping syft on unsupported arch"; return ;;
+  esac
+  url="https://github.com/anchore/syft/releases/download/${ver}/${asset}"
+  mkdir -p "${TOOLS_DIR}/syft"
+  curl -fsSL -o "${TOOLS_DIR}/syft.tgz" "${url}"
+  tar -xzf "${TOOLS_DIR}/syft.tgz" -C "${TOOLS_DIR}/syft"
+  rm -f "${TOOLS_DIR}/syft.tgz"
+  chmod +x "${TOOLS_DIR}/syft/syft"
+  export PATH="${TOOLS_DIR}/syft:${PATH}"
+  log "syft OK: $(syft version 2>/dev/null | head -1 || true)"
+}
+
+copy_env_example() {
+  if [[ ! -f "${REPO_ROOT}/.env" ]]; then
+    cp "${REPO_ROOT}/.env.example" "${REPO_ROOT}/.env"
+    log "Created .env from .env.example"
+  else
+    log ".env already present"
+  fi
+}
+
+main() {
+  local start
+  start="$(date +%s)"
+  log "Bootstrap starting (repo=${REPO_ROOT})"
+  install_jdk
+  install_node
+  install_uv
+  install_syft
+  copy_env_example
+
+  ensure_path_tools
+  log "Installing Node workspace deps (pnpm)"
+  (cd "${REPO_ROOT}" && pnpm install)
+
+  log "Syncing Python workspace (uv)"
+  (cd "${REPO_ROOT}" && uv sync)
+
+  log "Resolving Maven deps (wrapper)"
+  (cd "${REPO_ROOT}" && ./mvnw -q -DskipTests dependency:resolve)
+
+  record_timing "bootstrap" "$(elapsed_ms "${start}")" "ok"
+  log "Bootstrap complete"
+  log "Docker: $(docker_ok && echo available || echo 'not available — run-local will start processes without compose')"
+}
+
+main "$@"

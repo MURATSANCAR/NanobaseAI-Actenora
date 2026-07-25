@@ -1,0 +1,7 @@
+packages:
+  - "apps/web-portal"
+  - "apps/teams-meeting-app"
+  - "packages/event-contracts"
+  - "packages/api-contracts"
+  - "packages/observability/typescript"
+  - "packages/test-support/typescript"

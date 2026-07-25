@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# CI entrypoint: non-interactive full build with timings.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CI=1
+"${SCRIPT_DIR}/bootstrap"
+"${SCRIPT_DIR}/build-all" --ci
+"${SCRIPT_DIR}/generate-sbom"
