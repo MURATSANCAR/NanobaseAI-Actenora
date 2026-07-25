@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# FAZ 28 — load / resilience / model-failover scenario suite.
+# Runs module-by-module to avoid reactor races when shared-kernel is rebuilt concurrently.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+require_cmd java
+
+OUT_DIR="${REPO_ROOT}/artifacts/phase-28"
+mkdir -p "${OUT_DIR}"
+: > "${OUT_DIR}/surefire-faz28.log"
+
+MODULES=(
+  modules/shared-kernel
+  modules/policy
+  modules/microsoft-connection
+  modules/meeting
+  modules/transcript
+  modules/model-management
+  modules/ai-processing
+)
+
+ensure_shared_kernel() {
+  if ! ./mvnw -B -pl modules/shared-kernel -DskipTests install -q >>"${OUT_DIR}/surefire-faz28.log" 2>&1; then
+    rm -rf "${REPO_ROOT}/modules/shared-kernel/target"
+    ./mvnw -B -pl modules/shared-kernel -DskipTests install -q >>"${OUT_DIR}/surefire-faz28.log" 2>&1
+  fi
+}
+
+run_mod() {
+  local mod="$1"
+  echo "===== ${mod} =====" | tee -a "${OUT_DIR}/surefire-faz28.log"
+  if [[ "${mod}" != "modules/shared-kernel" ]]; then
+    ensure_shared_kernel
+  fi
+  ./mvnw -B -pl "${mod}" -am test \
+    -Dtest='com.nanobaseai.actenora.**.faz28.**' \
+    -Dsurefire.failIfNoSpecifiedTests=false \
+    >>"${OUT_DIR}/surefire-faz28.log" 2>&1
+}
+
+log "Running FAZ 28 scenario tests module-by-module"
+start="$(date +%s)"
+status=0
+
+for mod in "${MODULES[@]}"; do
+  if run_mod "${mod}"; then
+    echo "PASS ${mod}" | tee -a "${OUT_DIR}/surefire-faz28.log"
+  else
+    echo "RETRY ${mod}" | tee -a "${OUT_DIR}/surefire-faz28.log"
+    rm -rf "${REPO_ROOT}/modules/shared-kernel/target"
+    ensure_shared_kernel || true
+    if run_mod "${mod}"; then
+      echo "PASS_RETRY ${mod}" | tee -a "${OUT_DIR}/surefire-faz28.log"
+    else
+      echo "FAIL ${mod}" | tee -a "${OUT_DIR}/surefire-faz28.log"
+      status=1
+    fi
+  fi
+done
+
+elapsed="$(elapsed_ms "${start}")"
+{
+  echo "phase=28"
+  echo "status=$([[ ${status} -eq 0 ]] && echo PASS || echo FAIL)"
+  echo "elapsed_ms=${elapsed}"
+  echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+} | tee "${OUT_DIR}/summary.txt"
+
+{
+  echo "# FAZ 28 capture highlights"
+  echo
+  rg -n 'Tests run:|BUILD SUCCESS|BUILD FAILURE|PASS |FAIL |PASS_RETRY' "${OUT_DIR}/surefire-faz28.log" || true
+} > "${OUT_DIR}/capture-highlights.txt"
+
+exit "${status}"

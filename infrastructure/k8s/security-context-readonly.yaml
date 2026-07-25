@@ -1,0 +1,32 @@
+# FAZ 27 — read-only root filesystem + non-root (complements Dockerfile USER).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: actenora-security-context-example
+  labels:
+    actenora.io/faz: "27"
+spec:
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: platform-backend
+      image: actenora/platform-backend:example
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: work
+          mountPath: /app/work
+  volumes:
+    - name: tmp
+      emptyDir: {}
+    - name: work
+      emptyDir: {}

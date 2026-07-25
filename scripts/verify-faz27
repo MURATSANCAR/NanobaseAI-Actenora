@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# FAZ 27 acceptance checks (static + unit-level).
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+
+log "FAZ 27 verify — security / retention / compliance"
+
+require_file() {
+  local path="$1"
+  [[ -f "${REPO_ROOT}/${path}" ]] || die "missing required file: ${path}"
+}
+
+require_file "apps/platform-backend/src/main/java/com/nanobaseai/actenora/security/SecurityHeadersFilter.java"
+require_file "apps/platform-backend/src/main/java/com/nanobaseai/actenora/security/CorsAllowlistConfig.java"
+require_file "apps/platform-backend/src/main/java/com/nanobaseai/actenora/security/RateLimitingFilter.java"
+require_file "modules/operations/src/main/java/com/nanobaseai/actenora/operations/application/RetentionJobService.java"
+require_file "modules/operations/src/main/java/com/nanobaseai/actenora/operations/domain/retention/LegalHold.java"
+require_file "apps/ai-orchestrator/src/actenora_orchestrator/egress.py"
+require_file "modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/infrastructure/graph/GraphEgressPolicy.java"
+require_file "infrastructure/k8s/network-policies/ai-orchestrator-egress.yaml"
+require_file "infrastructure/k8s/network-policies/platform-graph-egress.yaml"
+require_file "infrastructure/k8s/security-context-readonly.yaml"
+require_file "docs/operations/BACKUP-RESTORE-RUNBOOK.md"
+require_file "docs/operations/DISASTER-RECOVERY-RUNBOOK.md"
+require_file "docs/operations/CERTIFICATE-EXPIRY-ALERTS.md"
+require_file "docs/phase-27/FAZ-27-REPORT.md"
+require_file "scripts/scan-secrets"
+require_file "scripts/scan-dependencies"
+require_file "scripts/generate-sbom"
+
+# Compose read-only hardening
+rg -q "read_only: true" "${REPO_ROOT}/infrastructure/compose/docker-compose.yml" \
+  || die "compose missing read_only: true"
+
+# Secret scan (must pass)
+"${SCRIPT_DIR}/scan-secrets"
+
+# Targeted unit tests
+log "Running FAZ 27 Java tests"
+"${REPO_ROOT}/mvnw" -q -pl modules/operations,modules/transcript,modules/audit,modules/meeting,modules/microsoft-connection,apps/platform-backend \
+  -am test \
+  -Dsurefire.failIfNoSpecifiedTests=false \
+  -Dtest=RetentionAndLegalHoldTest,TranscriptIngestionServiceTest,AuditRetentionServiceTest,PrivateNoteRetentionServiceTest,GraphEgressPolicyTest,SecurityHardeningFilterTest
+
+if [[ -d "${REPO_ROOT}/apps/ai-orchestrator/tests" ]]; then
+  log "Running AI egress tests"
+  (
+    cd "${REPO_ROOT}/apps/ai-orchestrator"
+    if command -v uv >/dev/null 2>&1; then
+      PYTHONPATH=src uv run pytest tests/test_egress.py -q
+    elif command -v pytest >/dev/null 2>&1; then
+      PYTHONPATH=src pytest tests/test_egress.py -q
+    else
+      warn "pytest/uv unavailable — skip Python egress tests in verify"
+    fi
+  )
+fi
+
+log "FAZ 27 verify passed"

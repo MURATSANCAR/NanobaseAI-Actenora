@@ -69,6 +69,12 @@ class ModularMonolithArchUnitTest {
                 .should().dependOnClassesThat().resideInAPackage(BASE + ".meeting.domain..")
                 .because("Transcript must not import meeting domain types")
                 .check(classes);
+
+        noClasses()
+                .that().resideInAPackage(BASE + ".transcript..")
+                .should().dependOnClassesThat().resideInAPackage(BASE + ".meeting..")
+                .because("Transcript must not depend on meeting module (opaque meetingOccurrenceId via contract only)")
+                .check(classes);
     }
 
     @Test

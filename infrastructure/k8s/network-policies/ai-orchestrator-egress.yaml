@@ -1,0 +1,57 @@
+# FAZ 27 — default deny; AI orchestrator may only reach local LLM / platform / observability.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ai-orchestrator-egress-deny-public
+  labels:
+    app.kubernetes.io/name: ai-orchestrator
+    actenora.io/faz: "27"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ai-orchestrator
+  policyTypes:
+    - Egress
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: platform-backend
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Local LLM runtime (cluster-local)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: local-llm
+      ports:
+        - protocol: TCP
+          port: 11434
+        - protocol: TCP
+          port: 8001
+    # Platform + Redis + OTel within cluster
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: actenora
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+    # Explicitly no egress to 0.0.0.0/0 — public LLM APIs denied at network layer

@@ -1,42 +1,53 @@
 # NanobaseAI Actenora
 
-Local-first, evidence-driven AI action and workflow platform.
+Local-first **Microsoft Teams meeting intelligence** platform: Graph-connected meetings → transcripts → multi-model local AI → human approval → governed delivery.
 
-Actenora plans and executes long-running enterprise workflows with multi-model local LLMs, human approval before any external side effect, and modular-monolith boundaries designed for later service extraction.
+## Status
 
-## Status — Phase 0
+**FAZ 3:** Spring Modulith + ArchUnit enforce the 14 bounded contexts. Verification:
 
-This repository is in **Phase 0 (architecture lock)**.
+```bash
+./mvnw -pl apps/platform-backend test -Dtest=ModulithArchitectureTest,ModularMonolithArchUnitTest
+```
 
-| Item | State |
+Architecture and ADRs live under `docs/`. Treat broader build/test status in [`docs/reviews/INITIAL-GAP-ANALYSIS.md`](docs/reviews/INITIAL-GAP-ANALYSIS.md) as authoritative for full CI.
+
+## Docs
+
+| Area | Entry |
 |------|-------|
-| Application source | Not present (greenfield) |
-| Build / test suite | Not present |
-| Architecture & ADR set | Locked under `docs/` |
-| Business feature code | Intentionally absent |
+| Gap analysis | [`docs/reviews/INITIAL-GAP-ANALYSIS.md`](docs/reviews/INITIAL-GAP-ANALYSIS.md) |
+| Product scope | [`docs/product/PRODUCT-SCOPE.md`](docs/product/PRODUCT-SCOPE.md) |
+| Bounded contexts | [`docs/architecture/BOUNDED-CONTEXTS.md`](docs/architecture/BOUNDED-CONTEXTS.md) |
+| Module owners / extraction | [`docs/architecture/MODULE-OWNERS-AND-EXTRACTION.md`](docs/architecture/MODULE-OWNERS-AND-EXTRACTION.md) |
+| Integration events | [`docs/architecture/MODULE-INTEGRATION-EVENTS.md`](docs/architecture/MODULE-INTEGRATION-EVENTS.md) |
+| Modulith diagrams | [`docs/architecture/modulith/`](docs/architecture/modulith/) |
+| Data ownership | [`docs/architecture/DATA-OWNERSHIP.md`](docs/architecture/DATA-OWNERSHIP.md) |
+| ADRs | [`docs/adr/`](docs/adr/) |
+| Local dev | [`docs/operations/LOCAL-DEVELOPMENT.md`](docs/operations/LOCAL-DEVELOPMENT.md) |
 
-See:
-
-- [`docs/reviews/INITIAL-GAP-ANALYSIS.md`](docs/reviews/INITIAL-GAP-ANALYSIS.md) — baseline & gaps
-- [`docs/product/PRODUCT-SCOPE.md`](docs/product/PRODUCT-SCOPE.md) — product scope
-- [`docs/architecture/SYSTEM-CONTEXT.md`](docs/architecture/SYSTEM-CONTEXT.md) — system context
-- [`docs/adr/`](docs/adr/) — architecture decision records
-- [`docs/operations/LOCAL-DEVELOPMENT.md`](docs/operations/LOCAL-DEVELOPMENT.md) — local setup (target)
-- [`artifacts/phase-0/baseline-capture.txt`](artifacts/phase-0/baseline-capture.txt) — raw command capture
-
-## Target stack (locked)
+## Stack (locked)
 
 | Concern | Choice |
 |---------|--------|
-| Shape | Modular monolith first (ADR-001) |
-| Runtime | Java / Spring Boot (hexagonal modules) |
-| Persistence | PostgreSQL, schema-per-bounded-context (ADR-009) |
-| Messaging | RabbitMQ first (ADR-008) + transactional outbox/inbox (ADR-004) |
-| Objects | Object-storage abstraction over MinIO-compatible API (ADR-007) |
-| LLM | Local-only models; multi-model routing (ADR-005, ADR-006) |
-| Delivery | Human approval before external side effects (ADR-010) |
-| AI output | Evidence-first; no unsupported claims (ADR-011) |
+| Shape | Modular monolith first (ADR-001) + extractable workers |
+| Backend | Java 21 / Spring Boot / Spring Modulith modules |
+| AI process | Python FastAPI (`ai-orchestrator`) |
+| Persistence | PostgreSQL, schema-per-module (ADR-009) |
+| Messaging | RabbitMQ + transactional outbox/inbox (ADR-004, ADR-008) |
+| Objects | MinIO-compatible via port (ADR-007) |
+| LLM | Local-only default; multi-model routing (ADR-005, ADR-006) |
+| Delivery | Human approval required (ADR-010) |
+| AI output | Evidence-first (ADR-011) |
 
-## Non-goals for Phase 0
+## Commands
 
-No application modules, migrations, APIs, or business workflows are implemented in this phase. See [`docs/product/NON-GOALS.md`](docs/product/NON-GOALS.md).
+```bash
+cp .env.example .env
+make bootstrap
+make build
+make test
+make run
+```
+
+See `repo-map.yaml` for project registry and reserved service extraction slots.

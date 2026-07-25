@@ -1,0 +1,15 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.nanobaseai.actenora.modelmanagement`
+|Spring components
+|_Controllers_
+
+* `c.n.a.m.api.ModelControlPlaneController`
+
+_Others_
+
+* `c.n.a.m.api.ModelManagementApi`
+|Bean references
+|* `c.n.a.s.time.InstantClock` (in Shared Kernel)
+|===

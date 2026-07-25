@@ -1,0 +1,155 @@
+=== TODO/FIXME ===
+(none)
+
+=== MockLocalProvider / fake provider ===
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:131:        MockLocalProvider mock = new MockLocalProvider(1, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:157:        MockLocalProvider mock = new MockLocalProvider(2, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:190:        MockLocalProvider mock = new MockLocalProvider();
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:222:        MockLocalProvider mock = new MockLocalProvider(1, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:243:        MockLocalProvider mock = new MockLocalProvider(1, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:270:        MockLocalProvider timeout = new MockLocalProvider();
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:281:        MockLocalProvider conn = new MockLocalProvider();
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:295:        MockLocalProvider mock = new MockLocalProvider(1, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:302:        MockLocalProvider noStream = new MockLocalProvider(1, false, Set.of("mock-model"));
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/MockLocalProvider.java:32:public final class MockLocalProvider implements LocalModelProvider {
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/MockLocalProvider.java:47:    public MockLocalProvider() {
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/MockLocalProvider.java:51:    public MockLocalProvider(int maxConcurrency, boolean streamingEnabled, Set<String> servedModelIds) {
+
+=== transcript logging risks ===
+packages/observability/java/src/main/java/com/nanobaseai/actenora/observability/PiiRedactor.java:11: * Never allow raw transcript text, bearer tokens, API keys, or passwords into logs.
+packages/observability/java/src/main/java/com/nanobaseai/actenora/observability/PiiRedactor.java:34:            "rawtranscript",
+packages/observability/java/src/main/java/com/nanobaseai/actenora/observability/PiiRedactor.java:35:            "raw_transcript",
+packages/observability/java/src/main/java/com/nanobaseai/actenora/observability/PiiRedactor.java:101:     * Returns true when the rendered log line still contains raw transcript-like content
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/domain/SourceFormat.java:4: * On-disk / wire format of the raw transcript blob.
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/application/TranscriptIngestionService.java:137:            throw new TranscriptDomainException("RAW_MISSING", "Raw transcript object missing");
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/application/TranscriptIngestionService.java:157:            throw new TranscriptDomainException("REPARSE_READ_FAILED", "Failed to read raw transcript");
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/application/TranscriptNormalizationService.java:70:        byte[] raw = readRaw(transcript);
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/application/TranscriptNormalizationService.java:216:    private byte[] readRaw(Transcript transcript) {
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/application/TranscriptNormalizationService.java:222:            throw new TranscriptDomainException("PARSE_READ_FAILED", "Failed to read raw transcript");
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/application/modelworker/WorkerRequestEnvelope.java:13: * Contains references and metadata only — never raw transcript or prompt text.
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/MockLocalProvider.java:168:        chunks.add(InferenceStreamChunk.delta(content.substring(0, Math.min(mid, content.length()))));
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/MockLocalProvider.java:170:            chunks.add(InferenceStreamChunk.delta(content.substring(mid)));
+
+=== production profile secrets / mock ===
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:131:        MockLocalProvider mock = new MockLocalProvider(1, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:157:        MockLocalProvider mock = new MockLocalProvider(2, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:190:        MockLocalProvider mock = new MockLocalProvider();
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:222:        MockLocalProvider mock = new MockLocalProvider(1, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:243:        MockLocalProvider mock = new MockLocalProvider(1, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:270:        MockLocalProvider timeout = new MockLocalProvider();
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:281:        MockLocalProvider conn = new MockLocalProvider();
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:295:        MockLocalProvider mock = new MockLocalProvider(1, true, Set.of("mock-model"));
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/LocalModelProviderProtocolTest.java:302:        MockLocalProvider noStream = new MockLocalProvider(1, false, Set.of("mock-model"));
+apps/platform-backend/src/main/resources/application-local.yml:59:  allow-default-secrets: true
+apps/platform-backend/src/main/resources/application-test.yml:40:  allow-default-secrets: true
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/MockLocalProvider.java:32:public final class MockLocalProvider implements LocalModelProvider {
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/MockLocalProvider.java:47:    public MockLocalProvider() {
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/llm/MockLocalProvider.java:51:    public MockLocalProvider(int maxConcurrency, boolean streamingEnabled, Set<String> servedModelIds) {
+apps/platform-backend/src/main/resources/application-prod.yml:5:      on-profile: prod
+apps/platform-backend/src/main/resources/application-prod.yml:33:  allow-default-secrets: false
+apps/platform-backend/src/main/java/com/nanobaseai/actenora/ProductionSecretGuard.java:40:            @Value("${actenora.allow-default-secrets:false}") boolean allowDefaultSecrets,
+
+=== Flyway versions ===
+modules/ai-processing/src/main/resources/db/migration/aiprocessing/V170__create_schema_and_messaging.sql
+modules/ai-processing/src/main/resources/db/migration/aiprocessing/V171__event_backbone_outbox_inbox_dlq.sql
+modules/ai-processing/src/main/resources/db/migration/aiprocessing/V171__pipeline_runs.sql
+modules/ai-processing/src/main/resources/db/migration/aiprocessing/V2__ai_jobs_and_attempts.sql
+modules/ai-processing/src/main/resources/db/migration/aiprocessing/V2__multi_model_routing.sql
+modules/approval/src/main/resources/db/migration/approval/V190__create_schema_and_messaging.sql
+modules/approval/src/main/resources/db/migration/approval/V191__approval_workflow.sql
+modules/approval/src/main/resources/db/migration/approval/V191__event_backbone_outbox_inbox_dlq.sql
+modules/audit/src/main/resources/db/migration/audit/V220__create_schema_and_messaging.sql
+modules/audit/src/main/resources/db/migration/audit/V221__audit_entries.sql
+modules/audit/src/main/resources/db/migration/audit/V222__event_backbone_outbox_inbox_dlq.sql
+modules/delivery/src/main/resources/db/migration/delivery/V210__create_schema_and_messaging.sql
+modules/delivery/src/main/resources/db/migration/delivery/V211__event_backbone_outbox_inbox_dlq.sql
+modules/identity/src/main/resources/db/migration/identity/V100__create_schema_and_messaging.sql
+modules/identity/src/main/resources/db/migration/identity/V101__event_backbone_outbox_inbox_dlq.sql
+modules/identity/target/classes/db/migration/identity/V100__create_schema_and_messaging.sql
+modules/identity/target/classes/db/migration/identity/V101__event_backbone_outbox_inbox_dlq.sql
+modules/meeting-intelligence/src/main/resources/db/migration/meetingintelligence/V180__create_schema_and_messaging.sql
+modules/meeting-intelligence/src/main/resources/db/migration/meetingintelligence/V181__event_backbone_outbox_inbox_dlq.sql
+modules/meeting-intelligence/src/main/resources/db/migration/meetingintelligence/V2__evidence_validation_quality_gate.sql
+modules/meeting/src/main/resources/db/migration/meeting/V140_1__meeting_core_tables.sql
+modules/meeting/src/main/resources/db/migration/meeting/V140__create_schema_and_messaging.sql
+modules/meeting/src/main/resources/db/migration/meeting/V141__meeting_relations_and_continuity.sql
+modules/meeting/src/main/resources/db/migration/meeting/V142__event_backbone_outbox_inbox_dlq.sql
+modules/meeting/target/classes/db/migration/meeting/V140__create_schema_and_messaging.sql
+modules/meeting/target/classes/db/migration/meeting/V141__meeting_relations_and_continuity.sql
+modules/meeting/target/classes/db/migration/meeting/V142__meeting_core_tables.sql
+modules/microsoft-connection/src/main/resources/db/migration/microsoftconnection/V130__create_schema_and_messaging.sql
+modules/microsoft-connection/src/main/resources/db/migration/microsoftconnection/V131__event_backbone_outbox_inbox_dlq.sql
+modules/microsoft-connection/target/classes/db/migration/microsoftconnection/V130__create_schema_and_messaging.sql
+modules/microsoft-connection/target/classes/db/migration/microsoftconnection/V131__event_backbone_outbox_inbox_dlq.sql
+modules/model-management/src/main/resources/db/migration/modelmanagement/V160__create_schema_and_messaging.sql
+modules/model-management/src/main/resources/db/migration/modelmanagement/V161__event_backbone_outbox_inbox_dlq.sql
+modules/model-management/src/main/resources/db/migration/modelmanagement/V2__model_registry.sql
+modules/operations/src/main/resources/db/migration/operations/V230__create_schema_and_messaging.sql
+modules/operations/src/main/resources/db/migration/operations/V231__event_backbone_outbox_inbox_dlq.sql
+modules/policy/src/main/resources/db/migration/policy/V120__create_schema_and_messaging.sql
+modules/policy/src/main/resources/db/migration/policy/V121__policy_core.sql
+modules/policy/src/main/resources/db/migration/policy/V122__event_backbone_outbox_inbox_dlq.sql
+modules/policy/target/classes/db/migration/policy/V120__create_schema_and_messaging.sql
+modules/policy/target/classes/db/migration/policy/V121__policy_core.sql
+modules/policy/target/classes/db/migration/policy/V122__event_backbone_outbox_inbox_dlq.sql
+modules/template/src/main/resources/db/migration/template/V200__create_schema_and_messaging.sql
+modules/template/src/main/resources/db/migration/template/V201__event_backbone_outbox_inbox_dlq.sql
+modules/tenant/src/main/resources/db/migration/tenant/V110__create_schema_and_messaging.sql
+modules/tenant/src/main/resources/db/migration/tenant/V111__event_backbone_outbox_inbox_dlq.sql
+modules/tenant/target/classes/db/migration/tenant/V110__create_schema_and_messaging.sql
+modules/tenant/target/classes/db/migration/tenant/V111__event_backbone_outbox_inbox_dlq.sql
+modules/transcript/src/main/resources/db/migration/transcript/V150__create_schema_and_messaging.sql
+modules/transcript/src/main/resources/db/migration/transcript/V151__event_backbone_outbox_inbox_dlq.sql
+modules/transcript/src/main/resources/db/migration/transcript/V151__normalization_and_dictionary.sql
+modules/transcript/src/main/resources/db/migration/transcript/V2__transcript_ingest_tables.sql
+modules/transcript/target/classes/db/migration/transcript/V150__create_schema_and_messaging.sql
+modules/transcript/target/classes/db/migration/transcript/V2__transcript_ingest_tables.sql
+
+=== InMemory usage ===
+modules/approval/src/main/java/com/nanobaseai/actenora/approval/infrastructure/InMemoryParticipantDisputeRepository.java
+modules/approval/src/main/java/com/nanobaseai/actenora/approval/infrastructure/InMemoryApprovalRequestRepository.java
+modules/ai-processing/src/test/java/com/nanobaseai/actenora/aiprocessing/application/MultiModelRoutingHarness.java
+modules/model-management/src/main/java/com/nanobaseai/actenora/modelmanagement/infrastructure/InMemoryModelDefinitionRepository.java
+modules/model-management/src/main/java/com/nanobaseai/actenora/modelmanagement/infrastructure/InMemoryModelDeploymentRepository.java
+modules/model-management/src/main/java/com/nanobaseai/actenora/modelmanagement/infrastructure/InMemoryTenantModelAllowlist.java
+modules/meeting-intelligence/src/main/java/com/nanobaseai/actenora/meetingintelligence/infrastructure/validation/InMemoryValidationRunRepository.java
+modules/meeting-intelligence/src/main/java/com/nanobaseai/actenora/meetingintelligence/infrastructure/validation/InMemoryQualityGatePolicyPort.java
+modules/meeting-intelligence/src/main/java/com/nanobaseai/actenora/meetingintelligence/infrastructure/validation/InMemoryManualReviewCaseRepository.java
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/infrastructure/persistence/InMemoryTenantDictionaryRepository.java
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/infrastructure/persistence/InMemoryTranscriptSegmentRepository.java
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/infrastructure/persistence/InMemoryTranscriptRepository.java
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/infrastructure/persistence/InMemoryNormalizationRunRepository.java
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/infrastructure/storage/InMemoryObjectStorage.java
+modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/infrastructure/config/TranscriptModuleConfiguration.java
+modules/model-management/src/main/java/com/nanobaseai/actenora/modelmanagement/config/ModelManagementConfiguration.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/routing/DefaultModelRoleBootstrap.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/routing/InMemoryAttemptHistoryStore.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/routing/InMemoryRoutingDecisionStore.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/routing/InMemoryRetryQueue.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/routing/InMemoryLocalDeploymentCatalog.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/routing/InMemoryModelQualityMetricsStore.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/routing/InMemoryShadowExecutionStore.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/persistence/InMemoryAiJobRepository.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/persistence/InMemoryModelCatalog.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/persistence/InMemoryTenantAiPolicy.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/persistence/InMemoryAiAttemptRepository.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/infrastructure/prompt/InMemoryPromptRegistry.java
+modules/shared-kernel/src/main/java/com/nanobaseai/actenora/sharedkernel/messaging/infrastructure/InMemoryInboxStore.java
+modules/shared-kernel/src/main/java/com/nanobaseai/actenora/sharedkernel/messaging/infrastructure/InMemoryDeadLetterStore.java
+modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/application/pipeline/ExtractionPipelineFacade.java
+modules/shared-kernel/src/main/java/com/nanobaseai/actenora/sharedkernel/messaging/infrastructure/InMemoryOutboxStore.java
+modules/shared-kernel/src/main/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackbone.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/messaging/InMemoryMeetingEventPublisher.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/persistence/InMemoryMeetingParticipantRepository.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/persistence/InMemoryBusinessContextRepository.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/persistence/InMemoryMeetingOccurrenceRepository.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/persistence/InMemoryMeetingSeriesRepository.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/audit/InMemoryMeetingAuditPort.java
+modules/policy/src/main/java/com/nanobaseai/actenora/policy/infrastructure/persistence/InMemoryTenantPolicyRepository.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/config/MeetingModuleConfiguration.java
+modules/policy/src/main/java/com/nanobaseai/actenora/policy/infrastructure/cache/InMemoryPolicyCache.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/relation/InMemoryOccurrenceContinuityPort.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/relation/InMemoryMeetingRelationRepository.java
+modules/meeting/src/main/java/com/nanobaseai/actenora/meeting/infrastructure/relation/InMemoryMeetingRelationSuggestionRepository.java
+modules/policy/src/main/java/com/nanobaseai/actenora/policy/infrastructure/persistence/InMemoryQuotaUsageStore.java
+modules/audit/src/main/java/com/nanobaseai/actenora/audit/infrastructure/persistence/InMemoryAppendOnlyAuditRepository.java

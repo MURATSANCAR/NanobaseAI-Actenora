@@ -1,49 +1,38 @@
 -- Schema-per-bounded-context baseline (docs/architecture/DATA-OWNERSHIP.md)
--- Physical tables arrive in later phases; schemas are owned now.
+-- Authoritative table DDL arrives via module Flyway migrations.
+-- This init only ensures schemas exist for local Postgres bootstrap.
 
 CREATE SCHEMA IF NOT EXISTS identity AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS workspace AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS evidence AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS artifact AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS knowledge AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS case_mgmt AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS planning AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS modelgw AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS prompt AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS workflow AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS tenant AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS policy AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS microsoftconnection AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS meeting AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS transcript AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS modelmanagement AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS aiprocessing AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS meetingintelligence AUTHORIZATION CURRENT_USER;
 CREATE SCHEMA IF NOT EXISTS approval AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS execution AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS template AUTHORIZATION CURRENT_USER;
 CREATE SCHEMA IF NOT EXISTS delivery AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS notify AUTHORIZATION CURRENT_USER;
 CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS operations AUTHORIZATION CURRENT_USER;
 
--- Per-context outbox/inbox placeholders (ADR-004)
-CREATE SCHEMA IF NOT EXISTS outbox_identity AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS inbox_identity AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS outbox_workflow AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS inbox_workflow AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS outbox_delivery AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS inbox_delivery AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS outbox_audit AUTHORIZATION CURRENT_USER;
-CREATE SCHEMA IF NOT EXISTS inbox_audit AUTHORIZATION CURRENT_USER;
+COMMENT ON SCHEMA identity IS 'Owned by identity module';
+COMMENT ON SCHEMA tenant IS 'Owned by tenant module';
+COMMENT ON SCHEMA policy IS 'Owned by policy module';
+COMMENT ON SCHEMA microsoftconnection IS 'Owned by microsoft-connection module';
+COMMENT ON SCHEMA meeting IS 'Owned by meeting module';
+COMMENT ON SCHEMA transcript IS 'Owned by transcript module';
+COMMENT ON SCHEMA modelmanagement IS 'Owned by model-management module';
+COMMENT ON SCHEMA aiprocessing IS 'Owned by ai-processing module';
+COMMENT ON SCHEMA meetingintelligence IS 'Owned by meeting-intelligence module';
+COMMENT ON SCHEMA approval IS 'Owned by approval module';
+COMMENT ON SCHEMA template IS 'Owned by template module';
+COMMENT ON SCHEMA delivery IS 'Owned by delivery module';
+COMMENT ON SCHEMA audit IS 'Owned by audit module (append-only)';
+COMMENT ON SCHEMA operations IS 'Owned by operations module';
 
-COMMENT ON SCHEMA identity IS 'Owned by Identity BC';
-COMMENT ON SCHEMA workspace IS 'Owned by Workspace BC';
-COMMENT ON SCHEMA evidence IS 'Owned by Evidence BC';
-COMMENT ON SCHEMA artifact IS 'Owned by Artifact BC';
-COMMENT ON SCHEMA knowledge IS 'Owned by Knowledge BC';
-COMMENT ON SCHEMA case_mgmt IS 'Owned by Case BC';
-COMMENT ON SCHEMA planning IS 'Owned by Planning BC';
-COMMENT ON SCHEMA modelgw IS 'Owned by Model Gateway BC';
-COMMENT ON SCHEMA prompt IS 'Owned by Prompt BC';
-COMMENT ON SCHEMA workflow IS 'Owned by Workflow BC';
-COMMENT ON SCHEMA approval IS 'Owned by Approval BC';
-COMMENT ON SCHEMA execution IS 'Owned by Execution BC';
-COMMENT ON SCHEMA delivery IS 'Owned by Delivery BC';
-COMMENT ON SCHEMA notify IS 'Owned by Notification BC';
-COMMENT ON SCHEMA audit IS 'Owned by Audit BC (append-only)';
-
--- Search path for app role: public + owned schemas
-ALTER ROLE CURRENT_USER SET search_path TO public, identity, workspace, evidence, artifact,
-    knowledge, case_mgmt, planning, modelgw, prompt, workflow, approval, execution,
-    delivery, notify, audit;
+ALTER ROLE CURRENT_USER SET search_path TO public,
+    identity, tenant, policy, microsoftconnection, meeting, transcript,
+    modelmanagement, aiprocessing, meetingintelligence, approval, template,
+    delivery, audit, operations;

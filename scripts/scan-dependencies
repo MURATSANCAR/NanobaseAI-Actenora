@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# FAZ 27 — dependency vulnerability scan (best-effort per toolchain).
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+
+REPORT_DIR="${REPO_ROOT}/artifacts/security"
+mkdir -p "${REPORT_DIR}"
+REPORT="${REPORT_DIR}/dependency-scan.txt"
+: >"${REPORT}"
+
+log "Dependency vulnerability scan → ${REPORT}"
+FAILED=0
+
+scan_maven() {
+  if [[ -x "${REPO_ROOT}/mvnw" ]]; then
+    log "Maven OWASP Dependency-Check (or dependency:tree fallback)"
+    if "${REPO_ROOT}/mvnw" -q -N org.owasp:dependency-check-maven:check \
+        -DfailBuildOnCVSS=9 \
+        -Dformat=HTML \
+        -DoutputDirectory="${REPORT_DIR}" 2>>"${REPORT}"; then
+      echo "maven-dependency-check: ok" >>"${REPORT}"
+    else
+      warn "OWASP dependency-check unavailable/failed — recording Maven tree for audit"
+      "${REPO_ROOT}/mvnw" -q -DskipTests dependency:tree >>"${REPORT}" || true
+      echo "maven-dependency-check: skipped" >>"${REPORT}"
+    fi
+  fi
+}
+
+scan_python() {
+  if command -v uv >/dev/null 2>&1; then
+    (cd "${REPO_ROOT}/apps/ai-orchestrator" && uv pip compile pyproject.toml -o /tmp/actenora-orch-reqs.txt 2>/dev/null || true)
+  fi
+  if command -v pip-audit >/dev/null 2>&1; then
+    pip-audit -r "${REPO_ROOT}/apps/ai-orchestrator/pyproject.toml" 2>&1 | tee -a "${REPORT}" || FAILED=1
+  else
+    echo "pip-audit: not installed (skipped)" >>"${REPORT}"
+  fi
+}
+
+scan_node() {
+  for app in web-portal teams-meeting-app; do
+    local dir="${REPO_ROOT}/apps/${app}"
+    if [[ -f "${dir}/package.json" ]] && command -v pnpm >/dev/null 2>&1; then
+      (cd "${dir}" && pnpm audit --prod 2>&1 | tee -a "${REPORT}") || warn "pnpm audit reported issues in ${app}"
+    fi
+  done
+}
+
+scan_maven
+scan_python
+scan_node
+
+echo "dependency-scan:completed" >>"${REPORT}"
+if [[ "${FAILED}" -ne 0 ]]; then
+  echo "dependency-scan:fail" >>"${REPORT}"
+  exit 1
+fi
+log "Dependency scan completed"

@@ -18,6 +18,8 @@ build_order:
   - apps/ai-orchestrator
   - apps/web-portal
   - apps/teams-meeting-app
+  - services/teams-integration-service
+  - services/transcript-worker
 
 projects:
   - id: event-contracts
@@ -60,11 +62,19 @@ projects:
     type: app
     build: node
     dockerfile: apps/teams-meeting-app/Dockerfile
+  - id: teams-integration-service
+    path: services/teams-integration-service
+    type: app
+    build: maven
+    dockerfile: services/teams-integration-service/Dockerfile
+  - id: transcript-worker
+    path: services/transcript-worker
+    type: app
+    build: maven
+    dockerfile: services/transcript-worker/Dockerfile
 
-# Extraction targets — intentionally absent until cut from the modular monolith.
+# Remaining extraction targets — intentionally absent until cut from the modular monolith.
 reserved_services:
-  - services/teams-integration-service
-  - services/transcript-worker
   - services/model-worker
   - services/document-renderer
   - services/delivery-worker

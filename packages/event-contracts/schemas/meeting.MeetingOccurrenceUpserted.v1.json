@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actenora.nanobase.ai/events/meeting.MeetingOccurrenceUpserted.v1.json",
+  "title": "MeetingOccurrenceUpsertedV1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["tenantId", "meetingOccurrenceId"],
+  "properties": {
+    "tenantId": { "type": "string", "format": "uuid" },
+    "meetingOccurrenceId": { "type": "string", "format": "uuid" },
+    "eventId": { "type": "string", "format": "uuid" },
+    "occurredAt": { "type": "string", "format": "date-time" }
+  }
+}

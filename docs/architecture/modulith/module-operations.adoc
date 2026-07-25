@@ -1,0 +1,17 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.nanobaseai.actenora.operations`
+|Spring components
+|_Controllers_
+
+* `c.n.a.o.api.OperationsCenterController`
+
+_Others_
+
+* `c.n.a.o.api.OperationsApi`
+|Bean references
+|* `c.n.a.s.time.InstantClock` (in Shared Kernel)
+* `c.n.a.s.messaging.port.DeadLetterStore` (in Shared Kernel)
+* `c.n.a.s.messaging.replay.EventReplayer` (in Shared Kernel)
+|===

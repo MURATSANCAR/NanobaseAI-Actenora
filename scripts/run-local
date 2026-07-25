@@ -61,11 +61,12 @@ main() {
   start_process teams-meeting-app pnpm --filter @actenora/teams-meeting-app exec tsx src/index.ts
 
   log "Local processes started. Logs: ${LOG_DIR}"
-  log "  platform-backend  http://127.0.0.1:${PLATFORM_BACKEND_PORT}/api/health"
-  log "  ai-orchestrator   http://127.0.0.1:${AI_ORCHESTRATOR_PORT}/health"
+  log "  platform-backend  http://127.0.0.1:${PLATFORM_BACKEND_PORT}/actuator/health"
+  log "  ai-orchestrator   http://127.0.0.1:${AI_ORCHESTRATOR_PORT}/actuator/health"
   log "  web-portal        http://127.0.0.1:${WEB_PORTAL_PORT}"
   log "  teams-meeting-app http://127.0.0.1:${TEAMS_APP_PORT}/health"
   log "Stop with: ./scripts/stop-local"
+  log "Verify FAZ-2 with: ./scripts/verify-faz2"
 }
 
 main "$@"

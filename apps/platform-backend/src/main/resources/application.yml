@@ -1,23 +1,34 @@
+server:
+  port: ${PLATFORM_BACKEND_PORT:8080}
+
 spring:
   application:
-    name: actenora-platform-backend
+    name: platform-backend
   profiles:
     default: local
+    active: ${SPRING_PROFILES_ACTIVE:local}
   datasource:
-    url: jdbc:h2:mem:actenora;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  jpa:
-    hibernate:
-      ddl-auto: none
-    open-in-view: false
-  autoconfigure:
-    exclude: []
-    properties:
-      hibernate:
-        jdbc:
-          time_zone: UTC
+    url: ${POSTGRES_JDBC_URL:}
+    username: ${POSTGRES_USER:}
+    password: ${POSTGRES_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:}
+    password: ${RABBITMQ_PASSWORD:}
+    virtual-host: ${RABBITMQ_VHOST:/}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+  servlet:
+    multipart:
+      max-file-size: ${ACTENORA_UPLOAD_MAX_FILE_SIZE:25MB}
+      max-request-size: ${ACTENORA_UPLOAD_MAX_REQUEST_SIZE:26MB}
   flyway:
     enabled: true
     baselines-on-migrate: true
@@ -31,6 +42,55 @@ management:
     health:
       probes:
         enabled: true
+      show-details: always
+      group:
+        readiness:
+          include: readinessState,db,rabbit,redis
+        liveness:
+          include: livenessState
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    db:
+      enabled: true
+    rabbit:
+      enabled: true
+    redis:
+      enabled: true
 
-server:
-  port: ${PLATFORM_BACKEND_PORT:8080}
+actenora:
+  object-storage:
+    endpoint: ${OBJECT_STORAGE_ENDPOINT:}
+    access-key: ${OBJECT_STORAGE_ACCESS_KEY:}
+    secret-key: ${OBJECT_STORAGE_SECRET_KEY:}
+    bucket: ${OBJECT_STORAGE_BUCKET:actenora}
+    tenant-prefix-root: ${OBJECT_STORAGE_TENANT_PREFIX_ROOT:tenants}
+  security:
+    cors:
+      allowed-origins: ${ACTENORA_CORS_ALLOWED_ORIGINS:}
+    rate-limit:
+      enabled: ${ACTENORA_RATE_LIMIT_ENABLED:true}
+      max-requests: ${ACTENORA_RATE_LIMIT_MAX_REQUESTS:120}
+      window-seconds: ${ACTENORA_RATE_LIMIT_WINDOW_SECONDS:60}
+    signed-url:
+      max-ttl-seconds: ${ACTENORA_SIGNED_URL_MAX_TTL_SECONDS:900}
+      default-ttl-seconds: ${ACTENORA_SIGNED_URL_DEFAULT_TTL_SECONDS:300}
+    retention:
+      audit-retention-days: ${ACTENORA_AUDIT_RETENTION_DAYS:2555}
+  transcript:
+    # embedded = in-process module (default); remote = HTTP proxy to transcript-worker (FAZ 26)
+    mode: ${ACTENORA_TRANSCRIPT_MODE:embedded}
+    remote:
+      base-url: ${TRANSCRIPT_WORKER_BASE_URL:http://localhost:8081}
+      connect-timeout: ${TRANSCRIPT_REMOTE_CONNECT_TIMEOUT:2s}
+      read-timeout: ${TRANSCRIPT_REMOTE_READ_TIMEOUT:30s}
+      max-retries: ${TRANSCRIPT_REMOTE_MAX_RETRIES:3}
+      retry-backoff: ${TRANSCRIPT_REMOTE_RETRY_BACKOFF:200ms}
+  env: ${ACTENORA_ENV:local}
+  allow-default-secrets: false
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

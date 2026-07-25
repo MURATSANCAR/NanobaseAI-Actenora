@@ -1,0 +1,20 @@
+package com.nanobaseai.actenora.meetingintelligence.api.dto;
+
+import com.nanobaseai.actenora.meetingintelligence.domain.model.HumanApprovalStatus;
+
+import java.time.Instant;
+import java.util.UUID;
+
+public record DecisionResponse(
+        UUID id,
+        UUID noteId,
+        String text,
+        UUID supersedesDecisionId,
+        UUID supersededByDecisionId,
+        boolean requiresManualReview,
+        Double aiConfidence,
+        HumanApprovalStatus humanApprovalStatus,
+        long version,
+        Instant updatedAt
+) {
+}

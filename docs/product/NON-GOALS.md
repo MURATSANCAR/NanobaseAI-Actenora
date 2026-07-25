@@ -7,43 +7,31 @@
 
 ### Product
 
-- Replacing NanobaseAI-QA (test generation / IR pipelines).
-- Replacing NanobaseAI-BI (NL2SQL / reporting gateway).
-- General-purpose chatbot without evidence binding.
-- Fully autonomous external actions without human approval (production default).
-- Training / fine-tuning foundation models inside Actenora (consume, do not train).
-- Multi-cloud LLM failover to OpenAI / Anthropic / Gemini in default policy (see ADR-005).
+- Replacing NanobaseAI-QA or NanobaseAI-BI.
+- General chatbot unrelated to meeting evidence.
+- Fully autonomous external sends without human approval (production default).
+- Training foundation models inside Actenora.
+- Default use of hosted LLM APIs (OpenAI/Anthropic/Gemini) — ADR-005.
+- Non-Microsoft meeting platforms in MVP (Zoom/Google Meet adapters deferred).
 
-### Architecture / delivery
+### Architecture
 
-- Starting as a microservice mesh (ADR-001: modular monolith first).
-- Shared database tables across bounded contexts (ADR-002, ADR-009).
+- Starting as a microservice mesh (ADR-001).
+- Shared business tables across modules (ADR-002, ADR-009).
 - Cross-module JPA entity reuse (ADR-012).
-- Domain layer depending on Spring Web, JPA, RabbitMQ, MinIO, or HTTP clients.
-- Returning JPA entities as API responses.
-- Field injection in Spring components.
+- Domain layer depending on Spring Web, JPA, RabbitMQ, MinIO, or Graph HTTP clients.
+- Returning persistence entities as API responses.
+- Field injection.
 
-### Phase 0 specifically
+### Phase 0 documentation work
 
-- Application / business feature code.
-- Database migrations of production schemas.
-- Runnable API, workers, or UI.
-- Production deployment manifests beyond documentation intent.
-- Performance tuning or load harness implementation.
+- Phase 0 does not require finishing product features.
+- Phase 0 must not pretend broken builds are green.
 
-## Deferred (may become goals later)
+## Anti-patterns to reject
 
-| Item | Earliest consideration |
-|------|------------------------|
-| Extracted services for Workflow / Model Gateway | After modular monolith proves load & ownership |
-| Optional cloud LLM break-glass profile | Security & legal review; never default |
-| Marketplace of third-party action adapters | After core approval + delivery contracts stabilize |
-| Real-time collaborative editing UI | After workflow/approval MVP |
-
-## Anti-patterns we will reject in review
-
-1. Hard-coding a single model id (e.g. Qwen) in domain or use-case code.
-2. Writing to another context’s schema “just this once”.
-3. Publishing domain events without outbox.
-4. Delivering externally from a draft/proposed state.
-5. AI narrative without evidence IDs when claims are factual.
+1. Hard-coding vendor model ids (e.g. `QWEN27_FINAL`) in domain routing enums — use catalog/role ids resolved by `model-management`.
+2. Writing another module’s schema.
+3. Publishing events without outbox.
+4. Delivering from draft/unapproved insight state.
+5. AI narrative without evidence bindings.

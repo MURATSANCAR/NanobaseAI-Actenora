@@ -12,9 +12,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Bootstrap + build + SBOM
         run: ./scripts/ci-build
+      - name: Secret scan
+        run: ./scripts/scan-secrets
+      - name: Dependency vulnerability scan
+        run: ./scripts/scan-dependencies
+        continue-on-error: true
       - name: Lint + test
         run: ./scripts/ci-test
-      - name: Upload timings & SBOM
+      - name: Upload timings & SBOM & security
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -22,3 +27,4 @@ jobs:
           path: |
             artifacts/local/timings.tsv
             artifacts/sbom/
+            artifacts/security/

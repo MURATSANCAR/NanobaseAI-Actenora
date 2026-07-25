@@ -1,0 +1,11 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.nanobaseai.actenora.platform`
+|Properties
+|* `actenora.transcript.remote.base-url` -- `java.lang.String`, default `http://localhost:8081`. Base URL of the extracted transcript-worker (no trailing slash).
+* `actenora.transcript.remote.connect-timeout` -- `java.time.Duration`, default `2s`
+* `actenora.transcript.remote.max-retries` -- `java.lang.Integer`, default `3`
+* `actenora.transcript.remote.read-timeout` -- `java.time.Duration`, default `30s`
+* `actenora.transcript.remote.retry-backoff` -- `java.time.Duration`, default `200ms`
+|===

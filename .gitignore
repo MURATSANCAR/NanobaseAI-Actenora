@@ -79,6 +79,8 @@ coverage/
 .nyc_output/
 sbom/
 artifacts/local/
+artifacts/wip-extraction/
+artifacts/sbom/
 
 # Docker
 docker-data/

@@ -1,0 +1,75 @@
+== ActenoraApplication
+plantuml::components.puml[,,format=svg]
+
+== AI Processing
+plantuml::module-aiprocessing.puml[,,format=svg]
+include::module-aiprocessing.adoc[]
+
+== Approval
+plantuml::module-approval.puml[,,format=svg]
+include::module-approval.adoc[]
+
+== Audit
+plantuml::module-audit.puml[,,format=svg]
+include::module-audit.adoc[]
+
+== Delivery
+plantuml::module-delivery.puml[,,format=svg]
+include::module-delivery.adoc[]
+
+== Identity
+plantuml::module-identity.puml[,,format=svg]
+include::module-identity.adoc[]
+
+== Meeting
+plantuml::module-meeting.puml[,,format=svg]
+include::module-meeting.adoc[]
+
+== Meeting Intelligence
+plantuml::module-meetingintelligence.puml[,,format=svg]
+include::module-meetingintelligence.adoc[]
+
+== Microsoft Connection
+plantuml::module-microsoftconnection.puml[,,format=svg]
+include::module-microsoftconnection.adoc[]
+
+== Model Management
+plantuml::module-modelmanagement.puml[,,format=svg]
+include::module-modelmanagement.adoc[]
+
+== Observability
+plantuml::module-observability.puml[,,format=svg]
+include::module-observability.adoc[]
+
+== Operations
+plantuml::module-operations.puml[,,format=svg]
+include::module-operations.adoc[]
+
+== Platform
+plantuml::module-platform.puml[,,format=svg]
+include::module-platform.adoc[]
+
+== Policy
+plantuml::module-policy.puml[,,format=svg]
+include::module-policy.adoc[]
+
+== Security
+plantuml::module-security.puml[,,format=svg]
+include::module-security.adoc[]
+
+== Shared Kernel
+plantuml::module-sharedkernel.puml[,,format=svg]
+include::module-sharedkernel.adoc[]
+
+== Template
+plantuml::module-template.puml[,,format=svg]
+include::module-template.adoc[]
+
+== Tenant
+plantuml::module-tenant.puml[,,format=svg]
+include::module-tenant.adoc[]
+
+== Transcript
+plantuml::module-transcript.puml[,,format=svg]
+include::module-transcript.adoc[]
+

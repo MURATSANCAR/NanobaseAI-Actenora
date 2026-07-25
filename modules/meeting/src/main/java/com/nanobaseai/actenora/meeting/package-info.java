@@ -5,10 +5,6 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Meeting",
-    allowedDependencies = {
-        "sharedkernel",
-        "tenant :: api",
-        "microsoftconnection :: api"
-    }
+    allowedDependencies = {"sharedkernel","tenant :: api","microsoftconnection :: api"}
 )
 package com.nanobaseai.actenora.meeting;

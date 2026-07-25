@@ -31,6 +31,15 @@ If any item fails → stay in monolith; fix modularity first.
 - Inbox idempotency prevents duplicate side effects on replay.
 - Delivery adapters remain gated by approval ids.
 
+### Transcript worker (FAZ 26)
+
+See `docs/architecture/TRANSCRIPT-SERVICE-EXTRACTION.md` and
+`docs/reviews/FAZ-26-TRANSCRIPT-EXTRACTION-REPORT.md`.
+
+- Flag: `actenora.transcript.mode=embedded` (rollback) vs `remote` (extracted).
+- Worker image: `services/transcript-worker/Dockerfile`.
+- Compose profile: `extraction`.
+
 ## Anti-patterns
 
 - Extracting “because microservices” without metrics.

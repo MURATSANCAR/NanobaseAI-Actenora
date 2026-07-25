@@ -1,71 +1,58 @@
 # EVENT-CATALOG
 
-**Status:** Locked for Phase 0 (v0 contracts)  
+**Status:** Locked for Phase 0 (v0)  
 **Date:** 2026-07-25  
-**Envelope version:** `actenora.event.envelope.v1`
+**Envelope:** `actenora.event.envelope.v1`
 
-## 1. Envelope
+## Envelope
 
 ```json
 {
   "eventId": "uuid",
-  "eventType": "evidence.EvidenceRegistered.v1",
+  "eventType": "meeting.MeetingOccurrenceUpserted.v1",
   "eventVersion": 1,
   "occurredAt": "ISO-8601",
   "correlationId": "uuid",
   "causationId": "uuid",
-  "tenantId": "string",
-  "workspaceId": "string",
-  "producer": "evidence",
+  "tenantId": "uuid",
+  "producer": "meeting",
   "payload": {}
 }
 ```
 
-## 2. Naming
+## Catalog (initial)
 
-`<context>.<EventName>.v<major>`
+| Event type | Producer | Typical consumers |
+|------------|----------|-------------------|
+| `microsoftconnection.SubscriptionChanged.v1` | microsoft-connection | meeting, operations |
+| `meeting.MeetingOccurrenceUpserted.v1` | meeting | transcript, meeting-intelligence, audit |
+| `meeting.MeetingRelationSuggested.v1` | meeting | approval (optional), audit |
+| `transcript.TranscriptIngested.v1` | transcript / transcript-worker | ai-processing, audit |
+| `transcript.TranscriptReady.v1` | transcript / transcript-worker | ai-processing, meeting-intelligence |
+| `aiprocessing.AiJobRequested.v1` | ai-processing / meeting-intelligence | ai-orchestrator, audit |
+| `aiprocessing.AiJobCompleted.v1` | ai-processing | meeting-intelligence, audit |
+| `aiprocessing.AiJobFailed.v1` | ai-processing | meeting-intelligence, operations, audit |
+| `meetingintelligence.InsightProposed.v1` | meeting-intelligence | approval, audit |
+| `approval.ApprovalRequested.v1` | approval | notify/UI, audit |
+| `approval.ApprovalGranted.v1` | approval | delivery, audit |
+| `approval.ApprovalDenied.v1` | approval | meeting-intelligence, audit |
+| `delivery.DeliveryRequested.v1` | delivery | audit |
+| `delivery.DeliverySucceeded.v1` | delivery | meeting-intelligence, audit |
+| `delivery.DeliveryFailed.v1` | delivery | operations, audit |
+| `modelmanagement.ModelCatalogChanged.v1` | model-management | ai-processing, audit |
+| `audit.AuditAppended.v1` | audit | export sinks |
 
-Breaking payload changes → new major. Additive optional fields → same major with consumer tolerance.
+## Mandatory payload fields
 
-## 3. Catalog (initial)
+| Event | Required |
+|-------|----------|
+| `InsightProposed` | `insightId`, `transcriptId`s / evidence refs, `promptVersion`/`modelDecisionId` when AI-derived |
+| `ApprovalGranted` | `approvalId`, `insightId` (or deliverable id), `decidedBy` |
+| `DeliveryRequested` | `deliveryOrderId`, `approvalId`, `adapterType` |
 
-| Event type | Producer | Consumers (typical) | Notes |
-|------------|----------|---------------------|-------|
-| `evidence.EvidenceRegistered.v1` | evidence | knowledge, workflow, audit | New evidence available |
-| `evidence.EvidenceClassified.v1` | evidence | planning, audit | Classification ready |
-| `artifact.ArtifactStored.v1` | artifact | evidence, audit | Blob pointer committed |
-| `knowledge.KnowledgeLinked.v1` | knowledge | planning, audit | Graph link created |
-| `case.CaseOpened.v1` | case | workflow, audit | Case created |
-| `planning.PlanRequested.v1` | workflow/planning | modelgw, planning | Start plan |
-| `planning.PlanProposed.v1` | planning | approval, workflow, audit | Requires evidence bindings |
-| `modelgw.InferenceCompleted.v1` | modelgw | planning, audit | Includes model id used |
-| `modelgw.InferenceFailed.v1` | modelgw | planning, workflow, audit | Retry/fail policy |
-| `prompt.PromptPublished.v1` | prompt | modelgw, planning | New immutable version |
-| `workflow.WorkflowTransitioned.v1` | workflow | notify, audit | State change |
-| `workflow.WorkflowCompleted.v1` | workflow | notify, audit | Terminal success |
-| `workflow.WorkflowFailed.v1` | workflow | notify, audit | Terminal failure |
-| `approval.ApprovalRequested.v1` | approval | notify, audit | Human gate |
-| `approval.ApprovalGranted.v1` | approval | execution, delivery, workflow, audit | Unlocks delivery |
-| `approval.ApprovalDenied.v1` | approval | workflow, notify, audit | Blocks delivery |
-| `execution.ExecutionStarted.v1` | execution | workflow, audit | |
-| `execution.StepExecuted.v1` | execution | workflow, audit | |
-| `delivery.DeliveryRequested.v1` | delivery | audit | Must cite approval id |
-| `delivery.DeliverySucceeded.v1` | delivery | workflow, notify, audit | |
-| `delivery.DeliveryFailed.v1` | delivery | workflow, notify, audit | |
-| `notify.NotificationSent.v1` | notify | audit | |
-| `audit.AuditAppended.v1` | audit | (export sinks) | Optional fan-out |
+## Transport (FAZ 10)
 
-## 4. Mandatory fields for AI / delivery events
-
-| Event family | Required payload fields |
-|--------------|-------------------------|
-| `PlanProposed` | `planId`, `planVersion`, `evidenceIds[]`, `promptVersionId`, `modelDecisionId` |
-| `ApprovalGranted` | `approvalId`, `planId`, `planVersion`, `decidedBy` |
-| `DeliveryRequested` | `deliveryOrderId`, `approvalId`, `adapterType`, `payloadRef` |
-
-Missing evidence on `PlanProposed` → reject at producer validation (ADR-011).
-
-## 5. Transport
-
-- RabbitMQ exchanges/queues per context; routing keys = event type.
-- Published only via transactional outbox.
+- Publish **only** via transactional outbox (`outbox_event`).
+- Relay via polling publisher (CDC-ready `EventTransport` port).
+- Consume with inbox idempotency; poison → DLX/DLQ + `dead_letter_event`.
+- Runtime design: [`EVENT-BACKBONE.md`](EVENT-BACKBONE.md).

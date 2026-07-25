@@ -1,0 +1,9 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.nanobaseai.actenora.meeting`
+|Spring components
+|* `c.n.a.m.api.MeetingApi`
+|Bean references
+|* `c.n.a.s.domain.TenantId` (in Shared Kernel)
+|===

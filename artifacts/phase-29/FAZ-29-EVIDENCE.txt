@@ -1,0 +1,48 @@
+Date: 2026-07-25T18:04:07Z
+Branch: main
+Commit: 5be2fd2
+
+=== test-all last status ===
+16:[actenora] DONE  test:contracts (4000 ms)
+82:[actenora] DONE  test:packages-node (8000 ms)
+92:[actenora] DONE  test:packages-python (3000 ms)
+184:[INFO] BUILD FAILURE
+238:[actenora] ERROR: test:java failed
+
+=== pnpm audit high ===
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ React Router: RSC Mode CSRF Bypass Allows Action       │
+│                     │ Execution Before 400 Response                          │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ react-router                                           │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=7.12.0 <8.3.0                                        │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=8.3.0                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ apps/web-portal > react-router-dom@7.18.1 >            │
+│                     │ react-router@7.18.1                                    │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-qwww-vcr4-c8h2      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+1 vulnerabilities found
+Severity: 1 high
+
+=== SBOM files ===
+total 1888
+drwxr-xr-x@  7 msancar  staff     224 Jul 25 21:01 .
+drwxr-xr-x@ 10 msancar  staff     320 Jul 25 21:03 ..
+-rw-r--r--@  1 msancar  staff     473 Jul 25 21:01 ai-orchestrator.cdx.json
+-rw-r--r--@  1 msancar  staff   49555 Jul 25 21:01 platform-backend.cdx.json
+-rw-r--r--@  1 msancar  staff     475 Jul 25 21:01 teams-meeting-app.cdx.json
+-rw-r--r--@  1 msancar  staff     468 Jul 25 21:01 web-portal.cdx.json
+-rw-r--r--@  1 msancar  staff  898948 Jul 25 21:01 workspace-root.cdx.json
+
+=== Docker ===
+=== docker ===
+COMPOSE_FAIL
+=== docker availability ===
+DOCKER_DAEMON_MISSING
+
+=== TODO/FIXME count ===
+0

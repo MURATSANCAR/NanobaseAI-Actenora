@@ -3,67 +3,43 @@
 **Status:** Locked for Phase 0  
 **Date:** 2026-07-25
 
-## 1. Case workflow (core)
+## 1. Meeting occurrence (logical)
 
 ```text
-[*] → INTAKE
-INTAKE → EVIDENCE_READY
-EVIDENCE_READY → PLANNING
-PLANNING → AWAITING_APPROVAL
-AWAITING_APPROVAL → APPROVED
-AWAITING_APPROVAL → REJECTED
-AWAITING_APPROVAL → EXPIRED
-APPROVED → EXECUTING
-EXECUTING → DELIVERING
-DELIVERING → COMPLETED
-DELIVERING → DELIVERY_FAILED
-EXECUTING → EXECUTION_FAILED
-REJECTED → CLOSED
-EXPIRED → CLOSED
-DELIVERY_FAILED → CLOSED | DELIVERING (retry policy)
-EXECUTION_FAILED → CLOSED | PLANNING (replan policy)
-COMPLETED → [*]
-CLOSED → [*]
+[*] → SCHEDULED → IN_PROGRESS → COMPLETED
+COMPLETED → TRANSCRIPT_PENDING → TRANSCRIPT_READY
+TRANSCRIPT_READY → AI_PROCESSING → INSIGHT_READY
+INSIGHT_READY → AWAITING_APPROVAL
+AWAITING_APPROVAL → APPROVED → DELIVERING → CLOSED
+AWAITING_APPROVAL → REJECTED → CLOSED
+DELIVERING → DELIVERY_FAILED → DELIVERING | CLOSED
 ```
 
-### Guards
-
-| Transition | Guard |
-|------------|-------|
-| → DELIVERING | `ApprovalGranted` for this plan version |
-| → COMPLETED | All required delivery orders terminal success |
-| → PLANNING from failure | Policy allows replan; new plan version required |
-
-## 2. Approval request
+## 2. Transcript
 
 ```text
-[*] → PENDING
-PENDING → GRANTED
-PENDING → DENIED
-PENDING → EXPIRED
-GRANTED|DENIED|EXPIRED → [*]
+[*] → FETCHED → NORMALIZING → READY
+FETCHED|NORMALIZING → FAILED
 ```
 
-## 3. Inference job (modelgw)
+## 3. Approval request
 
 ```text
-[*] → QUEUED → RUNNING → SUCCEEDED
-RUNNING → FAILED
-QUEUED → CANCELLED
-FAILED → QUEUED (retry) | DEAD
+[*] → PENDING → GRANTED | DENIED | EXPIRED
 ```
 
 ## 4. Delivery order
 
 ```text
-[*] → READY
-READY → IN_FLIGHT → SUCCEEDED
-IN_FLIGHT → FAILED → READY (retry) | DEAD
-READY → CANCELLED
+[*] → READY → IN_FLIGHT → SUCCEEDED
+IN_FLIGHT → FAILED → READY | DEAD
 ```
 
-**Invariant:** `READY` only created when approval decision id is bound.
+**Invariant:** `READY` requires bound `approvalId` for the insight/document version.
 
-## 5. Storage
+## 5. AI processing job
 
-State stored in owning BC tables (`workflow.instances`, `approval.requests`, …). Transitions append to `workflow.transitions` and emit domain events via outbox.
+```text
+[*] → QUEUED → RUNNING → SUCCEEDED | FAILED
+FAILED → QUEUED (retry) | DEAD
+```

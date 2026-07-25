@@ -1,48 +1,59 @@
 # Faz 0 raporu
 
 ## 1. Faz özeti
-Repository baseline çıkarıldı (greenfield). Hedef mimari, ürün kapsamı ve 12 ADR kilitlendi. Business kod eklenmedi.
+
+Baseline çıkarıldı; ürün meeting-intelligence olarak kilitlendi; zorunlu mimari/AI/security/ops belgeleri ve ADR-001…012 yazıldı. Maven package/test **kırmızı** (shared-kernel) — gerçek loglarla belgelendi. Qwen hard-code envanteri çıkarıldı.
 
 ## 2. Değişen bounded context'ler
-Henüz kod modülü yok. Hedef BC listesi `BOUNDED-CONTEXTS.md` içinde kilitlendi.
 
-## 3. Eklenen/değiştirilen dosyalar
-- `README.md`, `.gitignore`
+Kodda mevcut modüller dokümante edildi (identity…operations). Phase 0 docs tarafında business feature tamamlanmadı.
+
+## 3. Eklenen/değiştirilen dosyalar (Phase 0 docs)
+
 - `docs/product/*`, `docs/architecture/*`, `docs/ai/*`, `docs/security/*`, `docs/operations/*`, `docs/reviews/*`, `docs/adr/*`, `docs/phase-0/*`
-- `artifacts/phase-0/baseline-capture.txt`
+- `README.md` (ürün + durum)
+- `infrastructure/postgres/init/01-schemas.sql` (Flyway şemalarıyla hizalandı)
+- `artifacts/phase-0/*` (build/test capture)
 
 ## 4. Migration'lar
-Yok.
+
+Yeni business migration eklenmedi. Mevcut Flyway sahipliği `DATA-OWNERSHIP.md` içinde kataloglandı.
 
 ## 5. API değişiklikleri
-Yok (henüz API yok).
+
+Yok (docs-only).
 
 ## 6. Event değişiklikleri
-Katalog v0 dokümante edildi; runtime yayını yok.
 
-## 7. Model/prompt/schema değişiklikleri
-Politika dokümanları; runtime yok. Qwen hard-code: yok.
+`EVENT-CATALOG.md` v0 kilitlendi; runtime publish yok.
 
-## 8. Güvenlik kontrolleri
-SECURITY-BASELINE ve DATA-CLASSIFICATION kilitlendi. Secret commit edilmedi.
+## 7. Model/prompt/schema
+
+Politika + Qwen envanteri. Domain’deki `QWEN27_FINAL` kaldırma planı M3.
+
+## 8. Güvenlik
+
+SECURITY-BASELINE / DATA-CLASSIFICATION kilitli. Secret commit yok.
 
 ## 9. Çalıştırılan komutlar
-- `git status` / `git log`
-- `find` inventory
-- `mvn -q verify` (missing)
-- `npm test` (missing)
-- `python3 -m pytest -q` (no module)
-- `docker compose config` (missing)
-- `rg` Qwen/model strings
+
+- `./mvnw -DskipTests package` → exit **1**
+- `./mvnw test` → exit **1**
+- `uv run pytest` (ai-orchestrator) → **3 passed**
+- `rg` Qwen hard-codes
 
 ## 10. Test sonuçları
-Uygulanabilir test suite yok. Komut başarısızlıkları `artifacts/phase-0/baseline-capture.txt` içinde.
+
+Java build kırık; detay `artifacts/phase-0/`. Python health OK.
 
 ## 11. Bilinen riskler
-Ürün vertical (ilk adapter) açık; mimariyi bloke etmez. Host'ta JDK/Docker eksik — Phase 1 öncesi kurulmalı.
+
+Aktif paralel iskelet drift’i; Qwen domain sızıntısı; approval→delivery henüz E2E bağlı değil.
 
 ## 12. Service extraction etkisi
-Adaylar belgelendi; extraction yapılmadı.
 
-## 13. Sonraki faza geçiş durumu
-**Hazır:** Phase 1 skeleton bootstrap ADR'lere uygun başlayabilir.
+Adaylar `repo-map.yaml` reserved_services ile hizalı; extraction yapılmadı.
+
+## 13. Sonraki faza geçiş
+
+**Docs/ADR: hazır.** Kod: önce shared-kernel derlemesini yeşile çek, sonra M3 de-Qwen + dikey dilim.

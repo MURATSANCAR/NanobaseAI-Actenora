@@ -1,64 +1,70 @@
 # LOCAL-DEVELOPMENT
 
-**Status:** Locked for Phase 0 (target guide)  
+**Status:** Phase 1 bootstrap  
 **Date:** 2026-07-25
 
-## Current reality
+## Prerequisites
 
-The repository is **greenfield**: no Gradle/Maven modules, no Compose file, no runnable app.
+- macOS/Linux (Windows: Git Bash/WSL or `scripts/*.ps1`)
+- Optional Docker for Postgres / RabbitMQ / MinIO
+- Or run `./scripts/bootstrap` which installs JDK 21, Node 22 + pnpm, uv, syft under `.tools/`
 
-Captured on 2026-07-25 (see `artifacts/phase-0/baseline-capture.txt`):
-
-| Tool | Host status |
-|------|-------------|
-| `mvn` / `gradle` | Missing |
-| `npm` | Missing |
-| `python3` | Present; `pytest` module missing |
-| `uv` | Present |
-| `docker` | Missing |
-| `make` | Present |
-
-Phase 1 will introduce the modular monolith toolchain. Until then, local “development” is **documentation and ADR work only**.
-
-## Target local stack (Phase 1+)
-
-| Component | Intent |
-|-----------|--------|
-| JDK 21+ | Build/run Spring modules |
-| Gradle or Maven | Multi-module build (choice locked in Phase 1 ADR/bootstrap) |
-| Docker Compose | postgres, rabbitmq, minio, llm-runtime |
-| IDE | IntelliJ / VS Code with Java |
-
-### Planned commands (not runnable yet)
+## Quick start
 
 ```bash
-# illustrative — will exist after Phase 1 bootstrap
-./gradlew test
-./gradlew :apps:api:bootRun
-docker compose -f deploy/compose.yml up -d
+./scripts/bootstrap   # toolchains + locked deps; copies .env.example → .env once
+./scripts/build-all
+./scripts/test-all
+./scripts/lint-all
+./scripts/run-local
+./scripts/stop-local
 ```
 
-## Environment variables (planned)
+Make equivalents: `make bootstrap|build|test|lint|run|stop|sbom|ci-build|ci-test`.
 
-| Variable | Purpose |
-|----------|---------|
-| `ACTENORA_DB_URL` | JDBC URL |
-| `ACTENORA_RABBITMQ_URL` | AMQP URL |
-| `ACTENORA_OBJECT_STORE_ENDPOINT` | MinIO API |
-| `ACTENORA_LLM_BASE_URL` | Local runtime OpenAI-compatible endpoint |
-| `ACTENORA_PROFILE` | `api` / `worker` / `local` |
+### Windows
 
-Secrets via `.env` (gitignored) or exported shell vars — never committed.
+```powershell
+.\scripts\bootstrap.ps1
+.\scripts\build-all.ps1
+.\scripts\test-all.ps1
+.\scripts\lint-all.ps1
+.\scripts\run-local.ps1
+.\scripts\stop-local.ps1
+```
 
-## Developer workflow (target)
+## Package managers
 
-1. Start infra containers.
-2. Run Flyway/Liquibase per schema.
-3. Boot API + worker.
-4. Pull at least one local model into llm-runtime.
-5. Run unit + ArchUnit tests before PR.
+| Stack | Tool | Lock |
+|-------|------|------|
+| Java | Maven Wrapper (`./mvnw`) | reactor + local `.m2` |
+| Python | uv | `uv.lock` |
+| Node | pnpm only | `pnpm-lock.yaml` |
 
-## Phase 0 allowed work
+## Independent builds
 
-- Edit docs/ADR only.
-- Do not add business feature modules yet.
+```bash
+./mvnw -pl apps/platform-backend -am -Dmaven.test.skip=true package
+uv sync --package actenora-orchestrator
+pnpm --filter @actenora/web-portal build
+pnpm --filter @actenora/teams-meeting-app build
+```
+
+## Local infra
+
+```bash
+docker compose -f infrastructure/compose/docker-compose.yml up -d
+```
+
+`./scripts/run-local` starts compose when Docker is available, then process-mode apps.
+
+## Secrets
+
+Never commit `.env`, keystores, or PEMs. Use `.env.example` as the template.
+
+## SBOM
+
+```bash
+./scripts/generate-sbom
+# → artifacts/sbom/*.cdx.json
+```

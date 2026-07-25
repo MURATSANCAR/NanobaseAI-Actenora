@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.nanobaseai.actenora</groupId>
+    <groupId>ai.nanobase.actenora</groupId>
     <artifactId>modules</artifactId>
     <version>0.1.0-SNAPSHOT</version>
   </parent>
@@ -15,23 +15,27 @@
 
   <dependencies>
     <dependency>
-      <groupId>com.nanobaseai.actenora</groupId>
+      <groupId>ai.nanobase.actenora</groupId>
       <artifactId>ai-processing</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.nanobaseai.actenora</groupId>
+      <groupId>ai.nanobase.actenora</groupId>
+      <artifactId>approval</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ai.nanobase.actenora</groupId>
       <artifactId>meeting</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.nanobaseai.actenora</groupId>
+      <groupId>ai.nanobase.actenora</groupId>
       <artifactId>shared-kernel</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.nanobaseai.actenora</groupId>
+      <groupId>ai.nanobase.actenora</groupId>
       <artifactId>tenant</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.nanobaseai.actenora</groupId>
+      <groupId>ai.nanobase.actenora</groupId>
       <artifactId>transcript</artifactId>
     </dependency>
     <dependency>
@@ -51,6 +55,11 @@
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-core</artifactId>
       <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

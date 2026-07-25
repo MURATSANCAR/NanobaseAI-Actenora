@@ -1,0 +1,33 @@
+package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.regex.Pattern;
+
+/**
+ * Light pipeline-entry normalization (FAZ 9 owns deep dictionary work).
+ * Marks marker-adjacent segments for chunk prioritization.
+ */
+public final class SegmentNormalizer {
+
+    private static final Pattern MARKER = Pattern.compile(
+            "(?i)\\b(decision|karar|action|aksiyon|todo|risk|commitment|taahhüt|open\\s*question|"
+                    + "açık\\s*soru|we\\s+(decided|agree|will)|kararlaştırıldı)\\b"
+    );
+
+    public List<SegmentInput> normalize(List<SegmentInput> raw) {
+        Objects.requireNonNull(raw, "raw");
+        List<SegmentInput> out = new ArrayList<>(raw.size());
+        for (SegmentInput segment : raw) {
+            String cleaned = collapseWhitespace(segment.content());
+            boolean marker = segment.markerNear() || MARKER.matcher(cleaned).find();
+            out.add(segment.withContent(cleaned).withMarker(marker));
+        }
+        return List.copyOf(out);
+    }
+
+    private static String collapseWhitespace(String content) {
+        return content.replace('\u00A0', ' ').replaceAll("[ \\t\\x0B\\f\\r]+", " ").strip();
+    }
+}

@@ -1,0 +1,72 @@
+# FAZ 27 — Graph controlled egress for microsoft-connection / platform-backend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: platform-backend-graph-egress
+  labels:
+    app.kubernetes.io/name: platform-backend
+    actenora.io/faz: "27"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: platform-backend
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Data plane
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: actenora
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 5672
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 9000
+        - protocol: TCP
+          port: 8000
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+    # Microsoft Graph + Entra ID only (CIDR placeholders — replace with current Microsoft IP ranges / Private Link)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              # Deny RFC1918 already covered by pod selectors; application GraphEgressPolicy is primary control.
+              # Network layer allows HTTPS egress only to Graph/login via egress gateway in production.
+              - 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ai-public-llm
+  labels:
+    actenora.io/faz: "27"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53

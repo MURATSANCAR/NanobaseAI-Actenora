@@ -23,6 +23,9 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.4.5</spring-boot.version>
+        <spring-modulith.version>1.3.5</spring-modulith.version>
+        <archunit.version>1.4.0</archunit.version>
+        <aws.sdk.version>2.31.16</aws.sdk.version>
         <junit.version>5.11.4</junit.version>
     </properties>
 
@@ -34,6 +37,26 @@
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.modulith</groupId>
+                <artifactId>spring-modulith-bom</artifactId>
+                <version>${spring-modulith.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${archunit.version}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>ai.nanobase.actenora</groupId>
@@ -118,6 +141,11 @@
             <dependency>
                 <groupId>ai.nanobase.actenora</groupId>
                 <artifactId>operations</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.nanobase.actenora</groupId>
+                <artifactId>teams-integration-service</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

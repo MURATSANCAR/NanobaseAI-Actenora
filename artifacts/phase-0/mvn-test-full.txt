@@ -1,0 +1,261 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] Actenora                                                           [pom]
+[INFO] Actenora Observability (Java)                                      [jar]
+[INFO] Actenora Test Support (Java)                                       [jar]
+[INFO] Actenora Modules                                                   [pom]
+[INFO] Actenora :: Shared Kernel                                          [jar]
+[INFO] Actenora :: Identity                                               [jar]
+[INFO] Actenora :: Tenant                                                 [jar]
+[INFO] Actenora :: Policy                                                 [jar]
+[INFO] Actenora :: Microsoft Connection                                   [jar]
+[INFO] Actenora :: Meeting                                                [jar]
+[INFO] Actenora :: Transcript                                             [jar]
+[INFO] Actenora :: Model Management                                       [jar]
+[INFO] Actenora :: AI Processing                                          [jar]
+[INFO] Actenora :: Meeting Intelligence                                   [jar]
+[INFO] Actenora :: Approval                                               [jar]
+[INFO] Actenora :: Template                                               [jar]
+[INFO] Actenora :: Delivery                                               [jar]
+[INFO] Actenora :: Audit                                                  [jar]
+[INFO] Actenora :: Operations                                             [jar]
+[INFO] Actenora :: Platform Backend                                       [jar]
+[INFO] 
+[INFO] -------------------< ai.nanobase.actenora:actenora >--------------------
+[INFO] Building Actenora 0.1.0-SNAPSHOT                                  [1/20]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] -----------------< ai.nanobase.actenora:observability >-----------------
+[INFO] Building Actenora Observability (Java) 0.1.0-SNAPSHOT             [2/20]
+[INFO]   from packages/observability/java/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ observability ---
+[INFO] skip non existing resourceDirectory /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/packages/observability/java/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ observability ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ observability ---
+[INFO] skip non existing resourceDirectory /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/packages/observability/java/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ observability ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ observability ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.nanobaseai.actenora.observability.PiiRedactorTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.317 s -- in com.nanobaseai.actenora.observability.PiiRedactorTest
+[INFO] Running com.nanobaseai.actenora.observability.otel.PipelineTracerTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.136 s -- in com.nanobaseai.actenora.observability.otel.PipelineTracerTest
+[INFO] Running com.nanobaseai.actenora.observability.StructuredLogEventTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.083 s -- in com.nanobaseai.actenora.observability.StructuredLogEventTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] -----------------< ai.nanobase.actenora:test-support >------------------
+[INFO] Building Actenora Test Support (Java) 0.1.0-SNAPSHOT              [3/20]
+[INFO]   from packages/test-support/java/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ test-support ---
+[INFO] skip non existing resourceDirectory /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/packages/test-support/java/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ test-support ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ test-support ---
+[INFO] skip non existing resourceDirectory /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/packages/test-support/java/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ test-support ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ test-support ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.nanobaseai.actenora.testsupport.ModuleAssertionsTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.518 s -- in com.nanobaseai.actenora.testsupport.ModuleAssertionsTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --------------------< ai.nanobase.actenora:modules >--------------------
+[INFO] Building Actenora Modules 0.1.0-SNAPSHOT                          [4/20]
+[INFO]   from modules/pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] -----------------< ai.nanobase.actenora:shared-kernel >-----------------
+[INFO] Building Actenora :: Shared Kernel 0.1.0-SNAPSHOT                 [5/20]
+[INFO]   from modules/shared-kernel/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shared-kernel ---
+[INFO] skip non existing resourceDirectory /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ shared-kernel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shared-kernel ---
+[INFO] skip non existing resourceDirectory /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ shared-kernel ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 2 source files with javac [debug release 21] to target/test-classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[125,22] cannot access com.nanobaseai.actenora.sharedkernel.messaging.InboxStatus
+  bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/InboxStatus.class
+    unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/InboxStatus.class
+    Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[125,102] cannot access com.nanobaseai.actenora.sharedkernel.messaging.InboxEvent
+  bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/InboxEvent.class
+    unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/InboxEvent.class
+    Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[158,65] cannot access com.nanobaseai.actenora.sharedkernel.messaging.DeadLetterEvent
+  bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/DeadLetterEvent.class
+    unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/DeadLetterEvent.class
+    Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[216,14] cannot access com.nanobaseai.actenora.sharedkernel.messaging.CorrelationContext
+  bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/CorrelationContext.class
+    unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/CorrelationContext.class
+    Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[235,22] cannot access com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer.ReplayResult
+  bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayResult.class
+    unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayResult.class
+    Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[237,30] cannot access com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer.ReplayRequest
+  bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayRequest.class
+    unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayRequest.class
+    Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[235,59] cannot access com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer.ReplayRequest
+  bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayRequest.class
+    unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayRequest.class
+    Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[241,22] cannot find symbol
+  symbol:   class ReplayResult
+  location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[243,30] cannot find symbol
+  symbol:   variable ReplayRequest
+  location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[255,22] cannot find symbol
+  symbol:   class ReplayResult
+  location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[258,30] cannot find symbol
+  symbol:   variable ReplayRequest
+  location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/faz28/MessagingResilienceScenarioTest.java:[125,22] cannot find symbol
+  symbol:   class ReplayResult
+  location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/faz28/MessagingResilienceScenarioTest.java:[127,30] cannot find symbol
+  symbol:   variable ReplayRequest
+  location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/faz28/MessagingResilienceScenarioTest.java:[160,25] cannot find symbol
+  symbol:   method isAtCapacity()
+  location: variable guard of type com.nanobaseai.actenora.sharedkernel.messaging.support.QueueDepthGuard
+[INFO] 14 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Actenora 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] Actenora ........................................... SUCCESS [  0.003 s]
+[INFO] Actenora Observability (Java) ...................... SUCCESS [  7.781 s]
+[INFO] Actenora Test Support (Java) ....................... SUCCESS [  3.631 s]
+[INFO] Actenora Modules ................................... SUCCESS [  0.002 s]
+[INFO] Actenora :: Shared Kernel .......................... FAILURE [  6.645 s]
+[INFO] Actenora :: Identity ............................... SKIPPED
+[INFO] Actenora :: Tenant ................................. SKIPPED
+[INFO] Actenora :: Policy ................................. SKIPPED
+[INFO] Actenora :: Microsoft Connection ................... SKIPPED
+[INFO] Actenora :: Meeting ................................ SKIPPED
+[INFO] Actenora :: Transcript ............................. SKIPPED
+[INFO] Actenora :: Model Management ....................... SKIPPED
+[INFO] Actenora :: AI Processing .......................... SKIPPED
+[INFO] Actenora :: Meeting Intelligence ................... SKIPPED
+[INFO] Actenora :: Approval ............................... SKIPPED
+[INFO] Actenora :: Template ............................... SKIPPED
+[INFO] Actenora :: Delivery ............................... SKIPPED
+[INFO] Actenora :: Audit .................................. SKIPPED
+[INFO] Actenora :: Operations ............................. SKIPPED
+[INFO] Actenora :: Platform Backend ....................... SKIPPED
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  21.640 s
+[INFO] Finished at: 2026-07-25T21:00:47+03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:testCompile (default-testCompile) on project shared-kernel: Compilation failure: Compilation failure: 
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[125,22] cannot access com.nanobaseai.actenora.sharedkernel.messaging.InboxStatus
+[ERROR]   bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/InboxStatus.class
+[ERROR]     unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/InboxStatus.class
+[ERROR]     Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[125,102] cannot access com.nanobaseai.actenora.sharedkernel.messaging.InboxEvent
+[ERROR]   bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/InboxEvent.class
+[ERROR]     unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/InboxEvent.class
+[ERROR]     Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[158,65] cannot access com.nanobaseai.actenora.sharedkernel.messaging.DeadLetterEvent
+[ERROR]   bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/DeadLetterEvent.class
+[ERROR]     unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/DeadLetterEvent.class
+[ERROR]     Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[216,14] cannot access com.nanobaseai.actenora.sharedkernel.messaging.CorrelationContext
+[ERROR]   bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/CorrelationContext.class
+[ERROR]     unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/CorrelationContext.class
+[ERROR]     Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[235,22] cannot access com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer.ReplayResult
+[ERROR]   bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayResult.class
+[ERROR]     unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayResult.class
+[ERROR]     Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[237,30] cannot access com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer.ReplayRequest
+[ERROR]   bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayRequest.class
+[ERROR]     unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayRequest.class
+[ERROR]     Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[235,59] cannot access com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer.ReplayRequest
+[ERROR]   bad class file: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayRequest.class
+[ERROR]     unable to access file: java.nio.file.NoSuchFileException: /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/target/classes/com/nanobaseai/actenora/sharedkernel/messaging/replay/EventReplayer$ReplayRequest.class
+[ERROR]     Please remove or make sure it appears in the correct subdirectory of the classpath.
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[241,22] cannot find symbol
+[ERROR]   symbol:   class ReplayResult
+[ERROR]   location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[243,30] cannot find symbol
+[ERROR]   symbol:   variable ReplayRequest
+[ERROR]   location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[255,22] cannot find symbol
+[ERROR]   symbol:   class ReplayResult
+[ERROR]   location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/EventBackboneTest.java:[258,30] cannot find symbol
+[ERROR]   symbol:   variable ReplayRequest
+[ERROR]   location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/faz28/MessagingResilienceScenarioTest.java:[125,22] cannot find symbol
+[ERROR]   symbol:   class ReplayResult
+[ERROR]   location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/faz28/MessagingResilienceScenarioTest.java:[127,30] cannot find symbol
+[ERROR]   symbol:   variable ReplayRequest
+[ERROR]   location: class com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/shared-kernel/src/test/java/com/nanobaseai/actenora/sharedkernel/messaging/faz28/MessagingResilienceScenarioTest.java:[160,25] cannot find symbol
+[ERROR]   symbol:   method isAtCapacity()
+[ERROR]   location: variable guard of type com.nanobaseai.actenora.sharedkernel.messaging.support.QueueDepthGuard
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :shared-kernel

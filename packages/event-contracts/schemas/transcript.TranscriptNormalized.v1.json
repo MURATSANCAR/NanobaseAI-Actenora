@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actenora.nanobase.ai/events/transcript.TranscriptNormalized.v1.json",
+  "title": "TranscriptNormalizedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventType", "eventId", "occurredAt", "tenantId", "transcriptId", "normalizationRunId", "normalizationVersion", "normalizedTranscriptHash"],
+  "properties": {
+    "eventType": { "const": "transcript.TranscriptNormalized.v1" },
+    "eventId": { "type": "string", "format": "uuid" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "tenantId": { "type": "string", "format": "uuid" },
+    "transcriptId": { "type": "string", "format": "uuid" },
+    "normalizationRunId": { "type": "string", "format": "uuid" },
+    "normalizationVersion": { "type": "string", "minLength": 1 },
+    "normalizedTranscriptHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "correlationId": { "type": "string" }
+  }
+}

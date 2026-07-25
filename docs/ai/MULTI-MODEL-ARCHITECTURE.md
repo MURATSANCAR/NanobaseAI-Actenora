@@ -3,63 +3,49 @@
 **Status:** Locked for Phase 0  
 **Date:** 2026-07-25
 
-## 1. Goal
+## Goal
 
-Actenora must not hard-code a single LLM (including Qwen). All inference goes through **Model Gateway** with capability-based routing (ADR-005, ADR-006).
+Inference goes through **model-management** (catalog/deployments) + **ai-processing** routing + **ai-orchestrator** runtime — never hard-coded vendor strings in domain forever.
 
-## 2. Components
+## Components
 
 ```text
-Planning / other BCs
-        │  InferencePort
+meeting-intelligence / callers
+        │
         ▼
-┌───────────────────┐
-│   Model Gateway   │  catalog + routing policy + jobs
-└─────────┬─────────┘
-          │ ModelRuntimeAdapter
-          ▼
-┌───────────────────┐
-│ Local LLM runtime │  Ollama / vLLM / llama.cpp / …
-└───────────────────┘
+   ai-processing (task → logical role → policy)
+        │
+        ▼
+   model-management (model_definition / capability / deployment)
+        │
+        ▼
+   ai-orchestrator + local LLM runtime
 ```
 
-## 3. Responsibilities
+## Multi-model transition plan
 
-| Component | Does | Does not |
-|-----------|------|----------|
-| Calling BC | Supply task type, evidence refs, prompt version | Choose vendor model string ad hoc |
-| Model Gateway | Route, quota, timeout, record decision | Own business plans |
-| Prompt Registry | Immutable prompt+schema versions | Call models |
-| Runtime | Token generation | Persist business state |
+| Step | Action | Status |
+|------|--------|--------|
+| M0 | Architecture lock; inventory hard-codes | **Done (this doc)** |
+| M1 | Catalog tables (`model_definition` et al.) | Present in Flyway |
+| M2 | Capability matrix + routing policies | Partial (enums exist; not fully catalog-driven) |
+| M3 | Replace domain enum vendor names with stable role ids | **Required** |
+| M4 | Shadow second model; compare schema validity | Planned |
+| M5 | Extract `services/model-worker` if GPU isolation needed | Reserved |
 
-## 4. Inference decision record
+## Hard-coded Qwen inventory (non-docs, Phase 0 scan)
 
-Every call stores: `taskType`, `policyId`, `modelId`, `promptVersionId`, `latencyMs`, `tokenUsage`, `success/failure`. Planning must reference `modelDecisionId` on `PlanProposed`.
+| Location | Finding |
+|----------|---------|
+| `modules/ai-processing/.../routing/ModelRole.java` | Enum constant **`QWEN27_FINAL`** |
+| `.../ValidationModelPreference.java` | **`QWEN27_FINAL`** |
+| `.../TenantRoutingPolicy.java` | Default preference `QWEN27_FINAL` |
+| `.../TaskRoleMapping.java` | Maps final-note tasks → `ModelRole.QWEN27_FINAL` |
+| `infrastructure/compose/docker-compose.yml` | Env `QWEN_BASE_URL` |
+| `.env.example` | `LLM_BASE_URL` (Ollama port); empty `LLM_DEFAULT_MODEL` (OK) |
 
-## 5. Multi-model transition plan
+**Remediation (Phase 1+):** rename role to e.g. `FINAL_NOTE_PRIMARY`; bind physical Qwen (or other) only in `modelmanagement.model_definition.served_model_id` / deployment rows.
 
-| Step | Action |
-|------|--------|
-| M0 (now) | No code; architecture lock; forbid hard-coded model ids in future code reviews |
-| M1 | Model catalog table + config-driven single default local model |
-| M2 | Capability matrix + routing policies (see sibling docs) |
-| M3 | Shadow route second model; compare structured-output validity |
-| M4 | Task-type weighted routing in production |
-| M5 | Extract Model Gateway service if GPU isolation required |
+## Local-only
 
-## 6. Hard-coded Qwen — current inventory
-
-**Repository scan result (Phase 0):** no application source exists. **Qwen hard-coded call sites: none (N/A).**
-
-Risk watch list for Phase 1+ (prevent):
-
-| Location risk | Mitigation |
-|---------------|------------|
-| `application.yml` default `qwen2.5` only | Allow, but behind catalog id — not domain imports |
-| Prompt templates naming “Qwen” | Brand as NanobaseAI; model id only in modelgw |
-| Test fixtures assuming one tokenizer | Use capability tags, not model name asserts |
-| Docker Compose service named `qwen` | Prefer `llm-runtime` |
-
-## 7. Local-only
-
-Default profiles deny egress to hosted LLM APIs. Break-glass requires explicit non-default profile + security sign-off (ADR-005).
+Default profiles deny hosted LLM APIs (ADR-005).

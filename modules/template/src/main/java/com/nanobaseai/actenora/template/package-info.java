@@ -1,10 +1,10 @@
 /**
- * Bounded context: Template.
+ * Bounded context: Template Studio & Document Rendering.
  * Public API package: com.nanobaseai.actenora.template.api (named interface "api").
  * Internal packages are not accessible from other modules.
  */
 @org.springframework.modulith.ApplicationModule(
-    displayName = "Template"
+    displayName = "Template",
     allowedDependencies = {
         "sharedkernel",
         "tenant :: api"

@@ -1,0 +1,9 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.nanobaseai.actenora.security`
+|Spring components
+|* `c.n.a.s.CorsAllowlistConfig`
+* `c.n.a.s.RateLimitingFilter`
+* `c.n.a.s.SecurityHeadersFilter`
+|===

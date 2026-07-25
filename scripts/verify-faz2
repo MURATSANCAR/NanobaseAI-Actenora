@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# FAZ 2 acceptance checks after: docker compose -f infrastructure/compose/docker-compose.yml up -d
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+
+COMPOSE_FILE="${REPO_ROOT}/infrastructure/compose/docker-compose.yml"
+BACKEND_URL="${BACKEND_URL:-http://127.0.0.1:${PLATFORM_BACKEND_PORT:-8080}}"
+ORCH_URL="${ORCH_URL:-http://127.0.0.1:${AI_ORCHESTRATOR_PORT:-8000}}"
+MAILHOG_API="${MAILHOG_API:-http://127.0.0.1:${MAILHOG_UI_PORT:-8025}/api/v2/messages}"
+RABBIT_API="${RABBIT_API:-http://127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}/api}"
+RABBIT_USER="${RABBITMQ_USER:-actenora}"
+RABBIT_PASS="${RABBITMQ_PASSWORD:-actenora_local_change_me}"
+MINIO_ENDPOINT="${OBJECT_STORAGE_ENDPOINT:-http://127.0.0.1:9000}"
+
+fail=0
+
+ok() { log "OK  $*"; }
+bad() { warn "FAIL $*"; fail=1; }
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || { bad "missing command: $1"; return 1; }
+}
+
+http_json() {
+  local url="$1"
+  curl -fsS "$url"
+}
+
+main() {
+  need_cmd docker
+  need_cmd curl
+  need_cmd python3
+
+  if [[ -f "${REPO_ROOT}/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "${REPO_ROOT}/.env"
+    set +a
+  fi
+
+  log "Waiting for compose services..."
+  local ready=0
+  for _ in $(seq 1 90); do
+    if curl -fsS "${BACKEND_URL}/actuator/health/liveness" >/dev/null 2>&1 \
+      && curl -fsS "${ORCH_URL}/actuator/health/liveness" >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
+    sleep 2
+  done
+  [[ "${ready}" -eq 1 ]] || bad "apps did not become live in time"
+
+  # Infra container health
+  while IFS= read -r line; do
+    name="$(echo "${line}" | awk '{print $1}')"
+    status="$(echo "${line}" | awk '{print $2}')"
+    case "${name}" in
+      actenora-postgres|actenora-rabbitmq|actenora-redis|actenora-minio|actenora-otel-collector|actenora-platform-backend|actenora-ai-orchestrator)
+        if [[ "${status}" == "healthy" ]]; then
+          ok "${name} healthy"
+        else
+          bad "${name} status=${status}"
+        fi
+        ;;
+    esac
+  done < <(docker compose -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null || true)
+
+  # Backend probes
+  if curl -fsS "${BACKEND_URL}/actuator/health/liveness" | grep -q '"status":"UP"'; then
+    ok "backend liveness UP"
+  else
+    bad "backend liveness"
+  fi
+  if curl -fsS "${BACKEND_URL}/actuator/health/readiness" | grep -q '"status":"UP"'; then
+    ok "backend readiness UP"
+  else
+    bad "backend readiness"
+  fi
+
+  # AI orchestrator probes
+  if curl -fsS "${ORCH_URL}/actuator/health/liveness" | grep -q '"status":"UP"'; then
+    ok "ai-orchestrator liveness UP"
+  else
+    bad "ai-orchestrator liveness"
+  fi
+  orch_ready="$(curl -fsS "${ORCH_URL}/actuator/health/readiness" || true)"
+  if echo "${orch_ready}" | grep -q '"status":"DEGRADED"'; then
+    ok "ai-orchestrator readiness DEGRADED (no Qwen)"
+  elif echo "${orch_ready}" | grep -q '"status":"UP"'; then
+    ok "ai-orchestrator readiness UP (Qwen reachable)"
+  else
+    bad "ai-orchestrator readiness unexpected: ${orch_ready}"
+  fi
+
+  # RabbitMQ topology
+  exchanges="$(curl -fsS -u "${RABBIT_USER}:${RABBIT_PASS}" "${RABBIT_API}/exchanges/%2F" || true)"
+  if echo "${exchanges}" | grep -q 'actenora.domain'; then
+    ok "RabbitMQ exchange actenora.domain present"
+  else
+    bad "RabbitMQ topology missing actenora.domain"
+  fi
+  queues="$(curl -fsS -u "${RABBIT_USER}:${RABBIT_PASS}" "${RABBIT_API}/queues/%2F" || true)"
+  if echo "${queues}" | grep -q 'actenora.audit.events'; then
+    ok "RabbitMQ queue actenora.audit.events present"
+  else
+    bad "RabbitMQ queue actenora.audit.events missing"
+  fi
+
+  # MinIO buckets via init container exit code / mc from a throwaway container
+  if docker compose -f "${COMPOSE_FILE}" ps -a --format '{{.Name}} {{.ExitCode}}' | grep -q 'actenora-minio-init 0'; then
+    ok "MinIO init completed (exit 0)"
+  else
+    # Fallback: probe bucket list with mc
+    if docker run --rm --network actenora-data-network minio/mc:RELEASE.2025-04-16T18-13-26Z \
+      sh -c "mc alias set local http://minio:9000 ${OBJECT_STORAGE_ACCESS_KEY:-actenora_minio} ${OBJECT_STORAGE_SECRET_KEY:-actenora_minio_change_me} && mc ls local/actenora" >/dev/null 2>&1; then
+      ok "MinIO bucket actenora reachable"
+    else
+      bad "MinIO buckets not verified"
+    fi
+  fi
+
+  # MailHog received mail
+  mail_count="$(curl -fsS "${MAILHOG_API}" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("total",0))' 2>/dev/null || echo 0)"
+  if [[ "${mail_count}" -ge 1 ]]; then
+    ok "MailHog has ${mail_count} message(s)"
+  else
+    log "MailHog empty — sending test mail"
+    MAILHOG_SMTP_HOST=127.0.0.1 MAILHOG_SMTP_PORT="${MAILHOG_SMTP_PORT:-1025}" \
+      python3 "${REPO_ROOT}/infrastructure/mailhog/send-test-mail.py" || true
+    mail_count="$(curl -fsS "${MAILHOG_API}" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("total",0))' 2>/dev/null || echo 0)"
+    if [[ "${mail_count}" -ge 1 ]]; then
+      ok "MailHog has ${mail_count} message(s) after seed"
+    else
+      bad "MailHog has no messages"
+    fi
+  fi
+
+  if [[ "${fail}" -ne 0 ]]; then
+    warn "FAZ 2 verification FAILED"
+    exit 1
+  fi
+  log "FAZ 2 verification PASSED"
+}
+
+main "$@"

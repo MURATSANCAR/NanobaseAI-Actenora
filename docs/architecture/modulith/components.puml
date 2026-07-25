@@ -1,0 +1,47 @@
+@startuml
+set separator none
+title ActenoraApplication
+
+top to bottom direction
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+Container_Boundary("ActenoraApplication.ActenoraApplication_boundary", "ActenoraApplication", $tags="") {
+  Component(ActenoraApplication.ActenoraApplication.MicrosoftConnection, "Microsoft Connection", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.ModelManagement, "Model Management", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Operations, "Operations", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Policy, "Policy", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Template, "Template", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Tenant, "Tenant", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Transcript, "Transcript", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.AIProcessing, "AI Processing", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Approval, "Approval", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Audit, "Audit", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Delivery, "Delivery", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Identity, "Identity", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Meeting, "Meeting", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.MeetingIntelligence, "Meeting Intelligence", $techn="Module", $descr="", $tags="", $link="")
+}
+
+Rel(ActenoraApplication.ActenoraApplication.MeetingIntelligence, ActenoraApplication.ActenoraApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.MeetingIntelligence, ActenoraApplication.ActenoraApplication.Approval, "depends on", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Template, ActenoraApplication.ActenoraApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Audit, ActenoraApplication.ActenoraApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.AIProcessing, ActenoraApplication.ActenoraApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Delivery, ActenoraApplication.ActenoraApplication.Approval, "uses", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Delivery, ActenoraApplication.ActenoraApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Transcript, ActenoraApplication.ActenoraApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Policy, ActenoraApplication.ActenoraApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Approval, ActenoraApplication.ActenoraApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.MicrosoftConnection, ActenoraApplication.ActenoraApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Meeting, ActenoraApplication.ActenoraApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Tenant, ActenoraApplication.ActenoraApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Identity, ActenoraApplication.ActenoraApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Operations, ActenoraApplication.ActenoraApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.ModelManagement, ActenoraApplication.ActenoraApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+@enduml

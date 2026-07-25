@@ -1,5 +1,4 @@
 /**
- * Bounded context: ai-processing.
- * Domain layer only — no Spring, JPA, RabbitMQ, or HTTP dependencies.
+ * Legacy package marker for the ai-processing module.
  */
 package ai.nanobase.actenora.ai_processing;

@@ -1,0 +1,10 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.nanobaseai.actenora.delivery`
+|Spring components
+|* `c.n.a.d.api.DeliveryApi`
+|Bean references
+|* `c.n.a.a.api.ApprovalApi` (in Approval)
+* `c.n.a.s.time.InstantClock` (in Shared Kernel)
+|===

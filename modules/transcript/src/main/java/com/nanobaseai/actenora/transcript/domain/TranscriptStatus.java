@@ -11,5 +11,6 @@ public enum TranscriptStatus {
     PENDING_NORMALIZE,
     NORMALIZED,
     FAILED,
-    DUPLICATE
+    DUPLICATE,
+    DELETED
 }

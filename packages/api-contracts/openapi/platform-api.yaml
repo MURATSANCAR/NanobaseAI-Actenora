@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Actenora Platform API
-  version: 0.1.0
-  description: Bootstrap contract surface for the modular monolith.
+  version: 0.2.0
+  description: Platform + web-portal contract surface for the modular monolith (FAZ 24).
 servers:
   - url: http://localhost:8080
 paths:
@@ -17,7 +17,323 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+
+  /api/v1/me:
+    get:
+      operationId: getCurrentUser
+      summary: Authenticated portal principal
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalUser"
+
+  /api/v1/dashboard:
+    get:
+      operationId: getDashboard
+      summary: Portal dashboard aggregates
+      responses:
+        "200":
+          description: Dashboard snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardResponse"
+
+  /api/v1/meetings:
+    get:
+      operationId: listMeetings
+      summary: Cursor-paginated meeting list
+      parameters:
+        - $ref: "#/components/parameters/StatusFilter"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Meeting page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingListResponse"
+
+  /api/v1/meetings/{meetingId}:
+    get:
+      operationId: getMeetingDetail
+      summary: Full meeting detail for three-panel view
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      responses:
+        "200":
+          description: Meeting detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingDetailResponse"
+
+  /api/v1/meetings/{meetingId}/transcript:
+    get:
+      operationId: getMeetingTranscript
+      summary: Normalized transcript segments for virtualization
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+        - name: speaker
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transcript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptResponse"
+
+  /api/v1/meetings/{meetingId}/notes/{noteId}:
+    put:
+      operationId: updateMeetingNote
+      summary: Update shared or private note (optimistic-safe)
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNoteRequest"
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingNote"
+
+  /api/v1/approvals/{approvalId}/decide:
+    post:
+      operationId: decideApproval
+      summary: Approve or reject an intelligence artifact
+      parameters:
+        - name: approvalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalDecisionRequest"
+      responses:
+        "200":
+          description: Updated approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRecord"
+
+  /api/v1/decisions:
+    get:
+      operationId: listDecisions
+      summary: Decision ledger
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ArtifactStatus"
+      responses:
+        "200":
+          description: Decision page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionListResponse"
+
+  /api/v1/actions:
+    get:
+      operationId: listActions
+      summary: Action center
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ArtifactStatus"
+      responses:
+        "200":
+          description: Action page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionListResponse"
+
+  /api/v1/actions/{actionId}/complete:
+    post:
+      operationId: completeAction
+      summary: Mark action complete (optimistic-safe)
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Updated action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionItem"
+
+  /api/v1/commitments:
+    get:
+      operationId: listCommitments
+      summary: Commitment tracker
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Commitment page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitmentListResponse"
+
+  /api/v1/templates:
+    get:
+      operationId: listTemplates
+      summary: Template studio list
+      responses:
+        "200":
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TemplateSummary"
+
+  /api/v1/teams/settings:
+    get:
+      operationId: getTeamsSettings
+      summary: Teams integration settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamsSettings"
+
+  /api/v1/model-control/health:
+    get:
+      operationId: getModelHealth
+      summary: Model control plane health (admin routing detail gated in UI)
+      responses:
+        "200":
+          description: Model health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelHealthResponse"
+
+  /api/v1/ai-jobs:
+    get:
+      operationId: listAiJobs
+      summary: AI job timeline
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Job page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiJobListResponse"
+
+  /api/v1/operations/overview:
+    get:
+      operationId: getOperationsOverview
+      summary: Operations center snapshot
+      responses:
+        "200":
+          description: Ops overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationsOverview"
+
+  /api/v1/audit/events:
+    get:
+      operationId: listAuditEvents
+      summary: Audit viewer
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Audit page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditListResponse"
+
 components:
+  parameters:
+    MeetingId:
+      name: meetingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    StatusFilter:
+      name: status
+      in: query
+      schema:
+        type: string
+
   schemas:
     HealthResponse:
       type: object
@@ -33,3 +349,617 @@ components:
           type: array
           items:
             type: string
+
+    PortalRole:
+      type: string
+      enum: [VIEWER, MEMBER, APPROVER, ADMIN, OPERATIONS]
+
+    PortalUser:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, email, role, tenantId, permissions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: "#/components/schemas/PortalRole"
+        tenantId:
+          type: string
+          format: uuid
+        permissions:
+          type: array
+          items:
+            type: string
+
+    DashboardResponse:
+      type: object
+      additionalProperties: false
+      required: [pendingApprovals, openActions, overdueCommitments, runningJobs, recentMeetings]
+      properties:
+        pendingApprovals:
+          type: integer
+        openActions:
+          type: integer
+        overdueCommitments:
+          type: integer
+        runningJobs:
+          type: integer
+        recentMeetings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingSummary"
+
+    MeetingOccurrenceStatus:
+      type: string
+      enum: [SCHEDULED, IN_PROGRESS, ENDED, CANCELLED, PROCESSING, READY, FAILED]
+
+    MeetingSummary:
+      type: object
+      additionalProperties: false
+      required: [id, title, status, scheduledStartAt, participantCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/MeetingOccurrenceStatus"
+        scheduledStartAt:
+          type: string
+          format: date-time
+        participantCount:
+          type: integer
+
+    MeetingListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingSummary"
+        nextCursor:
+          type: string
+          nullable: true
+
+    ArtifactStatus:
+      type: string
+      enum: [DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, COMPLETED, OPEN, AT RISK]
+
+    EvidenceRef:
+      type: object
+      additionalProperties: false
+      required: [segmentId, startMs, endMs, quote]
+      properties:
+        segmentId:
+          type: string
+          format: uuid
+        startMs:
+          type: integer
+        endMs:
+          type: integer
+        quote:
+          type: string
+
+    MeetingNote:
+      type: object
+      additionalProperties: false
+      required: [id, visibility, body, updatedAt, authorId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        visibility:
+          type: string
+          enum: [SHARED, PRIVATE]
+        body:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        authorId:
+          type: string
+          format: uuid
+
+    UpdateNoteRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body:
+          type: string
+
+    DecisionItem:
+      type: object
+      additionalProperties: false
+      required: [id, meetingId, title, status, evidence, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meetingId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/ArtifactStatus"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceRef"
+        createdAt:
+          type: string
+          format: date-time
+
+    ActionItem:
+      type: object
+      additionalProperties: false
+      required: [id, meetingId, title, status, ownerDisplayName, dueAt, evidence]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meetingId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/ArtifactStatus"
+        ownerDisplayName:
+          type: string
+        dueAt:
+          type: string
+          format: date-time
+          nullable: true
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceRef"
+
+    RiskItem:
+      type: object
+      additionalProperties: false
+      required: [id, title, severity, evidence]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceRef"
+
+    CommitmentItem:
+      type: object
+      additionalProperties: false
+      required: [id, meetingId, statement, ownerDisplayName, dueAt, status, evidence]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meetingId:
+          type: string
+          format: uuid
+        statement:
+          type: string
+        ownerDisplayName:
+          type: string
+        dueAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ArtifactStatus"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceRef"
+
+    ApprovalRecord:
+      type: object
+      additionalProperties: false
+      required: [id, artifactType, artifactId, status, decidedBy, decidedAt, comment]
+      properties:
+        id:
+          type: string
+          format: uuid
+        artifactType:
+          type: string
+          enum: [DECISION, ACTION, COMMITMENT, NOTE, DELIVERY]
+        artifactId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        decidedBy:
+          type: string
+          nullable: true
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+
+    ApprovalDecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [APPROVE, REJECT]
+        comment:
+          type: string
+
+    Participant:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, email, participantType, attendanceStatus, external]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+        participantType:
+          type: string
+        attendanceStatus:
+          type: string
+        external:
+          type: boolean
+
+    MeetingVersion:
+      type: object
+      additionalProperties: false
+      required: [version, label, createdAt]
+      properties:
+        version:
+          type: integer
+        label:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    MeetingDetailResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - meeting
+        - participants
+        - seriesTitle
+        - businessContext
+        - versions
+        - approvalHistory
+        - notes
+        - decisions
+        - actions
+        - risks
+        - commitments
+        - qualityFlags
+        - partial
+      properties:
+        meeting:
+          $ref: "#/components/schemas/MeetingSummary"
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Participant"
+        seriesTitle:
+          type: string
+          nullable: true
+        businessContext:
+          type: string
+          nullable: true
+        versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingVersion"
+        approvalHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApprovalRecord"
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingNote"
+        decisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecisionItem"
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionItem"
+        risks:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskItem"
+        commitments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommitmentItem"
+        qualityFlags:
+          type: array
+          items:
+            type: string
+        partial:
+          type: boolean
+          description: True when some panels failed to load
+
+    TranscriptSegment:
+      type: object
+      additionalProperties: false
+      required: [id, speaker, text, startMs, endMs, markers]
+      properties:
+        id:
+          type: string
+          format: uuid
+        speaker:
+          type: string
+        text:
+          type: string
+        startMs:
+          type: integer
+        endMs:
+          type: integer
+        markers:
+          type: array
+          items:
+            type: string
+            enum: [DECISION, ACTION, RISK, QUESTION, IMPORTANT]
+
+    TranscriptResponse:
+      type: object
+      additionalProperties: false
+      required: [segments, speakers]
+      properties:
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptSegment"
+        speakers:
+          type: array
+          items:
+            type: string
+
+    DecisionListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecisionItem"
+        nextCursor:
+          type: string
+          nullable: true
+
+    ActionListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionItem"
+        nextCursor:
+          type: string
+          nullable: true
+
+    CommitmentListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommitmentItem"
+        nextCursor:
+          type: string
+          nullable: true
+
+    TemplateSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, locale, version, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        locale:
+          type: string
+        version:
+          type: integer
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+
+    TeamsSettings:
+      type: object
+      additionalProperties: false
+      required: [tenantConnected, graphAppId, webhookStatus, autoJoinEnabled]
+      properties:
+        tenantConnected:
+          type: boolean
+        graphAppId:
+          type: string
+        webhookStatus:
+          type: string
+        autoJoinEnabled:
+          type: boolean
+
+    ModelHealthResponse:
+      type: object
+      additionalProperties: false
+      required: [models, deployments, routing]
+      properties:
+        models:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [modelKey, displayName, enabled, status]
+            properties:
+              modelKey:
+                type: string
+              displayName:
+                type: string
+              enabled:
+                type: boolean
+              status:
+                type: string
+        deployments:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [deploymentKey, modelKey, nodeName, healthy]
+            properties:
+              deploymentKey:
+                type: string
+              modelKey:
+                type: string
+              nodeName:
+                type: string
+              healthy:
+                type: boolean
+        routing:
+          type: object
+          additionalProperties: false
+          required: [strategy, roles]
+          properties:
+            strategy:
+              type: string
+            roles:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [role, primaryModel, fallbackModel]
+                properties:
+                  role:
+                    type: string
+                  primaryModel:
+                    type: string
+                  fallbackModel:
+                    type: string
+
+    AiJobListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, meetingId, status, stage, startedAt, finishedAt]
+            properties:
+              id:
+                type: string
+                format: uuid
+              meetingId:
+                type: string
+                format: uuid
+              status:
+                type: string
+              stage:
+                type: string
+              startedAt:
+                type: string
+                format: date-time
+              finishedAt:
+                type: string
+                format: date-time
+                nullable: true
+        nextCursor:
+          type: string
+          nullable: true
+
+    OperationsOverview:
+      type: object
+      additionalProperties: false
+      required: [queueDepth, failedJobs, circuitBreakers, workers]
+      properties:
+        queueDepth:
+          type: integer
+        failedJobs:
+          type: integer
+        circuitBreakers:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, state]
+            properties:
+              name:
+                type: string
+              state:
+                type: string
+        workers:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, status]
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+
+    AuditListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, action, actor, resourceType, resourceId, at]
+            properties:
+              id:
+                type: string
+                format: uuid
+              action:
+                type: string
+              actor:
+                type: string
+              resourceType:
+                type: string
+              resourceId:
+                type: string
+              at:
+                type: string
+                format: date-time
+        nextCursor:
+          type: string
+          nullable: true

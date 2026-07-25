@@ -15,3 +15,4 @@ Workers and integration services will be cut out only when extraction criteria i
 | `delivery-worker/` | Post-approval external delivery |
 
 Do **not** add half-built placeholder services, unused dependencies, or empty Dockerfiles here.
+Partial extraction drafts (if any) belong under `artifacts/wip-extraction/` until an extraction phase wires them.

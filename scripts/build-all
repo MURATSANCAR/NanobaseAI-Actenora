@@ -28,7 +28,8 @@ build_test_support() {
 }
 
 build_java() {
-  mvnw "${MVN_FLAGS[@]}" -DskipTests package
+  # Skip compiling/running tests during build; ./scripts/test-all runs them.
+  mvnw "${MVN_FLAGS[@]}" -Dmaven.test.skip=true package
 }
 
 build_python_apps() {

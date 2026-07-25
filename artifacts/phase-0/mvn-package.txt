@@ -1,0 +1,172 @@
+[ERROR] COMPILATION ERROR : 
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[5,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[15,63] cannot find symbol
+  symbol:   class CalendarSyncCursor
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[15,5] cannot find symbol
+  symbol:   class CalendarDeltaPage
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[17,14] cannot find symbol
+  symbol:   class CalendarEvent
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarSyncCursorStore.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarSyncCursorStore.java:[13,14] cannot find symbol
+  symbol:   class CalendarSyncCursor
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarSyncCursorStore.java:[15,15] cannot find symbol
+  symbol:   class CalendarSyncCursor
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MailGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MailGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MailGateway.java:[13,40] cannot find symbol
+  symbol:   class MailSendRequest
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MailGateway.java:[13,5] cannot find symbol
+  symbol:   class MailSendResult
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MicrosoftTokenProvider.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MicrosoftTokenProvider.java:[11,5] cannot find symbol
+  symbol:   class AccessToken
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.MicrosoftTokenProvider
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MicrosoftTokenProvider.java:[16,5] cannot find symbol
+  symbol:   class AccessToken
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.MicrosoftTokenProvider
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[15,14] cannot find symbol
+  symbol:   class OnlineMeetingMetadata
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.OnlineMeetingGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[17,14] cannot find symbol
+  symbol:   class OnlineMeetingMetadata
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.OnlineMeetingGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[19,10] cannot find symbol
+  symbol:   class ParticipantMetadata
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.OnlineMeetingGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[15,45] cannot find symbol
+  symbol:   class SubscriptionCreateRequest
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[15,5] cannot find symbol
+  symbol:   class GraphSubscription
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[17,5] cannot find symbol
+  symbol:   class GraphSubscription
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[19,14] cannot find symbol
+  symbol:   class GraphSubscription
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[15,15] cannot find symbol
+  symbol:   class GraphSubscription
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[17,14] cannot find symbol
+  symbol:   class GraphSubscription
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[19,10] cannot find symbol
+  symbol:   class GraphSubscription
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[21,10] cannot find symbol
+  symbol:   class GraphSubscription
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/TranscriptGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/TranscriptGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/TranscriptGateway.java:[14,5] cannot find symbol
+  symbol:   class TranscriptAvailability
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.TranscriptGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/TranscriptGateway.java:[16,14] cannot find symbol
+  symbol:   class TranscriptContent
+  location: interface com.nanobaseai.actenora.microsoftconnection.application.port.TranscriptGateway
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project microsoft-connection: Compilation failure: Compilation failure: 
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[5,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[15,63] cannot find symbol
+[ERROR]   symbol:   class CalendarSyncCursor
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[15,5] cannot find symbol
+[ERROR]   symbol:   class CalendarDeltaPage
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarGateway.java:[17,14] cannot find symbol
+[ERROR]   symbol:   class CalendarEvent
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarSyncCursorStore.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarSyncCursorStore.java:[13,14] cannot find symbol
+[ERROR]   symbol:   class CalendarSyncCursor
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/CalendarSyncCursorStore.java:[15,15] cannot find symbol
+[ERROR]   symbol:   class CalendarSyncCursor
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MailGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MailGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MailGateway.java:[13,40] cannot find symbol
+[ERROR]   symbol:   class MailSendRequest
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MailGateway.java:[13,5] cannot find symbol
+[ERROR]   symbol:   class MailSendResult
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MicrosoftTokenProvider.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MicrosoftTokenProvider.java:[11,5] cannot find symbol
+[ERROR]   symbol:   class AccessToken
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.MicrosoftTokenProvider
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/MicrosoftTokenProvider.java:[16,5] cannot find symbol
+[ERROR]   symbol:   class AccessToken
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.MicrosoftTokenProvider
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[15,14] cannot find symbol
+[ERROR]   symbol:   class OnlineMeetingMetadata
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.OnlineMeetingGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[17,14] cannot find symbol
+[ERROR]   symbol:   class OnlineMeetingMetadata
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.OnlineMeetingGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/OnlineMeetingGateway.java:[19,10] cannot find symbol
+[ERROR]   symbol:   class ParticipantMetadata
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.OnlineMeetingGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[15,45] cannot find symbol
+[ERROR]   symbol:   class SubscriptionCreateRequest
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[15,5] cannot find symbol
+[ERROR]   symbol:   class GraphSubscription
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[17,5] cannot find symbol
+[ERROR]   symbol:   class GraphSubscription
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionGateway.java:[19,14] cannot find symbol
+[ERROR]   symbol:   class GraphSubscription
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[15,15] cannot find symbol
+[ERROR]   symbol:   class GraphSubscription
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[17,14] cannot find symbol
+[ERROR]   symbol:   class GraphSubscription
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[19,10] cannot find symbol
+[ERROR]   symbol:   class GraphSubscription
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/SubscriptionStore.java:[21,10] cannot find symbol
+[ERROR]   symbol:   class GraphSubscription
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/TranscriptGateway.java:[3,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/TranscriptGateway.java:[4,69] package com.nanobaseai.actenora.microsoftconnection.application.model does not exist
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/TranscriptGateway.java:[14,5] cannot find symbol
+[ERROR]   symbol:   class TranscriptAvailability
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.TranscriptGateway
+[ERROR] /Users/msancar/Documents/GitHub/NanobaseAI-Actenora/modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/application/port/TranscriptGateway.java:[16,14] cannot find symbol
+[ERROR]   symbol:   class TranscriptContent
+[ERROR]   location: interface com.nanobaseai.actenora.microsoftconnection.application.port.TranscriptGateway
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :microsoft-connection

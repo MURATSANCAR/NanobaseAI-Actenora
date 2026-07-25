@@ -1,0 +1,46 @@
+# FAZ 28 capture highlights
+
+158:PASS modules/policy
+205:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.174 s -- in com.nanobaseai.actenora.sharedkernel.messaging.faz28.MessagingResilienceScenarioTest
+209:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+274:[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.531 s -- in com.nanobaseai.actenora.microsoftconnection.faz28.GraphMailResilienceScenarioTest
+278:[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+290:[INFO] BUILD SUCCESS
+295:PASS modules/microsoft-connection
+340:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.157 s -- in com.nanobaseai.actenora.sharedkernel.messaging.faz28.MessagingResilienceScenarioTest
+344:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+371:[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.462 s -- in com.nanobaseai.actenora.meeting.faz28.DailyMeetingLoadScenarioTest
+375:[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+385:[INFO] BUILD SUCCESS
+390:PASS modules/meeting
+437:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.122 s -- in com.nanobaseai.actenora.sharedkernel.messaging.faz28.MessagingResilienceScenarioTest
+441:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+508:[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.128 s -- in com.nanobaseai.actenora.transcript.faz28.MinioFailureScenarioTest
+512:[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+524:[INFO] BUILD SUCCESS
+529:PASS modules/transcript
+574:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.169 s -- in com.nanobaseai.actenora.sharedkernel.messaging.faz28.MessagingResilienceScenarioTest
+578:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+607:[INFO] BUILD SUCCESS
+612:PASS modules/model-management
+657:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.171 s -- in com.nanobaseai.actenora.sharedkernel.messaging.faz28.MessagingResilienceScenarioTest
+661:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+688:[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.159 s -- in com.nanobaseai.actenora.aiprocessing.faz28.ModelFailoverAndAiFailureScenarioTest
+690:[ERROR] Tests run: 3, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 0.039 s <<< FAILURE! -- in com.nanobaseai.actenora.aiprocessing.faz28.BurstFairnessAndSlaLoadScenarioTest
+723:[ERROR] Tests run: 8, Failures: 2, Errors: 0, Skipped: 0
+733:[INFO] BUILD FAILURE
+752:FAIL modules/ai-processing
+797:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.146 s -- in com.nanobaseai.actenora.sharedkernel.messaging.faz28.MessagingResilienceScenarioTest
+801:[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+828:[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.137 s -- in com.nanobaseai.actenora.aiprocessing.faz28.ModelFailoverAndAiFailureScenarioTest
+830:[ERROR] Tests run: 3, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 0.041 s <<< FAILURE! -- in com.nanobaseai.actenora.aiprocessing.faz28.BurstFairnessAndSlaLoadScenarioTest
+863:[ERROR] Tests run: 8, Failures: 2, Errors: 0, Skipped: 0
+873:[INFO] BUILD FAILURE
+957:[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.055 s -- in com.nanobaseai.actenora.aiprocessing.faz28.ModelFailoverAndAiFailureScenarioTest
+959:[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.037 s -- in com.nanobaseai.actenora.aiprocessing.faz28.BurstFairnessAndSlaLoadScenarioTest
+963:[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0
+973:[INFO] BUILD SUCCESS
+
+## ai-processing final
+ModelFailoverAndAiFailureScenarioTest: Tests run: 5, Failures: 0
+BurstFairnessAndSlaLoadScenarioTest: Tests run: 3, Failures: 0

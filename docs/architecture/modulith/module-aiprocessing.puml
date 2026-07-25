@@ -1,0 +1,19 @@
+@startuml
+set separator none
+title AI Processing
+
+top to bottom direction
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+Container_Boundary("ActenoraApplication.ActenoraApplication_boundary", "ActenoraApplication", $tags="") {
+  Component(ActenoraApplication.ActenoraApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.AIProcessing, "AI Processing", $techn="Module", $descr="", $tags="", $link="")
+}
+
+Rel(ActenoraApplication.ActenoraApplication.AIProcessing, ActenoraApplication.ActenoraApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+@enduml

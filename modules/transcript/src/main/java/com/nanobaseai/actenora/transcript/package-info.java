@@ -4,11 +4,7 @@
  * Internal packages are not accessible from other modules.
  */
 @org.springframework.modulith.ApplicationModule(
-    displayName = "Transcript"
-    allowedDependencies = {
-        "sharedkernel",
-        "tenant :: api",
-        "meeting :: api"
-    }
+    displayName = "Transcript",
+    allowedDependencies = {"sharedkernel","tenant :: api"}
 )
 package com.nanobaseai.actenora.transcript;

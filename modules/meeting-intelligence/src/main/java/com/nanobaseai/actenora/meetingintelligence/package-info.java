@@ -4,13 +4,14 @@
  * Internal packages are not accessible from other modules.
  */
 @org.springframework.modulith.ApplicationModule(
-    displayName = "Meeting Intelligence"
+    displayName = "Meeting Intelligence",
     allowedDependencies = {
         "sharedkernel",
         "tenant :: api",
         "meeting :: api",
         "transcript :: api",
-        "aiprocessing :: api"
+        "aiprocessing :: api",
+        "approval :: api"
     }
 )
 package com.nanobaseai.actenora.meetingintelligence;

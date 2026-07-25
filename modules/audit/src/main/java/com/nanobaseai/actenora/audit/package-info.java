@@ -1,10 +1,10 @@
 /**
  * Bounded context: Audit.
- * Public API package: com.nanobaseai.actenora.audit.api (named interface "api").
- * Internal packages are not accessible from other modules.
+ * Public API package: {@code com.nanobaseai.actenora.audit.api}.
+ * Append-only audit trail; must not store transcript, private note, or raw prompt content.
  */
 @org.springframework.modulith.ApplicationModule(
-    displayName = "Audit"
+    displayName = "Audit",
     allowedDependencies = {
         "sharedkernel"
     }

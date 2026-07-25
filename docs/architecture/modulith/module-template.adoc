@@ -1,0 +1,10 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.nanobaseai.actenora.template`
+|Spring components
+|* `c.n.a.t.api.TemplateApi`
+|Bean references
+|* `c.n.a.s.time.InstantClock` (in Shared Kernel)
+* `c.n.a.s.port.storage.ObjectStorage` (in Shared Kernel)
+|===

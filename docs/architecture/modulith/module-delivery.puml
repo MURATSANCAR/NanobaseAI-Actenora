@@ -1,0 +1,22 @@
+@startuml
+set separator none
+title Delivery
+
+top to bottom direction
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+Container_Boundary("ActenoraApplication.ActenoraApplication_boundary", "ActenoraApplication", $tags="") {
+  Component(ActenoraApplication.ActenoraApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Approval, "Approval", $techn="Module", $descr="", $tags="", $link="")
+  Component(ActenoraApplication.ActenoraApplication.Delivery, "Delivery", $techn="Module", $descr="", $tags="", $link="")
+}
+
+Rel(ActenoraApplication.ActenoraApplication.Delivery, ActenoraApplication.ActenoraApplication.Approval, "uses", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Delivery, ActenoraApplication.ActenoraApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(ActenoraApplication.ActenoraApplication.Approval, ActenoraApplication.ActenoraApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+@enduml

@@ -1,0 +1,103 @@
+package com.nanobaseai.actenora.aiprocessing.infrastructure.adapter;
+
+import com.nanobaseai.actenora.aiprocessing.application.modelworker.HealthStatus;
+import com.nanobaseai.actenora.aiprocessing.application.modelworker.InferenceResult;
+import com.nanobaseai.actenora.aiprocessing.application.modelworker.LocalModelProviderException;
+import com.nanobaseai.actenora.aiprocessing.application.modelworker.ProviderHealth;
+import com.nanobaseai.actenora.aiprocessing.application.modelworker.ResolvedInferenceInput;
+import com.nanobaseai.actenora.aiprocessing.application.modelworker.WorkerRequestEnvelope;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.InferenceRequest;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.InferenceResponse;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelDescriptor;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelRuntimePort;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelUnavailableException;
+import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
+import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
+
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+
+/**
+ * Bridges FAZ 13 {@link LocalModelProvider} into the FAZ 14 pipeline port.
+ * Qwen served-model identity lives only in the descriptor supplied at construction.
+ */
+public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort {
+
+    private final LocalModelProvider provider;
+    private final ModelDescriptor descriptor;
+    private final UUID modelDefinitionId;
+
+    public LocalProviderModelRuntimeAdapter(
+            LocalModelProvider provider,
+            ModelDescriptor descriptor,
+            UUID modelDefinitionId
+    ) {
+        this.provider = Objects.requireNonNull(provider, "provider");
+        this.descriptor = Objects.requireNonNull(descriptor, "descriptor");
+        this.modelDefinitionId = Objects.requireNonNull(modelDefinitionId, "modelDefinitionId");
+    }
+
+    /**
+     * Production wiring for the first local reasoner (Qwen 27B-class) behind catalog ids.
+     */
+    public static LocalProviderModelRuntimeAdapter qwen27B(LocalModelProvider provider, UUID modelDefinitionId) {
+        return new LocalProviderModelRuntimeAdapter(
+                provider,
+                new ModelDescriptor(
+                        Qwen27BModelAdapter.CATALOG_ID,
+                        Qwen27BModelAdapter.SERVED_MODEL_ID,
+                        Qwen27BModelAdapter.MODEL_VERSION,
+                        Qwen27BModelAdapter.CONTEXT_WINDOW,
+                        Qwen27BModelAdapter.MAX_OUTPUT
+                ),
+                modelDefinitionId
+        );
+    }
+
+    @Override
+    public ModelDescriptor descriptor() {
+        return descriptor;
+    }
+
+    @Override
+    public boolean healthy() {
+        ProviderHealth health = provider.health();
+        return health != null && health.status() != HealthStatus.DOWN;
+    }
+
+    @Override
+    public InferenceResponse infer(InferenceRequest request) {
+        if (!healthy()) {
+            throw new ModelUnavailableException("Local model provider unhealthy");
+        }
+        UUID jobId = UUID.randomUUID();
+        UUID attemptId = UUID.randomUUID();
+        WorkerRequestEnvelope envelope = WorkerRequestEnvelope.builder()
+                .jobId(jobId)
+                .attemptId(attemptId)
+                .taskType(InferenceTaskType.valueOf(request.taskType()))
+                .modelId(modelDefinitionId)
+                .servedModelId(descriptor.servedModelId())
+                .promptVersion(request.promptVersionId())
+                .schemaVersion(request.schemaVersion())
+                .timeoutSeconds(120)
+                .inputReference(Map.of("evidenceCount", request.allowedEvidenceSegmentIds().size()))
+                .build();
+        try {
+            InferenceResult result = provider.submitInference(
+                    envelope,
+                    ResolvedInferenceInput.of(request.systemPrompt(), request.userPrompt())
+            );
+            return new InferenceResponse(
+                    result.content(),
+                    result.tokenUsage().inputTokens(),
+                    result.tokenUsage().outputTokens(),
+                    result.latencyMs(),
+                    descriptor.modelVersion()
+            );
+        } catch (LocalModelProviderException ex) {
+            throw new ModelUnavailableException(ex.getMessage(), ex);
+        }
+    }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actenora.nanobase.ai/events/transcript.TranscriptIngested.v1.json",
+  "title": "TranscriptIngestedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "occurredAt",
+    "tenantId",
+    "transcriptId",
+    "meetingOccurrenceId",
+    "contentHash",
+    "status"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "tenantId": { "type": "string", "format": "uuid" },
+    "transcriptId": { "type": "string", "format": "uuid" },
+    "meetingOccurrenceId": { "type": "string", "format": "uuid" },
+    "contentHash": { "type": "string", "minLength": 64, "maxLength": 64 },
+    "status": { "type": "string", "minLength": 1 }
+  }
+}

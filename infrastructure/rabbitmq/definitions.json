@@ -1,0 +1,251 @@
+{
+  "rabbit_version": "3.13.0",
+  "rabbitmq_version": "3.13.0",
+  "product_name": "RabbitMQ",
+  "product_version": "3.13.0",
+  "users": [],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [],
+  "topic_permissions": [],
+  "parameters": [],
+  "global_parameters": [],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "actenora-ha-local",
+      "pattern": "^actenora\\.",
+      "apply-to": "queues",
+      "definition": {
+        "message-ttl": 604800000,
+        "overflow": "reject-publish"
+      },
+      "priority": 0
+    }
+  ],
+  "queues": [
+    {
+      "name": "actenora.audit.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "audit.events"
+      }
+    },
+    {
+      "name": "actenora.workflow.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "workflow.events"
+      }
+    },
+    {
+      "name": "actenora.planning.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "planning.events"
+      }
+    },
+    {
+      "name": "actenora.approval.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "approval.events"
+      }
+    },
+    {
+      "name": "actenora.delivery.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "delivery.events"
+      }
+    },
+    {
+      "name": "actenora.modelgw.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "modelgw.events"
+      }
+    },
+    {
+      "name": "actenora.commands",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "commands"
+      }
+    },
+    {
+      "name": "actenora.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "actenora.domain",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.commands",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.dlx",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.audit.events",
+      "destination_type": "queue",
+      "routing_key": "#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.workflow.events",
+      "destination_type": "queue",
+      "routing_key": "workflow.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.workflow.events",
+      "destination_type": "queue",
+      "routing_key": "evidence.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.workflow.events",
+      "destination_type": "queue",
+      "routing_key": "case.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.planning.events",
+      "destination_type": "queue",
+      "routing_key": "planning.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.planning.events",
+      "destination_type": "queue",
+      "routing_key": "modelgw.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.approval.events",
+      "destination_type": "queue",
+      "routing_key": "approval.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.approval.events",
+      "destination_type": "queue",
+      "routing_key": "planning.PlanProposed.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.delivery.events",
+      "destination_type": "queue",
+      "routing_key": "delivery.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.delivery.events",
+      "destination_type": "queue",
+      "routing_key": "approval.ApprovalGranted.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.modelgw.events",
+      "destination_type": "queue",
+      "routing_key": "modelgw.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.modelgw.events",
+      "destination_type": "queue",
+      "routing_key": "prompt.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.commands",
+      "vhost": "/",
+      "destination": "actenora.commands",
+      "destination_type": "queue",
+      "routing_key": "#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.dlx",
+      "vhost": "/",
+      "destination": "actenora.dlq",
+      "destination_type": "queue",
+      "routing_key": "#",
+      "arguments": {}
+    }
+  ]
+}

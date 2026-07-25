@@ -1,0 +1,9 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.nanobaseai.actenora.microsoftconnection`
+|Spring components
+|* `c.n.a.m.api.MicrosoftConnectionApi`
+|Bean references
+|* `c.n.a.s.time.InstantClock` (in Shared Kernel)
+|===

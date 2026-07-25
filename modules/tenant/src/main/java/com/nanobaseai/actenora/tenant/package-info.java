@@ -4,10 +4,7 @@
  * Internal packages are not accessible from other modules.
  */
 @org.springframework.modulith.ApplicationModule(
-    displayName = "Tenant"
-    allowedDependencies = {
-        "sharedkernel",
-        "identity :: api"
-    }
+    displayName = "Tenant",
+    allowedDependencies = {"sharedkernel","identity :: api"}
 )
 package com.nanobaseai.actenora.tenant;

@@ -125,7 +125,7 @@ main() {
   (cd "${REPO_ROOT}" && uv sync)
 
   log "Resolving Maven deps (wrapper)"
-  (cd "${REPO_ROOT}" && ./mvnw -q -DskipTests dependency:resolve)
+  (cd "${REPO_ROOT}" && ./mvnw -q -Dmaven.test.skip=true dependency:resolve)
 
   record_timing "bootstrap" "$(elapsed_ms "${start}")" "ok"
   log "Bootstrap complete"

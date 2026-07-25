@@ -6,9 +6,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Cross-module integration event for Meeting.
- * Published via outbox / Spring Modulith — never by leaking domain types.
+ * @deprecated Prefer typed events in {@link MeetingIntegrationEvents}.
  */
+@Deprecated
 public record MeetingIntegrationEvent(
         UUID eventId,
         Instant occurredAt,

@@ -1,0 +1,7 @@
+Extract structured meeting facts from the transcript chunk below.
+Only use evidenceSegmentIds from this allowed set: {{evidenceSegmentIds}}
+
+Return JSON only matching the published output schema.
+
+TRANSCRIPT CHUNK:
+{{chunk}}

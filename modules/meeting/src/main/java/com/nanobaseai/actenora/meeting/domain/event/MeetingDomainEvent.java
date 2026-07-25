@@ -6,8 +6,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Module-internal domain event. Not published across module boundaries.
+ * @deprecated Prefer typed events in {@link MeetingDomainEvents}.
  */
+@Deprecated
 public record MeetingDomainEvent(
         UUID eventId,
         Instant occurredAt,

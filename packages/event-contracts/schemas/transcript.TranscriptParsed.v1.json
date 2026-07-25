@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actenora.nanobase.ai/events/transcript.TranscriptParsed.v1.json",
+  "title": "TranscriptParsedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventType", "eventId", "occurredAt", "tenantId", "transcriptId", "segmentCount", "issueCount"],
+  "properties": {
+    "eventType": { "const": "transcript.TranscriptParsed.v1" },
+    "eventId": { "type": "string", "format": "uuid" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "tenantId": { "type": "string", "format": "uuid" },
+    "transcriptId": { "type": "string", "format": "uuid" },
+    "segmentCount": { "type": "integer", "minimum": 0 },
+    "issueCount": { "type": "integer", "minimum": 0 },
+    "correlationId": { "type": "string" }
+  }
+}
