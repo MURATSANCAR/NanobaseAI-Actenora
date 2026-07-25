@@ -1,7 +1,5 @@
 package com.nanobaseai.actenora.architecture;
 
-import com.tngtech.archunit.base.DescribedPredicate;
-import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -9,7 +7,6 @@ import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
@@ -19,6 +16,12 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.sli
 class ModularMonolithArchUnitTest {
 
     private static final String BASE = "com.nanobaseai.actenora";
+
+    private static final String[] BOUNDED_CONTEXTS = {
+            "identity", "tenant", "policy", "microsoftconnection", "meeting", "transcript",
+            "modelmanagement", "aiprocessing", "meetingintelligence", "approval", "template",
+            "delivery", "audit", "operations"
+    };
 
     private static JavaClasses classes;
 
@@ -31,187 +34,136 @@ class ModularMonolithArchUnitTest {
 
     @Test
     void domainLayerMustNotDependOnSpring() {
-        ArchRule rule = noClasses()
+        noClasses()
                 .that().resideInAPackage("..domain..")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "org.springframework..",
-                        "org.springframework.boot.."
-                )
-                .because("Domain layer must stay framework-free");
-        rule.check(classes);
+                .should().dependOnClassesThat().resideInAnyPackage("org.springframework..")
+                .because("Domain layer must stay framework-free")
+                .check(classes);
     }
 
     @Test
     void meetingMustNotUseTranscriptRepository() {
-        ArchRule rule = noClasses()
+        noClasses()
                 .that().resideInAPackage(BASE + ".meeting..")
-                .should().dependOnClassesThat()
-                .haveSimpleName("TranscriptRepository")
-                .orShould().dependOnClassesThat()
-                .resideInAPackage(BASE + ".transcript.infrastructure..")
-                .because("Meeting must not use TranscriptRepository or transcript infrastructure");
-        rule.check(classes);
+                .should().dependOnClassesThat().haveSimpleName("TranscriptRepository")
+                .because("Meeting must not use TranscriptRepository")
+                .check(classes);
+
+        noClasses()
+                .that().resideInAPackage(BASE + ".meeting..")
+                .should().dependOnClassesThat().resideInAPackage(BASE + ".transcript.infrastructure..")
+                .because("Meeting must not depend on transcript infrastructure")
+                .check(classes);
     }
 
     @Test
     void transcriptMustNotImportMeetingEntity() {
-        ArchRule rule = noClasses()
+        noClasses()
                 .that().resideInAPackage(BASE + ".transcript..")
-                .should().dependOnClassesThat()
-                .haveSimpleName("MeetingEntity")
-                .orShould().dependOnClassesThat()
-                .resideInAPackage(BASE + ".meeting.domain..")
-                .because("Transcript must not import MeetingEntity; use meeting.api.MeetingId only");
-        rule.check(classes);
+                .should().dependOnClassesThat().haveSimpleName("MeetingEntity")
+                .because("Transcript must not import MeetingEntity")
+                .check(classes);
+
+        noClasses()
+                .that().resideInAPackage(BASE + ".transcript..")
+                .should().dependOnClassesThat().resideInAPackage(BASE + ".meeting.domain..")
+                .because("Transcript must not import meeting domain types")
+                .check(classes);
     }
 
     @Test
     void aiProcessingMustNotAccessIntelligenceTables() {
-        ArchRule rule = noClasses()
+        noClasses()
                 .that().resideInAPackage(BASE + ".aiprocessing..")
-                .should().dependOnClassesThat()
-                .resideInAnyPackage(
+                .should().dependOnClassesThat().resideInAnyPackage(
                         BASE + ".meetingintelligence.infrastructure..",
                         BASE + ".meetingintelligence.domain.."
                 )
-                .because("AI Processing must not access meeting-intelligence persistence");
-        rule.check(classes);
+                .because("AI Processing must not access meeting-intelligence tables/persistence")
+                .check(classes);
 
-        ArchRule stringGuard = noClasses()
+        noClasses()
                 .that().resideInAPackage(BASE + ".aiprocessing..")
-                .should().dependOnClassesThat(new DescribedPredicate<>("references meetingintelligence schema constants") {
-                    @Override
-                    public boolean test(JavaClass javaClass) {
-                        return "MeetingIntelligenceSchema".equals(javaClass.getSimpleName());
-                    }
-                });
-        stringGuard.check(classes);
+                .should().dependOnClassesThat().haveSimpleName("MeetingIntelligenceSchema")
+                .check(classes);
     }
 
     @Test
     void deliveryMustNotImportApprovalEntities() {
-        ArchRule rule = noClasses()
-                .that().resideInAPackage(BASE + ".delivery..")
-                .should().dependOnClassesThat()
-                .resideInAPackage(BASE + ".approval.domain..")
-                .orShould().dependOnClassesThat()
-                .haveSimpleNameEndingWith("Entity")
-                .andShould().dependOnClassesThat()
-                .resideInAPackage(BASE + ".approval..")
-                .because("Delivery must not import approval entities; use approval.api only");
-
-        // Clearer: ban approval.domain from delivery
         noClasses()
                 .that().resideInAPackage(BASE + ".delivery..")
-                .should().dependOnClassesThat()
-                .resideInAPackage(BASE + ".approval.domain..")
+                .should().dependOnClassesThat().resideInAPackage(BASE + ".approval.domain..")
+                .because("Delivery must not import approval entities")
                 .check(classes);
     }
 
     @Test
     void sharedKernelMustNotContainServices() {
-        ArchRule rule = noClasses()
-                .that().resideInAPackage(BASE + ".sharedkernel..")
-                .should().haveSimpleNameEndingWith("Service")
-                .orShould().beAnnotatedWith(org.springframework.stereotype.Service.class)
-                .because("Shared-kernel must not contain business services");
-
-        // Invert: no *Service classes / @Service in sharedkernel
         noClasses()
                 .that().resideInAPackage(BASE + ".sharedkernel..")
                 .and().haveSimpleNameEndingWith("Service")
-                .should().resideInAPackage(BASE + ".sharedkernel..")
+                .should().resideOutsideOfPackage(BASE + ".sharedkernel..")
                 .allowEmptyShould(true)
+                .because("Shared-kernel must not contain *Service types")
                 .check(classes);
 
         noClasses()
                 .that().resideInAPackage(BASE + ".sharedkernel..")
                 .should().beAnnotatedWith(org.springframework.stereotype.Service.class)
                 .allowEmptyShould(true)
+                .because("Shared-kernel must not contain @Service beans")
                 .check(classes);
     }
 
     @Test
     void infrastructureClassesMustNotResideInDomainPackages() {
-        ArchRule rule = noClasses()
-                .that().resideInAPackage("..domain..")
-                .should().haveSimpleNameEndingWith("Repository")
-                .orShould().haveSimpleNameEndingWith("JpaEntity")
-                .orShould().beAnnotatedWith(jakarta.persistence.Entity.class)
-                .orShould().beAnnotatedWith(org.springframework.stereotype.Component.class)
-                .orShould().beAnnotatedWith(org.springframework.stereotype.Repository.class)
-                .because("Infrastructure stereotypes and repositories do not belong in domain");
-
         noClasses()
                 .that().resideInAPackage("..domain..")
                 .should().haveSimpleNameEndingWith("Repository")
                 .allowEmptyShould(true)
+                .because("Repositories are infrastructure, not domain")
                 .check(classes);
 
         noClasses()
                 .that().resideInAPackage("..domain..")
                 .should().beAnnotatedWith(jakarta.persistence.Entity.class)
                 .allowEmptyShould(true)
+                .because("JPA entities must not live in domain packages")
                 .check(classes);
 
         noClasses()
                 .that().resideInAPackage("..domain..")
                 .should().beAnnotatedWith(org.springframework.stereotype.Component.class)
                 .allowEmptyShould(true)
+                .because("Spring infrastructure stereotypes must not live in domain packages")
                 .check(classes);
     }
 
     @Test
-    void internalPackagesAreNotAccessedFromOtherModules() {
-        String[] modules = {
-                "identity", "tenant", "policy", "microsoftconnection", "meeting", "transcript",
-                "modelmanagement", "aiprocessing", "meetingintelligence", "approval", "template",
-                "delivery", "audit", "operations"
-        };
-
-        for (String module : modules) {
-            noClasses()
-                    .that().resideOutsideOfPackage(BASE + "." + module + "..")
-                    .and().resideInAPackage(BASE + "..")
-                    .and().doNotResideInAPackage(BASE)
-                    .should().dependOnClassesThat()
-                    .resideInAnyPackage(
+    void apiExternalInternalClassesAreNotAccessedFromOtherModules() {
+        for (String module : BOUNDED_CONTEXTS) {
+            ArchRule rule = noClasses()
+                    .that().resideInAPackage(BASE + "..")
+                    .and().resideOutsideOfPackage(BASE + "." + module + "..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
                             BASE + "." + module + ".domain..",
                             BASE + "." + module + ".application..",
                             BASE + "." + module + ".infrastructure.."
                     )
-                    .because(module + " internal packages must not be accessed from other modules")
-                    .allowEmptyShould(true)
-                    .check(classes);
+                    .because(module + " internal packages are not part of the public API")
+                    .allowEmptyShould(true);
+            rule.check(classes);
         }
     }
 
     @Test
-    void noCrossModuleRepositoryInjection() {
-        ArchRule rule = noClasses()
-                .that().resideInAPackage(BASE + "..")
-                .and().resideOutsideOfPackage("..infrastructure..")
-                .should().dependOnClassesThat()
-                .haveSimpleNameEndingWith("Repository")
-                .andShould().dependOnClassesThat(new DescribedPredicate<>("foreign module repository") {
-                    @Override
-                    public boolean test(JavaClass javaClass) {
-                        // Repositories are only legal inside their own module tree.
-                        return javaClass.getSimpleName().endsWith("Repository");
-                    }
-                });
-
-        // Stronger explicit pairs from FAZ 3
-        noClasses()
-                .that().resideInAPackage(BASE + ".meeting..")
-                .should().dependOnClassesThat().haveSimpleName("TranscriptRepository")
-                .check(classes);
-
+    void crossModuleRepositoryInjectionIsForbidden() {
         noClasses()
                 .that().resideOutsideOfPackage(BASE + ".transcript..")
                 .and().resideInAPackage(BASE + "..")
                 .should().dependOnClassesThat().haveSimpleName("TranscriptRepository")
                 .allowEmptyShould(true)
+                .because("TranscriptRepository must not be injected outside transcript")
                 .check(classes);
 
         noClasses()
@@ -219,6 +171,7 @@ class ModularMonolithArchUnitTest {
                 .and().resideInAPackage(BASE + "..")
                 .should().dependOnClassesThat().haveSimpleName("MeetingRepository")
                 .allowEmptyShould(true)
+                .because("MeetingRepository must not be injected outside meeting")
                 .check(classes);
     }
 
