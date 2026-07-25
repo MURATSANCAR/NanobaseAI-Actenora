@@ -182,6 +182,52 @@ class ModelAuthBindingTest {
         assertTrue(listed.getFirst().healthy());
     }
 
+    @Test
+    void registryKeepsUnhealthyDeploymentsVisibleForFailover() {
+        ActorPrincipal admin = ActorPrincipal.operationsAdmin(userId);
+        service.registerModel(admin, toCommand(sampleRegisterBody("local-final")));
+        service.configureCapability(admin, "local-final", new ConfigureCapabilityCommand(
+                ModelCapabilityType.FINAL_NOTE, 0.9, 0.5, 0, true));
+        service.registerDeployment(admin, new RegisterDeploymentCommand(
+                "local-final",
+                "final-primary",
+                "http://127.0.0.1:8080/v1",
+                "node-a",
+                "local",
+                "cpu",
+                null,
+                0,
+                4,
+                16,
+                2));
+        service.registerDeployment(admin, new RegisterDeploymentCommand(
+                "local-final",
+                "final-secondary",
+                "http://127.0.0.1:8081/v1",
+                "node-b",
+                "local",
+                "cpu",
+                null,
+                0,
+                4,
+                16,
+                2));
+        service.heartbeat(admin, "final-primary");
+        service.heartbeat(admin, "final-secondary");
+        catalog.markHealthy(
+                catalog.listLocalDeployments().stream()
+                        .filter(d -> d.deploymentKey().equals("final-primary"))
+                        .findFirst()
+                        .orElseThrow()
+                        .deploymentId(),
+                false);
+
+        var listed = catalog.listLocalDeployments();
+        assertEquals(2, listed.size());
+        assertTrue(listed.stream().anyMatch(d -> d.deploymentKey().equals("final-primary") && !d.healthy()));
+        assertTrue(listed.stream().anyMatch(d -> d.deploymentKey().equals("final-secondary") && d.healthy()));
+    }
+
     private void bindPrincipal(Set<String> permissions) {
         AuthenticatedPrincipal principal = new AuthenticatedPrincipal(
                 tenantId,
