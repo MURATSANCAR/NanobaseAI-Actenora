@@ -5,7 +5,7 @@ import { AsyncState } from "@/components/ui/AsyncState";
 import { TemplateComponentPalette } from "@/components/template/TemplateComponentPalette";
 import { TemplateDesignCanvas } from "@/components/template/TemplateDesignCanvas";
 import { TemplateNoteSectionEditor } from "@/components/template/TemplateNoteSectionEditor";
-import { TemplatePreviewPanel } from "@/components/template/TemplatePreviewPanel";
+import { TemplateDocumentPreviewStage } from "@/components/template/TemplateDocumentPreviewStage";
 import { TemplateValidationBanner } from "@/components/template/TemplateValidationBanner";
 import { TemplateVersionSidebar } from "@/components/template/TemplateVersionSidebar";
 import {
@@ -125,13 +125,9 @@ export function TemplateMockupsPage() {
         </span>
       </div>
 
+      {scenario !== "studio" && scenario !== "empty" && scenario !== "validation" ? (
       <div
-        className={[
-          "relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-500 to-sky-500 text-white shadow-glow",
-          scenario === "studio" || scenario === "empty" || scenario === "validation"
-            ? "px-4 py-4 sm:px-5"
-            : "px-5 py-6 sm:px-7 sm:py-7",
-        ].join(" ")}
+        className="relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-500 to-sky-500 px-5 py-6 text-white shadow-glow sm:px-7 sm:py-7"
       >
         <div className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden />
         <div className="pointer-events-none absolute -bottom-16 left-16 h-40 w-40 rounded-full bg-sky-300/20 blur-2xl" aria-hidden />
@@ -159,6 +155,7 @@ export function TemplateMockupsPage() {
           </a>
         </div>
       </div>
+      ) : null}
 
       <nav className="card-static mb-4 flex flex-wrap gap-2 p-2" aria-label={t("templates.mockups.scenariosNav")}>
         {scenarios.map((s) => (
@@ -206,8 +203,8 @@ export function TemplateMockupsPage() {
       ) : null}
 
       {scenario === "studio" || scenario === "empty" || scenario === "validation" ? (
-        <div className="flex min-h-[calc(100dvh-12rem)] flex-col gap-3 xl:flex-row xl:items-stretch">
-          <aside className="flex w-full shrink-0 flex-col gap-3 xl:w-52 xl:max-h-[calc(100dvh-12rem)] xl:overflow-y-auto">
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-3 xl:grid-cols-[12rem_12rem_minmax(0,1fr)]">
             <TemplateVersionSidebar
               templateName={t("templates.mockups.sampleTemplateName")}
               locale={t("templates.mockups.sampleLocale")}
@@ -216,37 +213,34 @@ export function TemplateMockupsPage() {
               onSelect={setActiveVersion}
             />
             <TemplateComponentPalette onAdd={addComponent} disabled={scenario === "validation"} />
-          </aside>
-
-          <main className="flex min-h-[min(520px,calc(100dvh-14rem))] min-w-0 flex-1 flex-col xl:min-h-0">
-            <TemplatePreviewPanel components={schema.components} layout="fullscreen" />
-          </main>
-
-          <aside className="flex w-full shrink-0 flex-col gap-3 xl:w-72 xl:max-h-[calc(100dvh-12rem)] xl:overflow-y-auto">
-            {scenario === "validation" || validationIssues.length ? (
-              <TemplateValidationBanner issues={validationIssues} />
-            ) : null}
-            <TemplateDesignCanvas
-              components={schema.components}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onRemove={removeComponent}
-              readOnly={scenario === "validation"}
-              emptyMessage={t("templates.canvas.empty")}
-            />
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn-primary" disabled={validationIssues.length > 0}>
-                {t("templates.actions.saveDraft")}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                disabled={validationIssues.length > 0 || !schema.components.length}
-              >
-                {t("templates.actions.publish")}
-              </button>
+            <div className="space-y-3">
+              {scenario === "validation" || validationIssues.length ? (
+                <TemplateValidationBanner issues={validationIssues} />
+              ) : null}
+              <TemplateDesignCanvas
+                components={schema.components}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onRemove={removeComponent}
+                readOnly={scenario === "validation"}
+                emptyMessage={t("templates.canvas.empty")}
+              />
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn-primary" disabled={validationIssues.length > 0}>
+                  {t("templates.actions.saveDraft")}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={validationIssues.length > 0 || !schema.components.length}
+                >
+                  {t("templates.actions.publish")}
+                </button>
+              </div>
             </div>
-          </aside>
+          </div>
+
+          <TemplateDocumentPreviewStage components={schema.components} />
         </div>
       ) : null}
 

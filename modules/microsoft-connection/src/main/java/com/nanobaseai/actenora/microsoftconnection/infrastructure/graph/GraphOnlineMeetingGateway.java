@@ -10,15 +10,26 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Graph onlineMeetings adapter.
  */
 public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
+
+    // Graph /onlineMeetings requires the organizer's object id (GUID) in the URL — a UPN mailbox
+    // returns "The userId in request URL is not a valid GUID." The organizer OID is embedded both
+    // in the joinWebUrl context ("Oid":"<guid>") and in the base64 online meeting id ("1*<guid>*0*..."),
+    // so we can derive it without any directory (User.Read.All) permission.
+    private static final Pattern GUID = Pattern.compile(
+            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+    private static final Pattern JOIN_URL_OID = Pattern.compile("\"Oid\"\\s*:\\s*\"([^\"]+)\"");
 
     private final GraphHttpClient http;
     private final ObjectMapper objectMapper;
@@ -31,8 +42,9 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
     @Override
     public Optional<OnlineMeetingMetadata> getByJoinWebUrl(UUID tenantId, String userId, String joinWebUrl) {
         Objects.requireNonNull(joinWebUrl, "joinWebUrl");
+        String organizer = organizerFromJoinWebUrl(joinWebUrl).orElse(userId);
         String filter = URLEncoder.encode("JoinWebUrl eq '" + joinWebUrl.replace("'", "''") + "'", StandardCharsets.UTF_8);
-        String path = "v1.0/users/" + userId + "/onlineMeetings?$filter=" + filter;
+        String path = "v1.0/users/" + organizer + "/onlineMeetings?$filter=" + filter;
         var response = http.send(token -> http.authorizedGet(path, token));
         try {
             JsonNode value = objectMapper.readTree(response.body()).path("value");
@@ -50,7 +62,8 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
     @Override
     public Optional<OnlineMeetingMetadata> getByMeetingId(UUID tenantId, String userId, String meetingId) {
         Objects.requireNonNull(meetingId, "meetingId");
-        String path = "v1.0/users/" + userId + "/onlineMeetings/" + meetingId;
+        String organizer = organizerFromMeetingId(meetingId).orElse(userId);
+        String path = "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId;
         var response = http.send(token -> http.authorizedGet(path, token));
         try {
             return Optional.of(parseMeeting(objectMapper.readTree(response.body())));
@@ -67,7 +80,8 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
     @Override
     public List<ParticipantMetadata> listParticipants(UUID tenantId, String userId, String meetingId) {
         Objects.requireNonNull(meetingId, "meetingId");
-        String path = "v1.0/users/" + userId + "/onlineMeetings/" + meetingId + "/attendanceReports";
+        String organizer = organizerFromMeetingId(meetingId).orElse(userId);
+        String path = "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId + "/attendanceReports";
         var response = http.send(token -> http.authorizedGet(path, token));
         try {
             List<ParticipantMetadata> participants = new ArrayList<>();
@@ -110,7 +124,11 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
     public void enableTranscription(UUID tenantId, String userId, String meetingId) {
         Objects.requireNonNull(meetingId, "meetingId");
         var body = objectMapper.createObjectNode();
+        // allowTranscription only permits it; recordAutomatically makes Teams auto-start
+        // recording + transcription when the meeting begins, so operators never have to
+        // remember to click "Start transcription".
         body.put("allowTranscription", true);
+        body.put("recordAutomatically", true);
         http.send(token -> http.authorizedJson(
                 "v1.0/users/" + userId + "/onlineMeetings/" + meetingId,
                 "PATCH",
