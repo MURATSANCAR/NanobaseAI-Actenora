@@ -85,7 +85,7 @@ public class DeliveryModuleConfiguration {
     DeliveryMailProvider smtpMailProvider(
             JavaMailSender mailSender,
             InstantClock clock,
-            @Value("${actenora.delivery.mail.from:hello@nanobase.ai}") String fromAddress,
+            @Value("${actenora.delivery.mail.from:noreply@actenora.local}") String fromAddress,
             @Value("${actenora.delivery.mail.from-display-name:Nanobase Actenora}") String fromDisplayName
     ) {
         return new SmtpMailProvider(mailSender, fromAddress, fromDisplayName, clock::now);

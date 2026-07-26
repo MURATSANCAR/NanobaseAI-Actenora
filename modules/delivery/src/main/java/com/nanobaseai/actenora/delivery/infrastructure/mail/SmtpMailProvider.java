@@ -18,7 +18,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * Production SMTP mail provider (Hostinger and similar). Sends HTML body with optional PDF attachment.
+ * Production SMTP mail provider. Sends HTML body with optional PDF attachment.
  */
 public final class SmtpMailProvider implements DeliveryMailProvider {
 
