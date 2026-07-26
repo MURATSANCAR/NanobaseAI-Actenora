@@ -86,6 +86,19 @@ public final class JdbcApprovalRequestRepository implements ApprovalRequestRepos
         return ids.stream().findFirst().flatMap(id -> findById(tenantId, id));
     }
 
+    @Override
+    public List<ApprovalRequest> listByTenant(TenantId tenantId) {
+        String sql = """
+                SELECT id FROM approval.approval_requests WHERE tenant_id = ?
+                ORDER BY created_at DESC
+                """;
+        List<UUID> ids = jdbc.query(sql, (rs, rowNum) -> rs.getObject("id", UUID.class), tenantId.value());
+        return ids.stream()
+                .map(id -> findById(tenantId, id))
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
     private ApprovalRequest hydrateChildren(ApprovalRequest shell) {
         List<ApprovalStep> steps = loadSteps(shell.id());
         List<ApprovalDecision> decisions = loadDecisions(shell.id());

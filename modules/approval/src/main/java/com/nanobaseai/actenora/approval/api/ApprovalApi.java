@@ -48,6 +48,8 @@ public interface ApprovalApi {
 
     Optional<ApprovalId> findBySubject(UUID tenantId, UUID subjectId);
 
+    List<ApprovalRequestView> listForTenant(UUID tenantId);
+
     UUID raiseDispute(
             UUID tenantId,
             UUID subjectId,

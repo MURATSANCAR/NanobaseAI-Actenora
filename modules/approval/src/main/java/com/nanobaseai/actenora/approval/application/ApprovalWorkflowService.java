@@ -12,6 +12,7 @@ import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -121,6 +122,10 @@ public final class ApprovalWorkflowService {
 
     public Optional<ApprovalRequest> findBySubject(UUID tenantId, UUID subjectId) {
         return approvalRepository.findBySubject(TenantId.of(tenantId), subjectId);
+    }
+
+    public List<ApprovalRequest> listByTenant(UUID tenantId) {
+        return approvalRepository.listByTenant(TenantId.of(tenantId));
     }
 
     public ParticipantDispute raiseDispute(RaiseDisputeCommand command) {

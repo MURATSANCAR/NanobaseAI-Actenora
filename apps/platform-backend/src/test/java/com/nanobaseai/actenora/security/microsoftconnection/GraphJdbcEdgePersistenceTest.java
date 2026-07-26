@@ -92,4 +92,33 @@ class GraphJdbcEdgePersistenceTest {
         assertEquals(1, reloaded.findAllForTenant(tenantId).size());
         assertEquals("sub-restart-1", reloaded.findById(tenantId, "sub-restart-1").orElseThrow().subscriptionId());
     }
+
+    @Test
+    void calendarCursorSurvivesStoreReload() {
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS microsoftconnection.calendar_sync_cursor (
+                  tenant_id UUID NOT NULL,
+                  user_id VARCHAR(320) NOT NULL,
+                  delta_link TEXT,
+                  next_link TEXT,
+                  updated_at TIMESTAMPTZ NOT NULL,
+                  PRIMARY KEY (tenant_id, user_id)
+                )
+                """);
+        var cursors = new com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.JdbcCalendarSyncCursorStore(jdbc);
+        UUID tenantId = UUID.randomUUID();
+        cursors.save(new com.nanobaseai.actenora.microsoftconnection.application.model.CalendarSyncCursor(
+                tenantId,
+                "user@contoso.com",
+                "https://graph.microsoft.com/delta-link",
+                null,
+                Instant.now()
+        ));
+        var reloaded = new com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.JdbcCalendarSyncCursorStore(jdbc);
+        assertTrue(reloaded.find(tenantId, "user@contoso.com").isPresent());
+        assertEquals(
+                "https://graph.microsoft.com/delta-link",
+                reloaded.find(tenantId, "user@contoso.com").orElseThrow().deltaLinkOptional().orElseThrow()
+        );
+    }
 }

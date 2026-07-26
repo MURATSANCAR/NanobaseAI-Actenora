@@ -104,6 +104,11 @@ public final class ApprovalApiAdapter implements ApprovalApi {
         return workflow.findBySubject(tenantId, subjectId).map(r -> ApprovalId.of(r.id()));
     }
 
+    @Override
+    public List<ApprovalRequestView> listForTenant(UUID tenantId) {
+        return workflow.listByTenant(tenantId).stream().map(ApprovalApiAdapter::toView).toList();
+    }
+
     private static ApprovalRequestView toView(ApprovalRequest request) {
         return new ApprovalRequestView(
                 ApprovalId.of(request.id()),

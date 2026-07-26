@@ -51,3 +51,5 @@ Milestones A–F close the real Microsoft Graph → meeting note loop without mo
 ./mvnw -pl apps/platform-backend -am -DskipTests compile
 ./scripts/acceptance-graph-sandbox.sh   # against running graph-sandbox profile
 ```
+
+Hardened after gap pass: tenant unmapped throws `GRAPH_TENANT_UNMAPPED`; JoinWebUrl resolves onlineMeeting id; AI worker polls `executeNext`; sandbox AI defaults non-mock; cross-tenant meeting reads return 403.

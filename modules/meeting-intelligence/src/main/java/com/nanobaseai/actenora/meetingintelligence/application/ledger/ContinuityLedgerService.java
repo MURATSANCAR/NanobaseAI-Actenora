@@ -490,6 +490,12 @@ public final class ContinuityLedgerService {
                 .toList();
     }
 
+    public List<LedgerProjectionState.TrackedActionItem> listOpenActionItems(TenantId tenantId) {
+        return projectionRepository.getOrCreate(tenantId).actionItems().stream()
+                .filter(item -> !item.status().isTerminal())
+                .toList();
+    }
+
     public List<ContradictionCandidate> listContradictions(TenantId tenantId) {
         return List.copyOf(projectionRepository.getOrCreate(tenantId).contradictions());
     }

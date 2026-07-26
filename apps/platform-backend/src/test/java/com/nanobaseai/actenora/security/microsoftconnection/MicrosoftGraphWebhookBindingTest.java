@@ -95,6 +95,37 @@ class MicrosoftGraphWebhookBindingTest {
         CalendarMeetingUpsertAdapter upsertAdapter =
                 new CalendarMeetingUpsertAdapter(meetingApi, new FixedTenantContext(TenantId.random(), UUID.randomUUID()));
         TenantApi tenantApi = org.mockito.Mockito.mock(TenantApi.class);
+        org.mockito.Mockito.when(tenantApi.findById(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> {
+            TenantId id = inv.getArgument(0);
+            return Optional.of(new com.nanobaseai.actenora.tenant.api.TenantView(
+                    id,
+                    "sandbox",
+                    com.nanobaseai.actenora.tenant.domain.TenantStatus.ACTIVE,
+                    "UTC",
+                    "en",
+                    365,
+                    id.value().toString(),
+                    java.time.Instant.now(),
+                    java.time.Instant.now(),
+                    0L
+            ));
+        });
+        org.mockito.Mockito.when(tenantApi.findByEntraTenantId(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(inv -> {
+                    TenantId id = TenantId.random();
+                    return Optional.of(new com.nanobaseai.actenora.tenant.api.TenantView(
+                            id,
+                            "sandbox",
+                            com.nanobaseai.actenora.tenant.domain.TenantStatus.ACTIVE,
+                            "UTC",
+                            "en",
+                            365,
+                            inv.getArgument(0),
+                            java.time.Instant.now(),
+                            java.time.Instant.now(),
+                            0L
+                    ));
+                });
         return new GraphChangeNotificationProcessor(api, upsertAdapter, tenantApi, emptyOutboxProvider());
     }
 

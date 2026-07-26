@@ -152,8 +152,11 @@ public class PortalApiController {
         List<MeetingSummaryView> recent = toSummaries(
                 meetingApi.listMeetings(new CursorPageRequest(null, null, null, 5)).items()
         );
+        int pendingApprovals = countPendingApprovals(principal.tenantId().value());
+        int openActions = ledgerApi.listOpenActionItems(principal.tenantId()).size();
         int overdue = ledgerApi.overdueCommitments(principal.tenantId()).size();
-        return new DashboardView(0, 0, overdue, 0, recent);
+        int runningJobs = operationsApi.map(ops -> (int) ops.queueDashboard().aiQueueDepth()).orElse(0);
+        return new DashboardView(pendingApprovals, openActions, overdue, runningJobs, recent);
     }
 
     @GetMapping("/meetings")
@@ -405,9 +408,14 @@ public class PortalApiController {
             @RequestParam(value = "limit", required = false) Integer limit,
             HttpServletResponse response
     ) {
-        require(Permission.MEETING_READ);
-        markStub(response);
-        return page(List.of(), cursor, limit);
+        AuthenticatedPrincipal principal = require(Permission.MEETING_READ);
+        List<ActionItemView> items = ledgerApi.listOpenActionItems(principal.tenantId()).stream()
+                .map(PortalApiController::toActionItemView)
+                .toList();
+        if (items.isEmpty()) {
+            markStub(response);
+        }
+        return page(items, cursor, limit);
     }
 
     @PostMapping("/actions/{actionId}/complete")
@@ -559,6 +567,27 @@ public class PortalApiController {
         if (response != null) {
             response.setHeader(COMPOSITION_STUB_HEADER, "stub");
         }
+    }
+
+    private int countPendingApprovals(UUID tenantId) {
+        return (int) approvalApi.listForTenant(tenantId).stream()
+                .filter(view -> view.status() == ApprovalRequestStatus.PENDING
+                        || view.status() == ApprovalRequestStatus.CHANGES_REQUESTED)
+                .count();
+    }
+
+    private static ActionItemView toActionItemView(
+            com.nanobaseai.actenora.meetingintelligence.domain.ledger.projection.LedgerProjectionState.TrackedActionItem item
+    ) {
+        return new ActionItemView(
+                item.id(),
+                item.meetingOccurrenceId(),
+                item.text(),
+                item.status().name(),
+                "unknown",
+                null,
+                List.of()
+        );
     }
 
     private TeamsSettingsView buildTeamsSettings(UUID tenantId, HttpServletResponse response) {
@@ -774,8 +803,13 @@ public class PortalApiController {
     @ExceptionHandler(ActenoraException.class)
     public ResponseEntity<ProblemDetail> handle(ActenoraException ex) {
         HttpStatus status = switch (ex.code()) {
-            case "ACTION_NOT_FOUND", "INTELLIGENCE_RESOURCE_NOT_FOUND", "MEETING_NOTE_NOT_FOUND"
-                    -> HttpStatus.NOT_FOUND;
+            case "ACTION_NOT_FOUND",
+                 "INTELLIGENCE_RESOURCE_NOT_FOUND",
+                 "MEETING_NOTE_NOT_FOUND",
+                 "MEETING_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+            case "UNAUTHORIZED_MEETING_ACCESS",
+                 "PRIVATE_NOTE_ACCESS_DENIED",
+                 "PRIVATE_NOTE_AI_ACCESS_DENIED" -> HttpStatus.FORBIDDEN;
             case "NOTE_UPDATE_UNAVAILABLE" -> HttpStatus.NOT_IMPLEMENTED;
             default -> HttpStatus.UNPROCESSABLE_ENTITY;
         };

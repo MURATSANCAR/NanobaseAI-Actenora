@@ -105,6 +105,10 @@ public final class ContinuityLedgerApi {
         return service.listOverdueCommitments(tenantId);
     }
 
+    public List<LedgerProjectionState.TrackedActionItem> listOpenActionItems(TenantId tenantId) {
+        return service.listOpenActionItems(tenantId);
+    }
+
     public MeetingBrief generateBrief(TenantId tenantId, UUID targetOccurrenceId) {
         return service.generateBrief(tenantId, targetOccurrenceId);
     }

@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.security.portal;
 
 import com.nanobaseai.actenora.approval.api.ApprovalApi;
+import com.nanobaseai.actenora.approval.api.ApprovalSubjectType;
 import com.nanobaseai.actenora.approval.application.ApprovalWorkflowService;
 import com.nanobaseai.actenora.approval.infrastructure.ApprovalApiAdapter;
 import com.nanobaseai.actenora.approval.infrastructure.InMemoryApprovalRequestRepository;
@@ -83,6 +84,8 @@ class PortalApiBindingTest {
     private UUID userId;
     private PortalApiController controller;
     private MeetingApi meetingApi;
+    private ContinuityLedgerService ledgerService;
+    private ApprovalApi approvalApi;
 
     @BeforeEach
     void setUp() {
@@ -109,13 +112,14 @@ class PortalApiBindingTest {
         );
         meetingApi = new MeetingApiFacade(meetingService, businessContexts);
 
-        ContinuityLedgerApi ledgerApi = new ContinuityLedgerApi(new ContinuityLedgerService(
+        ledgerService = new ContinuityLedgerService(
                 new InMemoryLedgerEventStore(),
                 new InMemoryLedgerProjectionRepository(),
                 Clock.systemUTC()
-        ));
+        );
+        ContinuityLedgerApi ledgerApi = new ContinuityLedgerApi(ledgerService);
 
-        ApprovalApi approvalApi = new ApprovalApiAdapter(
+        approvalApi = new ApprovalApiAdapter(
                 new ApprovalWorkflowService(
                         new InMemoryApprovalRequestRepository(),
                         new InMemoryParticipantDisputeRepository(),
@@ -237,6 +241,36 @@ class PortalApiBindingTest {
         PortalApiController.MeetingDetailView detail = controller.meetingDetail(created.id());
         assertEquals(created.id(), detail.meeting().id());
         assertEquals(1, detail.participants().size());
+    }
+
+    @Test
+    void dashboardCountsPendingApprovalsAndOpenActions() {
+        var ctx = meetingApi.createBusinessContext(new CreateBusinessContextRequest(
+                "PROJECT", "P1", "Context", "ctx"
+        ));
+        Instant start = Instant.parse("2026-07-20T09:00:00Z");
+        MeetingResponse meeting = meetingApi.createMeeting(new CreateMeetingRequest(
+                ctx.id(), null, null, "g1", "i1", start, null, null, null,
+                "standup", MeetingType.STANDALONE, start, start.plusSeconds(3600),
+                ProcessingPriority.NORMAL,
+                List.of(new CreateMeetingRequest.ParticipantInput(
+                        "oid", "Organizer", "org@example.com", "ORGANIZER", false
+                ))
+        ));
+        UUID noteId = UUID.randomUUID();
+        ledgerService.recordActionItem(tenantId, meeting.id(), noteId, "Follow up");
+        approvalApi.openSingleStage(
+                tenantId.value(),
+                ApprovalSubjectType.MEETING_NOTE_VERSION,
+                noteId,
+                userId.toString(),
+                Instant.parse("2026-12-31T00:00:00Z")
+        );
+
+        PortalApiController.DashboardView dashboard = controller.dashboard();
+        assertEquals(1, dashboard.pendingApprovals());
+        assertEquals(1, dashboard.openActions());
+        assertFalse(dashboard.recentMeetings().isEmpty());
     }
 
     @Test

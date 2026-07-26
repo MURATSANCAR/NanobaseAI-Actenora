@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.approval.application.port.ApprovalRequestReposito
 import com.nanobaseai.actenora.approval.domain.ApprovalRequest;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,5 +32,12 @@ public final class InMemoryApprovalRequestRepository implements ApprovalRequestR
                 .filter(r -> r.tenantId().equals(tenantId))
                 .filter(r -> r.subjectId().equals(subjectId))
                 .findFirst();
+    }
+
+    @Override
+    public List<ApprovalRequest> listByTenant(TenantId tenantId) {
+        return byId.values().stream()
+                .filter(r -> r.tenantId().equals(tenantId))
+                .toList();
     }
 }
