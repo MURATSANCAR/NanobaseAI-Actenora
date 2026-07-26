@@ -73,7 +73,9 @@ public class PlatformSecurityConfiguration {
                                     "/actuator/info",
                                     "/actuator/prometheus",
                                     "/api/health",
+                                    "/api/v1/delivery/webhooks",
                                     "/api/v1/delivery/webhooks/**",
+                                    "/api/v1/microsoft/webhooks",
                                     "/api/v1/microsoft/webhooks/**"
                             ).permitAll()
                             .requestMatchers("/api/**").authenticated()
