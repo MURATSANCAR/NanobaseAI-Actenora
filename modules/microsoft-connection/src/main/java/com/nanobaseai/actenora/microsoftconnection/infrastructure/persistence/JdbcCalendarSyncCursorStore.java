@@ -60,4 +60,13 @@ public final class JdbcCalendarSyncCursorStore implements CalendarSyncCursorStor
                 Timestamp.from(cursor.updatedAt())
         );
     }
+
+    @Override
+    public void delete(UUID tenantId, String userId) {
+        jdbc.update(
+                "DELETE FROM microsoftconnection.calendar_sync_cursor WHERE tenant_id = ? AND user_id = ?",
+                tenantId,
+                userId
+        );
+    }
 }

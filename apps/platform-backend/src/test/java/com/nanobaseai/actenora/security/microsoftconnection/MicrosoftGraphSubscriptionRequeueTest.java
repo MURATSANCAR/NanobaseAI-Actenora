@@ -33,7 +33,8 @@ class MicrosoftGraphSubscriptionRequeueTest {
                 mock(MicrosoftConnectionApi.class),
                 workStore,
                 mock(GraphMailboxSyncService.class),
-                new MicrosoftGraphSpringProperties());
+                new MicrosoftGraphSpringProperties(),
+                true);
         tenantId = UUID.randomUUID();
         meetingId = UUID.randomUUID();
         TenantSecurityContext.set(new AuthenticatedPrincipal(

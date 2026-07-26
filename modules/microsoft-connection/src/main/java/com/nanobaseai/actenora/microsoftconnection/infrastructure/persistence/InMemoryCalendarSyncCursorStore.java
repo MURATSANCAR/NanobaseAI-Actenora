@@ -24,6 +24,11 @@ public final class InMemoryCalendarSyncCursorStore implements CalendarSyncCursor
         byKey.put(key(cursor.tenantId(), cursor.userId()), cursor);
     }
 
+    @Override
+    public void delete(UUID tenantId, String userId) {
+        byKey.remove(key(tenantId, userId));
+    }
+
     private static String key(UUID tenantId, String userId) {
         return tenantId + "|" + userId;
     }

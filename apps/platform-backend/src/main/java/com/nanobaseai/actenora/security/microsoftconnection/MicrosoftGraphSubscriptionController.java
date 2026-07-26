@@ -8,6 +8,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscr
 import com.nanobaseai.actenora.microsoftconnection.application.model.SubscriptionCreateRequest;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,17 +37,20 @@ public class MicrosoftGraphSubscriptionController {
     private final TranscriptPollWorkStore transcriptPollWorkStore;
     private final GraphMailboxSyncService graphMailboxSyncService;
     private final MicrosoftGraphSpringProperties graphProperties;
+    private final boolean recoverEmptyDelta;
 
     public MicrosoftGraphSubscriptionController(
             MicrosoftConnectionApi microsoftConnectionApi,
             TranscriptPollWorkStore transcriptPollWorkStore,
             GraphMailboxSyncService graphMailboxSyncService,
-            MicrosoftGraphSpringProperties graphProperties
+            MicrosoftGraphSpringProperties graphProperties,
+            @Value("${actenora.microsoft-graph.mailbox-sync-recover-empty-delta:true}") boolean recoverEmptyDelta
     ) {
         this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi);
         this.transcriptPollWorkStore = Objects.requireNonNull(transcriptPollWorkStore);
         this.graphMailboxSyncService = Objects.requireNonNull(graphMailboxSyncService);
         this.graphProperties = Objects.requireNonNull(graphProperties);
+        this.recoverEmptyDelta = recoverEmptyDelta;
     }
 
     @GetMapping
@@ -87,8 +91,9 @@ public class MicrosoftGraphSubscriptionController {
                     "GRAPH_MAILBOX_NOT_CONFIGURED",
                     "actenora.microsoft-graph.default-mailbox-user-id is required");
         }
-        GraphMailboxSyncService.SyncResult result = graphMailboxSyncService.syncMailbox(tenantId, mailboxUserId);
-        return new MailboxSyncView(result.mailboxUserId(), result.eventsSynced());
+        GraphMailboxSyncService.SyncResult result =
+                graphMailboxSyncService.syncMailbox(tenantId, mailboxUserId, recoverEmptyDelta);
+        return new MailboxSyncView(result.mailboxUserId(), result.eventsSynced(), result.recoveredFromEmptyDelta());
     }
 
     @PostMapping("/renew-expiring")
@@ -111,7 +116,7 @@ public class MicrosoftGraphSubscriptionController {
         }
     }
 
-    public record MailboxSyncView(String mailboxUserId, int eventsSynced) {
+    public record MailboxSyncView(String mailboxUserId, int eventsSynced, boolean recoveredFromEmptyDelta) {
     }
 
     public record CreateSubscriptionBody(

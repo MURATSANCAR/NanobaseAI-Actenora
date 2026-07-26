@@ -13,4 +13,6 @@ public interface CalendarSyncCursorStore {
     Optional<CalendarSyncCursor> find(UUID tenantId, String userId);
 
     void save(CalendarSyncCursor cursor);
+
+    void delete(UUID tenantId, String userId);
 }

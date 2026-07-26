@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -36,9 +37,26 @@ public class MicrosoftConnectionPlatformConfiguration {
     @Bean
     GraphMailboxSyncService graphMailboxSyncService(
             MicrosoftConnectionApi microsoftConnectionApi,
-            CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter
+            CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter,
+            com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore calendarSyncCursorStore
     ) {
-        return new GraphMailboxSyncService(microsoftConnectionApi, calendarMeetingUpsertAdapter);
+        return new GraphMailboxSyncService(microsoftConnectionApi, calendarMeetingUpsertAdapter, calendarSyncCursorStore);
+    }
+
+    @Bean
+    GraphSubscribedMailboxResolver graphSubscribedMailboxResolver(
+            SubscriptionStore subscriptionStore,
+            MicrosoftGraphSpringProperties graphProperties
+    ) {
+        return new GraphSubscribedMailboxResolver(subscriptionStore, graphProperties);
+    }
+
+    @Bean
+    GraphMailboxSyncRunner graphMailboxSyncRunner(
+            GraphSubscribedMailboxResolver graphSubscribedMailboxResolver,
+            GraphMailboxSyncService graphMailboxSyncService
+    ) {
+        return new GraphMailboxSyncRunner(graphSubscribedMailboxResolver, graphMailboxSyncService);
     }
 
     @Bean
@@ -143,6 +161,21 @@ public class MicrosoftConnectionPlatformConfiguration {
 
     @Bean
     @Lazy
+    @ConditionalOnExpression("'${actenora.microsoft-graph.workers-enabled:true}' == 'true' && '${actenora.microsoft-graph.mailbox-sync-enabled:true}' == 'true'")
+    GraphPeriodicMailboxSyncWorker graphPeriodicMailboxSyncWorker(
+            GraphMailboxSyncRunner graphMailboxSyncRunner,
+            GraphWorkerLeaseStore leaseStore,
+            @Value("${actenora.microsoft-graph.mailbox-sync-recover-empty-delta:true}") boolean recoverEmptyDelta
+    ) {
+        return new GraphPeriodicMailboxSyncWorker(
+                graphMailboxSyncRunner,
+                leaseStore,
+                recoverEmptyDelta,
+                UUID.randomUUID().toString());
+    }
+
+    @Bean
+    @Lazy
     @ConditionalOnProperty(name = "actenora.microsoft-graph.workers-enabled", havingValue = "true", matchIfMissing = true)
     GraphReconciliationScheduledWorker graphReconciliationScheduledWorker(
             MicrosoftConnectionApi api,
@@ -186,6 +219,39 @@ public class MicrosoftConnectionPlatformConfiguration {
                 scheduler.runScheduledFallback(now);
             } finally {
                 leaseStore.release("teams-transcript-poll", ownerId, Instant.now());
+            }
+        }
+    }
+
+    static final class GraphPeriodicMailboxSyncWorker {
+
+        private final GraphMailboxSyncRunner syncRunner;
+        private final GraphWorkerLeaseStore leaseStore;
+        private final boolean recoverEmptyDelta;
+        private final String ownerId;
+
+        GraphPeriodicMailboxSyncWorker(
+                GraphMailboxSyncRunner syncRunner,
+                GraphWorkerLeaseStore leaseStore,
+                boolean recoverEmptyDelta,
+                String ownerId
+        ) {
+            this.syncRunner = Objects.requireNonNull(syncRunner);
+            this.leaseStore = Objects.requireNonNull(leaseStore);
+            this.recoverEmptyDelta = recoverEmptyDelta;
+            this.ownerId = Objects.requireNonNull(ownerId);
+        }
+
+        @Scheduled(fixedDelayString = "${actenora.microsoft-graph.mailbox-sync-interval:PT15M}")
+        void syncMailboxes() {
+            Instant now = Instant.now();
+            if (!leaseStore.tryAcquire("graph-mailbox-sync", ownerId, now, Duration.ofMinutes(14))) {
+                return;
+            }
+            try {
+                syncRunner.syncAll("periodic", recoverEmptyDelta);
+            } finally {
+                leaseStore.release("graph-mailbox-sync", ownerId, Instant.now());
             }
         }
     }
