@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi;
 import com.nanobaseai.actenora.aiprocessing.api.AiProcessingProblemDetails;
 import com.nanobaseai.actenora.aiprocessing.api.MultiModelRoutingApi;
 import com.nanobaseai.actenora.aiprocessing.api.MultiModelRoutingDtos;
+import com.nanobaseai.actenora.aiprocessing.application.execution.AiJobInferenceExecutor;
 import com.nanobaseai.actenora.aiprocessing.application.port.AdmissionController;
 import com.nanobaseai.actenora.aiprocessing.application.port.JobScheduler;
 import com.nanobaseai.actenora.aiprocessing.application.port.TenantAiPolicyPort;
@@ -49,17 +50,20 @@ public class AiProcessingController {
 
     private final AiProcessingApi aiProcessingApi;
     private final MultiModelRoutingApi multiModelRoutingApi;
+    private final AiJobInferenceExecutor inferenceExecutor;
     private final TenantAiPolicyPort tenantAiPolicy;
     private final IdentityApi identityApi;
 
     public AiProcessingController(
             AiProcessingApi aiProcessingApi,
             MultiModelRoutingApi multiModelRoutingApi,
+            AiJobInferenceExecutor inferenceExecutor,
             TenantAiPolicyPort tenantAiPolicy,
             IdentityApi identityApi
     ) {
         this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
         this.multiModelRoutingApi = Objects.requireNonNull(multiModelRoutingApi, "multiModelRoutingApi");
+        this.inferenceExecutor = Objects.requireNonNull(inferenceExecutor, "inferenceExecutor");
         this.tenantAiPolicy = Objects.requireNonNull(tenantAiPolicy, "tenantAiPolicy");
         this.identityApi = Objects.requireNonNull(identityApi, "identityApi");
     }
@@ -125,6 +129,16 @@ public class AiProcessingController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
+    @PostMapping("/ai-jobs/execute-next")
+    @RequiresPermission(Permission.OPERATIONS_MANAGE)
+    public ResponseEntity<ExecutionView> executeNext() {
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
+        identityApi.requirePermission(principal, Permission.OPERATIONS_MANAGE);
+        return inferenceExecutor.executeNext(Instant.now())
+                .map(outcome -> ResponseEntity.ok(ExecutionView.from(outcome)))
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
     @PostMapping("/ai-jobs/{jobId}/admin-override")
     @RequiresPermission(Permission.MODEL_CONTROL)
     public AiJobView adminOverride(@PathVariable UUID jobId, @RequestBody AdminOverrideRequest body) {
@@ -167,6 +181,37 @@ public class AiProcessingController {
         return multiModelRoutingApi.routeJob(command);
     }
 
+    @GetMapping("/ai-routing/jobs/{jobId}/decisions")
+    @RequiresPermission(Permission.OPERATIONS_MANAGE)
+    public List<MultiModelRoutingDtos.RoutingDecisionView> routingDecisions(@PathVariable UUID jobId) {
+        requireOwnedJob(jobId);
+        return multiModelRoutingApi.listRoutingDecisions(jobId);
+    }
+
+    @GetMapping("/ai-routing/jobs/{jobId}/provenance")
+    @RequiresPermission(Permission.OPERATIONS_MANAGE)
+    public List<MultiModelRoutingDtos.ProvenanceView> routingProvenance(@PathVariable UUID jobId) {
+        requireOwnedJob(jobId);
+        return multiModelRoutingApi.listProvenance(jobId);
+    }
+
+    @GetMapping("/ai-routing/jobs/{jobId}/shadow")
+    @RequiresPermission(Permission.OPERATIONS_MANAGE)
+    public ResponseEntity<MultiModelRoutingDtos.ShadowExecutionView> routingShadow(@PathVariable UUID jobId) {
+        requireOwnedJob(jobId);
+        return multiModelRoutingApi.findShadow(jobId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @GetMapping("/ai-routing/model-quality")
+    @RequiresPermission(Permission.OPERATIONS_MANAGE)
+    public List<MultiModelRoutingDtos.ModelQualityMetricsView> modelQuality() {
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
+        identityApi.requirePermission(principal, Permission.OPERATIONS_MANAGE);
+        return multiModelRoutingApi.modelQualityMetrics();
+    }
+
     @ExceptionHandler(AiJobException.class)
     public ResponseEntity<String> handleAiJob(AiJobException ex, HttpServletRequest request) {
         AiProcessingProblemDetails problem =
@@ -174,6 +219,15 @@ public class AiProcessingController {
         return ResponseEntity.status(problem.status())
                 .contentType(MediaType.parseMediaType(AiProcessingProblemDetails.MEDIA_TYPE))
                 .body(problem.toJson());
+    }
+
+    private AiJob requireOwnedJob(UUID jobId) {
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
+        identityApi.requirePermission(principal, Permission.OPERATIONS_MANAGE);
+        AiJob job = aiProcessingApi.findJob(jobId)
+                .orElseThrow(() -> AiJobException.notFound("Job not found: " + jobId));
+        assertSameTenant(principal, job.tenantId());
+        return job;
     }
 
     private static void assertSameTenant(AuthenticatedPrincipal principal, UUID jobTenantId) {
@@ -230,6 +284,30 @@ public class AiProcessingController {
                     decision.job() == null ? null : AiJobView.from(decision.job()),
                     wait.toSeconds(),
                     decision.rejectReason()
+            );
+        }
+    }
+
+    public record ExecutionView(
+            UUID jobId,
+            UUID attemptId,
+            String jobStatus,
+            boolean succeeded,
+            long latencyMs,
+            String failureCategory,
+            boolean retryable,
+            UUID meetingNoteId
+    ) {
+        static ExecutionView from(AiJobInferenceExecutor.ExecutionOutcome outcome) {
+            return new ExecutionView(
+                    outcome.jobId(),
+                    outcome.attemptId(),
+                    outcome.jobStatus().name(),
+                    outcome.succeeded(),
+                    outcome.latencyMs(),
+                    outcome.failure().map(Enum::name).orElse(null),
+                    outcome.retryable(),
+                    outcome.meetingNoteIdOptional().orElse(null)
             );
         }
     }

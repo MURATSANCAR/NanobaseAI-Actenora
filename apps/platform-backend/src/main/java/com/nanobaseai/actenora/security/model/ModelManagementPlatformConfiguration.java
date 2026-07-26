@@ -71,7 +71,7 @@ public class ModelManagementPlatformConfiguration {
     }
 
     /**
-     * Prefers healthy ENABLED registry deployments; falls back to bootstrap seed catalog.
+     * Prefers registry deployments (including unhealthy for failover); falls back to bootstrap seed catalog.
      */
     public static final class PreferRegistryLocalDeploymentCatalog implements LocalDeploymentCatalogPort {
 

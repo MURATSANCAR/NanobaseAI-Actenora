@@ -1,0 +1,88 @@
+package com.nanobaseai.actenora.security.approval;
+
+import com.nanobaseai.actenora.approval.api.ApprovalApi;
+import com.nanobaseai.actenora.approval.application.ApprovalWorkflowService;
+import com.nanobaseai.actenora.approval.application.port.ApprovalAuditPort;
+import com.nanobaseai.actenora.approval.application.port.ApprovalRequestRepository;
+import com.nanobaseai.actenora.approval.application.port.ParticipantDisputeRepository;
+import com.nanobaseai.actenora.approval.infrastructure.ApprovalApiAdapter;
+import com.nanobaseai.actenora.approval.infrastructure.InMemoryApprovalRequestRepository;
+import com.nanobaseai.actenora.approval.infrastructure.InMemoryParticipantDisputeRepository;
+import com.nanobaseai.actenora.audit.api.AuditApi;
+import com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteLedgerPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+import java.time.Clock;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * FAZ 18 — Approval (InMemory) + MeetingNoteApprovalService wiring.
+ * FAZ 27 — Approved note artifacts → continuity ledger handoff.
+ */
+@Configuration
+public class ApprovalPlatformConfiguration {
+
+    @Bean
+    public ApprovalRequestRepository inMemoryApprovalRequestRepository() {
+        return new InMemoryApprovalRequestRepository();
+    }
+
+    @Bean
+    public ParticipantDisputeRepository inMemoryParticipantDisputeRepository() {
+        return new InMemoryParticipantDisputeRepository();
+    }
+
+    @Bean
+    @Primary
+    public ApprovalAuditPort auditBackedApprovalAuditPort(AuditApi auditApi) {
+        return (tenantId, actorId, action, resourceType, resourceId, metadata, occurredAt) ->
+                auditApi.append(
+                        tenantId,
+                        actorId == null ? "system" : actorId,
+                        action,
+                        resourceType,
+                        resourceId == null ? UUID.randomUUID() : resourceId,
+                        metadata == null ? Map.of() : metadata,
+                        occurredAt
+                );
+    }
+
+    @Bean
+    public ApprovalWorkflowService approvalWorkflowService(
+            ApprovalRequestRepository requests,
+            ParticipantDisputeRepository disputes,
+            ApprovalAuditPort auditPort
+    ) {
+        return new ApprovalWorkflowService(requests, disputes, auditPort, Clock.systemUTC());
+    }
+
+    @Bean
+    public ApprovalApi approvalApi(ApprovalWorkflowService workflow) {
+        return new ApprovalApiAdapter(workflow);
+    }
+
+    @Bean
+    public MeetingNoteApprovalService meetingNoteApprovalService(
+            MeetingNoteRepository notes,
+            MeetingNoteVersionRepository versions,
+            ApprovalApi approvalApi,
+            MeetingIntelligenceAuditPort auditPort,
+            ApprovedNoteLedgerPort approvedNoteLedgerPort
+    ) {
+        return new MeetingNoteApprovalService(
+                notes,
+                versions,
+                approvalApi,
+                auditPort,
+                approvedNoteLedgerPort,
+                Clock.systemUTC()
+        );
+    }
+}

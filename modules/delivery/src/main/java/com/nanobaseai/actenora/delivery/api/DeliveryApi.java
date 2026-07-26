@@ -16,9 +16,17 @@ import java.util.UUID;
 public interface DeliveryApi {
 
     /**
-     * FAZ 18 gate: creates a READY delivery order only when approval is granted for the note version.
+     * FAZ 19 gate: creates (or returns existing) READY delivery order when approval is granted
+     * for the note version. Idempotent on (tenant, approvalId, noteVersionId, channel).
      */
-    UUID requestExternalDelivery(UUID tenantId, ApprovalId approvalId, UUID noteVersionId, String channel);
+    DeliveryOrderView requestExternalDelivery(
+            UUID tenantId,
+            ApprovalId approvalId,
+            UUID noteVersionId,
+            String channel
+    );
+
+    Optional<DeliveryOrderView> getOrder(UUID tenantId, UUID orderId);
 
     /**
      * FAZ 20: enqueue idempotent per-recipient mail dispatches for an approved note version.

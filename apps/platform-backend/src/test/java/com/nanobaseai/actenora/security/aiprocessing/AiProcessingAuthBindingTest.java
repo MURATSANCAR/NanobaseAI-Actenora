@@ -2,9 +2,17 @@ package com.nanobaseai.actenora.security.aiprocessing;
 
 import com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi;
 import com.nanobaseai.actenora.aiprocessing.api.MultiModelRoutingApi;
+import com.nanobaseai.actenora.aiprocessing.application.execution.AiJobInferenceExecutor;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.ExtractionPipelineService;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalDeploymentCatalogPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProviderLocator;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelCatalogPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.TenantAiPolicyPort;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.LocalProviderModelRuntimeAdapter;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.Qwen27BModelAdapter;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.llm.MockLocalProvider;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.InMemoryTranscriptSegmentSource;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.job.JobPriority;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.FallbackStep;
@@ -69,6 +77,10 @@ class AiProcessingAuthBindingTest {
     private ModelRegistryService registry;
     private PolicyApi policyApi;
     private InstantClock clock;
+    private InMemoryModelDefinitionRepository models;
+    private MockLocalProvider provider;
+    private AiJobInferenceExecutor executor;
+    private InMemoryTranscriptSegmentSource segmentSource;
 
     @BeforeEach
     void setUp() {
@@ -77,7 +89,7 @@ class AiProcessingAuthBindingTest {
         Clock fixed = Clock.fixed(NOW, ZoneOffset.UTC);
         clock = new InstantClock(fixed);
 
-        InMemoryModelDefinitionRepository models = new InMemoryModelDefinitionRepository();
+        models = new InMemoryModelDefinitionRepository();
         InMemoryModelDeploymentRepository deployments = new InMemoryModelDeploymentRepository();
         DeploymentHealthSettings health = new DeploymentHealthSettings(Duration.ofSeconds(30));
 
@@ -135,9 +147,26 @@ class AiProcessingAuthBindingTest {
         );
         multiModelRoutingApi = config.multiModelRoutingApi(routingService, decisionStore, shadowStore, quality);
 
+        provider = new MockLocalProvider(2, true, Set.of("local-final", Qwen27BModelAdapter.SERVED_MODEL_ID));
+        segmentSource = new InMemoryTranscriptSegmentSource();
+        var pipeline = ExtractionPipelineService.create(
+                config.inMemoryPromptRegistry(),
+                LocalProviderModelRuntimeAdapter.qwen27B(provider, UUID.randomUUID()));
+        executor = new AiJobInferenceExecutor(
+                jobService,
+                LocalModelProviderLocator.single(provider),
+                config.promptRegistryInferenceInputResolver(config.inMemoryPromptRegistry()),
+                config.registryServedModelResolver(models),
+                pipeline,
+                segmentSource,
+                config.jobRoutingCoordinator(routingService, tenantAiPolicy, new AiRoutingProperties()),
+                3,
+                600
+        );
+
         IdentityApi identityApi = stubIdentityApi();
         controller = new AiProcessingController(
-                aiProcessingApi, multiModelRoutingApi, tenantAiPolicy, identityApi);
+                aiProcessingApi, multiModelRoutingApi, executor, tenantAiPolicy, identityApi);
     }
 
     @AfterEach
@@ -260,6 +289,160 @@ class AiProcessingAuthBindingTest {
                         .orElseThrow()
                         .deploymentKey());
         assertFalse(multiModelRoutingApi.listProvenance(decision.jobId()).isEmpty());
+    }
+
+    @Test
+    void submittedJobIsExecutedOnLocalProviderThroughHttpSurface() {
+        ActorPrincipal admin = ActorPrincipal.operationsAdmin(userId);
+        registry.registerModel(admin, registerModel("local-final", 0.95));
+        registry.configureCapability(admin, "local-final", new ConfigureCapabilityCommand(
+                ModelCapabilityType.FINAL_NOTE, 0.95, 0.7, 0, true));
+        registry.registerDeployment(admin, deployment("local-final", "final-a"));
+        registry.heartbeat(admin, "final-a");
+        provider.setResponse("{\"note\":\"ok\"}");
+
+        bindPrincipal(Set.of(
+                Permission.MEETING_WRITE.code(),
+                Permission.MEETING_READ.code(),
+                Permission.OPERATIONS_MANAGE.code()));
+        var submitted = controller.submit(new AiProcessingController.SubmitAiJobRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "FINAL_NOTE",
+                JobPriority.NORMAL,
+                AiCapability.FINAL_NOTE,
+                "prompt-v1",
+                "schema-v1",
+                "tr",
+                1000,
+                null,
+                UUID.randomUUID()
+        )).getBody();
+        assertNotNull(submitted);
+
+        var execution = controller.executeNext().getBody();
+
+        assertNotNull(execution);
+        assertTrue(execution.succeeded());
+        assertEquals(submitted.job().id(), execution.jobId());
+        assertEquals("SUCCEEDED", execution.jobStatus());
+        assertEquals("SUCCEEDED", controller.find(submitted.job().id()).status());
+    }
+
+    @Test
+    void extractionJobRunsPipelineThroughExecuteNext() {
+        ActorPrincipal admin = ActorPrincipal.operationsAdmin(userId);
+        registry.registerModel(admin, registerModel("local-extract", 0.9));
+        registry.configureCapability(admin, "local-extract", new ConfigureCapabilityCommand(
+                ModelCapabilityType.TRANSCRIPT_EXTRACTION, 0.9, 0.8, 0, true));
+        registry.registerDeployment(admin, deployment("local-extract", "extract-a"));
+        registry.heartbeat(admin, "extract-a");
+
+        UUID transcriptId = UUID.randomUUID();
+        segmentSource.put(tenantId, transcriptId, List.of(
+                new SegmentInput("seg-1", 0, "Alice", 0, 1000, "We decided to ship Friday.", true)
+        ));
+        provider.setResponse("""
+                {
+                  "topics": [{"text":"Delivery","evidenceSegmentIds":["seg-1"],"confidence":0.9}],
+                  "decisions": [{"text":"Ship Friday","evidenceSegmentIds":["seg-1"],"confidence":0.9}],
+                  "actionItems": [],
+                  "risks": [],
+                  "openQuestions": [],
+                  "commitments": [],
+                  "qualityFlags": [],
+                  "evidenceSegmentIds": ["seg-1"],
+                  "confidence": 0.9
+                }
+                """);
+
+        policyApi.saveOverride(TenantPolicyOverride.builder(tenantId)
+                .modelAccess(new ModelAccessPolicy(Set.of("local-final", "local-extract"), true))
+                .build());
+
+        bindPrincipal(Set.of(
+                Permission.MEETING_WRITE.code(),
+                Permission.MEETING_READ.code(),
+                Permission.OPERATIONS_MANAGE.code()));
+        var submitted = controller.submit(new AiProcessingController.SubmitAiJobRequest(
+                UUID.randomUUID(),
+                transcriptId,
+                "CHUNK_EXTRACTION",
+                JobPriority.NORMAL,
+                AiCapability.TRANSCRIPT_EXTRACTION,
+                "prompt-v1",
+                "schema-v1",
+                "tr",
+                1000,
+                null,
+                UUID.randomUUID()
+        )).getBody();
+        assertNotNull(submitted);
+
+        var execution = controller.executeNext().getBody();
+        assertNotNull(execution);
+        assertTrue(execution.succeeded());
+        assertEquals("SUCCEEDED", execution.jobStatus());
+        assertTrue(execution.latencyMs() >= 0);
+    }
+
+    @Test
+    void executedJobExposesRoutingProvenanceAndQualityMetrics() {
+        ActorPrincipal admin = ActorPrincipal.operationsAdmin(userId);
+        registry.registerModel(admin, registerModel("local-final", 0.95));
+        registry.configureCapability(admin, "local-final", new ConfigureCapabilityCommand(
+                ModelCapabilityType.FINAL_NOTE, 0.95, 0.7, 0, true));
+        registry.registerDeployment(admin, deployment("local-final", "final-a"));
+        registry.heartbeat(admin, "final-a");
+        provider.setResponse("{\"note\":\"ok\"}");
+
+        bindPrincipal(Set.of(
+                Permission.MEETING_WRITE.code(),
+                Permission.MEETING_READ.code(),
+                Permission.OPERATIONS_MANAGE.code()));
+        var submitted = controller.submit(new AiProcessingController.SubmitAiJobRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "FINAL_NOTE",
+                JobPriority.NORMAL,
+                AiCapability.FINAL_NOTE,
+                "prompt-v1",
+                "schema-v1",
+                "tr",
+                1000,
+                null,
+                UUID.randomUUID()
+        )).getBody();
+        assertNotNull(submitted);
+
+        var execution = controller.executeNext().getBody();
+        assertNotNull(execution);
+        assertTrue(execution.succeeded());
+
+        UUID jobId = submitted.job().id();
+        var decisions = controller.routingDecisions(jobId);
+        assertEquals(1, decisions.size());
+        assertEquals(FallbackStep.PRIMARY, decisions.getFirst().fallbackStep());
+        assertEquals("local-final", decisions.getFirst().selectedModelKey().orElseThrow());
+
+        var metrics = controller.modelQuality();
+        assertEquals(1, metrics.size());
+        assertEquals(1, metrics.getFirst().successCount());
+        assertEquals(204, controller.routingShadow(jobId).getStatusCode().value());
+    }
+
+    @Test
+    void routingProvenanceIsDeniedForForeignTenantJob() {
+        bindPrincipal(Set.of(Permission.OPERATIONS_MANAGE.code()));
+        assertThrows(
+                com.nanobaseai.actenora.aiprocessing.domain.job.AiJobException.class,
+                () -> controller.routingDecisions(UUID.randomUUID()));
+    }
+
+    @Test
+    void executeNextReturnsNoContentOnEmptyQueue() {
+        bindPrincipal(Set.of(Permission.OPERATIONS_MANAGE.code()));
+        assertEquals(204, controller.executeNext().getStatusCode().value());
     }
 
     @Test

@@ -244,6 +244,7 @@ class DeliveryDispatcherServiceTest {
 
         DeliveryStatus delivered = dispatcher.confirmDelivered(tenant.value(), request.id());
         assertEquals(DeliveryStatus.DELIVERED, delivered);
+        assertEquals(DeliveryStatus.DELIVERED, dispatcher.confirmDelivered(tenant.value(), request.id()));
     }
 
     @Test

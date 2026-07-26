@@ -44,6 +44,8 @@ public interface ApprovalApi {
 
     Optional<Long> version(UUID tenantId, ApprovalId approvalId);
 
+    Optional<ApprovalRequestView> get(UUID tenantId, ApprovalId approvalId);
+
     Optional<ApprovalId> findBySubject(UUID tenantId, UUID subjectId);
 
     UUID raiseDispute(

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actenora.nanobase.ai/events/meetingintelligence.NoteApprovedForLedger.v1.json",
+  "title": "NoteApprovedForLedgerV1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["tenantId", "meetingOccurrenceId", "noteId", "noteVersionId"],
+  "properties": {
+    "tenantId": { "type": "string", "format": "uuid" },
+    "meetingOccurrenceId": { "type": "string", "format": "uuid" },
+    "noteId": { "type": "string", "format": "uuid" },
+    "noteVersionId": { "type": "string", "format": "uuid" },
+    "eventId": { "type": "string", "format": "uuid" },
+    "occurredAt": { "type": "string", "format": "date-time" }
+  }
+}

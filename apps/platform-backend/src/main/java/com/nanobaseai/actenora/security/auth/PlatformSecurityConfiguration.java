@@ -75,7 +75,8 @@ public class PlatformSecurityConfiguration {
                             .requestMatchers(
                                     "/actuator/health",
                                     "/actuator/health/**",
-                                    "/actuator/info"
+                                    "/actuator/info",
+                                    "/api/v1/delivery/webhooks/**"
                             ).permitAll()
                             .requestMatchers("/api/**").authenticated()
                             .anyRequest().permitAll())

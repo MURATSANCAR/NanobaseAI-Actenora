@@ -64,8 +64,12 @@ public final class ContinuityLedgerService {
             UUID decisionId,
             String text
     ) {
-        Instant now = clock.instant();
         UUID id = decisionId == null ? UUID.randomUUID() : decisionId;
+        Optional<DecisionHistoryEntry> existing = projectionRepository.getOrCreate(tenantId).decision(id);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        Instant now = clock.instant();
         appendAndProject(LedgerEvent.create(
                 tenantId,
                 LedgerEventType.DECISION_RECORDED,
@@ -113,8 +117,24 @@ public final class ContinuityLedgerService {
             String owner,
             LocalDate dueDate
     ) {
+        return recordCommitment(tenantId, meetingOccurrenceId, noteId, null, text, owner, dueDate);
+    }
+
+    public CommitmentConfirmation recordCommitment(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID noteId,
+            UUID commitmentId,
+            String text,
+            String owner,
+            LocalDate dueDate
+    ) {
+        UUID id = commitmentId == null ? UUID.randomUUID() : commitmentId;
+        Optional<CommitmentConfirmation> existing = projectionRepository.getOrCreate(tenantId).commitment(id);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
         Instant now = clock.instant();
-        UUID id = UUID.randomUUID();
         Map<String, String> payload = new LinkedHashMap<>();
         payload.put("noteId", noteId.toString());
         payload.put("text", text);
@@ -378,7 +398,7 @@ public final class ContinuityLedgerService {
         ContinuityRelationSuggestion decided = projectionRepository.getOrCreate(tenantId)
                 .suggestion(suggestionId)
                 .orElseThrow();
-        return approve ? Optional.of(decided) : Optional.empty();
+        return Optional.of(decided);
     }
 
     public ContradictionCandidate proposeContradiction(
@@ -472,6 +492,14 @@ public final class ContinuityLedgerService {
 
     public List<ContradictionCandidate> listContradictions(TenantId tenantId) {
         return List.copyOf(projectionRepository.getOrCreate(tenantId).contradictions());
+    }
+
+    public List<ContinuityRelationSuggestion> listSuggestions(TenantId tenantId) {
+        return List.copyOf(projectionRepository.getOrCreate(tenantId).suggestions());
+    }
+
+    public List<LedgerEvent> listEvents(TenantId tenantId) {
+        return eventStore.findAllByTenant(tenantId);
     }
 
     /**

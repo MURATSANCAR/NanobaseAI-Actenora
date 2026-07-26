@@ -165,6 +165,44 @@ class ContinuityLedgerServiceTest {
     }
 
     @Test
+    void recordWithStableSourceIdsIsIdempotent() {
+        UUID decisionId = UUID.randomUUID();
+        UUID commitmentId = UUID.randomUUID();
+
+        DecisionHistoryEntry firstDecision = service.recordDecision(
+                tenant, occPrevious, notePrevious, decisionId, "Approve budget"
+        );
+        CommitmentConfirmation firstCommitment = service.recordCommitment(
+                tenant,
+                occPrevious,
+                notePrevious,
+                commitmentId,
+                "Pay invoice",
+                "alice",
+                LocalDate.parse("2026-07-10")
+        );
+
+        DecisionHistoryEntry secondDecision = service.recordDecision(
+                tenant, occPrevious, notePrevious, decisionId, "Approve budget"
+        );
+        CommitmentConfirmation secondCommitment = service.recordCommitment(
+                tenant,
+                occPrevious,
+                notePrevious,
+                commitmentId,
+                "Pay invoice",
+                "alice",
+                LocalDate.parse("2026-07-10")
+        );
+
+        assertEquals(firstDecision.decisionId(), secondDecision.decisionId());
+        assertEquals(firstCommitment.commitmentId(), secondCommitment.commitmentId());
+        assertEquals(2, eventStore.findAllByTenant(tenant).size());
+        assertEquals(decisionId, firstDecision.decisionId());
+        assertEquals(commitmentId, firstCommitment.commitmentId());
+    }
+
+    @Test
     void relationSuggestionApproveMaterializesFollowUp_rejectDoesNot() {
         ContinuityRelationSuggestion suggestion = service.recordRelationSuggestion(
                 tenant,
@@ -192,7 +230,8 @@ class ContinuityLedgerServiceTest {
         );
         Optional<ContinuityRelationSuggestion> result =
                 service.decideRelationSuggestion(tenant, rejected.id(), false, "approver-1");
-        assertTrue(result.isEmpty());
+        assertTrue(result.isPresent());
+        assertEquals(ContinuitySuggestionStatus.REJECTED, result.orElseThrow().status());
         assertEquals(
                 ContinuitySuggestionStatus.REJECTED,
                 projections.getOrCreate(tenant).suggestion(rejected.id()).orElseThrow().status()

@@ -162,7 +162,7 @@ public final class ExtractionPipelineService {
                     metrics,
                     ex.category(),
                     ex.getMessage(),
-                    true
+                    isPermanentRunFailure(ex.category())
             );
         } catch (ModelUnavailableException ex) {
             metrics.addDurationMs((System.nanoTime() - pipelineStarted) / 1_000_000L);
@@ -172,9 +172,18 @@ public final class ExtractionPipelineService {
                     metrics,
                     FailureCategory.MODEL_UNAVAILABLE,
                     ex.getMessage(),
-                    true
+                    false
             );
         }
+    }
+
+    /**
+     * Job-level permanence. {@link FailureCategory#MODEL_UNAVAILABLE} is retriable by
+     * the FAZ 13 executor (re-queue); in-chunk {@code INVALID_JSON} retries are exhausted
+     * inside {@link #extractChunkWithRetry} so the run result is permanent.
+     */
+    private static boolean isPermanentRunFailure(FailureCategory category) {
+        return category != FailureCategory.MODEL_UNAVAILABLE;
     }
 
     private ExtractionBundle extractChunkWithRetry(

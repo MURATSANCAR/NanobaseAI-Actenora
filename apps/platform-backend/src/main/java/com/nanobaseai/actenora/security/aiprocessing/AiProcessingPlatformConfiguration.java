@@ -1,33 +1,51 @@
 package com.nanobaseai.actenora.security.aiprocessing;
 
 import com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi;
+import com.nanobaseai.actenora.aiprocessing.api.ExtractionPipelineApi;
 import com.nanobaseai.actenora.aiprocessing.api.MultiModelRoutingApi;
 import com.nanobaseai.actenora.aiprocessing.application.AiJobService;
 import com.nanobaseai.actenora.aiprocessing.application.AiProcessingFacade;
 import com.nanobaseai.actenora.aiprocessing.application.MultiModelRoutingService;
 import com.nanobaseai.actenora.aiprocessing.application.admission.DefaultAdmissionController;
+import com.nanobaseai.actenora.aiprocessing.application.execution.AiJobInferenceExecutor;
+import com.nanobaseai.actenora.aiprocessing.application.execution.MultiModelRoutingJobCoordinator;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.ExtractionPipelineFacade;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.ExtractionPipelineService;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelRuntimePort;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.PromptRegistryPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.AdmissionController;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiAttemptRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiJobRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.AttemptHistoryPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.InferenceInputResolverPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.JobRoutingCoordinatorPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.JobScheduler;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalDeploymentCatalogPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
+import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProviderLocator;
+import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelCatalogPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelRouter;
 import com.nanobaseai.actenora.aiprocessing.application.port.RetryQueuePort;
 import com.nanobaseai.actenora.aiprocessing.application.port.RoutableCandidate;
 import com.nanobaseai.actenora.aiprocessing.application.port.RoutingDecisionStorePort;
+import com.nanobaseai.actenora.aiprocessing.application.port.ServedModelResolverPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ShadowExecutionStorePort;
 import com.nanobaseai.actenora.aiprocessing.application.port.TenantAiPolicyPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.application.routing.CapabilityModelRouter;
 import com.nanobaseai.actenora.aiprocessing.application.scheduling.FairJobScheduler;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.MultiModelRouter;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.LocalProviderModelRuntimeAdapter;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.DefaultModelCatalogBootstrap;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.InMemoryAiAttemptRepository;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.InMemoryAiJobRepository;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.InMemoryModelCatalog;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.prompt.InMemoryPromptRegistry;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.prompt.PromptRegistryInferenceInputResolver;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.routing.DefaultModelRoleBootstrap;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.routing.InMemoryAttemptHistoryStore;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.routing.InMemoryModelQualityMetricsStore;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.routing.InMemoryRetryQueue;
@@ -41,23 +59,135 @@ import com.nanobaseai.actenora.modelmanagement.domain.ModelDefinition;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelDeployment;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelStatus;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
+import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.env.Environment;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * FAZ 12 — wire AI job admission/routing/scheduling and FAZ 15 multi-model façade (InMemory).
+ * FAZ 13 — wire the configured local provider and the claim → infer → complete executor.
+ * FAZ 14 — bind extraction pipeline + transcript segment source into the job path.
+ * FAZ 15 — bind role-based routing, provenance, and quality metrics to the claim → execute path.
+ * FAZ 16 — optional MeetingNoteHandoffPort persists FinalNoteDraft via Meeting Intelligence.
  */
 @Configuration
+@EnableConfigurationProperties({LocalProviderProperties.class, AiRoutingProperties.class})
 public class AiProcessingPlatformConfiguration {
+
+    @Bean
+    LocalModelProvider localModelProvider(LocalProviderProperties properties, Environment environment) {
+        boolean production = Arrays.stream(environment.getActiveProfiles())
+                .map(profile -> profile.toLowerCase(Locale.ROOT))
+                .anyMatch(profile -> profile.equals("prod") || profile.equals("production"));
+        return LocalProviderFactory.create(properties, production);
+    }
+
+    @Bean
+    LocalModelProviderLocator localModelProviderLocator(LocalModelProvider provider) {
+        return LocalModelProviderLocator.single(provider);
+    }
+
+    @Bean
+    PromptRegistryPort inMemoryPromptRegistry() {
+        return new InMemoryPromptRegistry();
+    }
+
+    @Bean
+    InferenceInputResolverPort promptRegistryInferenceInputResolver(PromptRegistryPort promptRegistry) {
+        return new PromptRegistryInferenceInputResolver(promptRegistry);
+    }
+
+    @Bean
+    ServedModelResolverPort registryServedModelResolver(ModelDefinitionRepository modelDefinitions) {
+        return modelDefinitionId -> modelDefinitions.findById(modelDefinitionId)
+                .map(ModelDefinition::servedModelId);
+    }
+
+    @Bean
+    TranscriptSegmentSourcePort transcriptSegmentSource(TranscriptSegmentRepository segments) {
+        return new TranscriptSegmentSourceAdapter(segments);
+    }
+
+    @Bean
+    ModelRuntimePort localModelRuntimePort(
+            LocalModelProvider provider,
+            ModelDefinitionRepository modelDefinitions
+    ) {
+        UUID modelDefinitionId = modelDefinitions.findAll().stream()
+                .filter(definition -> definition.acceptsNewWork())
+                .filter(definition -> definition.supportsCapability(
+                        com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType.TRANSCRIPT_EXTRACTION)
+                        || definition.supportsCapability(
+                        com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType.FINAL_NOTE))
+                .map(ModelDefinition::id)
+                .findFirst()
+                .orElse(DefaultModelRoleBootstrap.QWEN27_FINAL_MODEL_ID);
+        return LocalProviderModelRuntimeAdapter.qwen27B(provider, modelDefinitionId);
+    }
+
+    @Bean
+    ExtractionPipelineService extractionPipelineService(
+            PromptRegistryPort promptRegistry,
+            ModelRuntimePort modelRuntime
+    ) {
+        return ExtractionPipelineService.create(promptRegistry, modelRuntime);
+    }
+
+    @Bean
+    ExtractionPipelineApi extractionPipelineApi(ExtractionPipelineService pipelineService) {
+        return new ExtractionPipelineFacade(pipelineService);
+    }
+
+    @Bean
+    JobRoutingCoordinatorPort jobRoutingCoordinator(
+            MultiModelRoutingService routingService,
+            TenantAiPolicyPort tenantAiPolicy,
+            AiRoutingProperties routingProperties
+    ) {
+        return new MultiModelRoutingJobCoordinator(
+                routingService, tenantAiPolicy, routingProperties.isShadowExecutionEnabled());
+    }
+
+    @Bean
+    AiJobInferenceExecutor aiJobInferenceExecutor(
+            AiJobService aiJobService,
+            LocalModelProviderLocator providers,
+            InferenceInputResolverPort inputResolver,
+            ServedModelResolverPort servedModels,
+            ExtractionPipelineService extractionPipeline,
+            TranscriptSegmentSourcePort segmentSource,
+            JobRoutingCoordinatorPort routingCoordinator,
+            AiRoutingProperties routingProperties,
+            MeetingNoteHandoffPort noteHandoff,
+            LocalProviderProperties properties
+    ) {
+        return new AiJobInferenceExecutor(
+                aiJobService,
+                providers,
+                inputResolver,
+                servedModels,
+                extractionPipeline,
+                segmentSource,
+                routingProperties.isEnabled() ? routingCoordinator : null,
+                noteHandoff,
+                properties.getMaxAttempts(),
+                (int) Math.max(1, properties.getReadTimeout().toSeconds())
+        );
+    }
 
     @Bean
     AiJobRepository inMemoryAiJobRepository() {

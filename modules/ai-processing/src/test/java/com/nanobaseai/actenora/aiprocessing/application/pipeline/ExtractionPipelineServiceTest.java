@@ -178,7 +178,7 @@ class ExtractionPipelineServiceTest {
 
         assertFalse(result.success());
         assertEquals(FailureCategory.MODEL_UNAVAILABLE, result.failureCategory());
-        assertTrue(result.permanentFailure());
+        assertFalse(result.permanentFailure());
     }
 
     @Test

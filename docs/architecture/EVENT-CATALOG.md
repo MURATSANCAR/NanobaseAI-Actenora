@@ -33,6 +33,7 @@
 | `aiprocessing.AiJobCompleted.v1` | ai-processing | meeting-intelligence, audit |
 | `aiprocessing.AiJobFailed.v1` | ai-processing | meeting-intelligence, operations, audit |
 | `meetingintelligence.InsightProposed.v1` | meeting-intelligence | approval, audit |
+| `meetingintelligence.NoteApprovedForLedger.v1` | meeting-intelligence | continuity-ledger (same process / MI consumer), audit |
 | `approval.ApprovalRequested.v1` | approval | notify/UI, audit |
 | `approval.ApprovalGranted.v1` | approval | delivery, audit |
 | `approval.ApprovalDenied.v1` | approval | meeting-intelligence, audit |

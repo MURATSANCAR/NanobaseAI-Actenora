@@ -408,6 +408,7 @@ public final class DeliveryDispatcherService {
 
     /**
      * Confirms final delivery after provider webhook / poll — never inferred from acceptance alone.
+     * Already-{@link DeliveryStatus#DELIVERED} is idempotent (webhook at-least-once).
      */
     public DeliveryStatus confirmDelivered(UUID tenantId, UUID deliveryRequestId) {
         Instant now = clock.now();
@@ -416,6 +417,9 @@ public final class DeliveryDispatcherService {
                 .orElseThrow(() -> new DeliveryDomainException(
                         "DELIVERY_NOT_FOUND",
                         "delivery request not found: " + deliveryRequestId));
+        if (request.status() == DeliveryStatus.DELIVERED) {
+            return DeliveryStatus.DELIVERED;
+        }
         if (request.status() != DeliveryStatus.PROVIDER_ACCEPTED) {
             throw new DeliveryDomainException(
                     "INVALID_STATUS",

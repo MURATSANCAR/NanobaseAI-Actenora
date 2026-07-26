@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.approval.api.ApprovalApi;
 import com.nanobaseai.actenora.approval.api.ApprovalDecisionType;
 import com.nanobaseai.actenora.approval.api.ApprovalId;
 import com.nanobaseai.actenora.approval.api.ApprovalRequestStatus;
+import com.nanobaseai.actenora.approval.api.ApprovalRequestView;
 import com.nanobaseai.actenora.approval.api.ApprovalSubjectType;
 import com.nanobaseai.actenora.approval.application.ApprovalWorkflowService;
 import com.nanobaseai.actenora.approval.application.DecideApprovalCommand;
@@ -94,8 +95,27 @@ public final class ApprovalApiAdapter implements ApprovalApi {
     }
 
     @Override
+    public Optional<ApprovalRequestView> get(UUID tenantId, ApprovalId approvalId) {
+        return workflow.findById(tenantId, approvalId.value()).map(ApprovalApiAdapter::toView);
+    }
+
+    @Override
     public Optional<ApprovalId> findBySubject(UUID tenantId, UUID subjectId) {
         return workflow.findBySubject(tenantId, subjectId).map(r -> ApprovalId.of(r.id()));
+    }
+
+    private static ApprovalRequestView toView(ApprovalRequest request) {
+        return new ApprovalRequestView(
+                ApprovalId.of(request.id()),
+                request.tenantId().value(),
+                request.subjectType(),
+                request.subjectId(),
+                request.status(),
+                request.version(),
+                request.createdAt(),
+                request.updatedAt(),
+                request.expiresAt()
+        );
     }
 
     @Override

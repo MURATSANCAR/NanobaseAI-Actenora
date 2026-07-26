@@ -82,6 +82,26 @@ actenora:
       default-ttl-seconds: ${ACTENORA_SIGNED_URL_DEFAULT_TTL_SECONDS:300}
     retention:
       audit-retention-days: ${ACTENORA_AUDIT_RETENTION_DAYS:2555}
+  ai:
+    provider:
+      # mock | openai | vllm | llamacpp — local endpoints only (ADR-005), mock is rejected on prod
+      kind: ${ACTENORA_AI_PROVIDER_KIND:mock}
+      base-url: ${ACTENORA_AI_PROVIDER_BASE_URL:http://127.0.0.1:8000}
+      connect-timeout: ${ACTENORA_AI_PROVIDER_CONNECT_TIMEOUT:2s}
+      read-timeout: ${ACTENORA_AI_PROVIDER_READ_TIMEOUT:600s}
+      max-concurrency: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY:4}
+      streaming-enabled: ${ACTENORA_AI_PROVIDER_STREAMING_ENABLED:true}
+      served-model-ids: ${ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS:qwen2.5-32b-instruct,qwen-local}
+      max-attempts: ${ACTENORA_AI_PROVIDER_MAX_ATTEMPTS:3}
+    routing:
+      # false = FAZ 12 capability route stays authoritative, no routing/provenance audit
+      enabled: ${ACTENORA_AI_ROUTING_ENABLED:true}
+      # champion/challenger shadow; never replaces the production result, consensus stays OFF
+      shadow-execution-enabled: ${ACTENORA_AI_ROUTING_SHADOW_ENABLED:false}
+  delivery:
+    webhook:
+      # Shared secret for provider delivery confirmation callbacks (FAZ 30)
+      secret: ${ACTENORA_DELIVERY_WEBHOOK_SECRET:local-delivery-webhook-secret}
   transcript:
     # embedded = in-process module (default); remote = HTTP proxy to transcript-worker (FAZ 26)
     mode: ${ACTENORA_TRANSCRIPT_MODE:embedded}

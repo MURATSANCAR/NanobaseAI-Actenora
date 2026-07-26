@@ -5,7 +5,9 @@ import java.util.UUID;
 
 /**
  * Command to map AI candidates into corporate note objects.
- * Lives in the public API so AI Processing can call MeetingIntelligenceApi without domain leakage.
+ *
+ * <p>Called from the platform composition root (AI extraction handoff adapter), not directly
+ * from the AI Processing module — Modulith forbids {@code aiprocessing → meetingintelligence}.
  */
 public record MapAiCandidatesCommand(
         UUID tenantId,

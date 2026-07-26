@@ -97,7 +97,14 @@ public final class TenantSecurityContextFilter extends OncePerRequestFilter {
 
     private static boolean requiresAuthentication(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path != null && path.startsWith("/api/");
+        if (path == null) {
+            return false;
+        }
+        // Provider webhooks authenticate via shared secret, not user JWT / mock headers.
+        if (path.startsWith("/api/v1/delivery/webhooks/")) {
+            return false;
+        }
+        return path.startsWith("/api/");
     }
 
     private static boolean isAuthFailure(RuntimeException ex) {

@@ -52,6 +52,9 @@ class ExternalDeliveryGateTest {
         var order = delivery.requestExternalDelivery(tenantId, approvalId, versionId, "email");
         assertEquals(DeliveryOrderStatus.READY, order.status());
 
+        var again = delivery.requestExternalDelivery(tenantId, approvalId, versionId, "email");
+        assertEquals(order.id(), again.id());
+
         assertThrows(ExternalDeliveryBlockedException.class, () ->
                 delivery.requestExternalDelivery(tenantId, approvalId, UUID.randomUUID(), "email")
         );
@@ -107,6 +110,12 @@ class ExternalDeliveryGateTest {
 
         @Override
         public Optional<Long> version(UUID tenantId, ApprovalId approvalId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<com.nanobaseai.actenora.approval.api.ApprovalRequestView> get(
+                UUID tenantId, ApprovalId approvalId) {
             return Optional.empty();
         }
 

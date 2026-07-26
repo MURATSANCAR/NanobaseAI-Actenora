@@ -4,7 +4,9 @@ import com.nanobaseai.actenora.approval.api.ApprovalApi;
 import com.nanobaseai.actenora.approval.api.ApprovalDecisionType;
 import com.nanobaseai.actenora.approval.api.ApprovalId;
 import com.nanobaseai.actenora.approval.api.ApprovalRequestStatus;
+import com.nanobaseai.actenora.approval.api.ApprovalRequestView;
 import com.nanobaseai.actenora.approval.api.ApprovalSubjectType;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteLedgerPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
@@ -16,6 +18,7 @@ import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNoteVersi
 import com.nanobaseai.actenora.meetingintelligence.domain.model.ModelPromptSchemaProvenance;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.NoteReviewStatus;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -32,6 +35,7 @@ public final class MeetingNoteApprovalService {
     private final MeetingNoteVersionRepository versionRepository;
     private final ApprovalApi approvalApi;
     private final MeetingIntelligenceAuditPort auditPort;
+    private final ApprovedNoteLedgerPort approvedNoteLedgerPort;
     private final Clock clock;
 
     public MeetingNoteApprovalService(
@@ -41,10 +45,30 @@ public final class MeetingNoteApprovalService {
             MeetingIntelligenceAuditPort auditPort,
             Clock clock
     ) {
+        this(
+                noteRepository,
+                versionRepository,
+                approvalApi,
+                auditPort,
+                (tenantId, meetingOccurrenceId, noteId, noteVersionId) -> {
+                },
+                clock
+        );
+    }
+
+    public MeetingNoteApprovalService(
+            MeetingNoteRepository noteRepository,
+            MeetingNoteVersionRepository versionRepository,
+            ApprovalApi approvalApi,
+            MeetingIntelligenceAuditPort auditPort,
+            ApprovedNoteLedgerPort approvedNoteLedgerPort,
+            Clock clock
+    ) {
         this.noteRepository = Objects.requireNonNull(noteRepository, "noteRepository");
         this.versionRepository = Objects.requireNonNull(versionRepository, "versionRepository");
         this.approvalApi = Objects.requireNonNull(approvalApi, "approvalApi");
         this.auditPort = Objects.requireNonNull(auditPort, "auditPort");
+        this.approvedNoteLedgerPort = Objects.requireNonNull(approvedNoteLedgerPort, "approvedNoteLedgerPort");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -135,6 +159,15 @@ public final class MeetingNoteApprovalService {
         bumpNoteVersion(note, expectedNoteVersion, now);
         noteRepository.save(note);
 
+        if (status == ApprovalRequestStatus.GRANTED) {
+            approvedNoteLedgerPort.append(
+                    tid,
+                    note.meetingOccurrenceId(),
+                    note.id(),
+                    current.id()
+            );
+        }
+
         auditPort.record(
                 tenantId, actorId, "NOTE_APPROVAL_" + status.name(), "MeetingNote", note.id(),
                 Map.of(
@@ -146,6 +179,48 @@ public final class MeetingNoteApprovalService {
                 now
         );
         return note;
+    }
+
+    /**
+     * Resolves note from approval subject ({@link ApprovalSubjectType#MEETING_NOTE_VERSION}) then decides.
+     */
+    public MeetingNote decideByApprovalId(
+            UUID tenantId,
+            ApprovalId approvalId,
+            String actorId,
+            ApprovalDecisionType decisionType,
+            String comment,
+            Long expectedNoteVersion,
+            Long expectedApprovalVersion
+    ) {
+        ApprovalRequestView approval = approvalApi.get(tenantId, approvalId)
+                .orElseThrow(() -> new ActenoraException(
+                        "INTELLIGENCE_RESOURCE_NOT_FOUND",
+                        "Approval not found: " + approvalId.value()
+                ));
+        if (approval.subjectType() != ApprovalSubjectType.MEETING_NOTE_VERSION) {
+            throw new ActenoraException(
+                    "INVALID_APPROVAL_SUBJECT",
+                    "Approval subject is not a meeting note version: " + approval.subjectType()
+            );
+        }
+        TenantId tid = TenantId.of(tenantId);
+        MeetingNoteVersion version = versionRepository
+                .findByIdAndTenantId(approval.subjectId(), tid)
+                .orElseThrow(() -> new MeetingNoteNotFoundException(approval.subjectId()));
+        MeetingNote note = requireNote(tid, version.noteId());
+        long noteVersion = expectedNoteVersion == null ? note.version() : expectedNoteVersion;
+        long approvalVersion = expectedApprovalVersion == null ? approval.version() : expectedApprovalVersion;
+        return decideApproval(
+                tenantId,
+                note.id(),
+                approvalId,
+                actorId,
+                decisionType,
+                comment,
+                noteVersion,
+                approvalVersion
+        );
     }
 
     /**

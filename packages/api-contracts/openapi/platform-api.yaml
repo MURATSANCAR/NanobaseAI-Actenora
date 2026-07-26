@@ -127,7 +127,7 @@ paths:
   /api/v1/approvals/{approvalId}/decide:
     post:
       operationId: decideApproval
-      summary: Approve or reject an intelligence artifact
+      summary: Approve, reject, or request changes on an approval request
       parameters:
         - name: approvalId
           in: path
@@ -148,6 +148,466 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApprovalRecord"
+
+  /api/v1/meeting-notes/{noteId}/submit-for-approval:
+    post:
+      operationId: submitMeetingNoteForApproval
+      summary: Submit a draft meeting note version for human approval
+      parameters:
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitForApprovalRequest"
+      responses:
+        "200":
+          description: Approval opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRecord"
+
+  /api/v1/approvals/{approvalId}:
+    get:
+      operationId: getApproval
+      summary: Fetch approval request status
+      parameters:
+        - name: approvalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Approval snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRecord"
+
+  /api/v1/delivery/orders:
+    post:
+      operationId: requestDeliveryOrder
+      summary: Create a READY delivery order for a GRANTED approval (idempotent)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestDeliveryOrder"
+      responses:
+        "200":
+          description: Delivery order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryOrder"
+        "409":
+          description: Approval not granted for note version
+
+  /api/v1/delivery/orders/{orderId}:
+    get:
+      operationId: getDeliveryOrder
+      summary: Fetch a delivery order by id
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Delivery order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryOrder"
+
+  /api/v1/delivery/orders/{orderId}/enqueue:
+    post:
+      operationId: enqueueDeliveryOrder
+      summary: Enqueue recipient mail dispatches for a READY delivery order
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnqueueDeliveryRequest"
+      responses:
+        "200":
+          description: Enqueue result (created + duplicate ids)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnqueueDeliveryResponse"
+        "409":
+          description: Order not READY or note not approved
+
+  /api/v1/delivery/requests/{requestId}:
+    get:
+      operationId: getDeliveryRequestStatus
+      summary: Fetch delivery request status
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Request status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryRequestStatus"
+
+  /api/v1/delivery/requests/{requestId}/confirm-delivered:
+    post:
+      operationId: confirmDeliveryRequest
+      summary: Promote PROVIDER_ACCEPTED to DELIVERED after external confirmation
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Updated request status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryRequestStatus"
+        "409":
+          description: Request is not PROVIDER_ACCEPTED
+
+  /api/v1/delivery/webhooks/provider-delivered:
+    post:
+      operationId: providerDeliveredWebhook
+      summary: Provider callback promoting PROVIDER_ACCEPTED to DELIVERED (shared-secret auth)
+      parameters:
+        - name: X-Actenora-Delivery-Webhook-Secret
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderDeliveredWebhook"
+      responses:
+        "200":
+          description: Delivery confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderDeliveredWebhookResult"
+        "401":
+          description: Invalid webhook secret
+        "409":
+          description: Request is not PROVIDER_ACCEPTED
+
+  /api/v1/delivery/drain:
+    post:
+      operationId: drainDeliveryWorker
+      summary: Process one batch of due queued delivery requests (local worker)
+      responses:
+        "200":
+          description: Drain outcomes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryDrainResponse"
+
+  /api/v1/continuity-ledger/events:
+    get:
+      operationId: listContinuityLedgerEvents
+      summary: List continuity ledger events for the current tenant
+      responses:
+        "200":
+          description: Event list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContinuityLedgerEvent"
+
+  /api/v1/continuity-ledger/suggestions:
+    get:
+      operationId: listContinuitySuggestions
+      summary: List continuity relation suggestions
+      responses:
+        "200":
+          description: Suggestion list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContinuitySuggestion"
+    post:
+      operationId: recordContinuitySuggestion
+      summary: Record a continuity relation suggestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordContinuitySuggestion"
+      responses:
+        "200":
+          description: Recorded suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuitySuggestion"
+
+  /api/v1/continuity-ledger/suggestions/{suggestionId}/accept:
+    post:
+      operationId: acceptContinuitySuggestion
+      summary: Accept a continuity relation suggestion
+      parameters:
+        - name: suggestionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Approved suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuitySuggestion"
+
+  /api/v1/continuity-ledger/suggestions/{suggestionId}/reject:
+    post:
+      operationId: rejectContinuitySuggestion
+      summary: Reject a continuity relation suggestion
+      parameters:
+        - name: suggestionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Rejected suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuitySuggestion"
+
+  /api/v1/continuity-ledger/contradictions:
+    get:
+      operationId: listContinuityContradictions
+      summary: List contradiction candidates
+      responses:
+        "200":
+          description: Contradiction list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContinuityContradiction"
+    post:
+      operationId: proposeContinuityContradiction
+      summary: Propose a contradiction candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposeContinuityContradiction"
+      responses:
+        "200":
+          description: Proposed contradiction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuityContradiction"
+
+  /api/v1/continuity-ledger/contradictions/{contradictionId}/confirm:
+    post:
+      operationId: confirmContinuityContradiction
+      summary: Confirm a contradiction candidate
+      parameters:
+        - name: contradictionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Confirmed contradiction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuityContradiction"
+
+  /api/v1/continuity-ledger/contradictions/{contradictionId}/reject:
+    post:
+      operationId: rejectContinuityContradiction
+      summary: Reject a contradiction candidate
+      parameters:
+        - name: contradictionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Rejected contradiction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuityContradiction"
+
+  /api/v1/continuity-ledger/commitments:
+    post:
+      operationId: recordContinuityCommitment
+      summary: Record a commitment in the continuity ledger
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordContinuityCommitment"
+      responses:
+        "200":
+          description: Recorded commitment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuityCommitment"
+
+  /api/v1/continuity-ledger/commitments/{commitmentId}/confirm:
+    post:
+      operationId: confirmContinuityCommitment
+      summary: Confirm a pending commitment
+      parameters:
+        - name: commitmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Confirmed commitment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuityCommitment"
+
+  /api/v1/continuity-ledger/commitments/{commitmentId}/reject:
+    post:
+      operationId: rejectContinuityCommitment
+      summary: Reject a pending commitment
+      parameters:
+        - name: commitmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Rejected commitment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContinuityCommitment"
+
+  /api/v1/continuity-ledger/overdue-commitments:
+    get:
+      operationId: listOverdueCommitments
+      summary: List overdue commitments for the current tenant
+      responses:
+        "200":
+          description: Overdue commitments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContinuityCommitment"
+
+  /api/v1/continuity-ledger/occurrences/{occurrenceId}/brief:
+    get:
+      operationId: getMeetingBrief
+      summary: Generate previous-meeting brief for an occurrence
+      parameters:
+        - name: occurrenceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Meeting brief
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingBrief"
+
+  /api/v1/continuity-ledger/occurrences/{occurrenceId}/continuity:
+    get:
+      operationId: getOccurrenceContinuity
+      summary: Fetch continuity projection for an occurrence
+      parameters:
+        - name: occurrenceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Continuity projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccurrenceContinuity"
+
+  /api/v1/continuity-ledger/rebuild:
+    post:
+      operationId: rebuildContinuityLedgerProjections
+      summary: Rebuild tenant ledger projections from the event stream
+      responses:
+        "200":
+          description: Rebuild summary counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RebuildProjectionsResult"
 
   /api/v1/decisions:
     get:
@@ -572,20 +1032,30 @@ components:
     ApprovalRecord:
       type: object
       additionalProperties: false
-      required: [id, artifactType, artifactId, status, decidedBy, decidedAt, comment]
+      required: [id, artifactType, artifactId, status]
       properties:
         id:
           type: string
           format: uuid
         artifactType:
           type: string
-          enum: [DECISION, ACTION, COMMITMENT, NOTE, DELIVERY]
         artifactId:
           type: string
           format: uuid
+        noteId:
+          type: string
+          format: uuid
+          nullable: true
         status:
           type: string
-          enum: [PENDING, APPROVED, REJECTED]
+          enum: [PENDING, GRANTED, DENIED, EXPIRED, CHANGES_REQUESTED]
+        version:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
         decidedBy:
           type: string
           nullable: true
@@ -604,9 +1074,444 @@ components:
       properties:
         decision:
           type: string
-          enum: [APPROVE, REJECT]
+          enum: [APPROVE, REJECT, REQUEST_CHANGES]
         comment:
           type: string
+        expectedNoteVersion:
+          type: integer
+          format: int64
+        expectedApprovalVersion:
+          type: integer
+          format: int64
+
+    SubmitForApprovalRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        approverId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        expectedVersion:
+          type: integer
+          format: int64
+
+    RequestDeliveryOrder:
+      type: object
+      additionalProperties: false
+      required: [approvalId]
+      properties:
+        approvalId:
+          type: string
+          format: uuid
+        noteVersionId:
+          type: string
+          format: uuid
+          nullable: true
+        channel:
+          type: string
+          default: email
+
+    DeliveryOrder:
+      type: object
+      additionalProperties: false
+      required: [id, approvalId, noteVersionId, channel, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        approvalId:
+          type: string
+          format: uuid
+        noteVersionId:
+          type: string
+          format: uuid
+        channel:
+          type: string
+        status:
+          type: string
+          enum: [READY, BLOCKED, IN_FLIGHT, SUCCEEDED, FAILED, CANCELLED]
+        createdAt:
+          type: string
+          format: date-time
+
+    EnqueueDeliveryRequest:
+      type: object
+      additionalProperties: false
+      required: [recipients]
+      properties:
+        recipients:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/DeliveryRecipient"
+        subject:
+          type: string
+        bodyText:
+          type: string
+
+    DeliveryRecipient:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        kind:
+          type: string
+          enum: [INTERNAL, EXTERNAL]
+          default: EXTERNAL
+        displayName:
+          type: string
+
+    EnqueueDeliveryResponse:
+      type: object
+      additionalProperties: false
+      required: [createdIds, duplicateIds]
+      properties:
+        createdIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        duplicateIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    DeliveryRequestStatus:
+      type: object
+      additionalProperties: false
+      required: [id, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [QUEUED, SENDING, PROVIDER_ACCEPTED, DELIVERED, DEFERRED, BOUNCED, FAILED, CANCELLED]
+
+    ProviderDeliveredWebhook:
+      type: object
+      additionalProperties: false
+      required: [tenantId, deliveryRequestId]
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        deliveryRequestId:
+          type: string
+          format: uuid
+        providerMessageId:
+          type: string
+          nullable: true
+        event:
+          type: string
+          description: Provider event name; only delivered/delivery are accepted
+          nullable: true
+
+    ProviderDeliveredWebhookResult:
+      type: object
+      additionalProperties: false
+      required: [deliveryRequestId, status]
+      properties:
+        deliveryRequestId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [QUEUED, SENDING, PROVIDER_ACCEPTED, DELIVERED, DEFERRED, BOUNCED, FAILED, CANCELLED]
+        providerMessageId:
+          type: string
+          nullable: true
+
+    DeliveryDrainResponse:
+      type: object
+      additionalProperties: false
+      required: [processed, outcomes]
+      properties:
+        processed:
+          type: integer
+        outcomes:
+          type: array
+          items:
+            type: string
+            enum: [QUEUED, SENDING, PROVIDER_ACCEPTED, DELIVERED, DEFERRED, BOUNCED, FAILED, CANCELLED]
+
+    ContinuityLedgerEvent:
+      type: object
+      additionalProperties: false
+      required: [eventId, type, aggregateType, aggregateId, sequence, occurredAt]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        aggregateType:
+          type: string
+        aggregateId:
+          type: string
+          format: uuid
+        meetingOccurrenceId:
+          type: string
+          format: uuid
+          nullable: true
+        sequence:
+          type: integer
+          format: int64
+        occurredAt:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          additionalProperties:
+            type: string
+
+    ContinuitySuggestion:
+      type: object
+      additionalProperties: false
+      required: [id, sourceOccurrenceId, targetOccurrenceId, proposedRelation, confidence, reason, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceOccurrenceId:
+          type: string
+          format: uuid
+        targetOccurrenceId:
+          type: string
+          format: uuid
+        proposedRelation:
+          type: string
+          enum: [SAME_SERIES, SAME_BUSINESS_CONTEXT, FOLLOW_UP]
+        confidence:
+          type: number
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+
+    RecordContinuitySuggestion:
+      type: object
+      additionalProperties: false
+      required: [sourceOccurrenceId, targetOccurrenceId, proposedRelation, reason]
+      properties:
+        sourceOccurrenceId:
+          type: string
+          format: uuid
+        targetOccurrenceId:
+          type: string
+          format: uuid
+        proposedRelation:
+          type: string
+          enum: [SAME_SERIES, SAME_BUSINESS_CONTEXT, FOLLOW_UP]
+        confidence:
+          type: number
+        reason:
+          type: string
+
+    ContinuityContradiction:
+      type: object
+      additionalProperties: false
+      required: [id, meetingOccurrenceId, leftDecisionId, rightDecisionId, reason, confidence, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meetingOccurrenceId:
+          type: string
+          format: uuid
+        leftDecisionId:
+          type: string
+          format: uuid
+        rightDecisionId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        confidence:
+          type: number
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, REJECTED]
+
+    ProposeContinuityContradiction:
+      type: object
+      additionalProperties: false
+      required: [meetingOccurrenceId, leftDecisionId, rightDecisionId, reason]
+      properties:
+        meetingOccurrenceId:
+          type: string
+          format: uuid
+        leftDecisionId:
+          type: string
+          format: uuid
+        rightDecisionId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        confidence:
+          type: number
+
+    ContinuityCommitment:
+      type: object
+      additionalProperties: false
+      required: [commitmentId, meetingOccurrenceId, text, status, overdue]
+      properties:
+        commitmentId:
+          type: string
+          format: uuid
+        meetingOccurrenceId:
+          type: string
+          format: uuid
+        text:
+          type: string
+        owner:
+          type: string
+          nullable: true
+        status:
+          type: string
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        overdue:
+          type: boolean
+
+    RecordContinuityCommitment:
+      type: object
+      additionalProperties: false
+      required: [meetingOccurrenceId, text]
+      properties:
+        meetingOccurrenceId:
+          type: string
+          format: uuid
+        noteId:
+          type: string
+          format: uuid
+        text:
+          type: string
+        owner:
+          type: string
+          nullable: true
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+
+    MeetingBrief:
+      type: object
+      additionalProperties: false
+      required: [briefId, targetOccurrenceId, openTasks, openRisks, unresolvedQuestions, followUpChain, overdueCommitments, generatedAt]
+      properties:
+        briefId:
+          type: string
+          format: uuid
+        targetOccurrenceId:
+          type: string
+          format: uuid
+        previousOccurrenceId:
+          type: string
+          format: uuid
+          nullable: true
+        meetingSeriesId:
+          type: string
+          format: uuid
+          nullable: true
+        openTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CarryOverItem"
+        openRisks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CarryOverItem"
+        unresolvedQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CarryOverItem"
+        followUpChain:
+          type: array
+          items:
+            type: string
+            format: uuid
+        overdueCommitments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContinuityCommitment"
+        generatedAt:
+          type: string
+          format: date-time
+
+    CarryOverItem:
+      type: object
+      additionalProperties: false
+      required: [itemId, kind, text, sourceOccurrenceId]
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+        text:
+          type: string
+        sourceOccurrenceId:
+          type: string
+          format: uuid
+
+    OccurrenceContinuity:
+      type: object
+      additionalProperties: false
+      required: [meetingOccurrenceId, followUpChain]
+      properties:
+        meetingOccurrenceId:
+          type: string
+          format: uuid
+        meetingSeriesId:
+          type: string
+          format: uuid
+          nullable: true
+        businessContextId:
+          type: string
+          format: uuid
+          nullable: true
+        previousOccurrenceId:
+          type: string
+          format: uuid
+          nullable: true
+        nextOccurrenceId:
+          type: string
+          format: uuid
+          nullable: true
+        followUpChain:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    RebuildProjectionsResult:
+      type: object
+      additionalProperties: false
+      required: [eventCount, decisionCount, commitmentCount, suggestionCount, contradictionCount, continuityCount]
+      properties:
+        eventCount:
+          type: integer
+        decisionCount:
+          type: integer
+        commitmentCount:
+          type: integer
+        suggestionCount:
+          type: integer
+        contradictionCount:
+          type: integer
+        continuityCount:
+          type: integer
 
     Participant:
       type: object

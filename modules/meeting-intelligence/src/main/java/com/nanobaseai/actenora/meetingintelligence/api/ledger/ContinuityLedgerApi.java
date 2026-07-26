@@ -38,6 +38,19 @@ public final class ContinuityLedgerApi {
         return service.recordDecision(tenantId, meetingOccurrenceId, noteId, null, text);
     }
 
+    /**
+     * Records a decision using a stable source id (e.g. note Decision aggregate id). Idempotent.
+     */
+    public DecisionHistoryEntry recordDecision(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID noteId,
+            UUID decisionId,
+            String text
+    ) {
+        return service.recordDecision(tenantId, meetingOccurrenceId, noteId, decisionId, text);
+    }
+
     public DecisionHistory supersedeDecision(
             TenantId tenantId,
             UUID meetingOccurrenceId,
@@ -60,7 +73,24 @@ public final class ContinuityLedgerApi {
             String owner,
             LocalDate dueDate
     ) {
-        return service.recordCommitment(tenantId, meetingOccurrenceId, noteId, text, owner, dueDate);
+        return service.recordCommitment(tenantId, meetingOccurrenceId, noteId, null, text, owner, dueDate);
+    }
+
+    /**
+     * Records a commitment using a stable source id (e.g. note Commitment aggregate id). Idempotent.
+     */
+    public CommitmentConfirmation recordCommitment(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID noteId,
+            UUID commitmentId,
+            String text,
+            String owner,
+            LocalDate dueDate
+    ) {
+        return service.recordCommitment(
+                tenantId, meetingOccurrenceId, noteId, commitmentId, text, owner, dueDate
+        );
     }
 
     public CommitmentConfirmation confirmCommitment(TenantId tenantId, UUID commitmentId, UUID actorUserId) {
@@ -108,16 +138,36 @@ public final class ContinuityLedgerApi {
         );
     }
 
-    public Optional<ContinuityRelationSuggestion> approveRelationSuggestion(
+    public ContinuityRelationSuggestion approveRelationSuggestion(
             TenantId tenantId,
             UUID suggestionId,
             String actor
     ) {
-        return service.decideRelationSuggestion(tenantId, suggestionId, true, actor);
+        return service.decideRelationSuggestion(tenantId, suggestionId, true, actor)
+                .orElseThrow(() -> new IllegalArgumentException("suggestion not found: " + suggestionId));
     }
 
-    public void rejectRelationSuggestion(TenantId tenantId, UUID suggestionId, String actor) {
-        service.decideRelationSuggestion(tenantId, suggestionId, false, actor);
+    public ContinuityRelationSuggestion rejectRelationSuggestion(
+            TenantId tenantId,
+            UUID suggestionId,
+            String actor
+    ) {
+        return service.decideRelationSuggestion(tenantId, suggestionId, false, actor)
+                .orElseThrow(() -> new IllegalArgumentException("suggestion not found: " + suggestionId));
+    }
+
+    public List<ContinuityRelationSuggestion> listSuggestions(TenantId tenantId) {
+        return service.listSuggestions(tenantId);
+    }
+
+    public List<ContradictionCandidate> listContradictions(TenantId tenantId) {
+        return service.listContradictions(tenantId);
+    }
+
+    public List<com.nanobaseai.actenora.meetingintelligence.domain.ledger.event.LedgerEvent> listEvents(
+            TenantId tenantId
+    ) {
+        return service.listEvents(tenantId);
     }
 
     public ContradictionCandidate proposeContradiction(

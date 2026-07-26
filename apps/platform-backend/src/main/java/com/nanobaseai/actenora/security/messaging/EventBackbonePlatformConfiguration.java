@@ -3,6 +3,8 @@ package com.nanobaseai.actenora.security.messaging;
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.api.event.MeetingIntegrationEvents;
+import com.nanobaseai.actenora.meetingintelligence.api.event.MeetingIntelligenceIntegrationEvents;
+import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventMessagingConfig;
@@ -26,6 +28,7 @@ import org.springframework.context.annotation.Primary;
 /**
  * FAZ 10 — shared InMemory event backbone for local modular-monolith boot.
  * Meeting outbox + transcript inbox share the same stores (ops DLQ/replay visibility).
+ * FAZ 29 — note-approved → continuity ledger consumer on the same fan-out transport.
  * Rabbit/JDBC adapters deferred.
  */
 @Configuration
@@ -33,7 +36,10 @@ public class EventBackbonePlatformConfiguration {
 
     @Bean(destroyMethod = "close")
     @Primary
-    EventBackbone platformEventBackbone(MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler) {
+    EventBackbone platformEventBackbone(
+            MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
+            NoteApprovedForLedgerHandler noteApprovedForLedgerHandler
+    ) {
         TenantFairnessTracker fairness = new TenantFairnessTracker();
         InMemoryOutboxStore outboxStore = new InMemoryOutboxStore(fairness);
         InMemoryInboxStore inboxStore = new InMemoryInboxStore();
@@ -46,6 +52,10 @@ public class EventBackbonePlatformConfiguration {
         IdempotentEventConsumer transcriptConsumer = backbone.consumer("transcript");
         transport.subscribe(envelope -> dispatchOccurrenceUpserted(
                 envelope, transcriptConsumer, meetingOccurrenceUpsertedHandler));
+
+        IdempotentEventConsumer ledgerConsumer = backbone.consumer("meeting-intelligence");
+        transport.subscribe(envelope -> dispatchNoteApprovedForLedger(
+                envelope, ledgerConsumer, noteApprovedForLedgerHandler));
 
         backbone.relay().start();
         return backbone;
@@ -93,6 +103,16 @@ public class EventBackbonePlatformConfiguration {
             MeetingOccurrenceUpsertedHandler handler) {
         if (!MeetingOccurrenceContracts.MEETING_OCCURRENCE_UPSERTED.equals(envelope.eventType())
                 && !MeetingIntegrationEvents.MEETING_OCCURRENCE_UPSERTED.equals(envelope.eventType())) {
+            return;
+        }
+        consumer.consume(envelope, handler::handle);
+    }
+
+    private static void dispatchNoteApprovedForLedger(
+            EventEnvelope envelope,
+            IdempotentEventConsumer consumer,
+            NoteApprovedForLedgerHandler handler) {
+        if (!MeetingIntelligenceIntegrationEvents.NOTE_APPROVED_FOR_LEDGER.equals(envelope.eventType())) {
             return;
         }
         consumer.consume(envelope, handler::handle);

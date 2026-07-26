@@ -1,0 +1,281 @@
+package com.nanobaseai.actenora.security.meetingintelligence;
+
+import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
+import com.nanobaseai.actenora.audit.api.AuditApi;
+import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
+import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
+import com.nanobaseai.actenora.meetingintelligence.application.MeetingIntelligenceApiFacade;
+import com.nanobaseai.actenora.meetingintelligence.application.MeetingIntelligenceApplicationService;
+import com.nanobaseai.actenora.meetingintelligence.application.mapping.MapAiCandidatesToNoteService;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ActionItemRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteLedgerPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ClockPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.CommitmentRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.DecisionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.EvidenceLinkRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.TenantContextPort;
+import com.nanobaseai.actenora.meetingintelligence.application.validation.DefaultEvidenceValidationApi;
+import com.nanobaseai.actenora.meetingintelligence.application.validation.EvidenceValidationService;
+import com.nanobaseai.actenora.meetingintelligence.application.validation.port.ManualReviewCaseRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.validation.port.QualityGatePolicyPort;
+import com.nanobaseai.actenora.meetingintelligence.application.validation.port.ValidationAuditPort;
+import com.nanobaseai.actenora.meetingintelligence.application.validation.port.ValidationRunRepository;
+import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerApi;
+import com.nanobaseai.actenora.meetingintelligence.application.ledger.ContinuityLedgerService;
+import com.nanobaseai.actenora.meetingintelligence.application.ledger.port.LedgerEventStore;
+import com.nanobaseai.actenora.meetingintelligence.application.ledger.port.LedgerProjectionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.InMemoryLedgerEventStore;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.InMemoryLedgerProjectionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryActionItemRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryCommitmentRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryDecisionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryEvidenceLinkRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryOpenQuestionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryQualityFlagRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryRiskRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.SystemClockPort;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryManualReviewCaseRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryQualityGatePolicyPort;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryValidationRunRepository;
+import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+import java.time.Clock;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * FAZ 16 — Meeting Intelligence (InMemory) + AI extraction handoff.
+ * FAZ 17 — Evidence validation / quality gate beans and gated handoff.
+ * FAZ 29 — Approved-note → continuity ledger via transactional outbox.
+ */
+@Configuration
+public class MeetingIntelligencePlatformConfiguration {
+
+    @Bean
+    public MeetingNoteRepository inMemoryMeetingNoteRepository() {
+        return new InMemoryMeetingNoteRepository();
+    }
+
+    @Bean
+    public MeetingNoteVersionRepository inMemoryMeetingNoteVersionRepository() {
+        return new InMemoryMeetingNoteVersionRepository();
+    }
+
+    @Bean
+    public DecisionRepository inMemoryDecisionRepository() {
+        return new InMemoryDecisionRepository();
+    }
+
+    @Bean
+    public ActionItemRepository inMemoryActionItemRepository() {
+        return new InMemoryActionItemRepository();
+    }
+
+    @Bean
+    public RiskRepository inMemoryRiskRepository() {
+        return new InMemoryRiskRepository();
+    }
+
+    @Bean
+    public CommitmentRepository inMemoryCommitmentRepository() {
+        return new InMemoryCommitmentRepository();
+    }
+
+    @Bean
+    public OpenQuestionRepository inMemoryOpenQuestionRepository() {
+        return new InMemoryOpenQuestionRepository();
+    }
+
+    @Bean
+    public EvidenceLinkRepository inMemoryEvidenceLinkRepository() {
+        return new InMemoryEvidenceLinkRepository();
+    }
+
+    @Bean
+    public QualityFlagRepository inMemoryQualityFlagRepository() {
+        return new InMemoryQualityFlagRepository();
+    }
+
+    @Bean
+    public ClockPort meetingIntelligenceClockPort() {
+        return new SystemClockPort();
+    }
+
+    @Bean
+    public TenantContextPort meetingIntelligenceTenantContextPort() {
+        return new SecurityContextMeetingIntelligenceTenantPort();
+    }
+
+    @Bean
+    @Primary
+    public MeetingIntelligenceAuditPort auditBackedMeetingIntelligenceAuditPort(AuditApi auditApi) {
+        return (tenantId, actorId, action, resourceType, resourceId, metadata, occurredAt) ->
+                auditApi.append(
+                        tenantId,
+                        actorId == null ? "system" : actorId,
+                        action,
+                        resourceType,
+                        resourceId == null ? UUID.randomUUID() : resourceId,
+                        metadata == null ? Map.of() : metadata,
+                        occurredAt
+                );
+    }
+
+    @Bean
+    public MapAiCandidatesToNoteService mapAiCandidatesToNoteService(
+            MeetingNoteRepository notes,
+            MeetingNoteVersionRepository versions,
+            DecisionRepository decisions,
+            ActionItemRepository actionItems,
+            RiskRepository risks,
+            CommitmentRepository commitments,
+            OpenQuestionRepository openQuestions,
+            EvidenceLinkRepository evidenceLinks,
+            QualityFlagRepository qualityFlags,
+            ClockPort clock
+    ) {
+        return new MapAiCandidatesToNoteService(
+                notes, versions, decisions, actionItems, risks, commitments,
+                openQuestions, evidenceLinks, qualityFlags, clock
+        );
+    }
+
+    @Bean
+    public MeetingIntelligenceApplicationService meetingIntelligenceApplicationService(
+            TenantContextPort tenantContext,
+            ClockPort clock,
+            MapAiCandidatesToNoteService mappingService,
+            MeetingNoteRepository notes,
+            MeetingNoteVersionRepository versions,
+            DecisionRepository decisions,
+            ActionItemRepository actionItems,
+            RiskRepository risks,
+            CommitmentRepository commitments,
+            OpenQuestionRepository openQuestions,
+            EvidenceLinkRepository evidenceLinks,
+            QualityFlagRepository qualityFlags
+    ) {
+        return new MeetingIntelligenceApplicationService(
+                tenantContext, clock, mappingService, notes, versions, decisions, actionItems,
+                risks, commitments, openQuestions, evidenceLinks, qualityFlags
+        );
+    }
+
+    @Bean
+    public MeetingIntelligenceApi meetingIntelligenceApi(MeetingIntelligenceApplicationService service) {
+        return new MeetingIntelligenceApiFacade(service);
+    }
+
+    @Bean
+    public ValidationRunRepository inMemoryValidationRunRepository() {
+        return new InMemoryValidationRunRepository();
+    }
+
+    @Bean
+    public ManualReviewCaseRepository inMemoryManualReviewCaseRepository() {
+        return new InMemoryManualReviewCaseRepository();
+    }
+
+    @Bean
+    public QualityGatePolicyPort inMemoryQualityGatePolicyPort() {
+        return new InMemoryQualityGatePolicyPort();
+    }
+
+    @Bean
+    @Primary
+    public ValidationAuditPort auditBackedValidationAuditPort(AuditApi auditApi) {
+        return (tenantId, actor, action, resourceType, resourceId, metadata, occurredAt) ->
+                auditApi.append(
+                        tenantId,
+                        actor == null ? "system" : actor,
+                        action,
+                        resourceType,
+                        resourceId == null ? UUID.randomUUID() : resourceId,
+                        metadata == null ? Map.of() : metadata,
+                        occurredAt
+                );
+    }
+
+    @Bean
+    public EvidenceValidationService evidenceValidationService(
+            ValidationRunRepository runs,
+            ManualReviewCaseRepository reviews,
+            QualityGatePolicyPort policy,
+            ValidationAuditPort validationAudit
+    ) {
+        return new EvidenceValidationService(runs, reviews, policy, validationAudit, Clock.systemUTC());
+    }
+
+    @Bean
+    public EvidenceValidationApi evidenceValidationApi(EvidenceValidationService service) {
+        return new DefaultEvidenceValidationApi(service);
+    }
+
+    @Bean
+    public MeetingNoteHandoffPort meetingNoteHandoffPort(
+            MeetingIntelligenceApi meetingIntelligenceApi,
+            EvidenceValidationApi evidenceValidationApi,
+            TranscriptSegmentSourcePort segmentSource,
+            MeetingIntelligenceAuditPort auditPort
+    ) {
+        return new MeetingIntelligenceHandoffAdapter(
+                meetingIntelligenceApi, evidenceValidationApi, segmentSource, auditPort);
+    }
+
+    @Bean
+    public LedgerEventStore inMemoryLedgerEventStore() {
+        return new InMemoryLedgerEventStore();
+    }
+
+    @Bean
+    public LedgerProjectionRepository inMemoryLedgerProjectionRepository() {
+        return new InMemoryLedgerProjectionRepository();
+    }
+
+    @Bean
+    public ContinuityLedgerService continuityLedgerService(
+            LedgerEventStore eventStore,
+            LedgerProjectionRepository projections
+    ) {
+        return new ContinuityLedgerService(eventStore, projections, Clock.systemUTC());
+    }
+
+    @Bean
+    public ContinuityLedgerApi continuityLedgerApi(ContinuityLedgerService service) {
+        return new ContinuityLedgerApi(service);
+    }
+
+    @Bean
+    public ApprovedNoteLedgerAdapter approvedNoteLedgerWriter(
+            DecisionRepository decisions,
+            CommitmentRepository commitments,
+            ContinuityLedgerApi ledgerApi
+    ) {
+        return new ApprovedNoteLedgerAdapter(decisions, commitments, ledgerApi);
+    }
+
+    @Bean
+    @Primary
+    public ApprovedNoteLedgerPort approvedNoteLedgerPort(OutboxPublisher outboxPublisher) {
+        return new OutboxApprovedNoteLedgerAdapter(outboxPublisher, "meeting-intelligence");
+    }
+
+    @Bean
+    public NoteApprovedForLedgerHandler noteApprovedForLedgerHandler(
+            ApprovedNoteLedgerAdapter approvedNoteLedgerWriter
+    ) {
+        return new NoteApprovedForLedgerHandler(approvedNoteLedgerWriter);
+    }
+}

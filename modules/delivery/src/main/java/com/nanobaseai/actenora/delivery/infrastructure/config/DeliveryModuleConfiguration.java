@@ -6,6 +6,7 @@ import com.nanobaseai.actenora.delivery.application.DeliveryDispatcherService;
 import com.nanobaseai.actenora.delivery.application.ExternalDeliveryService;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryAuditPort;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryMailProvider;
+import com.nanobaseai.actenora.delivery.application.port.DeliveryOrderRepository;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryRateLimiter;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryRequestRepository;
 import com.nanobaseai.actenora.delivery.application.port.NoteApprovalGatePort;
@@ -18,6 +19,7 @@ import com.nanobaseai.actenora.delivery.infrastructure.approval.InMemoryNoteAppr
 import com.nanobaseai.actenora.delivery.infrastructure.audit.RecordingDeliveryAuditPort;
 import com.nanobaseai.actenora.delivery.infrastructure.mail.MailHogMailProvider;
 import com.nanobaseai.actenora.delivery.infrastructure.pdf.InMemoryPdfAttachmentPort;
+import com.nanobaseai.actenora.delivery.infrastructure.persistence.InMemoryDeliveryOrderRepository;
 import com.nanobaseai.actenora.delivery.infrastructure.persistence.InMemoryDeliveryRequestRepository;
 import com.nanobaseai.actenora.delivery.infrastructure.portal.HmacSignedPortalLinkService;
 import com.nanobaseai.actenora.delivery.infrastructure.ratelimit.FixedWindowDeliveryRateLimiter;
@@ -39,6 +41,12 @@ public class DeliveryModuleConfiguration {
     @ConditionalOnMissingBean
     DeliveryRequestRepository deliveryRequestRepository() {
         return new InMemoryDeliveryRequestRepository();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    DeliveryOrderRepository deliveryOrderRepository() {
+        return new InMemoryDeliveryOrderRepository();
     }
 
     @Bean
@@ -126,8 +134,13 @@ public class DeliveryModuleConfiguration {
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnBean(ApprovalApi.class)
-    ExternalDeliveryService externalDeliveryService(ApprovalApi approvalApi, Clock clock) {
-        return new ExternalDeliveryService(approvalApi, clock);
+    ExternalDeliveryService externalDeliveryService(
+            ApprovalApi approvalApi,
+            DeliveryOrderRepository orders,
+            DeliveryAuditPort auditPort,
+            Clock clock
+    ) {
+        return new ExternalDeliveryService(approvalApi, orders, auditPort, clock);
     }
 
     @Bean
