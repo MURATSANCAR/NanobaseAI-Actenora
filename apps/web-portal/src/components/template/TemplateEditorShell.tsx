@@ -1,9 +1,6 @@
-import { TemplateComponentPalette } from "@/components/template/TemplateComponentPalette";
-import { TemplateDesignCanvas } from "@/components/template/TemplateDesignCanvas";
+import { TemplateDesignToolbar } from "@/components/template/TemplateDesignToolbar";
 import { TemplateDocumentPreviewStage } from "@/components/template/TemplateDocumentPreviewStage";
-import { TemplateValidationBanner } from "@/components/template/TemplateValidationBanner";
 import {
-  TemplateVersionSidebar,
   type TemplateVersionRow,
 } from "@/components/template/TemplateVersionSidebar";
 import type { DesignComponent, DesignSchema, TemplateValidationIssue } from "@/types/template";
@@ -70,52 +67,27 @@ export function TemplateEditorShell({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 xl:grid-cols-[12rem_12rem_minmax(0,1fr)]">
-        <TemplateVersionSidebar
-          templateName={templateName}
-          locale={locale}
-          versions={versions}
-          activeVersion={activeVersionNumber}
-          onSelect={onSelectVersion}
-        />
-        <TemplateComponentPalette onAdd={onAddComponent} disabled={readOnly} />
-        <div className="space-y-3">
-          {validationIssues.length ? <TemplateValidationBanner issues={validationIssues} /> : null}
-          <TemplateDesignCanvas
-            components={components}
-            selectedId={selectedId}
-            onSelect={onSelectComponent}
-            onRemove={onRemoveComponent}
-            readOnly={readOnly}
-            emptyMessage={t("templates.canvas.empty")}
-          />
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={readOnly || saving || validationIssues.length > 0}
-              onClick={onSaveDraft}
-            >
-              {t("templates.actions.saveDraft")}
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              disabled={readOnly || publishing || validationIssues.length > 0 || !components.length}
-              onClick={onPublish}
-            >
-              {t("templates.actions.publish")}
-            </button>
-            {onCreateDraft ? (
-              <button type="button" className="btn-secondary" disabled={creatingDraft} onClick={onCreateDraft}>
-                {t("templates.editor.newDraft")}
-              </button>
-            ) : null}
-          </div>
-          {statusMessage ? <p className="text-sm text-amber-800">{statusMessage}</p> : null}
-        </div>
-      </div>
-
+      <TemplateDesignToolbar
+        templateName={templateName}
+        locale={locale}
+        versions={versions}
+        activeVersion={activeVersionNumber}
+        components={components}
+        selectedId={selectedId}
+        validationIssues={validationIssues}
+        readOnly={readOnly}
+        saving={saving}
+        publishing={publishing}
+        statusMessage={statusMessage}
+        onSelectVersion={onSelectVersion}
+        onAddComponent={onAddComponent}
+        onSelectComponent={onSelectComponent}
+        onRemoveComponent={onRemoveComponent}
+        onSaveDraft={onSaveDraft}
+        onPublish={onPublish}
+        onCreateDraft={onCreateDraft}
+        creatingDraft={creatingDraft}
+      />
       <TemplateDocumentPreviewStage components={components} />
     </div>
   );

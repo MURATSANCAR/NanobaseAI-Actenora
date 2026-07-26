@@ -2,12 +2,9 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageShell } from "@/components/qa/PageShell";
 import { AsyncState } from "@/components/ui/AsyncState";
-import { TemplateComponentPalette } from "@/components/template/TemplateComponentPalette";
-import { TemplateDesignCanvas } from "@/components/template/TemplateDesignCanvas";
-import { TemplateNoteSectionEditor } from "@/components/template/TemplateNoteSectionEditor";
+import { TemplateDesignToolbar } from "@/components/template/TemplateDesignToolbar";
 import { TemplateDocumentPreviewStage } from "@/components/template/TemplateDocumentPreviewStage";
-import { TemplateValidationBanner } from "@/components/template/TemplateValidationBanner";
-import { TemplateVersionSidebar } from "@/components/template/TemplateVersionSidebar";
+import { TemplateNoteSectionEditor } from "@/components/template/TemplateNoteSectionEditor";
 import {
   buildEmptyDesignSchema,
   buildStandardDesignSchema,
@@ -204,42 +201,24 @@ export function TemplateMockupsPage() {
 
       {scenario === "studio" || scenario === "empty" || scenario === "validation" ? (
         <div className="flex flex-col gap-4">
-          <div className="grid gap-3 xl:grid-cols-[12rem_12rem_minmax(0,1fr)]">
-            <TemplateVersionSidebar
-              templateName={t("templates.mockups.sampleTemplateName")}
-              locale={t("templates.mockups.sampleLocale")}
-              versions={MOCK_VERSIONS}
-              activeVersion={activeVersion}
-              onSelect={setActiveVersion}
-            />
-            <TemplateComponentPalette onAdd={addComponent} disabled={scenario === "validation"} />
-            <div className="space-y-3">
-              {scenario === "validation" || validationIssues.length ? (
-                <TemplateValidationBanner issues={validationIssues} />
-              ) : null}
-              <TemplateDesignCanvas
-                components={schema.components}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                onRemove={removeComponent}
-                readOnly={scenario === "validation"}
-                emptyMessage={t("templates.canvas.empty")}
-              />
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="btn-primary" disabled={validationIssues.length > 0}>
-                  {t("templates.actions.saveDraft")}
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  disabled={validationIssues.length > 0 || !schema.components.length}
-                >
-                  {t("templates.actions.publish")}
-                </button>
-              </div>
-            </div>
-          </div>
-
+          <TemplateDesignToolbar
+            templateName={t("templates.mockups.sampleTemplateName")}
+            locale={t("templates.mockups.sampleLocale")}
+            versions={MOCK_VERSIONS}
+            activeVersion={activeVersion}
+            components={schema.components}
+            selectedId={selectedId}
+            validationIssues={validationIssues}
+            readOnly={scenario === "validation"}
+            onSelectVersion={setActiveVersion}
+            onAddComponent={addComponent}
+            onSelectComponent={setSelectedId}
+            onRemoveComponent={removeComponent}
+            actionsReadOnly
+            showActions
+            onSaveDraft={() => undefined}
+            onPublish={() => undefined}
+          />
           <TemplateDocumentPreviewStage components={schema.components} />
         </div>
       ) : null}

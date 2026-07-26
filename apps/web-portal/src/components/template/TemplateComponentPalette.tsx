@@ -1,74 +1,111 @@
-import {
-  AlertCircle,
-  CalendarDays,
-  CheckSquare,
-  FileText,
-  Footprints,
-  Hash,
-  HelpCircle,
-  Image,
-  LayoutTemplate,
-  ListChecks,
-  Shield,
-  Signature,
-  Table,
-  Users,
-} from "lucide-react";
+import { Plus } from "lucide-react";
+import { useState } from "react";
 import type { TemplateComponentType } from "@/types/template";
 import { TEMPLATE_COMPONENT_TYPES } from "@/lib/templateStandards";
 import { useI18n } from "@/i18n";
 
-const iconByType: Record<TemplateComponentType, typeof FileText> = {
-  LOGO: Image,
-  HEADER: LayoutTemplate,
-  METADATA: CalendarDays,
-  PARTICIPANT_TABLE: Users,
-  EXECUTIVE_SUMMARY: FileText,
-  AGENDA: ListChecks,
-  DECISIONS: CheckSquare,
-  ACTIONS: CheckSquare,
-  RISKS: AlertCircle,
-  OPEN_QUESTIONS: HelpCircle,
-  COMMITMENTS: Footprints,
-  SIGNATURE: Signature,
-  FOOTER: FileText,
-  CONFIDENTIALITY: Shield,
-  PAGE_NUMBER: Hash,
-};
-
 export function TemplateComponentPalette({
   onAdd,
   disabled,
+  compact = false,
 }: {
   onAdd?: (type: TemplateComponentType) => void;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const { t, tb } = useI18n();
+  const [pending, setPending] = useState<TemplateComponentType | "">("");
+
+  function handleAdd() {
+    if (!pending || !onAdd) return;
+    onAdd(pending);
+    setPending("");
+  }
+
+  if (!compact) {
+    return (
+      <div className="card-static space-y-3 p-4">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-violet-700">
+          {t("templates.palette.title")}
+        </h3>
+        <p className="text-xs text-slate-500">{t("templates.palette.hint")}</p>
+        <PaletteControls
+          pending={pending}
+          disabled={disabled}
+          onPendingChange={setPending}
+          onAdd={handleAdd}
+          labelType={tb}
+          chooseLabel={t("templates.palette.choose")}
+          addLabel={t("templates.palette.add")}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="card-static space-y-3 p-4">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-violet-700">
+    <div className="min-w-[10rem] flex-1 sm:max-w-[14rem]">
+      <label className="label-text" htmlFor="template-palette-add">
         {t("templates.palette.title")}
-      </h3>
-      <p className="text-xs text-slate-500">{t("templates.palette.hint")}</p>
-      <ul className="grid gap-2 sm:grid-cols-2">
-        {TEMPLATE_COMPONENT_TYPES.map((type) => {
-          const Icon = iconByType[type];
-          return (
-            <li key={type}>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-xl border border-white/70 bg-white/50 px-3 py-2 text-left text-sm transition hover:border-violet-200 hover:bg-violet-50/40 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={disabled || !onAdd}
-                onClick={() => onAdd?.(type)}
-              >
-                <Icon className="h-4 w-4 shrink-0 text-violet-600" aria-hidden />
-                <span className="font-medium text-slate-800">{tb("templateComponentType", type)}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      </label>
+      <PaletteControls
+        id="template-palette-add"
+        pending={pending}
+        disabled={disabled}
+        onPendingChange={setPending}
+        onAdd={handleAdd}
+        labelType={tb}
+        chooseLabel={t("templates.palette.choose")}
+        addLabel={t("templates.palette.add")}
+      />
+    </div>
+  );
+}
+
+function PaletteControls({
+  id = "template-palette-select",
+  pending,
+  disabled,
+  onPendingChange,
+  onAdd,
+  labelType,
+  chooseLabel,
+  addLabel,
+}: {
+  id?: string;
+  pending: TemplateComponentType | "";
+  disabled?: boolean;
+  onPendingChange: (value: TemplateComponentType | "") => void;
+  onAdd: () => void;
+  labelType: (category: "templateComponentType", value: string) => string;
+  chooseLabel: string;
+  addLabel: string;
+}) {
+  return (
+    <div className="flex gap-1.5">
+      <select
+        id={id}
+        className="input-field min-w-0 flex-1 py-1.5 text-sm"
+        value={pending}
+        disabled={disabled || !onAdd}
+        onChange={(e) => onPendingChange(e.target.value as TemplateComponentType | "")}
+      >
+        <option value="">{chooseLabel}</option>
+        {TEMPLATE_COMPONENT_TYPES.map((type) => (
+          <option key={type} value={type}>
+            {labelType("templateComponentType", type)}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        className="btn-primary shrink-0 px-2.5 py-1.5"
+        disabled={disabled || !pending || !onAdd}
+        aria-label={addLabel}
+        title={addLabel}
+        onClick={onAdd}
+      >
+        <Plus className="h-4 w-4" aria-hidden />
+      </button>
     </div>
   );
 }

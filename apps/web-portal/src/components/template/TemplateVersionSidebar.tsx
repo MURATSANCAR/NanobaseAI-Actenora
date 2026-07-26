@@ -15,14 +15,41 @@ export function TemplateVersionSidebar({
   versions,
   activeVersion,
   onSelect,
+  compact = false,
 }: {
   templateName: string;
   locale: string;
   versions: TemplateVersionRow[];
   activeVersion: number;
   onSelect?: (version: number) => void;
+  compact?: boolean;
 }) {
   const { t, tb } = useI18n();
+
+  if (compact) {
+    return (
+      <div className="min-w-[8rem] flex-1 sm:max-w-[11rem]">
+        <label className="label-text" htmlFor="template-version-select">
+          {templateName}
+        </label>
+        <select
+          id="template-version-select"
+          className="input-field w-full py-1.5 text-sm"
+          value={activeVersion}
+          onChange={(e) => onSelect?.(Number(e.target.value))}
+        >
+          {versions.map((v) => (
+            <option key={v.version} value={v.version}>
+              {t("templates.versions.label", { version: v.version })}
+              {" · "}
+              {tb("artifactStatus", v.status)}
+            </option>
+          ))}
+        </select>
+        <p className="mt-0.5 text-[10px] text-slate-500">{locale.toUpperCase()}</p>
+      </div>
+    );
+  }
 
   return (
     <aside className="card-static space-y-3 p-4">

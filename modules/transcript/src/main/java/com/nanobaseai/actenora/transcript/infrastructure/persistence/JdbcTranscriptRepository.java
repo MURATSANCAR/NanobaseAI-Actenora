@@ -52,7 +52,11 @@ public final class JdbcTranscriptRepository implements TranscriptRepository {
 
     @Override
     public Transcript save(Transcript transcript) {
-        if (transcript.version() == 0L) {
+        // New aggregates start at version 0, but domain mutations (markPendingParse, etc.)
+        // call touch() which bumps version before the first persist. Treat "row missing"
+        // as insert so the first save after create+mutate still inserts instead of
+        // optimistic-lock UPDATE against a non-existent row.
+        if (findById(transcript.tenantId(), transcript.id()).isEmpty()) {
             insert(transcript);
             return transcript;
         }
