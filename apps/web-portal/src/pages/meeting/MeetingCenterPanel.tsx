@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Children, useState, type ReactNode } from "react";
-import { StatusBadge } from "@/components/qa/StatusBadge";
+import { useState, type ReactNode } from "react";
+import { FileText, ListChecks, ShieldAlert, Target, Zap } from "lucide-react";
 import { MeetingNoteEditor } from "@/components/meeting/MeetingNoteEditor";
 import { PendingApprovalsPanel } from "@/components/meeting/PendingApprovalsPanel";
+import { StatusBadge } from "@/components/qa/StatusBadge";
 import { DueDateBadge } from "@/components/ui/DueDateBadge";
 import { portalMutationsEnabled, queryKeys, resolvePortalAuthMode } from "@/api/client";
 import { useApi, useApiMode } from "@/api/ApiProvider";
@@ -18,15 +19,20 @@ import { useAuth } from "@/auth/AuthProvider";
 import { useI18n } from "@/i18n";
 import { isOptimisticSafe } from "@/lib/approval";
 import { evidenceMatchesSegment, formatEvidenceRange } from "@/lib/evidence";
+import { deriveMeetingPipelineStages } from "@/lib/meetingPipeline";
+
+type InsightTab = "decisions" | "actions" | "risks" | "commitments";
 
 export function MeetingCenterPanel({
   detail,
   onEvidence,
   selectedSegmentId,
+  hasTranscript,
 }: {
   detail: MeetingDetailResponse;
   onEvidence: (ref: EvidenceRef) => void;
   selectedSegmentId: string | null;
+  hasTranscript: boolean;
 }) {
   const auth = useAuth();
   const api = useApi();
@@ -35,7 +41,12 @@ export function MeetingCenterPanel({
   const qc = useQueryClient();
   const meetingId = detail.meeting.id;
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<InsightTab>("decisions");
   const mutationsEnabled = portalMutationsEnabled(apiMode, resolvePortalAuthMode());
+
+  const stages = deriveMeetingPipelineStages(detail, hasTranscript);
+  const notesStageReady = stages.find((s) => s.id === "NOTES")?.state === "done" || detail.notes.length > 0;
+  const showNotes = notesStageReady || detail.notes.length > 0;
 
   const noteMutation = useMutation({
     mutationFn: ({ noteId, body }: { noteId: string; body: string }) =>
@@ -104,46 +115,141 @@ export function MeetingCenterPanel({
   const canDecideApproval = auth.canApprove && mutationsEnabled;
   const hasPendingApprovals = detail.approvalHistory.some((a) => a.status === "PENDING");
 
-  return (
-    <section className="card-static flex max-h-[calc(100dvh-12rem)] flex-col gap-4 overflow-y-auto p-4 sm:p-5" aria-label={t("meeting.intelligence")}>
-      <header className="flex flex-wrap items-start justify-between gap-2 border-b border-white/60 pb-3">
-        <h2 className="text-lg font-bold text-slate-900">{detail.meeting.title}</h2>
-        <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
-          {auth.can("meetings:edit") ? t("meeting.editEnabled") : t("meeting.readOnly")}
-        </span>
-      </header>
+  const tabs: { id: InsightTab; label: string; count: number; icon: typeof FileText }[] = [
+    { id: "decisions", label: t("meeting.decisions"), count: detail.decisions.length, icon: Target },
+    { id: "actions", label: t("meeting.actions"), count: detail.actions.length, icon: ListChecks },
+    { id: "risks", label: t("meeting.risks"), count: detail.risks.length, icon: ShieldAlert },
+    { id: "commitments", label: t("meeting.commitments"), count: detail.commitments.length, icon: Zap },
+  ];
 
+  return (
+    <div className="space-y-5">
       {selectedSegmentId ? (
-        <p className="rounded-xl border border-violet-200/70 bg-violet-50/50 px-3 py-2 text-xs text-violet-900">
+        <p className="rounded-xl border border-violet-200/70 bg-violet-50/50 px-4 py-2.5 text-sm text-violet-900">
           {t("evidence.linkedFromTranscript")}
         </p>
       ) : null}
 
-      <ArtifactBlock title={t("meeting.notes")} emptyMessage={t("meeting.noNotesEditable")}>
-        {editableNotes.map((n) => (
-          <div key={n.id} className="space-y-2">
-            {n.draft || n.approvalStatus === "DRAFT" ? (
-              <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-                Taslak (LLM)
-              </span>
-            ) : null}
-            <MeetingNoteEditor
-              meetingId={meetingId}
-              note={n}
-              draft={noteDrafts[n.id] ?? n.body}
-              canEdit={canEditNotes}
-              publishedTemplates={publishedTemplates}
-              onChange={(body) => setNoteDrafts((d) => ({ ...d, [n.id]: body }))}
-              onSave={() =>
-                noteMutation.mutate({ noteId: n.id, body: noteDrafts[n.id] ?? n.body })
-              }
-              saving={noteMutation.isPending}
-            />
-          </div>
-        ))}
-      </ArtifactBlock>
+      <section aria-label={t("meeting.notes")}>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-violet-700">
+            <FileText className="h-4 w-4" aria-hidden />
+            {t("meeting.notes")}
+          </h2>
+          <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+            {auth.can("meetings:edit") ? t("meeting.editEnabled") : t("meeting.readOnly")}
+          </span>
+        </div>
 
-      <ArtifactBlock title={t("meeting.decisions")} emptyMessage={t("meeting.noDecisions")}>
+        {!showNotes ? (
+          <div className="rounded-2xl border border-dashed border-violet-200/80 bg-violet-50/30 px-6 py-10 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-600">
+              <FileText className="h-6 w-6" aria-hidden />
+            </div>
+            <p className="font-semibold text-slate-800">{t("meeting.notesPendingTitle")}</p>
+            <p className="mt-1 text-sm text-slate-600">{t("meeting.notesPendingHint")}</p>
+          </div>
+        ) : editableNotes.length ? (
+          <div className="space-y-4">
+            {editableNotes.map((n) => (
+              <MeetingNoteEditor
+                key={n.id}
+                meetingId={meetingId}
+                note={n}
+                draft={noteDrafts[n.id] ?? n.body}
+                canEdit={canEditNotes}
+                publishedTemplates={publishedTemplates}
+                meetingTitle={detail.meeting.title}
+                onChange={(body) => setNoteDrafts((d) => ({ ...d, [n.id]: body }))}
+                onSave={() =>
+                  noteMutation.mutate({ noteId: n.id, body: noteDrafts[n.id] ?? n.body })
+                }
+                saving={noteMutation.isPending}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">{t("meeting.noNotesEditable")}</p>
+        )}
+      </section>
+
+      <section className="card-static p-4 sm:p-5" aria-label={t("meeting.intelligence")}>
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-violet-700">
+          {t("meeting.insightsTitle")}
+        </h2>
+
+        <div className="mb-4 flex flex-wrap gap-1.5 border-b border-white/60 pb-3">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition",
+                  active
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-200"
+                    : "bg-white/60 text-slate-600 hover:bg-white hover:text-violet-800",
+                ].join(" ")}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+                {tab.label}
+                <span
+                  className={[
+                    "rounded-full px-1.5 py-0.5 text-[10px]",
+                    active ? "bg-white/20 text-white" : "bg-violet-100 text-violet-700",
+                  ].join(" ")}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <InsightPanel
+          tab={activeTab}
+          detail={detail}
+          selectedSegmentId={selectedSegmentId}
+          onEvidence={onEvidence}
+          canCompleteActions={canCompleteActions}
+          onCompleteAction={(id) => completeMutation.mutate(id)}
+        />
+      </section>
+
+      {hasPendingApprovals ? (
+        <PendingApprovalsPanel
+          meetingId={meetingId}
+          items={detail.approvalHistory}
+          canDecide={canDecideApproval}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function InsightPanel({
+  tab,
+  detail,
+  selectedSegmentId,
+  onEvidence,
+  canCompleteActions,
+  onCompleteAction,
+}: {
+  tab: InsightTab;
+  detail: MeetingDetailResponse;
+  selectedSegmentId: string | null;
+  onEvidence: (ref: EvidenceRef) => void;
+  canCompleteActions: boolean;
+  onCompleteAction: (id: string) => void;
+}) {
+  const { t, tb } = useI18n();
+
+  if (tab === "decisions") {
+    return (
+      <ArtifactList empty={t("meeting.noDecisions")} hasItems={detail.decisions.length > 0}>
         {detail.decisions.map((d) => (
           <DecisionRow
             key={d.id}
@@ -154,9 +260,13 @@ export function MeetingCenterPanel({
             jumpLabel={t("meeting.jumpEvidence")}
           />
         ))}
-      </ArtifactBlock>
+      </ArtifactList>
+    );
+  }
 
-      <ArtifactBlock title={t("meeting.actions")} emptyMessage={t("meeting.noActions")}>
+  if (tab === "actions") {
+    return (
+      <ArtifactList empty={t("meeting.noActions")} hasItems={detail.actions.length > 0}>
         {detail.actions.map((a) => (
           <ActionRow
             key={a.id}
@@ -167,12 +277,16 @@ export function MeetingCenterPanel({
             jumpLabel={t("meeting.jumpEvidence")}
             completeLabel={t("meeting.markComplete")}
             canComplete={canCompleteActions}
-            onComplete={() => completeMutation.mutate(a.id)}
+            onComplete={() => onCompleteAction(a.id)}
           />
         ))}
-      </ArtifactBlock>
+      </ArtifactList>
+    );
+  }
 
-      <ArtifactBlock title={t("meeting.risks")} emptyMessage={t("meeting.noRisks")}>
+  if (tab === "risks") {
+    return (
+      <ArtifactList empty={t("meeting.noRisks")} hasItems={detail.risks.length > 0}>
         {detail.risks.map((r) => (
           <RiskRow
             key={r.id}
@@ -183,30 +297,37 @@ export function MeetingCenterPanel({
             jumpLabel={t("meeting.jumpEvidence")}
           />
         ))}
-      </ArtifactBlock>
+      </ArtifactList>
+    );
+  }
 
-      <ArtifactBlock title={t("meeting.commitments")} emptyMessage={t("meeting.noCommitments")}>
-        {detail.commitments.map((c) => (
-          <CommitmentRow
-            key={c.id}
-            item={c}
-            linked={isArtifactLinked(c.evidence, selectedSegmentId)}
-            onEvidence={onEvidence}
-            statusLabel={tb("artifactStatus", c.status)}
-            jumpLabel={t("meeting.jumpEvidence")}
-          />
-        ))}
-      </ArtifactBlock>
-
-      {hasPendingApprovals ? (
-        <PendingApprovalsPanel
-          meetingId={meetingId}
-          items={detail.approvalHistory}
-          canDecide={canDecideApproval}
+  return (
+    <ArtifactList empty={t("meeting.noCommitments")} hasItems={detail.commitments.length > 0}>
+      {detail.commitments.map((c) => (
+        <CommitmentRow
+          key={c.id}
+          item={c}
+          linked={isArtifactLinked(c.evidence, selectedSegmentId)}
+          onEvidence={onEvidence}
+          statusLabel={tb("artifactStatus", c.status)}
+          jumpLabel={t("meeting.jumpEvidence")}
         />
-      ) : null}
-    </section>
+      ))}
+    </ArtifactList>
   );
+}
+
+function ArtifactList({
+  empty,
+  hasItems,
+  children,
+}: {
+  empty: string;
+  hasItems: boolean;
+  children: ReactNode;
+}) {
+  if (!hasItems) return <p className="text-sm text-slate-500">{empty}</p>;
+  return <div className="space-y-2">{children}</div>;
 }
 
 function isArtifactLinked(evidence: EvidenceRef[], selectedSegmentId: string | null): boolean {
@@ -221,29 +342,6 @@ function artifactRowClass(linked: boolean): string {
       ? "border-violet-400 bg-violet-100/60 ring-2 ring-violet-300/70"
       : "border-white/70 bg-white/50",
   ].join(" ");
-}
-
-function ArtifactBlock({
-  title,
-  emptyMessage,
-  children,
-}: {
-  title: string;
-  emptyMessage: string;
-  children: ReactNode;
-}) {
-  const hasItems = Children.count(children) > 0;
-
-  return (
-    <div className="artifact-block space-y-2">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-violet-700">{title}</h3>
-      {hasItems ? (
-        <div className="space-y-2">{children}</div>
-      ) : (
-        <p className="text-sm text-slate-500">{emptyMessage}</p>
-      )}
-    </div>
-  );
 }
 
 function EvidenceButtons({

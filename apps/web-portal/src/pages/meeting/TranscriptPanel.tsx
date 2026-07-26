@@ -1,12 +1,30 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { MessageSquare } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvidenceRef, MarkerKind, TranscriptSegment } from "@/api/types";
 import { useI18n } from "@/i18n";
 import { segmentEvidenceRef } from "@/lib/evidence";
 import { evidenceScrollOffset, filterSegments, findEvidenceIndex } from "@/lib/filters";
 
-const ROW_HEIGHT = 72;
+const ROW_HEIGHT = 88;
 const MARKERS: MarkerKind[] = ["DECISION", "ACTION", "RISK", "QUESTION", "IMPORTANT"];
+
+const SPEAKER_PALETTE = [
+  { bubble: "bg-violet-100 text-violet-950", avatar: "bg-violet-500", ring: "ring-violet-300" },
+  { bubble: "bg-sky-100 text-sky-950", avatar: "bg-sky-500", ring: "ring-sky-300" },
+  { bubble: "bg-emerald-100 text-emerald-950", avatar: "bg-emerald-500", ring: "ring-emerald-300" },
+  { bubble: "bg-amber-100 text-amber-950", avatar: "bg-amber-500", ring: "ring-amber-300" },
+  { bubble: "bg-rose-100 text-rose-950", avatar: "bg-rose-500", ring: "ring-rose-300" },
+  { bubble: "bg-indigo-100 text-indigo-950", avatar: "bg-indigo-500", ring: "ring-indigo-300" },
+];
+
+const MARKER_TONE: Record<MarkerKind, string> = {
+  DECISION: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+  ACTION: "bg-amber-100 text-amber-800 ring-amber-200",
+  RISK: "bg-rose-100 text-rose-800 ring-rose-200",
+  QUESTION: "bg-sky-100 text-sky-800 ring-sky-200",
+  IMPORTANT: "bg-violet-100 text-violet-800 ring-violet-200",
+};
 
 export function TranscriptPanel({
   segments,
@@ -27,11 +45,17 @@ export function TranscriptPanel({
   onClearHighlight: () => void;
   onSegmentSelect: (ref: EvidenceRef) => void;
 }) {
-  const { t } = useI18n();
+  const { t, tb } = useI18n();
   const [speaker, setSpeaker] = useState("");
   const [q, setQ] = useState("");
   const [marker, setMarker] = useState<MarkerKind | "">("");
   const parentRef = useRef<HTMLDivElement>(null);
+
+  const speakerColors = useMemo(() => {
+    const map = new Map<string, (typeof SPEAKER_PALETTE)[number]>();
+    speakers.forEach((s, i) => map.set(s, SPEAKER_PALETTE[i % SPEAKER_PALETTE.length]!));
+    return map;
+  }, [speakers]);
 
   const filtered = useMemo(
     () => filterSegments(segments, { speaker: speaker || undefined, q, marker: marker || undefined }),
@@ -54,9 +78,17 @@ export function TranscriptPanel({
   }, [highlightEvidence, filtered]);
 
   return (
-    <section className="card-static flex max-h-[calc(100dvh-12rem)] min-h-[22rem] flex-col gap-3 p-4 sm:p-5" aria-label={t("meeting.transcript")}>
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-white/60 pb-3">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("meeting.transcript")}</h2>
+    <section className="card-static flex min-h-[28rem] flex-col gap-4 p-4 sm:p-5" aria-label={t("meeting.transcript")}>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/60 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-sky-500 text-white shadow-md shadow-violet-200">
+            <MessageSquare className="h-4 w-4" aria-hidden />
+          </span>
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">{t("meeting.transcriptLive")}</h2>
+            <p className="text-xs text-slate-500">{t("meeting.transcriptLiveHint")}</p>
+          </div>
+        </div>
         {highlightEvidence ? (
           <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={onClearHighlight}>
             {t("meeting.clearHighlight")}
@@ -95,7 +127,7 @@ export function TranscriptPanel({
             <option value="">{t("filter.allMarkers")}</option>
             {MARKERS.map((m) => (
               <option key={m} value={m}>
-                {m}
+                {tb("markerKind", m)}
               </option>
             ))}
           </select>
@@ -112,13 +144,20 @@ export function TranscriptPanel({
         </ul>
       ) : null}
 
-      <div ref={parentRef} className="min-h-0 flex-1 overflow-auto rounded-xl border border-white/70 bg-white/60" role="list">
+      <div
+        ref={parentRef}
+        className="min-h-[20rem] flex-1 overflow-auto rounded-2xl border border-white/70 bg-gradient-to-b from-white/70 to-violet-50/20 p-3"
+        role="list"
+      >
         <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
           {virtualizer.getVirtualItems().map((row) => {
             const seg = filtered[row.index]!;
             const active =
               highlightEvidence?.segmentId === seg.id || selectedSegmentId === seg.id;
             const playing = playbackSegmentId === seg.id;
+            const palette = speakerColors.get(seg.speaker) ?? SPEAKER_PALETTE[0]!;
+            const initials = speakerInitials(seg.speaker);
+
             return (
               <article
                 key={seg.id}
@@ -134,32 +173,52 @@ export function TranscriptPanel({
                   }
                 }}
                 className={[
-                  "cursor-pointer border-b border-white/60 px-3 py-2 text-sm transition",
-                  active
-                    ? "bg-violet-100/70 ring-1 ring-inset ring-violet-300"
-                    : playing
-                      ? "bg-teal-50/80 ring-1 ring-inset ring-teal-200"
-                      : "hover:bg-violet-50/40",
+                  "absolute left-0 top-0 w-full cursor-pointer px-1 py-1.5 transition",
+                  active ? "z-10" : "",
                 ].join(" ")}
                 style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
                   height: `${row.size}px`,
                   transform: `translateY(${row.start}px)`,
                 }}
               >
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <strong className="text-slate-800">{seg.speaker}</strong>
-                  <span className="font-mono text-slate-500">{formatMs(seg.startMs)}</span>
-                  {(seg.markers ?? []).map((m) => (
-                    <span key={m} className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
-                      {m}
-                    </span>
-                  ))}
+                <div className="flex gap-2.5">
+                  <span
+                    className={[
+                      "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm",
+                      palette.avatar,
+                    ].join(" ")}
+                    aria-hidden
+                  >
+                    {initials}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <strong className="text-xs text-slate-800">{seg.speaker}</strong>
+                      <span className="font-mono text-[10px] text-slate-400">{formatMs(seg.startMs)}</span>
+                      {(seg.markers ?? []).map((m) => (
+                        <span
+                          key={m}
+                          className={[
+                            "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ring-1",
+                            MARKER_TONE[m],
+                          ].join(" ")}
+                        >
+                          {tb("markerKind", m)}
+                        </span>
+                      ))}
+                    </div>
+                    <div
+                      className={[
+                        "rounded-2xl rounded-tl-md px-3 py-2 text-sm leading-relaxed shadow-sm",
+                        palette.bubble,
+                        active ? `ring-2 ${palette.ring}` : "",
+                        playing ? "ring-2 ring-teal-400 shadow-teal-100" : "",
+                      ].join(" ")}
+                    >
+                      {seg.text}
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-1 text-slate-700">{seg.text}</p>
               </article>
             );
           })}
@@ -167,6 +226,13 @@ export function TranscriptPanel({
       </div>
     </section>
   );
+}
+
+function speakerInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
 }
 
 function formatMs(ms: number): string {

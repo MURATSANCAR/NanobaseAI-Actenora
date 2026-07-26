@@ -5,7 +5,8 @@ import { ArrowLeft, Download } from "lucide-react";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
 import type { EvidenceRef } from "@/api/types";
-import { MeetingProcessingStrip } from "@/components/meeting/MeetingProcessingStrip";
+import { MeetingHeaderBar } from "@/components/meeting/MeetingHeaderBar";
+import { MeetingProgressPipeline } from "@/components/meeting/MeetingProgressPipeline";
 import { MeetingRecordingPlayer } from "@/components/meeting/MeetingRecordingPlayer";
 import { PageShell } from "@/components/qa/PageShell";
 import { AsyncState } from "@/components/ui/AsyncState";
@@ -18,7 +19,6 @@ import {
   meetingNeedsProcessingPoll,
 } from "@/lib/meetingProcessing";
 import { MeetingCenterPanel } from "./MeetingCenterPanel";
-import { MeetingLeftPanel } from "./MeetingLeftPanel";
 import { TranscriptPanel } from "./TranscriptPanel";
 
 export function MeetingDetailPage() {
@@ -63,6 +63,8 @@ export function MeetingDetailPage() {
     enabled: Boolean(meetingId),
   });
 
+  const hasTranscript = Boolean(transcriptQ.data?.segments.length);
+
   const playbackSegmentId = useMemo(() => {
     if (!transcriptQ.data?.segments.length) return null;
     return findSegmentAtTime(transcriptQ.data.segments, playbackMs)?.id ?? null;
@@ -95,7 +97,7 @@ export function MeetingDetailPage() {
     <PageShell
       titleKey="meeting.detailTitle"
       subtitleKey="meeting.detailDescription"
-      maxWidth="max-w-[100rem]"
+      maxWidth="max-w-5xl"
       heroTrailing={
         <div className="flex flex-wrap items-center gap-2">
           {detailQ.data ? (
@@ -131,10 +133,15 @@ export function MeetingDetailPage() {
         partialMessage={t("meeting.processingPartial")}
       >
         {detailQ.data ? (
-          <div className="space-y-3">
-            {meetingNeedsProcessingPoll(detailQ.data) ? (
-              <MeetingProcessingStrip lastUpdated={lastUpdated} />
-            ) : null}
+          <div className="space-y-5 pb-6">
+            <MeetingHeaderBar detail={detailQ.data} />
+
+            <MeetingProgressPipeline
+              detail={detailQ.data}
+              hasTranscript={hasTranscript}
+              lastUpdated={lastUpdated}
+            />
+
             <MeetingRecordingPlayer
               recording={detailQ.data.recording}
               playbackMs={playbackMs}
@@ -142,15 +149,16 @@ export function MeetingDetailPage() {
               onTimeUpdate={setPlaybackMs}
               onSeekApplied={clearSeekRequest}
             />
-            <div className="grid min-h-[70vh] gap-3 xl:grid-cols-[18rem_minmax(0,1fr)_minmax(0,1.1fr)]">
-            <MeetingLeftPanel detail={detailQ.data} />
+
             <MeetingCenterPanel
               detail={detailQ.data}
               onEvidence={handleEvidence}
               selectedSegmentId={selectedSegmentId}
+              hasTranscript={hasTranscript}
             />
+
             {transcriptQ.isLoading ? (
-              <div className="card-static flex items-center justify-center p-8" role="status">
+              <div className="card-static flex items-center justify-center p-10" role="status">
                 {t("meeting.transcriptLoading")}
               </div>
             ) : transcriptQ.isError ? (
@@ -172,7 +180,6 @@ export function MeetingDetailPage() {
                 onSegmentSelect={handleSegmentSelect}
               />
             ) : null}
-            </div>
           </div>
         ) : null}
       </AsyncState>
