@@ -173,7 +173,8 @@ test("backend enum values translate via locale catalogs", () => {
   assert.equal(translateBackend("tr", "meetingStatus", "UNKNOWN"), "UNKNOWN");
 });
 
-test("portal mutations are enabled only in mock API mode", () => {
+test("portal mutations enabled for mock API and HTTP+MSAL/mock auth", () => {
   assert.equal(portalMutationsEnabled("mock"), true);
-  assert.equal(portalMutationsEnabled("http"), false);
+  assert.equal(portalMutationsEnabled("http", "mock"), true);
+  assert.equal(portalMutationsEnabled("http", "msal"), true);
 });

@@ -8,6 +8,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.model.LifecycleNo
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -20,7 +21,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -42,15 +47,26 @@ import java.util.Objects;
 public class MicrosoftGraphWebhookController {
 
     private final MicrosoftConnectionApi microsoftConnectionApi;
-    private final String expectedClientState;
+    private final GraphChangeNotificationProcessor changeNotificationProcessor;
+    private final byte[] expectedClientStateBytes;
+    private final boolean productionLike;
 
     public MicrosoftGraphWebhookController(
             MicrosoftConnectionApi microsoftConnectionApi,
+            GraphChangeNotificationProcessor changeNotificationProcessor,
+            Environment environment,
             @Value("${actenora.microsoft-graph.webhook.client-state:local-graph-client-state}")
             String expectedClientState
     ) {
         this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi, "microsoftConnectionApi");
-        this.expectedClientState = Objects.requireNonNull(expectedClientState, "expectedClientState");
+        this.changeNotificationProcessor = Objects.requireNonNull(
+                changeNotificationProcessor, "changeNotificationProcessor");
+        this.expectedClientStateBytes = expectedClientState == null
+                ? new byte[0]
+                : expectedClientState.getBytes(StandardCharsets.UTF_8);
+        this.productionLike = Arrays.stream(environment.getActiveProfiles())
+                .map(p -> p.toLowerCase(Locale.ROOT))
+                .anyMatch(p -> p.equals("prod") || p.equals("production"));
     }
 
     @PostMapping("/graph-notifications")
@@ -109,9 +125,7 @@ public class MicrosoftGraphWebhookController {
                 item.clientState(),
                 item.tenantId()
         );
-        // Handler is a hook for downstream ingestion (transcript polling); dedup/claim is the
-        // durable guarantee here, so an empty handler still safely acknowledges the notification.
-        return microsoftConnectionApi.onChangeNotification(notification, n -> { });
+        return microsoftConnectionApi.onChangeNotification(notification, changeNotificationProcessor::process);
     }
 
     private boolean dispatchLifecycle(GraphNotificationItem item) {
@@ -129,10 +143,14 @@ public class MicrosoftGraphWebhookController {
     }
 
     private boolean clientStateMatches(String clientState) {
-        if (!StringUtils.hasText(expectedClientState)) {
-            return true;
+        if (expectedClientStateBytes.length == 0) {
+            return !productionLike;
         }
-        return expectedClientState.equals(clientState);
+        if (!StringUtils.hasText(clientState)) {
+            return false;
+        }
+        byte[] actual = clientState.getBytes(StandardCharsets.UTF_8);
+        return MessageDigest.isEqual(expectedClientStateBytes, actual);
     }
 
     @ExceptionHandler(ActenoraException.class)

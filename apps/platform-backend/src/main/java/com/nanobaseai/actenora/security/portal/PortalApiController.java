@@ -20,10 +20,16 @@ import com.nanobaseai.actenora.meetingintelligence.domain.ledger.CommitmentConfi
 import com.nanobaseai.actenora.meetingintelligence.domain.ledger.event.LedgerEvent;
 import com.nanobaseai.actenora.meetingintelligence.domain.ledger.event.LedgerEventType;
 import com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService;
+import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteUpdateRequest;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNote;
+import com.nanobaseai.actenora.operations.api.OperationsApi;
+import com.nanobaseai.actenora.operations.application.OperationsViews;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +48,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -54,24 +61,32 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/portal")
 public class PortalApiController {
 
+    public static final String COMPOSITION_STUB_HEADER = "X-Actenora-Composition";
+
     private final IdentityApi identityApi;
     private final MeetingApi meetingApi;
     private final ContinuityLedgerApi ledgerApi;
     private final ApprovalApi approvalApi;
     private final MeetingNoteApprovalService noteApprovalService;
+    private final Optional<MeetingIntelligenceApi> meetingIntelligenceApi;
+    private final Optional<OperationsApi> operationsApi;
 
     public PortalApiController(
             IdentityApi identityApi,
             MeetingApi meetingApi,
             ContinuityLedgerApi ledgerApi,
             ApprovalApi approvalApi,
-            MeetingNoteApprovalService noteApprovalService
+            MeetingNoteApprovalService noteApprovalService,
+            ObjectProvider<MeetingIntelligenceApi> meetingIntelligenceApi,
+            ObjectProvider<OperationsApi> operationsApi
     ) {
         this.identityApi = Objects.requireNonNull(identityApi, "identityApi");
         this.meetingApi = Objects.requireNonNull(meetingApi, "meetingApi");
         this.ledgerApi = Objects.requireNonNull(ledgerApi, "ledgerApi");
         this.approvalApi = Objects.requireNonNull(approvalApi, "approvalApi");
         this.noteApprovalService = Objects.requireNonNull(noteApprovalService, "noteApprovalService");
+        this.meetingIntelligenceApi = Optional.ofNullable(meetingIntelligenceApi.getIfAvailable());
+        this.operationsApi = Optional.ofNullable(operationsApi.getIfAvailable());
     }
 
     @GetMapping("/me")
@@ -194,12 +209,12 @@ public class PortalApiController {
     public TranscriptView transcript(
             @PathVariable UUID meetingId,
             @RequestParam(value = "speaker", required = false) String speaker,
-            @RequestParam(value = "q", required = false) String q
+            @RequestParam(value = "q", required = false) String q,
+            HttpServletResponse response
     ) {
         require(Permission.MEETING_READ);
-        // Transcript segments are not yet indexed by meetingOccurrenceId on the portal BFF;
-        // return an empty virtualized payload so the three-panel UI loads against real auth.
         meetingApi.getMeeting(meetingId);
+        markStub(response);
         return new TranscriptView(List.of(), List.of());
     }
 
@@ -212,9 +227,25 @@ public class PortalApiController {
     ) {
         require(Permission.MEETING_WRITE);
         meetingApi.getMeeting(meetingId);
-        throw new ActenoraException(
-                "NOTE_UPDATE_VIA_MEETING_NOTES",
-                "Update note via PUT /api/v1/meeting-notes/" + noteId + " (portal note body store not seeded)"
+        if (meetingIntelligenceApi.isEmpty()) {
+            throw new ActenoraException(
+                    "NOTE_UPDATE_UNAVAILABLE",
+                    "Meeting intelligence module is not available; note update is not wired"
+            );
+        }
+        if (body == null || body.body() == null || body.body().isBlank()) {
+            throw new ActenoraException("INVALID_NOTE_BODY", "note body is required");
+        }
+        var updated = meetingIntelligenceApi.get().updateNote(
+                noteId,
+                new MeetingNoteUpdateRequest(body.body(), null, 0L)
+        );
+        return new MeetingNoteView(
+                updated.id(),
+                "SHARED",
+                body.body(),
+                updated.updatedAt().toString(),
+                TenantSecurityContext.require().userId()
         );
     }
 
@@ -268,9 +299,11 @@ public class PortalApiController {
     @RequiresPermission(Permission.MEETING_READ)
     public PortalCursorPage<ActionItemView> listActions(
             @RequestParam(value = "cursor", required = false) String cursor,
-            @RequestParam(value = "limit", required = false) Integer limit
+            @RequestParam(value = "limit", required = false) Integer limit,
+            HttpServletResponse response
     ) {
         require(Permission.MEETING_READ);
+        markStub(response);
         return page(List.of(), cursor, limit);
     }
 
@@ -323,22 +356,25 @@ public class PortalApiController {
 
     @GetMapping("/templates")
     @RequiresPermission(Permission.MEETING_READ)
-    public TemplateListView listTemplates() {
+    public TemplateListView listTemplates(HttpServletResponse response) {
         require(Permission.MEETING_READ);
+        markStub(response);
         return new TemplateListView(List.of());
     }
 
     @GetMapping("/teams/settings")
     @RequiresPermission(Permission.TENANT_READ)
-    public TeamsSettingsView teamsSettings() {
+    public TeamsSettingsView teamsSettings(HttpServletResponse response) {
         require(Permission.TENANT_READ);
+        markStub(response);
         return new TeamsSettingsView(false, "", "not_configured", false);
     }
 
     @GetMapping("/model-control/health")
     @RequiresPermission(Permission.MODEL_CONTROL)
-    public ModelHealthView modelHealth() {
+    public ModelHealthView modelHealth(HttpServletResponse response) {
         require(Permission.MODEL_CONTROL);
+        markStub(response);
         return new ModelHealthView(List.of(), List.of(), new RoutingView("prefer-registry", List.of()));
     }
 
@@ -346,16 +382,29 @@ public class PortalApiController {
     @RequiresPermission(Permission.MEETING_READ)
     public PortalCursorPage<AiJobView> listAiJobs(
             @RequestParam(value = "cursor", required = false) String cursor,
-            @RequestParam(value = "limit", required = false) Integer limit
+            @RequestParam(value = "limit", required = false) Integer limit,
+            HttpServletResponse response
     ) {
         require(Permission.MEETING_READ);
+        markStub(response);
         return page(List.of(), cursor, limit);
     }
 
     @GetMapping("/operations/overview")
     @RequiresPermission(Permission.OPERATIONS_MANAGE)
-    public OperationsOverviewView operationsOverview() {
+    public OperationsOverviewView operationsOverview(HttpServletResponse response) {
         require(Permission.OPERATIONS_MANAGE);
+        if (operationsApi.isPresent()) {
+            OperationsViews.QueueDashboardView dashboard = operationsApi.get().queueDashboard();
+            OperationsViews.WorkerHealthView workers = operationsApi.get().workerHealth();
+            return new OperationsOverviewView(
+                    (int) dashboard.aiQueueDepth(),
+                    (int) dashboard.dlqDepth(),
+                    List.of(),
+                    workers.workers().stream().map(w -> (Object) w).toList()
+            );
+        }
+        markStub(response);
         return new OperationsOverviewView(0, 0, List.of(), List.of());
     }
 
@@ -363,10 +412,18 @@ public class PortalApiController {
     @RequiresPermission(Permission.AUDIT_READ)
     public PortalCursorPage<AuditEventView> listAuditEvents(
             @RequestParam(value = "cursor", required = false) String cursor,
-            @RequestParam(value = "limit", required = false) Integer limit
+            @RequestParam(value = "limit", required = false) Integer limit,
+            HttpServletResponse response
     ) {
         require(Permission.AUDIT_READ);
+        markStub(response);
         return page(List.of(), cursor, limit);
+    }
+
+    private static void markStub(HttpServletResponse response) {
+        if (response != null) {
+            response.setHeader(COMPOSITION_STUB_HEADER, "stub");
+        }
     }
 
     private AuthenticatedPrincipal require(Permission permission) {
@@ -481,7 +538,7 @@ public class PortalApiController {
         HttpStatus status = switch (ex.code()) {
             case "ACTION_NOT_FOUND", "INTELLIGENCE_RESOURCE_NOT_FOUND", "MEETING_NOTE_NOT_FOUND"
                     -> HttpStatus.NOT_FOUND;
-            case "NOTE_UPDATE_VIA_MEETING_NOTES" -> HttpStatus.NOT_IMPLEMENTED;
+            case "NOTE_UPDATE_UNAVAILABLE" -> HttpStatus.NOT_IMPLEMENTED;
             default -> HttpStatus.UNPROCESSABLE_ENTITY;
         };
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());

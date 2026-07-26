@@ -88,6 +88,26 @@
       }
     },
     {
+      "name": "actenora.transcript.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "transcript.events"
+      }
+    },
+    {
+      "name": "actenora.meeting-intelligence.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "meeting-intelligence.events"
+      }
+    },
+    {
       "name": "actenora.commands",
       "vhost": "/",
       "durable": true,
@@ -229,6 +249,38 @@
       "destination": "actenora.modelgw.events",
       "destination_type": "queue",
       "routing_key": "prompt.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.transcript.events",
+      "destination_type": "queue",
+      "routing_key": "meeting.MeetingOccurrenceUpserted.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.transcript.events",
+      "destination_type": "queue",
+      "routing_key": "meeting.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.meeting-intelligence.events",
+      "destination_type": "queue",
+      "routing_key": "meetingintelligence.NoteApprovedForLedger.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.meeting-intelligence.events",
+      "destination_type": "queue",
+      "routing_key": "meetingintelligence.#",
       "arguments": {}
     },
     {

@@ -15,3 +15,7 @@ spring:
 
 actenora:
   env: it
+  messaging:
+    mode: jdbc-rabbit
+    jdbc:
+      schema: operations

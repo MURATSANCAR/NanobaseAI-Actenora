@@ -14,12 +14,18 @@ import java.util.UUID;
  */
 public final class FixedTenantContext implements TenantContextPort {
 
+    private final boolean requireSecurityContext;
     private volatile TenantId tenantId;
     private volatile UUID actorUserId;
 
     public FixedTenantContext(TenantId tenantId, UUID actorUserId) {
+        this(tenantId, actorUserId, false);
+    }
+
+    public FixedTenantContext(TenantId tenantId, UUID actorUserId, boolean requireSecurityContext) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.actorUserId = Objects.requireNonNull(actorUserId, "actorUserId");
+        this.requireSecurityContext = requireSecurityContext;
     }
 
     public void use(TenantId tenantId, UUID actorUserId) {
@@ -29,6 +35,9 @@ public final class FixedTenantContext implements TenantContextPort {
 
     @Override
     public TenantId requireTenantId() {
+        if (requireSecurityContext) {
+            return TenantSecurityContext.requireTenantId();
+        }
         return TenantSecurityContext.current()
                 .map(principal -> principal.tenantId())
                 .orElse(tenantId);
@@ -36,6 +45,9 @@ public final class FixedTenantContext implements TenantContextPort {
 
     @Override
     public UUID requireActorUserId() {
+        if (requireSecurityContext) {
+            return TenantSecurityContext.requireUserId();
+        }
         return TenantSecurityContext.current()
                 .map(principal -> principal.userId())
                 .orElse(actorUserId);

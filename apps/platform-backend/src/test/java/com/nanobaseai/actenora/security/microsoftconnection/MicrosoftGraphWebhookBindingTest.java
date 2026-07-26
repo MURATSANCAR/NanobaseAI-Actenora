@@ -32,6 +32,9 @@ import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
@@ -71,7 +74,12 @@ class MicrosoftGraphWebhookBindingTest {
                 buildReconciliationJob(),
                 new StubMailGateway()
         );
-        controller = new MicrosoftGraphWebhookController(api, CLIENT_STATE);
+        controller = new MicrosoftGraphWebhookController(
+                api,
+                new GraphChangeNotificationProcessor(api, emptyOutboxProvider()),
+                new MockEnvironment(),
+                CLIENT_STATE
+        );
     }
 
     @Test
@@ -127,10 +135,65 @@ class MicrosoftGraphWebhookBindingTest {
         assertEquals(1, result.processed());
     }
 
-    private GraphWebhookResultView process(GraphNotificationBatch batch) {
-        ResponseEntity<?> response = controller.notifications(null, batch);
+    @Test
+    void blankClientStateRejectedOnProdProfile() {
+        MockEnvironment prod = new MockEnvironment();
+        prod.setActiveProfiles("prod");
+        MicrosoftGraphWebhookController prodController = new MicrosoftGraphWebhookController(
+                new MicrosoftConnectionApi(
+                        new CalendarSyncService(new StubCalendarGateway(), new StubCursorStore(), InstantClock.systemUTC()),
+                        new MeetingTranscriptService(new StubOnlineMeetingGateway(), new StubTranscriptGateway()),
+                        new SubscriptionLifecycleService(
+                                new StubSubscriptionGateway(),
+                                new InMemorySubscriptionStore(),
+                                new InMemoryNotificationInbox(),
+                                InstantClock.systemUTC(),
+                                Duration.ofHours(6),
+                                Duration.ofHours(48)
+                        ),
+                        buildPollingFallback(),
+                        buildReconciliationJob(),
+                        new StubMailGateway()
+                ),
+                new GraphChangeNotificationProcessor(
+                        new MicrosoftConnectionApi(
+                                new CalendarSyncService(new StubCalendarGateway(), new StubCursorStore(), InstantClock.systemUTC()),
+                                new MeetingTranscriptService(new StubOnlineMeetingGateway(), new StubTranscriptGateway()),
+                                new SubscriptionLifecycleService(
+                                        new StubSubscriptionGateway(),
+                                        new InMemorySubscriptionStore(),
+                                        new InMemoryNotificationInbox(),
+                                        InstantClock.systemUTC(),
+                                        Duration.ofHours(6),
+                                        Duration.ofHours(48)
+                                ),
+                                buildPollingFallback(),
+                                buildReconciliationJob(),
+                                new StubMailGateway()
+                        ),
+                        emptyOutboxProvider()
+                ),
+                prod,
+                ""
+        );
+        GraphWebhookResultView result = process(prodController, new GraphNotificationBatch(List.of(changeItem(CLIENT_STATE))));
+        assertEquals(1, result.rejected());
+        assertEquals(0, result.processed());
+    }
+
+    private static ObjectProvider<com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher> emptyOutboxProvider() {
+        DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
+        return factory.getBeanProvider(com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher.class);
+    }
+
+    private GraphWebhookResultView process(MicrosoftGraphWebhookController target, GraphNotificationBatch batch) {
+        ResponseEntity<?> response = target.notifications(null, batch);
         assertEquals(202, response.getStatusCode().value());
         return (GraphWebhookResultView) response.getBody();
+    }
+
+    private GraphWebhookResultView process(GraphNotificationBatch batch) {
+        return process(controller, batch);
     }
 
     private static GraphNotificationItem changeItem(String clientState) {

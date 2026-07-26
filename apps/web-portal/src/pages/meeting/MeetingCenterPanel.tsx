@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Children, useState, type ReactNode } from "react";
 import { StatusBadge } from "@/components/qa/StatusBadge";
-import { portalMutationsEnabled } from "@/api/client";
+import { portalMutationsEnabled, resolvePortalAuthMode } from "@/api/client";
 import { useApi, useApiMode } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
 import type {
@@ -31,7 +31,7 @@ export function MeetingCenterPanel({
   const qc = useQueryClient();
   const meetingId = detail.meeting.id;
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
-  const mutationsEnabled = portalMutationsEnabled(apiMode);
+  const mutationsEnabled = portalMutationsEnabled(apiMode, resolvePortalAuthMode());
 
   const noteMutation = useMutation({
     mutationFn: ({ noteId, body }: { noteId: string; body: string }) =>

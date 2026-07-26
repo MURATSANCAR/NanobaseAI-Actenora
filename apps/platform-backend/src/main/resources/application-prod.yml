@@ -1,4 +1,3 @@
-# Production profile — no default secrets. Refuses local credential markers.
 spring:
   config:
     activate:
@@ -24,6 +23,9 @@ spring:
       port: ${REDIS_PORT}
   flyway:
     enabled: true
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
   security:
     oauth2:
       resourceserver:
@@ -32,6 +34,10 @@ spring:
           audiences: ${ACTENORA_ENTRA_AUDIENCE}
 
 actenora:
+  persistence:
+    mode: jdbc
+  tenancy:
+    require-security-context: true
   object-storage:
     endpoint: ${OBJECT_STORAGE_ENDPOINT}
     access-key: ${OBJECT_STORAGE_ACCESS_KEY}
@@ -39,6 +45,20 @@ actenora:
     enabled: ${ACTENORA_OBJECT_STORAGE_ENABLED:true}
   allow-default-secrets: false
   env: ${ACTENORA_ENV:production}
+  delivery:
+    mail:
+      provider: microsoft-graph
+    portal-link:
+      secret: ${ACTENORA_PORTAL_LINK_SECRET}
+    webhook:
+      secret: ${ACTENORA_DELIVERY_WEBHOOK_SECRET}
+  portal:
+    auth:
+      mode: ${ACTENORA_PORTAL_AUTH_MODE:msal}
+  microsoft-graph:
+    enabled: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:true}
+    webhook:
+      client-state: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE}
   security:
     auth:
       mode: ${ACTENORA_AUTH_MODE:entra}

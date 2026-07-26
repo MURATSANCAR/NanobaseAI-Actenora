@@ -111,8 +111,10 @@ public class MeetingModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(FixedTenantContext.class)
-    FixedTenantContext fixedTenantContext() {
-        return new FixedTenantContext(TenantId.random(), UUID.randomUUID());
+    FixedTenantContext fixedTenantContext(
+            @Value("${actenora.tenancy.require-security-context:false}") boolean requireSecurityContext
+    ) {
+        return new FixedTenantContext(TenantId.random(), UUID.randomUUID(), requireSecurityContext);
     }
 
     @Bean

@@ -2,8 +2,6 @@ package com.nanobaseai.actenora.security.messaging;
 
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
-import com.nanobaseai.actenora.meeting.api.event.MeetingIntegrationEvents;
-import com.nanobaseai.actenora.meetingintelligence.api.event.MeetingIntelligenceIntegrationEvents;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
@@ -19,7 +17,6 @@ import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxStore;
 import com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.TenantFairnessTracker;
-import com.nanobaseai.actenora.transcript.api.contract.MeetingOccurrenceContracts;
 import com.nanobaseai.actenora.transcript.infrastructure.messaging.MeetingOccurrenceUpsertedHandler;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -109,20 +106,13 @@ public class EventBackbonePlatformConfiguration {
             EventEnvelope envelope,
             IdempotentEventConsumer consumer,
             MeetingOccurrenceUpsertedHandler handler) {
-        if (!MeetingOccurrenceContracts.MEETING_OCCURRENCE_UPSERTED.equals(envelope.eventType())
-                && !MeetingIntegrationEvents.MEETING_OCCURRENCE_UPSERTED.equals(envelope.eventType())) {
-            return;
-        }
-        consumer.consume(envelope, handler::handle);
+        EventBackboneConsumerDispatch.dispatchOccurrenceUpserted(envelope, consumer, handler);
     }
 
     private static void dispatchNoteApprovedForLedger(
             EventEnvelope envelope,
             IdempotentEventConsumer consumer,
             NoteApprovedForLedgerHandler handler) {
-        if (!MeetingIntelligenceIntegrationEvents.NOTE_APPROVED_FOR_LEDGER.equals(envelope.eventType())) {
-            return;
-        }
-        consumer.consume(envelope, handler::handle);
+        EventBackboneConsumerDispatch.dispatchNoteApprovedForLedger(envelope, consumer, handler);
     }
 }

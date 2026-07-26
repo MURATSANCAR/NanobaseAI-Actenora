@@ -69,6 +69,10 @@ management:
       enabled: true
 
 actenora:
+  persistence:
+    mode: ${ACTENORA_PERSISTENCE_MODE:inmemory}
+  tenancy:
+    require-security-context: ${ACTENORA_TENANCY_REQUIRE_SECURITY_CONTEXT:false}
   object-storage:
     enabled: ${ACTENORA_OBJECT_STORAGE_ENABLED:false}
     endpoint: ${OBJECT_STORAGE_ENDPOINT:}
@@ -110,7 +114,18 @@ actenora:
     webhook:
       # Shared secret for provider delivery confirmation callbacks (FAZ 30)
       secret: ${ACTENORA_DELIVERY_WEBHOOK_SECRET:local-delivery-webhook-secret}
+    portal-link:
+      secret: ${ACTENORA_PORTAL_LINK_SECRET:actenora-local-portal-secret}
+      base-url: ${ACTENORA_PORTAL_LINK_BASE_URL:https://portal.nanobase.ai/actenora}
+    mail:
+      # mailhog (local) | microsoft-graph (prod CERTIFICATE path)
+      provider: ${ACTENORA_DELIVERY_MAIL_PROVIDER:mailhog}
+      from: ${ACTENORA_DELIVERY_MAIL_FROM:noreply@actenora.local}
+      graph-sender: ${ACTENORA_DELIVERY_GRAPH_SENDER:}
   portal:
+    auth:
+      # mock = X-Mock-* headers (local); msal = Entra Bearer via SPA (prod)
+      mode: ${ACTENORA_PORTAL_AUTH_MODE:mock}
     local-seed:
       # Only enable on local profile (see application-local.yml)
       enabled: ${ACTENORA_PORTAL_LOCAL_SEED:false}
@@ -131,6 +146,13 @@ actenora:
       read-timeout: ${TRANSCRIPT_REMOTE_READ_TIMEOUT:30s}
       max-retries: ${TRANSCRIPT_REMOTE_MAX_RETRIES:3}
       retry-backoff: ${TRANSCRIPT_REMOTE_RETRY_BACKOFF:200ms}
+  messaging:
+    # inmemory (default) | jdbc-rabbit (Wave 1 durable outbox relay)
+    mode: ${ACTENORA_MESSAGING_MODE:inmemory}
+    jdbc:
+      schema: ${ACTENORA_MESSAGING_JDBC_SCHEMA:operations}
+    relay:
+      max-queue-depth: ${ACTENORA_MESSAGING_RELAY_MAX_QUEUE_DEPTH:10000}
   env: ${ACTENORA_ENV:local}
   allow-default-secrets: false
 

@@ -18,6 +18,7 @@ import com.nanobaseai.actenora.delivery.infrastructure.approval.ApprovalApiNoteA
 import com.nanobaseai.actenora.delivery.infrastructure.approval.InMemoryNoteApprovalGate;
 import com.nanobaseai.actenora.delivery.infrastructure.audit.RecordingDeliveryAuditPort;
 import com.nanobaseai.actenora.delivery.infrastructure.mail.MailHogMailProvider;
+import com.nanobaseai.actenora.delivery.infrastructure.mail.MicrosoftGraphMailProvider;
 import com.nanobaseai.actenora.delivery.infrastructure.pdf.InMemoryPdfAttachmentPort;
 import com.nanobaseai.actenora.delivery.infrastructure.persistence.InMemoryDeliveryOrderRepository;
 import com.nanobaseai.actenora.delivery.infrastructure.persistence.InMemoryDeliveryRequestRepository;
@@ -26,6 +27,8 @@ import com.nanobaseai.actenora.delivery.infrastructure.ratelimit.FixedWindowDeli
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -64,8 +67,29 @@ public class DeliveryModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    DeliveryMailProvider deliveryMailProvider(InstantClock clock) {
-        return MailHogMailProvider.localDefaults(clock::now);
+    @ConditionalOnProperty(name = "actenora.delivery.mail.provider", havingValue = "mailhog", matchIfMissing = true)
+    DeliveryMailProvider mailhogMailProvider(
+            InstantClock clock,
+            @Value("${spring.mail.host:localhost}") String host,
+            @Value("${spring.mail.port:1025}") int port,
+            @Value("${actenora.delivery.mail.from:noreply@actenora.local}") String fromAddress
+    ) {
+        return new MailHogMailProvider(host, port, fromAddress, clock::now);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(name = "actenora.delivery.mail.provider", havingValue = "microsoft-graph")
+    DeliveryMailProvider microsoftGraphMailProvider(
+            InstantClock clock,
+            @Value("${actenora.microsoft-graph.tenant-id:}") String tenantId,
+            @Value("${actenora.microsoft-graph.client-id:}") String clientId,
+            @Value("${actenora.delivery.mail.graph-sender:}") String senderUpn
+    ) {
+        return new MicrosoftGraphMailProvider(
+                new MicrosoftGraphMailProvider.GraphMailConfig(tenantId, clientId, senderUpn, true),
+                clock::now
+        );
     }
 
     @Bean
@@ -82,11 +106,11 @@ public class DeliveryModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    SignedPortalLinkPort signedPortalLinkPort() {
-        return new HmacSignedPortalLinkService(
-                "actenora-local-portal-secret",
-                "https://portal.nanobase.ai"
-        );
+    SignedPortalLinkPort signedPortalLinkPort(
+            @Value("${actenora.delivery.portal-link.secret:actenora-local-portal-secret}") String secret,
+            @Value("${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai}") String baseUrl
+    ) {
+        return new HmacSignedPortalLinkService(secret, baseUrl);
     }
 
     @Bean

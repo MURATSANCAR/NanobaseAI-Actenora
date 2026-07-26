@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.sharedkernel.messaging.port.InboxStore;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxStore;
 import com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.GracefulShutdownGate;
+import com.nanobaseai.actenora.sharedkernel.messaging.support.QueueDepthGuard;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.TenantFairnessTracker;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 
@@ -40,7 +41,8 @@ public final class EventBackbone {
             InboxStore inboxStore,
             DeadLetterStore deadLetterStore,
             EventTransport transport,
-            TenantFairnessTracker fairness
+            TenantFairnessTracker fairness,
+            QueueDepthGuard queueDepthGuard
     ) {
         this.config = config;
         this.outboxStore = outboxStore;
@@ -62,7 +64,8 @@ public final class EventBackbone {
                 classifier,
                 clock,
                 fairness,
-                publisherGate
+                publisherGate,
+                queueDepthGuard
         );
         this.replayService = new EventReplayer(outboxStore, inboxStore, deadLetterStore, clock);
     }
@@ -79,7 +82,8 @@ public final class EventBackbone {
                 new InMemoryInboxStore(),
                 new InMemoryDeadLetterStore(),
                 new RecordingEventTransport(),
-                fairness
+                fairness,
+                null
         );
     }
 
@@ -91,7 +95,20 @@ public final class EventBackbone {
             EventTransport transport,
             TenantFairnessTracker fairness
     ) {
-        return new EventBackbone(config, outboxStore, inboxStore, deadLetterStore, transport, fairness);
+        return of(config, outboxStore, inboxStore, deadLetterStore, transport, fairness, null);
+    }
+
+    public static EventBackbone of(
+            EventMessagingConfig config,
+            OutboxStore outboxStore,
+            InboxStore inboxStore,
+            DeadLetterStore deadLetterStore,
+            EventTransport transport,
+            TenantFairnessTracker fairness,
+            QueueDepthGuard queueDepthGuard
+    ) {
+        return new EventBackbone(
+                config, outboxStore, inboxStore, deadLetterStore, transport, fairness, queueDepthGuard);
     }
 
     public EventMessagingConfig config() {

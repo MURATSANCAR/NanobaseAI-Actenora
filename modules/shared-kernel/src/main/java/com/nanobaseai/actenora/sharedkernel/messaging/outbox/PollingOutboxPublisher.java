@@ -12,6 +12,7 @@ import com.nanobaseai.actenora.sharedkernel.messaging.port.EventTransport;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxRelay;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxStore;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.GracefulShutdownGate;
+import com.nanobaseai.actenora.sharedkernel.messaging.support.QueueDepthGuard;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.TenantFairnessTracker;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 
@@ -41,6 +42,7 @@ public final class PollingOutboxPublisher implements OutboxRelay {
     private final InstantClock clock;
     private final TenantFairnessTracker fairness;
     private final GracefulShutdownGate gate;
+    private final QueueDepthGuard queueDepthGuard;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private ScheduledExecutorService scheduler;
 
@@ -54,6 +56,20 @@ public final class PollingOutboxPublisher implements OutboxRelay {
             TenantFairnessTracker fairness,
             GracefulShutdownGate gate
     ) {
+        this(outboxStore, deadLetterStore, transport, config, classifier, clock, fairness, gate, null);
+    }
+
+    public PollingOutboxPublisher(
+            OutboxStore outboxStore,
+            DeadLetterStore deadLetterStore,
+            EventTransport transport,
+            EventMessagingConfig config,
+            RetryClassifier classifier,
+            InstantClock clock,
+            TenantFairnessTracker fairness,
+            GracefulShutdownGate gate,
+            QueueDepthGuard queueDepthGuard
+    ) {
         this.outboxStore = Objects.requireNonNull(outboxStore, "outboxStore");
         this.deadLetterStore = Objects.requireNonNull(deadLetterStore, "deadLetterStore");
         this.transport = Objects.requireNonNull(transport, "transport");
@@ -62,6 +78,7 @@ public final class PollingOutboxPublisher implements OutboxRelay {
         this.clock = Objects.requireNonNull(clock, "clock");
         this.fairness = Objects.requireNonNull(fairness, "fairness");
         this.gate = Objects.requireNonNull(gate, "gate");
+        this.queueDepthGuard = queueDepthGuard;
     }
 
     @Override
@@ -92,6 +109,14 @@ public final class PollingOutboxPublisher implements OutboxRelay {
             return 0;
         }
         try {
+            if (queueDepthGuard != null) {
+                long pending = outboxStore.countByStatus(OutboxStatus.PENDING)
+                        + outboxStore.countByStatus(OutboxStatus.RETRY);
+                queueDepthGuard.observe((int) Math.min(pending, Integer.MAX_VALUE));
+                if (queueDepthGuard.isAtCapacity()) {
+                    return 0;
+                }
+            }
             Instant now = clock.now();
             List<OutboxEvent> claimed = outboxStore.claimDue(now, config.publishBatchSize());
             int published = 0;

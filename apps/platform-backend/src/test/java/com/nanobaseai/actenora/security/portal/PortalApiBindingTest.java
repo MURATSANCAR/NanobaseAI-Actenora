@@ -29,8 +29,10 @@ import com.nanobaseai.actenora.meeting.infrastructure.persistence.InMemoryMeetin
 import com.nanobaseai.actenora.meeting.infrastructure.quota.NoOpMeetingQuotaPort;
 import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
 import com.nanobaseai.actenora.meeting.infrastructure.time.SystemClockPort;
+import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerApi;
 import com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService;
+import com.nanobaseai.actenora.operations.api.OperationsApi;
 import com.nanobaseai.actenora.meetingintelligence.application.ledger.ContinuityLedgerService;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteLedgerPort;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.RecordingMeetingIntelligenceAuditPort;
@@ -45,6 +47,8 @@ import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -116,12 +120,19 @@ class PortalApiBindingTest {
                 Clock.systemUTC()
         );
 
+        DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+        ObjectProvider<MeetingIntelligenceApi> intelligenceProvider =
+                beanFactory.getBeanProvider(MeetingIntelligenceApi.class);
+        ObjectProvider<OperationsApi> operationsProvider = beanFactory.getBeanProvider(OperationsApi.class);
+
         controller = new PortalApiController(
                 stubIdentityApi(),
                 meetingApi,
                 ledgerApi,
                 approvalApi,
-                noteApproval
+                noteApproval,
+                intelligenceProvider,
+                operationsProvider
         );
 
         bind(tenantId, userId, Set.of(

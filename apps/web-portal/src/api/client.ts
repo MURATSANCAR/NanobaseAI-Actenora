@@ -13,7 +13,7 @@ export class ApiError extends Error {
   }
 }
 
-/** Local mock-auth headers expected by platform-backend MockIdentityProvider (FAZ 33). */
+/** Local mock-auth headers — non-prod only; backend rejects mock auth mode on prod (Wave 4). */
 export function mockAuthHeaders(env?: Partial<ImportMetaEnv>): Record<string, string> {
   const meta = env ?? ((typeof import.meta !== "undefined" ? import.meta.env : undefined) as
     | ImportMetaEnv
@@ -103,10 +103,26 @@ function createHttpApiClient(baseUrl: string): ApiClient {
 }
 
 export type ApiMode = "mock" | "http";
+export type PortalAuthMode = "mock" | "msal";
 
-/** Portal write actions (notes, approvals, action complete) are fully wired in mock mode only. */
-export function portalMutationsEnabled(mode: ApiMode): boolean {
-  return mode === "mock";
+/**
+ * Portal write actions when HTTP BFF is wired and auth is mock-local or MSAL Bearer.
+ * In-memory mock API mode always enables mutations for local UX.
+ */
+export function portalMutationsEnabled(
+  mode: ApiMode,
+  portalAuthMode: PortalAuthMode = resolvePortalAuthMode(),
+): boolean {
+  if (mode === "mock") return true;
+  return mode === "http" && (portalAuthMode === "mock" || portalAuthMode === "msal");
+}
+
+export function resolvePortalAuthMode(env?: Partial<ImportMetaEnv>): PortalAuthMode {
+  const meta = env ?? ((typeof import.meta !== "undefined" ? import.meta.env : undefined) as
+    | ImportMetaEnv
+    | undefined);
+  const raw = meta?.VITE_PORTAL_AUTH_MODE ?? "mock";
+  return raw === "msal" ? "msal" : "mock";
 }
 
 export function createApiClient(opts?: {
