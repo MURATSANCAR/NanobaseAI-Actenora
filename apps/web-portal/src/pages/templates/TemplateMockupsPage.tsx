@@ -14,9 +14,13 @@ import {
   createDesignComponent,
   validateDesignSchema,
 } from "@/lib/templateStandards";
+import {
+  NANOBASE_WEBSITE_LABEL,
+  NANOBASE_WEBSITE_URL,
+} from "@/components/template/TemplateBrandBanner";
 import type { DesignSchema, TemplateComponentType } from "@/types/template";
 import { useI18n } from "@/i18n";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Globe, Sparkles } from "lucide-react";
 
 type MockScenario =
   | "studio"
@@ -121,6 +125,34 @@ export function TemplateMockupsPage() {
         </span>
       </div>
 
+      <div className="relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-500 to-sky-500 px-5 py-6 text-white shadow-glow sm:px-7 sm:py-7">
+        <div className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden />
+        <div className="pointer-events-none absolute -bottom-16 left-16 h-40 w-40 rounded-full bg-sky-300/20 blur-2xl" aria-hidden />
+        <div className="relative flex flex-wrap items-center gap-4">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/40 backdrop-blur" aria-hidden>
+            <Sparkles className="h-7 w-7" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-2xl font-bold tracking-tight">NanobaseAI</h2>
+              <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ring-white/30">
+                {t("templates.brand.aiBadge")}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-white/90">{t("templates.brand.slogan")}</p>
+          </div>
+          <a
+            href={NANOBASE_WEBSITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-3 py-2 text-sm font-medium text-white ring-1 ring-white/30 transition hover:bg-white/25"
+          >
+            <Globe className="h-4 w-4" aria-hidden />
+            {NANOBASE_WEBSITE_LABEL}
+          </a>
+        </div>
+      </div>
+
       <nav className="card-static mb-4 flex flex-wrap gap-2 p-2" aria-label={t("templates.mockups.scenariosNav")}>
         {scenarios.map((s) => (
           <button
@@ -140,11 +172,13 @@ export function TemplateMockupsPage() {
       </nav>
 
       {scenario === "loading" ? (
-        <AsyncState status="loading" />
+        <AsyncState status="loading">{null}</AsyncState>
       ) : null}
 
       {scenario === "error" ? (
-        <AsyncState status="error" error={new Error(t("templates.mockups.errorDetail"))} />
+        <AsyncState status="error" error={new Error(t("templates.mockups.errorDetail"))}>
+          {null}
+        </AsyncState>
       ) : null}
 
       {scenario === "meeting-note" ? (
@@ -202,6 +236,27 @@ export function TemplateMockupsPage() {
           <TemplatePreviewPanel components={schema.components} />
         </div>
       ) : null}
+
+      <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-900 px-5 py-4 text-white">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-sky-500" aria-hidden>
+            <Sparkles className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold">NanobaseAI</p>
+            <p className="text-[11px] text-white/60">{t("templates.brand.footerNote")}</p>
+          </div>
+        </div>
+        <a
+          href={NANOBASE_WEBSITE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm font-medium text-sky-300 hover:text-sky-200"
+        >
+          <Globe className="h-4 w-4" aria-hidden />
+          {NANOBASE_WEBSITE_LABEL}
+        </a>
+      </footer>
     </PageShell>
   );
 }

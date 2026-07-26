@@ -1,10 +1,38 @@
-import type { DesignComponent } from "@/types/template";
+import type { ReactNode } from "react";
+import type { DesignComponent, TemplateComponentType } from "@/types/template";
+import { TemplateBrandFooter, TemplateBrandHeader } from "@/components/template/TemplateBrandBanner";
 import { useI18n } from "@/i18n";
 
-/** A4 document preview — structural placeholders only, no demo meeting data. */
+/** Sections rendered by the brand header/footer instead of as body blocks. */
+const BRAND_HANDLED: TemplateComponentType[] = ["LOGO", "FOOTER", "PAGE_NUMBER"];
+
+/** Left-accent color per section — colorful but professional. */
+const SECTION_ACCENT: Partial<Record<TemplateComponentType, string>> = {
+  EXECUTIVE_SUMMARY: "border-l-violet-500",
+  AGENDA: "border-l-indigo-500",
+  DECISIONS: "border-l-emerald-500",
+  ACTIONS: "border-l-amber-500",
+  RISKS: "border-l-rose-500",
+  OPEN_QUESTIONS: "border-l-sky-500",
+  COMMITMENTS: "border-l-fuchsia-500",
+};
+
+const HEADING_ACCENT: Partial<Record<TemplateComponentType, string>> = {
+  EXECUTIVE_SUMMARY: "text-violet-700",
+  AGENDA: "text-indigo-700",
+  DECISIONS: "text-emerald-700",
+  ACTIONS: "text-amber-700",
+  RISKS: "text-rose-700",
+  OPEN_QUESTIONS: "text-sky-700",
+  COMMITMENTS: "text-fuchsia-700",
+};
+
+/** A4 document preview — international meeting-minutes standard, NanobaseAI branded. */
 export function TemplatePreviewPanel({ components }: { components: DesignComponent[] }) {
   const { t, tb } = useI18n();
-  const sorted = [...components].sort((a, b) => a.order - b.order);
+  const bodyComponents = [...components]
+    .filter((c) => !BRAND_HANDLED.includes(c.type))
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className="card-static p-4">
@@ -12,98 +40,174 @@ export function TemplatePreviewPanel({ components }: { components: DesignCompone
         <h3 className="text-xs font-bold uppercase tracking-wide text-violet-700">
           {t("templates.preview.title")}
         </h3>
-        <span className="text-[11px] font-medium text-slate-500">{t("templates.preview.hint")}</span>
+        <span className="rounded-full bg-gradient-to-r from-violet-100 to-sky-100 px-2.5 py-1 text-[10px] font-semibold text-violet-700">
+          {t("templates.preview.hint")}
+        </span>
       </header>
       <div
-        className="mx-auto aspect-[210/297] w-full max-w-md overflow-hidden rounded-lg border border-slate-200 bg-white shadow-inner"
+        className="mx-auto aspect-[210/297] w-full max-w-md overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg ring-1 ring-slate-100"
         aria-label={t("templates.preview.title")}
       >
-        <div className="flex h-full flex-col gap-3 overflow-y-auto p-5 text-[11px] leading-relaxed text-slate-700">
-          {sorted.length ? (
-            sorted.map((component) => (
-              <PreviewBlock key={component.id} component={component} />
-            ))
-          ) : (
-            <p className="text-center text-slate-400">{t("templates.preview.empty")}</p>
-          )}
+        <div className="flex h-full flex-col gap-3 overflow-y-auto p-4 text-[11px] leading-relaxed text-slate-700">
+          <TemplateBrandHeader />
+          <div className="flex flex-1 flex-col gap-3">
+            {bodyComponents.length ? (
+              bodyComponents.map((component) => (
+                <PreviewBlock key={component.id} component={component} />
+              ))
+            ) : (
+              <p className="my-auto text-center text-slate-400">{t("templates.preview.empty")}</p>
+            )}
+          </div>
+          <TemplateBrandFooter pageLabel={t("templates.preview.placeholder.page")} />
         </div>
       </div>
     </div>
   );
 
+  function SectionShell({
+    type,
+    children,
+  }: {
+    type: TemplateComponentType;
+    children: ReactNode;
+  }) {
+    const accent = SECTION_ACCENT[type] ?? "border-l-slate-300";
+    const heading = HEADING_ACCENT[type] ?? "text-slate-600";
+    return (
+      <section className={`rounded-r-md border-l-2 bg-slate-50/60 px-3 py-2 ${accent}`}>
+        <h4 className={`mb-1 text-[10px] font-bold uppercase tracking-wider ${heading}`}>
+          {tb("templateComponentType", type)}
+        </h4>
+        {children}
+      </section>
+    );
+  }
+
   function PreviewBlock({ component }: { component: DesignComponent }) {
     const label = tb("templateComponentType", component.type);
 
     switch (component.type) {
-      case "LOGO":
-        return (
-          <div className="flex h-10 items-center justify-center rounded border border-dashed border-slate-200 bg-slate-50 text-slate-400">
-            {label}
-          </div>
-        );
       case "HEADER":
         return (
-          <div className="border-b border-slate-200 pb-2">
-            <p className="text-base font-bold text-slate-900">{t("templates.preview.placeholder.title")}</p>
+          <div className="border-b-2 border-violet-100 pb-2">
+            <p className="text-lg font-bold text-slate-900">{t("templates.preview.placeholder.title")}</p>
             <p className="text-slate-500">{t("templates.preview.placeholder.subtitle")}</p>
+            <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-violet-400">
+              {t("templates.preview.placeholder.reference")}
+            </p>
           </div>
         );
       case "METADATA":
         return (
-          <dl className="grid grid-cols-2 gap-1 text-slate-600">
-            <dt className="font-semibold">{t("templates.preview.placeholder.date")}</dt>
-            <dd>{t("templates.preview.placeholder.value")}</dd>
-            <dt className="font-semibold">{t("templates.preview.placeholder.duration")}</dt>
-            <dd>{t("templates.preview.placeholder.value")}</dd>
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-md bg-slate-50/80 px-3 py-2 text-slate-600">
+            <MetaRow term={t("templates.preview.placeholder.date")} />
+            <MetaRow term={t("templates.preview.placeholder.time")} />
+            <MetaRow term={t("templates.preview.placeholder.location")} />
+            <MetaRow term={t("templates.preview.placeholder.meetingType")} />
           </dl>
         );
       case "PARTICIPANT_TABLE":
         return (
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="py-1 font-semibold">{t("templates.preview.placeholder.name")}</th>
-                <th className="py-1 font-semibold">{t("templates.preview.placeholder.role")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-slate-100">
-                <td className="py-1 text-slate-400">{t("templates.preview.placeholder.row")}</td>
-                <td className="py-1 text-slate-400">{t("templates.preview.placeholder.row")}</td>
-              </tr>
-            </tbody>
-          </table>
+          <SectionShell type="PARTICIPANT_TABLE">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500">
+                  <th className="py-1 font-semibold">{t("templates.preview.placeholder.name")}</th>
+                  <th className="py-1 font-semibold">{t("templates.preview.placeholder.role")}</th>
+                  <th className="py-1 font-semibold">{t("templates.preview.placeholder.attendance")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[0, 1].map((i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-1 text-slate-400">{t("templates.preview.placeholder.row")}</td>
+                    <td className="py-1 text-slate-400">{t("templates.preview.placeholder.row")}</td>
+                    <td className="py-1">
+                      <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-semibold text-emerald-600">
+                        {t("templates.preview.placeholder.present")}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </SectionShell>
         );
-      case "PAGE_NUMBER":
+      case "AGENDA":
         return (
-          <p className="mt-auto text-center text-[10px] text-slate-400">
-            {t("templates.preview.placeholder.page")}
-          </p>
+          <SectionShell type="AGENDA">
+            <ol className="list-inside list-decimal space-y-0.5 text-slate-400">
+              <li>{t("templates.preview.placeholder.item")}</li>
+              <li>{t("templates.preview.placeholder.item")}</li>
+            </ol>
+          </SectionShell>
+        );
+      case "ACTIONS":
+        return (
+          <SectionShell type="ACTIONS">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-amber-100 text-amber-700/80">
+                  <th className="py-1 font-semibold">{t("templates.preview.placeholder.task")}</th>
+                  <th className="py-1 font-semibold">{t("templates.preview.placeholder.owner")}</th>
+                  <th className="py-1 font-semibold">{t("templates.preview.placeholder.due")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-amber-50">
+                  <td className="py-1 text-slate-400">{t("templates.preview.placeholder.row")}</td>
+                  <td className="py-1 text-slate-400">{t("templates.preview.placeholder.row")}</td>
+                  <td className="py-1 text-slate-400">{t("templates.preview.placeholder.row")}</td>
+                </tr>
+              </tbody>
+            </table>
+          </SectionShell>
+        );
+      case "DECISIONS":
+      case "RISKS":
+      case "OPEN_QUESTIONS":
+      case "COMMITMENTS":
+      case "EXECUTIVE_SUMMARY":
+        return (
+          <SectionShell type={component.type}>
+            <p className="text-slate-400">{t("templates.preview.placeholder.section")}</p>
+          </SectionShell>
         );
       case "CONFIDENTIALITY":
         return (
-          <p className="rounded bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800">
-            {label}
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
+            {label} · {t("templates.preview.placeholder.classification")}
           </p>
         );
       case "SIGNATURE":
         return (
-          <div className="mt-2 border-t border-slate-200 pt-3">
-            <p className="font-semibold text-slate-800">{label}</p>
-            <div className="mt-4 h-8 border-b border-slate-300" />
+          <div className="mt-1 grid grid-cols-2 gap-4 pt-2">
+            {[0, 1].map((i) => (
+              <div key={i}>
+                <div className="h-7 border-b border-slate-300" />
+                <p className="mt-1 text-[9px] uppercase tracking-wider text-slate-400">
+                  {t("templates.preview.placeholder.signatory")}
+                </p>
+              </div>
+            ))}
           </div>
-        );
-      case "FOOTER":
-        return (
-          <p className="border-t border-slate-100 pt-2 text-[10px] text-slate-400">{label}</p>
         );
       default:
         return (
-          <section>
-            <h4 className="mb-1 text-xs font-bold uppercase tracking-wide text-violet-700">{label}</h4>
+          <SectionShell type={component.type}>
             <p className="text-slate-400">{t("templates.preview.placeholder.section")}</p>
-          </section>
+          </SectionShell>
         );
     }
+  }
+
+  function MetaRow({ term }: { term: string }) {
+    return (
+      <>
+        <dt className="font-semibold text-slate-500">{term}</dt>
+        <dd className="text-slate-400">{t("templates.preview.placeholder.value")}</dd>
+      </>
+    );
   }
 }
