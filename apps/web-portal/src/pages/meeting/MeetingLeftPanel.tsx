@@ -77,7 +77,7 @@ function ApprovalList({ items }: { items: ApprovalRecord[] }) {
     <ul className="space-y-2 text-sm">
       {items.map((a) => (
         <li key={a.id} className="rounded-xl bg-white/50 px-3 py-2">
-          {a.artifactType} · {tb("approvalStatus", a.status)}
+          {tb("artifactType", a.artifactType)} · {tb("approvalStatus", a.status)}
           {a.decidedBy ? <span className="text-slate-500"> · {a.decidedBy}</span> : null}
         </li>
       ))}

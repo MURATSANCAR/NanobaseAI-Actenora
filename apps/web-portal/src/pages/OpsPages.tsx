@@ -20,7 +20,11 @@ export function TemplateStudioPage() {
   const [name, setName] = useState("");
   const [locale, setLocale] = useState("en");
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
-  const q = useQuery({ queryKey: queryKeys.templates, queryFn: () => api.listTemplates() });
+  const q = useQuery({
+    queryKey: queryKeys.templates,
+    queryFn: () => api.listTemplates(),
+    enabled: auth.nav("templates"),
+  });
   const createMutation = useMutation({
     mutationFn: () => api.createTemplate({ name: name.trim(), locale }),
     onSuccess: async () => {
@@ -41,6 +45,10 @@ export function TemplateStudioPage() {
   const status =
     q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
 
+  if (!auth.isLoading && !auth.nav("templates")) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <PageShell titleKey="templates.title" subtitleKey="templates.description" maxWidth="max-w-7xl">
       <div className="mb-4">
@@ -48,7 +56,7 @@ export function TemplateStudioPage() {
           {t("templates.mockups.open")}
         </Link>
       </div>
-      {!q.isLoading && !q.data?.items.length ? <StubBanner featureKey="templates" /> : null}
+      {q.data?.compositionStub ? <StubBanner featureKey="templates" /> : null}
       {auth.nav("templates") ? (
         <div className="card-static mb-4 space-y-3 p-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("admin.createTemplate")}</h2>
@@ -141,7 +149,7 @@ export function TeamsSettingsPage() {
 
   return (
     <PageShell titleKey="teams.title" subtitleKey="teams.description" maxWidth="max-w-4xl">
-      {!q.data?.tenantConnected ? <StubBanner featureKey="teams" /> : null}
+      {!q.data?.tenantConnected && q.data?.compositionStub ? <StubBanner featureKey="teams" /> : null}
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>
@@ -323,14 +331,14 @@ export function ModelManagementPage() {
         {q.data ? (
           <>
             {!q.data.models.length ? (
-              connection.data?.healthy ? (
+              q.data.compositionStub ? (
+                <StubBanner featureKey="models" />
+              ) : connection.data?.healthy ? (
                 <div className="card-static border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                   <p className="font-semibold">{t("models.registryEmptyTitle")}</p>
                   <p className="mt-1 text-xs text-slate-600">{t("models.registryEmptyBody")}</p>
                 </div>
-              ) : (
-                <StubBanner featureKey="models" />
-              )
+              ) : null
             ) : null}
             <div className="space-y-3">
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("models.sectionModels")}</h2>
@@ -398,7 +406,7 @@ export function AiJobTimelinePage() {
 
   return (
     <PageShell titleKey="jobs.title" subtitleKey="jobs.description" maxWidth="max-w-7xl">
-      {!q.isLoading && !q.data?.items.length ? <StubBanner featureKey="jobs" /> : null}
+      {q.data?.compositionStub ? <StubBanner featureKey="jobs" /> : null}
       <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("jobs.description")}>
         <div className="card-static divide-y divide-white/60">
           {q.data?.items.map((j) => (
@@ -504,7 +512,7 @@ export function AuditViewerPage() {
 
   return (
     <PageShell titleKey="audit.title" subtitleKey="audit.description" maxWidth="max-w-7xl">
-      {!q.isLoading && !q.data?.items.length ? <StubBanner featureKey="audit" /> : null}
+      {q.data?.compositionStub ? <StubBanner featureKey="audit" /> : null}
       <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("audit.description")}>
         <DataTable
           headers={[t("table.action"), t("table.actor"), t("table.subject"), t("table.at")]}

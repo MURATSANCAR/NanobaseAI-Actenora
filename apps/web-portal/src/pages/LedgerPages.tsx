@@ -15,7 +15,14 @@ import { isOverdue } from "@/lib/dueDates";
 import { exportTableCsv } from "@/lib/export";
 
 const DECISION_STATUSES: ArtifactStatus[] = ["PENDING_APPROVAL", "APPROVED", "REJECTED"];
-const ACTION_STATUSES: ArtifactStatus[] = ["OPEN", "COMPLETED", "PENDING_APPROVAL"];
+const ACTION_STATUSES: ArtifactStatus[] = ["OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED", "PENDING_APPROVAL"];
+
+function formatOwner(ownerDisplayName: string, unassignedLabel: string) {
+  if (!ownerDisplayName || ownerDisplayName === "unknown") {
+    return unassignedLabel;
+  }
+  return ownerDisplayName;
+}
 
 export function DecisionLedgerPage() {
   const api = useApi();
@@ -120,7 +127,11 @@ export function ActionCenterPage() {
     let rows = q.data?.items ?? [];
     if (overdueOnly) rows = rows.filter((a) => isOverdue(a.dueAt));
     if (mineOnly && auth.user) {
-      rows = rows.filter((a) => a.ownerDisplayName === auth.user!.displayName);
+      rows = rows.filter(
+        (a) =>
+          a.ownerDisplayName !== "unknown" &&
+          a.ownerDisplayName === auth.user!.displayName,
+      );
     }
     return rows;
   }, [q.data?.items, overdueOnly, mineOnly, auth.user]);
@@ -136,7 +147,7 @@ export function ActionCenterPage() {
       items.map((a) => [
         a.title,
         tb("artifactStatus", a.status),
-        a.ownerDisplayName,
+        formatOwner(a.ownerDisplayName, t("common.unassigned")),
         a.dueAt ?? "",
       ]),
     );
@@ -201,7 +212,9 @@ export function ActionCenterPage() {
             items.map((a) => [
               a.title,
               <StatusBadge key={`${a.id}-s`} label={tb("artifactStatus", a.status)} status={a.status} />,
-              <span key={`${a.id}-o`} className="text-slate-500">{a.ownerDisplayName}</span>,
+              <span key={`${a.id}-o`} className="text-slate-500">
+                {formatOwner(a.ownerDisplayName, t("common.unassigned"))}
+              </span>,
               <DueDateBadge key={`${a.id}-d`} dueAt={a.dueAt} />,
               <Link key={`${a.id}-m`} to={`/meetings/${a.meetingId}`} className="btn-secondary px-3 py-1.5 text-xs">
                 {t("common.openMeeting")}
@@ -236,7 +249,11 @@ export function CommitmentTrackerPage() {
     let rows = q.data?.items ?? [];
     if (overdueOnly) rows = rows.filter((c) => isOverdue(c.dueAt) || c.status === "AT_RISK");
     if (mineOnly && auth.user) {
-      rows = rows.filter((c) => c.ownerDisplayName === auth.user!.displayName);
+      rows = rows.filter(
+        (c) =>
+          c.ownerDisplayName !== "unknown" &&
+          c.ownerDisplayName === auth.user!.displayName,
+      );
     }
     return rows;
   }, [q.data?.items, overdueOnly, mineOnly, auth.user]);
@@ -252,7 +269,7 @@ export function CommitmentTrackerPage() {
       items.map((c) => [
         c.statement,
         tb("artifactStatus", c.status),
-        c.ownerDisplayName,
+        formatOwner(c.ownerDisplayName, t("common.unassigned")),
         c.dueAt ?? "",
       ]),
     );
@@ -299,7 +316,9 @@ export function CommitmentTrackerPage() {
             items.map((c) => [
               c.statement,
               <StatusBadge key={`${c.id}-s`} label={tb("artifactStatus", c.status)} status={c.status} />,
-              <span key={`${c.id}-o`} className="text-slate-500">{c.ownerDisplayName}</span>,
+              <span key={`${c.id}-o`} className="text-slate-500">
+                {formatOwner(c.ownerDisplayName, t("common.unassigned"))}
+              </span>,
               <DueDateBadge key={`${c.id}-d`} dueAt={c.dueAt} />,
               <Link key={`${c.id}-m`} to={`/meetings/${c.meetingId}`} className="btn-secondary px-3 py-1.5 text-xs">
                 {t("common.openMeeting")}

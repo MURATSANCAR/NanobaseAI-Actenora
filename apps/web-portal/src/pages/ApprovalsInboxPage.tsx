@@ -1,3 +1,4 @@
+import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
@@ -17,6 +18,10 @@ export function ApprovalsInboxPage() {
     queryFn: () => api.listPendingApprovals(),
     enabled: auth.canApprove,
   });
+
+  if (!auth.isLoading && !auth.canApprove) {
+    return <Navigate to="/" replace />;
+  }
 
   const status =
     q.isLoading ? "loading" : q.isError ? "error" : !q.data?.groups.length ? "empty" : "ready";

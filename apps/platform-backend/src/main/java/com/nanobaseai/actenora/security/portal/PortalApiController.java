@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.identity.api.RequiresPermission;
 import com.nanobaseai.actenora.identity.api.UserView;
 import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
+import com.nanobaseai.actenora.meeting.api.dto.BusinessContextResponse;
 import com.nanobaseai.actenora.meeting.api.dto.CursorPageRequest;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingListResponse;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
@@ -288,7 +289,7 @@ public class PortalApiController {
                 summary,
                 portalParticipants,
                 null,
-                null,
+                resolveBusinessContextName(meeting.businessContextId()),
                 List.of(),
                 approvalHistory,
                 notes,
@@ -457,6 +458,7 @@ public class PortalApiController {
     @GetMapping("/decisions")
     @RequiresPermission(Permission.MEETING_READ)
     public PortalCursorPage<DecisionItemView> listDecisions(
+            @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "cursor", required = false) String cursor,
             @RequestParam(value = "limit", required = false) Integer limit
     ) {
@@ -475,19 +477,25 @@ public class PortalApiController {
                     event.occurredAt().toString()
             ));
         }
+        if (status != null && !status.isBlank()) {
+            String normalized = status.trim().toUpperCase(Locale.ROOT);
+            items = items.stream().filter(item -> normalized.equals(item.status())).toList();
+        }
         return page(items, cursor, limit);
     }
 
     @GetMapping("/actions")
     @RequiresPermission(Permission.MEETING_READ)
     public PortalCursorPage<ActionItemView> listActions(
+            @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "cursor", required = false) String cursor,
             @RequestParam(value = "limit", required = false) Integer limit,
             HttpServletResponse response
     ) {
         AuthenticatedPrincipal principal = require(Permission.MEETING_READ);
-        List<ActionItemView> items = ledgerApi.listOpenActionItems(principal.tenantId()).stream()
+        List<ActionItemView> items = ledgerApi.listActionItems(principal.tenantId()).stream()
                 .map(PortalApiController::toActionItemView)
+                .filter(item -> matchesActionStatus(item, status))
                 .toList();
         return page(items, cursor, limit);
     }
@@ -1088,7 +1096,41 @@ public class PortalApiController {
                 ));
             }
         }
-        return new ModelHealthView(models, deployments, new RoutingView("prefer-registry", List.of()));
+        return new ModelHealthView(models, deployments, new RoutingView("prefer-registry", routingRoles(models)));
+    }
+
+    private static List<RoleRoutingView> routingRoles(List<ModelSummaryView> models) {
+        if (models.isEmpty()) {
+            return List.of();
+        }
+        return models.stream()
+                .map(model -> new RoleRoutingView("inference", model.modelKey(), model.modelKey()))
+                .toList();
+    }
+
+    private String resolveBusinessContextName(UUID businessContextId) {
+        if (businessContextId == null) {
+            return null;
+        }
+        try {
+            for (BusinessContextResponse context : meetingApi.listBusinessContexts()) {
+                if (context.id().equals(businessContextId)
+                        && context.name() != null
+                        && !context.name().isBlank()) {
+                    return context.name();
+                }
+            }
+        } catch (RuntimeException ignored) {
+            /* fall through */
+        }
+        return null;
+    }
+
+    private static boolean matchesActionStatus(ActionItemView item, String status) {
+        if (status == null || status.isBlank()) {
+            return true;
+        }
+        return status.trim().toUpperCase(Locale.ROOT).equals(item.status());
     }
 
     private ActorPrincipal requireModelActor() {

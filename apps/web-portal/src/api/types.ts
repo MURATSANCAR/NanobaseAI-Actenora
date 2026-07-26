@@ -17,6 +17,7 @@ export type Permission =
   | "teams:settings";
 
 export type MeetingOccurrenceStatus =
+  | "DRAFT"
   | "SCHEDULED"
   | "IN_PROGRESS"
   | "ENDED"
@@ -32,7 +33,13 @@ export type ArtifactStatus =
   | "REJECTED"
   | "COMPLETED"
   | "OPEN"
+  | "IN_PROGRESS"
+  | "CANCELLED"
   | "AT_RISK";
+
+export interface CompositionAware {
+  compositionStub?: boolean;
+}
 
 export type MarkerKind = "DECISION" | "ACTION" | "RISK" | "QUESTION" | "IMPORTANT";
 
@@ -59,7 +66,7 @@ export interface MeetingSummary {
   participantCount: number;
 }
 
-export interface CursorPage<T> {
+export interface CursorPage<T> extends CompositionAware {
   items: T[];
   nextCursor: string | null;
 }
@@ -117,7 +124,7 @@ export interface CommitmentItem {
 
 export interface ApprovalRecord {
   id: string;
-  artifactType: "DECISION" | "ACTION" | "COMMITMENT" | "NOTE" | "DELIVERY";
+  artifactType: "DECISION" | "ACTION" | "COMMITMENT" | "NOTE" | "DELIVERY" | "MEETING_NOTE_VERSION";
   artifactId: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   decidedBy: string | null;
@@ -242,7 +249,7 @@ export interface NoteTemplateLock {
   designSchema: DesignSchemaView | null;
 }
 
-export interface TeamsSettings {
+export interface TeamsSettings extends CompositionAware {
   tenantConnected: boolean;
   graphAppId: string;
   webhookStatus: string;
@@ -262,7 +269,11 @@ export interface NanobaseAiConnection {
   checkedAt: string;
 }
 
-export interface ModelHealthResponse {
+export interface TemplateListResponse extends CompositionAware {
+  items: TemplateSummary[];
+}
+
+export interface ModelHealthResponse extends CompositionAware {
   models: Array<{
     modelKey: string;
     displayName: string;
@@ -294,7 +305,7 @@ export interface AiJob {
   finishedAt: string | null;
 }
 
-export interface OperationsOverview {
+export interface OperationsOverview extends CompositionAware {
   queueDepth: number;
   failedJobs: number;
   circuitBreakers: Array<{ name: string; state: string }>;
@@ -344,7 +355,7 @@ export interface ApiClient {
   listActions(params?: ListArtifactsParams): Promise<CursorPage<ActionItem>>;
   completeAction(actionId: string): Promise<ActionItem>;
   listCommitments(params?: ListArtifactsParams): Promise<CursorPage<CommitmentItem>>;
-  listTemplates(): Promise<{ items: TemplateSummary[] }>;
+  listTemplates(): Promise<TemplateListResponse>;
   createTemplate(body: { name: string; locale?: string }): Promise<TemplateSummary>;
   getTemplate(templateId: string): Promise<TemplateDetail>;
   createTemplateDraft(

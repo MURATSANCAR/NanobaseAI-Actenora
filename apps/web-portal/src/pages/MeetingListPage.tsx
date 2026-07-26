@@ -10,6 +10,7 @@ import { AsyncState, DataTable, FilterCard, PaginationBar } from "@/components/u
 import { useI18n } from "@/i18n";
 
 const MEETING_STATUSES: MeetingOccurrenceStatus[] = [
+  "DRAFT",
   "READY",
   "PROCESSING",
   "ENDED",

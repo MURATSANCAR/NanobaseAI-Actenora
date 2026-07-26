@@ -39,6 +39,17 @@ export function identityAuthHeaders(env?: Partial<ImportMetaEnv>): Record<string
   };
 }
 
+function attachCompositionStub<T>(data: T, res: Response): T {
+  if (
+    data &&
+    typeof data === "object" &&
+    res.headers.get("X-Actenora-Composition") === "stub"
+  ) {
+    return { ...(data as Record<string, unknown>), compositionStub: true } as T;
+  }
+  return data;
+}
+
 async function httpJson<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await resolveAuthHeaders();
   const res = await fetch(`${baseUrl}${path}`, {
@@ -65,7 +76,8 @@ async function httpJson<T>(baseUrl: string, path: string, init?: RequestInit): P
   if (res.status === 204) {
     return undefined as T;
   }
-  return (await res.json()) as T;
+  const data = (await res.json()) as T;
+  return attachCompositionStub(data, res);
 }
 
 function createHttpApiClient(baseUrl: string): ApiClient {
