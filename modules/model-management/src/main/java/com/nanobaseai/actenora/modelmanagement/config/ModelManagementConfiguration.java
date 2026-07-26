@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.modelmanagement.infrastructure.InMemoryTenantMode
 import com.nanobaseai.actenora.modelmanagement.infrastructure.RecordingModelRegistryAuditPort;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,12 +25,14 @@ import java.time.Duration;
 public class ModelManagementConfiguration {
 
     @Bean
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(ModelDefinitionRepository.class)
     ModelDefinitionRepository modelDefinitionRepository() {
         return new InMemoryModelDefinitionRepository();
     }
 
     @Bean
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(ModelDeploymentRepository.class)
     ModelDeploymentRepository modelDeploymentRepository() {
         return new InMemoryModelDeploymentRepository();

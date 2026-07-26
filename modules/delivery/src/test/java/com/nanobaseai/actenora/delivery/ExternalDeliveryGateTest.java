@@ -125,6 +125,11 @@ class ExternalDeliveryGateTest {
         }
 
         @Override
+        public List<com.nanobaseai.actenora.approval.api.ApprovalRequestView> listForTenant(UUID tenantId) {
+            return List.of();
+        }
+
+        @Override
         public UUID raiseDispute(
                 UUID tenantId, UUID subjectId, ApprovalSubjectType subjectType,
                 String participantId, String proposedContent, String reason

@@ -1,0 +1,17 @@
+# Pre-built JAR runtime image (used by scripts/deploy-actenora-backend.sh).
+# Build context must include apps/platform-backend/target/platform-backend-*.jar copied as app.jar.
+
+FROM eclipse-temurin:21-jre-jammy AS runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system actenora \
+    && useradd --system --gid actenora --create-home actenora
+WORKDIR /app
+COPY app.jar /app/app.jar
+USER actenora
+EXPOSE 8080
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+HEALTHCHECK --interval=10s --timeout=5s --start-period=120s --retries=24 \
+  CMD curl -fsS http://127.0.0.1:8080/actuator/health/liveness | grep -q UP
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

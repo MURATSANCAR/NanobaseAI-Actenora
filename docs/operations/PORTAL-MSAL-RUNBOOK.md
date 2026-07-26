@@ -38,10 +38,19 @@ Guards:
 VITE_PORTAL_AUTH_MODE=msal
 VITE_ENTRA_CLIENT_ID=...
 VITE_ENTRA_TENANT_ID=...
-VITE_ENTRA_API_SCOPE=api://actenora/access_as_user
+VITE_ENTRA_API_SCOPE=api://<client-id>/access_as_user
 VITE_API_MODE=http
 VITE_API_BASE_URL=https://api.example.com
 ```
+
+For local Vite, put the same `VITE_*` values in `apps/web-portal/.env.local` (gitignored). Root `.env` drives the backend.
+
+### Entra portal checklist (single app = SPA + API)
+
+1. **Authentication** → platform SPA → redirect URIs: `http://127.0.0.1:3000`, `http://localhost:3000` (and prod portal URL)
+2. **Expose an API** → Application ID URI `api://<client-id>` → scope `access_as_user`
+3. **API permissions** → add that scope to the SPA (same app) → admin consent if required
+4. Backend: `ACTENORA_ENTRA_AUDIENCE=api://<client-id>` must match token `aud`
 
 Dockerfile fails the build if `msal` is set without client ID / API scope. Do not bake `VITE_MOCK_*` into staging/prod images.
 

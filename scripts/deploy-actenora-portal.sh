@@ -25,6 +25,8 @@ log "Building web-portal (base=${PORTAL_BASE})"
     source "${REPO_ROOT}/.env"
     set +a
   fi
+  # Production SPA calls same-origin BFF (nginx → platform-backend).
+  export VITE_API_BASE_URL="${ACTENORA_PORTAL_API_BASE_URL:-https://portal.nanobase.ai}"
   VITE_BASE="${PORTAL_BASE}" pnpm --filter @actenora/web-portal run build
 )
 
