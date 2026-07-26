@@ -169,6 +169,8 @@
   "models.sectionModels": "Kayıtlı yetenekler",
   "models.sectionDeployments": "Dağıtımlar",
   "models.sectionRouting": "Yönlendirme detayı",
+  "models.registryEmptyTitle": "Model kaydı henüz boş",
+  "models.registryEmptyBody": "NanobaseAI bağlantısı sağlıklı. Bağlantıyı test edin veya kaydedin; kayıt otomatik oluşturulur.",
   "models.routingHidden": "Yönlendirme detayı yalnızca yönetici / operasyon içindir.",
   "models.strategy": "Strateji",
   "models.fallback": "yedek",

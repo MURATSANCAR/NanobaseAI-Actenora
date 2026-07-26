@@ -322,7 +322,16 @@ export function ModelManagementPage() {
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>
-            {!q.data.models.length ? <StubBanner featureKey="models" /> : null}
+            {!q.data.models.length ? (
+              connection.data?.healthy ? (
+                <div className="card-static border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                  <p className="font-semibold">{t("models.registryEmptyTitle")}</p>
+                  <p className="mt-1 text-xs text-slate-600">{t("models.registryEmptyBody")}</p>
+                </div>
+              ) : (
+                <StubBanner featureKey="models" />
+              )
+            ) : null}
             <div className="space-y-3">
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("models.sectionModels")}</h2>
               <DataTable

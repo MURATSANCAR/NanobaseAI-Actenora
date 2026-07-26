@@ -31,16 +31,27 @@ public final class NanobaseAiConnectionService {
     private final SwappableLocalModelProvider swappable;
     private final boolean production;
     private final AtomicReference<Settings> settings;
+    private final NanobaseAiModelRegistrySync modelRegistrySync;
 
     public NanobaseAiConnectionService(
             SwappableLocalModelProvider swappable,
             LocalProviderProperties initial,
             boolean production
     ) {
+        this(swappable, initial, production, null);
+    }
+
+    public NanobaseAiConnectionService(
+            SwappableLocalModelProvider swappable,
+            LocalProviderProperties initial,
+            boolean production,
+            NanobaseAiModelRegistrySync modelRegistrySync
+    ) {
         this.swappable = Objects.requireNonNull(swappable, "swappable");
         this.production = production;
         LocalProviderProperties props = Objects.requireNonNull(initial, "initial");
         this.settings = new AtomicReference<>(Settings.fromProperties(props));
+        this.modelRegistrySync = modelRegistrySync;
     }
 
     public ConnectionView current() {
@@ -88,6 +99,7 @@ public final class NanobaseAiConnectionService {
                 current.maxConcurrency(), current.streamingEnabled(), models);
         apply(next);
         settings.set(next);
+        syncModelRegistry(next);
         return current();
     }
 
@@ -103,6 +115,7 @@ public final class NanobaseAiConnectionService {
                         )
                 );
             }
+            syncModelRegistry(s);
             return current();
         } catch (ActenoraException ex) {
             throw ex;
@@ -121,6 +134,18 @@ public final class NanobaseAiConnectionService {
         swappable.replace(provider);
         log.info("NanobaseAI Intelligence endpoint updated host={} enabled={}",
                 next.baseUrl().getHost(), next.enabled());
+        syncModelRegistry(next);
+    }
+
+    private void syncModelRegistry(Settings settings) {
+        if (modelRegistrySync == null || settings == null) {
+            return;
+        }
+        try {
+            modelRegistrySync.ensureRegistered(settings.baseUrl(), settings.servedModelIds(), settings.enabled());
+        } catch (RuntimeException ex) {
+            log.warn("NanobaseAI model registry sync skipped reason={}", ex.getMessage());
+        }
     }
 
     private LocalModelProvider buildProvider(Settings s) {

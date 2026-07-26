@@ -169,6 +169,8 @@
   "models.sectionModels": "Registered capabilities",
   "models.sectionDeployments": "Deployments",
   "models.sectionRouting": "Routing detail",
+  "models.registryEmptyTitle": "Model registry is still empty",
+  "models.registryEmptyBody": "NanobaseAI connection is healthy. Test or save the connection to auto-register the local model.",
   "models.routingHidden": "Routing detail is restricted to admin / operations.",
   "models.strategy": "Strategy",
   "models.fallback": "fallback",

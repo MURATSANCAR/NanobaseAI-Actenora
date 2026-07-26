@@ -56,6 +56,7 @@ import com.nanobaseai.actenora.aiprocessing.infrastructure.routing.InMemoryShado
 import com.nanobaseai.actenora.modelmanagement.application.DeploymentHealthSettings;
 import com.nanobaseai.actenora.modelmanagement.application.ModelDefinitionRepository;
 import com.nanobaseai.actenora.modelmanagement.application.ModelDeploymentRepository;
+import com.nanobaseai.actenora.modelmanagement.application.ModelRegistryService;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelCapability;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelDefinition;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelDeployment;
@@ -107,16 +108,41 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
+    NanobaseAiModelRegistrySync nanobaseAiModelRegistrySync(
+            ModelRegistryService modelRegistryService,
+            ModelDefinitionRepository modelDefinitions,
+            ModelDeploymentRepository deployments,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper
+    ) {
+        return new NanobaseAiModelRegistrySync(
+                modelRegistryService,
+                modelDefinitions,
+                deployments,
+                objectMapper
+        );
+    }
+
+    @Bean
     NanobaseAiConnectionService nanobaseAiConnectionService(
             SwappableLocalModelProvider swappable,
             LocalProviderProperties properties,
-            Environment environment
+            Environment environment,
+            NanobaseAiModelRegistrySync modelRegistrySync
     ) {
         return new NanobaseAiConnectionService(
                 swappable,
                 properties,
-                ActenoraProfiles.isStrictProduction(environment)
+                ActenoraProfiles.isStrictProduction(environment),
+                modelRegistrySync
         );
+    }
+
+    @Bean
+    NanobaseAiModelRegistryStartupSync nanobaseAiModelRegistryStartupSync(
+            NanobaseAiConnectionService connectionService,
+            LocalProviderProperties properties
+    ) {
+        return new NanobaseAiModelRegistryStartupSync(connectionService, properties);
     }
 
     @Bean
