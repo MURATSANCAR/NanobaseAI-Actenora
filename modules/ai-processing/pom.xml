@@ -43,6 +43,11 @@
       <optional>true</optional>
     </dependency>
     <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
       <groupId>org.springframework.modulith</groupId>
       <artifactId>spring-modulith-api</artifactId>
       <version>${spring-modulith.version}</version>

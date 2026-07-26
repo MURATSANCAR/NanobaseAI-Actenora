@@ -38,6 +38,18 @@ public final class DeliveryOrder {
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
     }
 
+    public static DeliveryOrder rehydrate(
+            UUID id,
+            TenantId tenantId,
+            ApprovalId approvalId,
+            UUID noteVersionId,
+            String channel,
+            DeliveryOrderStatus status,
+            Instant createdAt
+    ) {
+        return new DeliveryOrder(id, tenantId, approvalId, noteVersionId, channel, status, createdAt);
+    }
+
     public static DeliveryOrder ready(
             TenantId tenantId,
             ApprovalId approvalId,

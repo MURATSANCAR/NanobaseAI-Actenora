@@ -64,6 +64,20 @@ public final class LegalHold {
                 null);
     }
 
+    public static LegalHold rehydrate(
+            UUID id,
+            TenantId tenantId,
+            RetentionResourceType resourceType,
+            String resourceId,
+            String reason,
+            UUID placedByUserId,
+            Instant placedAt,
+            Instant releasedAt
+    ) {
+        return new LegalHold(
+                id, tenantId, resourceType, resourceId, reason, placedByUserId, placedAt, releasedAt);
+    }
+
     public LegalHold release(Instant now) {
         if (!isActive()) {
             return this;

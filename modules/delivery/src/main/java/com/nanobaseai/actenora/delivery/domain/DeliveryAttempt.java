@@ -42,6 +42,21 @@ public final class DeliveryAttempt {
         }
     }
 
+    public static DeliveryAttempt rehydrate(
+            UUID id,
+            int attemptNumber,
+            DeliveryStatus status,
+            Instant startedAt,
+            Instant finishedAt,
+            String failureCode,
+            String failureDetail,
+            ProviderMessage providerMessage
+    ) {
+        return new DeliveryAttempt(
+                id, attemptNumber, status, startedAt, finishedAt, failureCode, failureDetail, providerMessage
+        );
+    }
+
     public static DeliveryAttempt start(int attemptNumber, Instant now) {
         return new DeliveryAttempt(
                 UUID.randomUUID(),

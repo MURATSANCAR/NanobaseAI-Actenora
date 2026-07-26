@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.security.aiprocessing;
 
+import com.nanobaseai.actenora.ActenoraProfiles;
 import com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi;
 import com.nanobaseai.actenora.aiprocessing.api.ExtractionPipelineApi;
 import com.nanobaseai.actenora.aiprocessing.api.MultiModelRoutingApi;
@@ -91,10 +92,7 @@ public class AiProcessingPlatformConfiguration {
 
     @Bean
     LocalModelProvider localModelProvider(LocalProviderProperties properties, Environment environment) {
-        boolean production = Arrays.stream(environment.getActiveProfiles())
-                .map(profile -> profile.toLowerCase(Locale.ROOT))
-                .anyMatch(profile -> profile.equals("prod") || profile.equals("production"));
-        return LocalProviderFactory.create(properties, production);
+        return LocalProviderFactory.create(properties, ActenoraProfiles.isStrictProduction(environment));
     }
 
     @Bean

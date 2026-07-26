@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.security.auth;
 
+import com.nanobaseai.actenora.ActenoraProfiles;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.application.port.IdentityProviderPort;
 import com.nanobaseai.actenora.identity.infrastructure.provider.EntraIdentityProvider;
@@ -18,7 +19,6 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.util.Arrays;
 import java.util.Locale;
 
 @Configuration
@@ -31,10 +31,7 @@ public class PlatformSecurityConfiguration {
             Environment environment
     ) {
         AuthMode authMode = AuthMode.valueOf(mode.trim().toUpperCase(Locale.ROOT));
-        boolean production = Arrays.stream(environment.getActiveProfiles())
-                .map(p -> p.toLowerCase(Locale.ROOT))
-                .anyMatch(p -> p.equals("prod") || p.equals("production"));
-        if (production && authMode == AuthMode.MOCK) {
+        if (ActenoraProfiles.isStrictProduction(environment) && authMode == AuthMode.MOCK) {
             throw new IllegalStateException(
                     "Refusing to start: actenora.security.auth.mode=mock is forbidden on production profiles");
         }

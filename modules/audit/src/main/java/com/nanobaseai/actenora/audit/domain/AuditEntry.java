@@ -60,6 +60,29 @@ public final class AuditEntry {
         );
     }
 
+    /** Rehydrate from durable store (read path only). */
+    public static AuditEntry rehydrate(
+            UUID id,
+            UUID tenantId,
+            String actorId,
+            String action,
+            String resourceType,
+            UUID resourceId,
+            Map<String, Object> metadata,
+            Instant occurredAt
+    ) {
+        return new AuditEntry(
+                id,
+                tenantId,
+                actorId,
+                action,
+                resourceType,
+                resourceId,
+                metadata == null ? Map.of() : metadata,
+                occurredAt
+        );
+    }
+
     private static String requireText(String value, String name) {
         Objects.requireNonNull(value, name);
         if (value.isBlank()) {

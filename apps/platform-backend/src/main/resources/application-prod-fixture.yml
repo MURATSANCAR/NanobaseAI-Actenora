@@ -1,0 +1,34 @@
+# Compose / CI acceptance profile — JDBC + Rabbit with mock IdP (Wave 7).
+# Activate with SPRING_PROFILES_ACTIVE=prod,prod-fixture,it (never in real production clusters).
+spring:
+  config:
+    activate:
+      on-profile: prod-fixture
+  mail:
+    host: ${MAIL_HOST:mailhog}
+    port: ${MAIL_PORT:1025}
+
+actenora:
+  env: prod-fixture
+  messaging:
+    mode: jdbc-rabbit
+  security:
+    auth:
+      mode: mock
+    cors:
+      allowed-origins: ${ACTENORA_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
+  portal:
+    auth:
+      mode: mock
+    local-seed:
+      enabled: ${ACTENORA_PORTAL_LOCAL_SEED:true}
+      entra-tid: ${ACTENORA_PORTAL_LOCAL_SEED_ENTRA_TID:fixture-dev-tid}
+      tenant-name: ${ACTENORA_PORTAL_LOCAL_SEED_TENANT_NAME:Actenora Fixture}
+  delivery:
+    mail:
+      provider: mailhog
+  microsoft-graph:
+    enabled: false
+  ai:
+    provider:
+      kind: mock

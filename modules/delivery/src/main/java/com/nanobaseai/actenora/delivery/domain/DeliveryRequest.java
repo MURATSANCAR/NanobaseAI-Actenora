@@ -70,6 +70,31 @@ public final class DeliveryRequest {
         this.deadLetterId = deadLetterId;
     }
 
+    public static DeliveryRequest rehydrate(
+            UUID id,
+            TenantId tenantId,
+            UUID noteVersionId,
+            ApprovalId approvalId,
+            DeliveryRecipient recipient,
+            DeliveryPolicySnapshot policySnapshot,
+            DeliveryStatus status,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant nextAttemptAt,
+            List<DeliveryAttempt> attempts,
+            PdfAttachmentDecision pdfAttachment,
+            SignedPortalLink signedPortalLink,
+            String subject,
+            String bodyText,
+            UUID deadLetterId
+    ) {
+        return new DeliveryRequest(
+                id, tenantId, noteVersionId, approvalId, recipient, policySnapshot, status,
+                createdAt, updatedAt, nextAttemptAt, attempts, pdfAttachment, signedPortalLink,
+                subject, bodyText, deadLetterId
+        );
+    }
+
     public static DeliveryRequest enqueue(
             TenantId tenantId,
             UUID noteVersionId,

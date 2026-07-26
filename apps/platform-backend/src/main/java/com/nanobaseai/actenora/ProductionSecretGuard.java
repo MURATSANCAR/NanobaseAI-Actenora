@@ -126,6 +126,9 @@ public class ProductionSecretGuard implements ApplicationRunner {
     }
 
     private void checkMailHost(List<String> offenders) {
+        if (ActenoraProfiles.isProdFixtureProfile(environment)) {
+            return;
+        }
         if (mailHost == null || mailHost.isBlank()) {
             return;
         }

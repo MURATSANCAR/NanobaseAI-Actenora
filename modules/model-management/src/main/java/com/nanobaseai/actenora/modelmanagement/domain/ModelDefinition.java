@@ -77,6 +77,55 @@ public final class ModelDefinition {
         this.version = version;
     }
 
+    public static ModelDefinition rehydrate(
+            UUID id,
+            String modelKey,
+            String displayName,
+            String providerType,
+            String servedModelId,
+            String modelFamily,
+            String parameterSize,
+            String quantization,
+            int contextWindow,
+            int maxOutputTokens,
+            Collection<String> supportedLanguages,
+            ModelStatus status,
+            int priority,
+            double qualityScore,
+            double speedScore,
+            Instant createdAt,
+            Instant updatedAt,
+            long version,
+            Collection<ModelCapability> capabilities
+    ) {
+        ModelDefinition definition = new ModelDefinition(
+                id,
+                modelKey,
+                displayName,
+                providerType,
+                servedModelId,
+                modelFamily,
+                parameterSize,
+                quantization,
+                contextWindow,
+                maxOutputTokens,
+                supportedLanguages,
+                status,
+                priority,
+                qualityScore,
+                speedScore,
+                createdAt,
+                updatedAt,
+                version
+        );
+        if (capabilities != null) {
+            for (ModelCapability capability : capabilities) {
+                definition.capabilities.put(capability.capability(), capability);
+            }
+        }
+        return definition;
+    }
+
     public static ModelDefinition register(
             String modelKey,
             String displayName,

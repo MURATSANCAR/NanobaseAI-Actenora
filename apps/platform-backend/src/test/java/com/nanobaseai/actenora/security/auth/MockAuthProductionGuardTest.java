@@ -18,6 +18,14 @@ class MockAuthProductionGuardTest {
     }
 
     @Test
+    void mockModeAllowedOnProdFixtureProfile() {
+        PlatformSecurityConfiguration config = new PlatformSecurityConfiguration();
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles("prod", "prod-fixture");
+        assertEquals(AuthMode.MOCK, config.authMode("mock", env));
+    }
+
+    @Test
     void mockModeRejectedOnProdProfile() {
         PlatformSecurityConfiguration config = new PlatformSecurityConfiguration();
         MockEnvironment env = new MockEnvironment();

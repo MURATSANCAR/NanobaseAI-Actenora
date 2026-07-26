@@ -56,10 +56,11 @@ class MicrosoftGraphWebhookBindingTest {
     private static final String CLIENT_STATE = "test-client-state";
 
     private MicrosoftGraphWebhookController controller;
+    private MicrosoftConnectionApi api;
 
     @BeforeEach
     void setUp() {
-        MicrosoftConnectionApi api = new MicrosoftConnectionApi(
+        api = new MicrosoftConnectionApi(
                 new CalendarSyncService(new StubCalendarGateway(), new StubCursorStore(), InstantClock.systemUTC()),
                 new MeetingTranscriptService(new StubOnlineMeetingGateway(), new StubTranscriptGateway()),
                 new SubscriptionLifecycleService(
@@ -140,39 +141,8 @@ class MicrosoftGraphWebhookBindingTest {
         MockEnvironment prod = new MockEnvironment();
         prod.setActiveProfiles("prod");
         MicrosoftGraphWebhookController prodController = new MicrosoftGraphWebhookController(
-                new MicrosoftConnectionApi(
-                        new CalendarSyncService(new StubCalendarGateway(), new StubCursorStore(), InstantClock.systemUTC()),
-                        new MeetingTranscriptService(new StubOnlineMeetingGateway(), new StubTranscriptGateway()),
-                        new SubscriptionLifecycleService(
-                                new StubSubscriptionGateway(),
-                                new InMemorySubscriptionStore(),
-                                new InMemoryNotificationInbox(),
-                                InstantClock.systemUTC(),
-                                Duration.ofHours(6),
-                                Duration.ofHours(48)
-                        ),
-                        buildPollingFallback(),
-                        buildReconciliationJob(),
-                        new StubMailGateway()
-                ),
-                new GraphChangeNotificationProcessor(
-                        new MicrosoftConnectionApi(
-                                new CalendarSyncService(new StubCalendarGateway(), new StubCursorStore(), InstantClock.systemUTC()),
-                                new MeetingTranscriptService(new StubOnlineMeetingGateway(), new StubTranscriptGateway()),
-                                new SubscriptionLifecycleService(
-                                        new StubSubscriptionGateway(),
-                                        new InMemorySubscriptionStore(),
-                                        new InMemoryNotificationInbox(),
-                                        InstantClock.systemUTC(),
-                                        Duration.ofHours(6),
-                                        Duration.ofHours(48)
-                                ),
-                                buildPollingFallback(),
-                                buildReconciliationJob(),
-                                new StubMailGateway()
-                        ),
-                        emptyOutboxProvider()
-                ),
+                api,
+                new GraphChangeNotificationProcessor(api, emptyOutboxProvider()),
                 prod,
                 ""
         );
