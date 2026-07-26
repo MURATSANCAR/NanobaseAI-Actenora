@@ -2,6 +2,8 @@ package com.nanobaseai.actenora.security.microsoftconnection;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphChangeNotification;
 import com.nanobaseai.actenora.microsoftconnection.application.model.LifecycleNotification;
@@ -50,6 +52,7 @@ public class MicrosoftGraphWebhookController {
 
     private final MicrosoftConnectionApi microsoftConnectionApi;
     private final GraphChangeNotificationProcessor changeNotificationProcessor;
+    private final ObjectMapper objectMapper;
     private final byte[] expectedClientStateBytes;
     private final boolean productionLike;
     private final SubscriptionStore subscriptionStore;
@@ -60,6 +63,7 @@ public class MicrosoftGraphWebhookController {
             GraphChangeNotificationProcessor changeNotificationProcessor,
             SubscriptionStore subscriptionStore,
             ObjectProvider<GraphObservability> observability,
+            ObjectMapper objectMapper,
             Environment environment,
             @Value("${actenora.microsoft-graph.webhook.client-state:local-graph-client-state}")
             String expectedClientState
@@ -68,6 +72,7 @@ public class MicrosoftGraphWebhookController {
         this.changeNotificationProcessor = Objects.requireNonNull(
                 changeNotificationProcessor, "changeNotificationProcessor");
         this.subscriptionStore = Objects.requireNonNull(subscriptionStore, "subscriptionStore");
+        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.observability = observability.getIfAvailable();
         this.expectedClientStateBytes = expectedClientState == null
                 ? new byte[0]
@@ -77,17 +82,20 @@ public class MicrosoftGraphWebhookController {
                 .anyMatch(p -> p.equals("prod") || p.equals("production"));
     }
 
-    @PostMapping("/graph-notifications")
+    @PostMapping(value = "/graph-notifications", consumes = MediaType.ALL_VALUE)
     public ResponseEntity<?> notifications(
             @RequestParam(value = "validationToken", required = false) String validationToken,
-            @RequestBody(required = false) GraphNotificationBatch body
+            @RequestBody(required = false) String rawBody
     ) {
         if (StringUtils.hasText(validationToken)) {
             return ResponseEntity.ok()
                     .contentType(MediaType.TEXT_PLAIN)
                     .body(validationToken);
         }
+        return dispatchNotifications(parseBatch(rawBody));
+    }
 
+    ResponseEntity<?> dispatchNotifications(GraphNotificationBatch body) {
         if (body == null || body.value() == null || body.value().isEmpty()) {
             throw new ActenoraException("INVALID_WEBHOOK_PAYLOAD", "notification batch is empty");
         }
@@ -121,6 +129,17 @@ public class MicrosoftGraphWebhookController {
         }
         return ResponseEntity.accepted()
                 .body(new GraphWebhookResultView(received, processed, duplicates, rejected));
+    }
+
+    private GraphNotificationBatch parseBatch(String rawBody) {
+        if (!StringUtils.hasText(rawBody)) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(rawBody, GraphNotificationBatch.class);
+        } catch (JsonProcessingException ex) {
+            throw new ActenoraException("INVALID_WEBHOOK_PAYLOAD", "notification batch is invalid");
+        }
     }
 
     private boolean dispatchChange(GraphNotificationItem item) {

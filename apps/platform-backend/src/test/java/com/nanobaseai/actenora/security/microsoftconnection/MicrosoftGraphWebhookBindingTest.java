@@ -28,7 +28,8 @@ import com.nanobaseai.actenora.security.microsoftconnection.MicrosoftGraphWebhoo
 import com.nanobaseai.actenora.security.microsoftconnection.MicrosoftGraphWebhookController.GraphNotificationItem;
 import com.nanobaseai.actenora.security.microsoftconnection.MicrosoftGraphWebhookController.GraphResourceData;
 import com.nanobaseai.actenora.security.microsoftconnection.MicrosoftGraphWebhookController.GraphWebhookResultView;
-import com.nanobaseai.actenora.meeting.api.MeetingApi;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.tenant.api.TenantApi;
@@ -88,6 +89,7 @@ class MicrosoftGraphWebhookBindingTest {
                 buildProcessor(),
                 subscriptionStore,
                 emptyProvider(GraphObservability.class),
+                JsonMapper.builder().findAndAddModules().build(),
                 new MockEnvironment(),
                 CLIENT_STATE
         );
@@ -143,10 +145,10 @@ class MicrosoftGraphWebhookBindingTest {
 
     @Test
     void emptyBatchRejected() {
-        assertThrows(ActenoraException.class, () -> controller.notifications(null, null));
+        assertThrows(ActenoraException.class, () -> controller.dispatchNotifications(null));
         assertThrows(
                 ActenoraException.class,
-                () -> controller.notifications(null, new GraphNotificationBatch(List.of()))
+                () -> controller.dispatchNotifications(new GraphNotificationBatch(List.of()))
         );
     }
 
@@ -216,6 +218,7 @@ class MicrosoftGraphWebhookBindingTest {
                 buildProcessor(),
                 new InMemorySubscriptionStore(),
                 emptyProvider(GraphObservability.class),
+                JsonMapper.builder().findAndAddModules().build(),
                 prod,
                 ""
         );
@@ -245,7 +248,7 @@ class MicrosoftGraphWebhookBindingTest {
     }
 
     private GraphWebhookResultView process(MicrosoftGraphWebhookController target, GraphNotificationBatch batch) {
-        ResponseEntity<?> response = target.notifications(null, batch);
+        ResponseEntity<?> response = target.dispatchNotifications(batch);
         assertEquals(202, response.getStatusCode().value());
         return (GraphWebhookResultView) response.getBody();
     }
