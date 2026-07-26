@@ -8,6 +8,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.port.Notification
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -55,14 +56,24 @@ public final class SubscriptionLifecycleService {
 
     public List<GraphSubscription> renewExpiring() {
         List<GraphSubscription> renewed = new ArrayList<>();
+        List<RuntimeException> failures = new ArrayList<>();
         for (GraphSubscription subscription : subscriptionStore.findExpiringBefore(clock.now().plus(renewBeforeExpiry))) {
-            GraphSubscription next = subscriptionGateway.renew(
-                    subscription.tenantId(),
-                    subscription.subscriptionId(),
-                    clock.now().plus(renewWindow)
-            );
-            subscriptionStore.save(next);
-            renewed.add(next);
+            try {
+                GraphSubscription next = subscriptionGateway.renew(
+                        subscription.tenantId(),
+                        subscription.subscriptionId(),
+                        clock.now().plus(renewWindow)
+                );
+                subscriptionStore.save(next);
+                renewed.add(next);
+            } catch (RuntimeException ex) {
+                failures.add(ex);
+            }
+        }
+        if (!failures.isEmpty()) {
+            RuntimeException failure = failures.getFirst();
+            failures.stream().skip(1).forEach(failure::addSuppressed);
+            throw failure;
         }
         return List.copyOf(renewed);
     }
@@ -70,6 +81,7 @@ public final class SubscriptionLifecycleService {
     /**
      * @return true if processed, false if duplicate
      */
+    @Transactional
     public boolean handleChangeNotification(
             GraphChangeNotification notification,
             Consumer<GraphChangeNotification> handler
@@ -86,6 +98,7 @@ public final class SubscriptionLifecycleService {
     /**
      * @return true if processed, false if duplicate
      */
+    @Transactional
     public boolean handleLifecycleNotification(
             LifecycleNotification notification,
             Consumer<LifecycleNotification> handler

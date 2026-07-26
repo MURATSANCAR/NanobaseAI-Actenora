@@ -4,8 +4,9 @@ import { TemplateNoteSectionEditor } from "@/components/template/TemplateNoteSec
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { queryKeys } from "@/api/client";
 import { useApi } from "@/api/ApiProvider";
-import type { MeetingNote, TemplateSummary } from "@/api/types";
+import type { DesignSchemaView, MeetingNote, TemplateSummary } from "@/api/types";
 import type { TemplateComponentType } from "@/types/template";
+import { editableSectionsFromDesign } from "@/lib/templateStandards";
 import {
   createTemplateNoteBody,
   parseTemplateNoteBody,
@@ -35,44 +36,82 @@ export function MeetingNoteEditor({
   const api = useApi();
   const { t, tb } = useI18n();
   const [showValidation, setShowValidation] = useState(false);
+  const [pinning, setPinning] = useState(false);
 
-  const lockQuery = useQuery({
+  // Returns the pinned version when the note is already bound, otherwise the tenant
+  // default's latest published version as a not-yet-pinned suggestion.
+  const bindingQuery = useQuery({
     queryKey: queryKeys.noteTemplateLock(meetingId, note.id),
     queryFn: () => api.getNoteTemplateLock(meetingId, note.id),
   });
 
   const parsed = useMemo(() => parseTemplateNoteBody(draft), [draft]);
-  const lock = lockQuery.data ?? null;
-  const usesTemplate = Boolean(parsed || lock);
+  const binding = bindingQuery.data ?? null;
 
-  const templateName = lock?.templateName ?? parsed?.templateName ?? "";
-  const templateVersion = lock?.templateVersionNumber ?? parsed?.templateVersionNumber ?? 0;
-  const sectionValues = parsed?.sections ?? {};
-
-  const validationError =
-    showValidation && usesTemplate && !sectionValues.EXECUTIVE_SUMMARY?.trim()
-      ? t("templates.note.validationRequired")
+  // A saved note keeps the version recorded in its own body, even if the tenant default
+  // has moved on since. Only then do we need to look the historical design up separately.
+  const historicalVersionId =
+    parsed && parsed.templateVersionId && parsed.templateVersionId !== binding?.templateVersionId
+      ? parsed.templateVersionId
       : null;
 
-  function handleSave() {
-    if (usesTemplate && !sectionValues.EXECUTIVE_SUMMARY?.trim()) {
-      setShowValidation(true);
-      return;
-    }
-    setShowValidation(false);
-    onSave();
+  const historicalQuery = useQuery({
+    queryKey: queryKeys.templateDetail(parsed?.templateId ?? ""),
+    queryFn: () => api.getTemplate(parsed!.templateId),
+    enabled: Boolean(historicalVersionId && parsed?.templateId),
+  });
+
+  const historicalDesign: DesignSchemaView | null = useMemo(() => {
+    if (!historicalVersionId) return null;
+    const version = historicalQuery.data?.versions.find((v) => v.id === historicalVersionId);
+    return version?.designSchema ?? null;
+  }, [historicalQuery.data, historicalVersionId]);
+
+  const effective = historicalVersionId
+    ? {
+        templateId: parsed!.templateId,
+        templateName: parsed!.templateName,
+        templateVersionId: parsed!.templateVersionId,
+        templateVersionNumber: parsed!.templateVersionNumber,
+        locked: true,
+        designSchema: historicalDesign,
+      }
+    : binding;
+
+  const usesTemplate = Boolean(effective);
+  const sectionValues = parsed?.sections ?? {};
+  const sections = useMemo(
+    () => editableSectionsFromDesign(effective?.designSchema),
+    [effective?.designSchema],
+  );
+
+  // The first section of the bound design is the note's mandatory summary field.
+  const requiredSection: TemplateComponentType | null = sections[0] ?? null;
+  const missingRequired = Boolean(
+    usesTemplate && requiredSection && !sectionValues[requiredSection]?.trim(),
+  );
+  const validationError =
+    showValidation && missingRequired
+      ? t("templates.note.validationRequired", {
+          section: requiredSection ? tb("templateComponentType", requiredSection) : "",
+        })
+      : null;
+
+  function currentBody() {
+    return (
+      parsed ??
+      createTemplateNoteBody({
+        templateId: effective?.templateId ?? "",
+        templateVersionId: effective?.templateVersionId ?? "",
+        templateName: effective?.templateName ?? "",
+        templateVersionNumber: effective?.templateVersionNumber ?? 0,
+        sections: {},
+      })
+    );
   }
 
   function updateSections(next: Partial<Record<TemplateComponentType, string>>) {
-    const base =
-      parsed ??
-      createTemplateNoteBody({
-        templateId: lock?.templateId ?? "",
-        templateVersionId: lock?.templateVersionId ?? "",
-        templateName,
-        templateVersionNumber: templateVersion,
-        sections: {},
-      });
+    const base = currentBody();
     onChange(
       serializeTemplateNoteBody({
         ...base,
@@ -81,12 +120,36 @@ export function MeetingNoteEditor({
     );
   }
 
+  async function handleSave() {
+    if (missingRequired) {
+      setShowValidation(true);
+      return;
+    }
+    setShowValidation(false);
+    // Pin before persisting so the note keeps this design even after the template evolves.
+    if (effective && !effective.locked) {
+      setPinning(true);
+      try {
+        await api.lockNoteTemplate(meetingId, note.id, effective.templateVersionId);
+        await bindingQuery.refetch();
+      } finally {
+        setPinning(false);
+      }
+    }
+    onSave();
+  }
+
   async function applyTemplate(templateId: string) {
     const detail = await api.getTemplate(templateId);
-    const published = detail.versions.find((v) => v.status === "PUBLISHED");
+    const publishedId = detail.publishedVersionId;
+    const published =
+      detail.versions.find((v) => v.id === publishedId) ??
+      detail.versions
+        .filter((v) => v.status === "PUBLISHED")
+        .sort((a, b) => b.versionNumber - a.versionNumber)[0];
     if (!published) return;
     await api.lockNoteTemplate(meetingId, note.id, published.id);
-    await lockQuery.refetch();
+    await bindingQuery.refetch();
     onChange(
       serializeTemplateNoteBody(
         createTemplateNoteBody({
@@ -99,17 +162,18 @@ export function MeetingNoteEditor({
     );
   }
 
-  if (usesTemplate) {
+  if (usesTemplate && effective) {
     return (
       <TemplateNoteSectionEditor
-        templateName={templateName}
-        templateVersion={templateVersion}
-        locked={Boolean(lock)}
+        templateName={effective.templateName}
+        templateVersion={effective.templateVersionNumber}
+        locked={effective.locked}
         canEdit={canEdit}
         sectionValues={sectionValues}
+        sections={sections}
         onSectionChange={(type, value) => updateSections({ [type]: value })}
         onSave={handleSave}
-        saving={saving}
+        saving={saving || pinning}
         validationError={validationError}
       />
     );

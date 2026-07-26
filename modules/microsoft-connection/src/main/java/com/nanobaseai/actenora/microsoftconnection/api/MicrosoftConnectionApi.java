@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * Public façade for the Microsoft Connection bounded context.
@@ -123,6 +124,13 @@ public final class MicrosoftConnectionApi {
 
     public ReconciliationJob.ReconciliationResult reconcile(List<PollingFallbackService.MailboxRef> mailboxes) {
         return reconciliationJob.run(mailboxes);
+    }
+
+    public ReconciliationJob.ReconciliationResult reconcile(
+            List<PollingFallbackService.MailboxRef> mailboxes,
+            BiConsumer<UUID, List<CalendarEvent>> eventConsumer
+    ) {
+        return reconciliationJob.run(mailboxes, eventConsumer);
     }
 
     public MailSendResult sendMail(UUID tenantId, MailSendRequest request) {

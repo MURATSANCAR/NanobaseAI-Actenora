@@ -5,8 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphChangeNotification;
 import com.nanobaseai.actenora.microsoftconnection.application.model.LifecycleNotification;
+import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
@@ -50,10 +52,14 @@ public class MicrosoftGraphWebhookController {
     private final GraphChangeNotificationProcessor changeNotificationProcessor;
     private final byte[] expectedClientStateBytes;
     private final boolean productionLike;
+    private final SubscriptionStore subscriptionStore;
+    private final GraphObservability observability;
 
     public MicrosoftGraphWebhookController(
             MicrosoftConnectionApi microsoftConnectionApi,
             GraphChangeNotificationProcessor changeNotificationProcessor,
+            SubscriptionStore subscriptionStore,
+            ObjectProvider<GraphObservability> observability,
             Environment environment,
             @Value("${actenora.microsoft-graph.webhook.client-state:local-graph-client-state}")
             String expectedClientState
@@ -61,6 +67,8 @@ public class MicrosoftGraphWebhookController {
         this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi, "microsoftConnectionApi");
         this.changeNotificationProcessor = Objects.requireNonNull(
                 changeNotificationProcessor, "changeNotificationProcessor");
+        this.subscriptionStore = Objects.requireNonNull(subscriptionStore, "subscriptionStore");
+        this.observability = observability.getIfAvailable();
         this.expectedClientStateBytes = expectedClientState == null
                 ? new byte[0]
                 : expectedClientState.getBytes(StandardCharsets.UTF_8);
@@ -94,7 +102,7 @@ public class MicrosoftGraphWebhookController {
                 continue;
             }
             received++;
-            if (!clientStateMatches(item.clientState())) {
+            if (!clientStateMatches(item)) {
                 rejected++;
                 continue;
             }
@@ -108,6 +116,9 @@ public class MicrosoftGraphWebhookController {
             }
         }
 
+        if (observability != null) {
+            observability.recordWebhook(received, processed, duplicates, rejected);
+        }
         return ResponseEntity.accepted()
                 .body(new GraphWebhookResultView(received, processed, duplicates, rejected));
     }
@@ -139,6 +150,9 @@ public class MicrosoftGraphWebhookController {
                 item.clientState(),
                 item.tenantId()
         );
+        if (observability != null) {
+            observability.recordLifecycle(item.lifecycleEvent());
+        }
         return microsoftConnectionApi.onLifecycleNotification(notification, n -> {
             if (n.requiresReauthorization() || n.missed()) {
                 microsoftConnectionApi.renewExpiringSubscriptions();
@@ -146,15 +160,28 @@ public class MicrosoftGraphWebhookController {
         });
     }
 
-    private boolean clientStateMatches(String clientState) {
-        if (expectedClientStateBytes.length == 0) {
+    private boolean clientStateMatches(GraphNotificationItem item) {
+        String clientState = item.clientState();
+        if (!StringUtils.hasText(item.subscriptionId())) {
+            return false;
+        }
+        var storedSubscription = subscriptionStore.findBySubscriptionId(item.subscriptionId());
+        byte[] expected = storedSubscription
+                .map(subscription -> subscription.clientState() == null
+                        ? new byte[0]
+                        : subscription.clientState().getBytes(StandardCharsets.UTF_8))
+                .orElse(expectedClientStateBytes);
+        if (productionLike && storedSubscription.isEmpty()) {
+            return false;
+        }
+        if (expected.length == 0) {
             return !productionLike;
         }
         if (!StringUtils.hasText(clientState)) {
             return false;
         }
         byte[] actual = clientState.getBytes(StandardCharsets.UTF_8);
-        return MessageDigest.isEqual(expectedClientStateBytes, actual);
+        return MessageDigest.isEqual(expected, actual);
     }
 
     @ExceptionHandler(ActenoraException.class)

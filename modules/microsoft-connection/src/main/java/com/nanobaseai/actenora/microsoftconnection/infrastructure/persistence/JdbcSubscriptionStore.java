@@ -76,6 +76,20 @@ public final class JdbcSubscriptionStore implements SubscriptionStore {
     }
 
     @Override
+    public Optional<GraphSubscription> findBySubscriptionId(String subscriptionId) {
+        List<GraphSubscription> rows = jdbc.query(
+                "SELECT " + COLUMNS
+                        + " FROM microsoftconnection.graph_subscription WHERE subscription_id = ? LIMIT 2",
+                ROW_MAPPER,
+                subscriptionId
+        );
+        if (rows.size() > 1) {
+            throw new IllegalStateException("Graph subscription id is not unique: " + subscriptionId);
+        }
+        return rows.stream().findFirst();
+    }
+
+    @Override
     public List<GraphSubscription> findExpiringBefore(Instant threshold) {
         return jdbc.query(
                 "SELECT " + COLUMNS + " FROM microsoftconnection.graph_subscription WHERE expiration_date_time < ?",

@@ -6,10 +6,12 @@ import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscription;
 import com.nanobaseai.actenora.microsoftconnection.application.model.SubscriptionCreateRequest;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
+import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -30,9 +32,14 @@ import java.util.UUID;
 public class MicrosoftGraphSubscriptionController {
 
     private final MicrosoftConnectionApi microsoftConnectionApi;
+    private final TranscriptPollWorkStore transcriptPollWorkStore;
 
-    public MicrosoftGraphSubscriptionController(MicrosoftConnectionApi microsoftConnectionApi) {
+    public MicrosoftGraphSubscriptionController(
+            MicrosoftConnectionApi microsoftConnectionApi,
+            TranscriptPollWorkStore transcriptPollWorkStore
+    ) {
         this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi);
+        this.transcriptPollWorkStore = Objects.requireNonNull(transcriptPollWorkStore);
     }
 
     @GetMapping
@@ -69,6 +76,18 @@ public class MicrosoftGraphSubscriptionController {
         return microsoftConnectionApi.renewExpiringSubscriptions().stream()
                 .map(SubscriptionView::from)
                 .toList();
+    }
+
+    @PostMapping("/transcript-polls/{meetingOccurrenceId}/requeue")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @RequiresPermission(Permission.OPERATIONS_MANAGE)
+    public void requeueTranscriptPoll(@PathVariable UUID meetingOccurrenceId) {
+        UUID tenantId = TenantSecurityContext.require().tenantId().value();
+        if (!transcriptPollWorkStore.requeueDeadLetter(tenantId, meetingOccurrenceId, Instant.now())) {
+            throw new ActenoraException(
+                    "TRANSCRIPT_POLL_NOT_REQUEUEABLE",
+                    "No dead-lettered transcript poll exists for the meeting occurrence");
+        }
     }
 
     public record CreateSubscriptionBody(

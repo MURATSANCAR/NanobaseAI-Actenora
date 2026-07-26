@@ -10,6 +10,7 @@ import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.model.OnlineMeetingMetadata;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptAvailability;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptContent;
+import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.transcript.api.TranscriptApi;
 import org.slf4j.Logger;
@@ -34,46 +35,49 @@ public final class TeamsTranscriptIngestService {
     private final MeetingApi meetingApi;
     private final FixedTenantContext tenantContext;
     private final String defaultMailboxUserId;
+    private final SubscriptionStore subscriptionStore;
 
     public TeamsTranscriptIngestService(
             MicrosoftConnectionApi microsoftConnectionApi,
             TranscriptApi transcriptApi,
             MeetingApi meetingApi,
             FixedTenantContext tenantContext,
+            SubscriptionStore subscriptionStore,
             String defaultMailboxUserId
     ) {
         this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi);
         this.transcriptApi = Objects.requireNonNull(transcriptApi);
         this.meetingApi = Objects.requireNonNull(meetingApi);
         this.tenantContext = Objects.requireNonNull(tenantContext);
+        this.subscriptionStore = Objects.requireNonNull(subscriptionStore);
         this.defaultMailboxUserId = defaultMailboxUserId;
     }
 
-    public boolean pollMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
+    public PollResult pollMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
         tenantContext.use(tenantId, CalendarMeetingUpsertAdapter.SYSTEM_ACTOR);
         MeetingResponse meeting = meetingApi.getMeeting(meetingOccurrenceId);
-        String graphUserId = resolveGraphUserId(meeting);
+        String graphUserId = resolveGraphUserId(tenantId, meeting);
         if (!StringUtils.hasText(graphUserId)) {
             log.warn("No Graph mailbox user for transcript poll meetingId={} tenantId={}",
                     meetingOccurrenceId, tenantId.value());
-            return false;
+            return PollResult.CONFIGURATION_MISSING;
         }
         String teamsMeetingId = resolveOnlineMeetingId(tenantId, graphUserId, meeting);
         if (!StringUtils.hasText(teamsMeetingId)) {
             log.warn("Unable to resolve Graph onlineMeetingId meetingId={} tenantId={}",
                     meetingOccurrenceId, tenantId.value());
-            return false;
+            return PollResult.NOT_AVAILABLE;
         }
         TranscriptAvailability availability = microsoftConnectionApi.checkTranscript(
                 tenantId.value(), graphUserId, teamsMeetingId);
         if (!availability.available() || availability.transcripts().isEmpty()) {
-            return false;
+            return PollResult.NOT_AVAILABLE;
         }
         TranscriptAvailability.TranscriptRef ref = availability.firstTranscript().orElseThrow();
         Optional<TranscriptContent> content = microsoftConnectionApi.downloadTranscript(
                 tenantId.value(), graphUserId, teamsMeetingId, ref.transcriptId());
         if (content.isEmpty()) {
-            return false;
+            return PollResult.NOT_AVAILABLE;
         }
         var uploaded = transcriptApi.ingestFromGraphVtt(
                 tenantId,
@@ -86,7 +90,7 @@ public final class TeamsTranscriptIngestService {
                 meetingOccurrenceId,
                 uploaded.transcriptId(),
                 uploaded.duplicate());
-        return !uploaded.duplicate();
+        return uploaded.duplicate() ? PollResult.ALREADY_INGESTED : PollResult.INGESTED;
     }
 
     private String resolveOnlineMeetingId(TenantId tenantId, String graphUserId, MeetingResponse meeting) {
@@ -134,27 +138,38 @@ public final class TeamsTranscriptIngestService {
         }
     }
 
-    private String resolveGraphUserId(MeetingResponse meeting) {
-        if (StringUtils.hasText(defaultMailboxUserId)) {
-            return defaultMailboxUserId;
-        }
+    private String resolveGraphUserId(TenantId tenantId, MeetingResponse meeting) {
         List<ParticipantResponse> participants = meetingApi.listParticipants(meeting.id());
         Optional<ParticipantResponse> organizer = participants.stream()
                 .filter(p -> p.participantType() == ParticipantType.ORGANIZER)
                 .findFirst();
         if (organizer.isPresent()) {
             ParticipantResponse p = organizer.get();
-            if (StringUtils.hasText(p.email())) {
-                return p.email();
-            }
             if (StringUtils.hasText(p.entraUserId())) {
                 return p.entraUserId();
             }
+            if (StringUtils.hasText(p.email())) {
+                return p.email();
+            }
         }
-        return participants.stream()
-                .map(ParticipantResponse::email)
-                .filter(StringUtils::hasText)
-                .findFirst()
-                .orElse(null);
+        List<String> subscriptionMailboxes = subscriptionStore.findAllForTenant(tenantId.value()).stream()
+                .map(subscription -> GraphChangeNotificationProcessor.parseMailboxUserId(subscription.resource()))
+                .flatMap(Optional::stream)
+                .distinct()
+                .toList();
+        if (subscriptionMailboxes.size() == 1) {
+            return subscriptionMailboxes.getFirst();
+        }
+        if (StringUtils.hasText(defaultMailboxUserId)) {
+            return defaultMailboxUserId;
+        }
+        return null;
+    }
+
+    public enum PollResult {
+        INGESTED,
+        ALREADY_INGESTED,
+        NOT_AVAILABLE,
+        CONFIGURATION_MISSING
     }
 }

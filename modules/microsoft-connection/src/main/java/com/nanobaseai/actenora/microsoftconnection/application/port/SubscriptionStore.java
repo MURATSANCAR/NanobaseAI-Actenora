@@ -16,6 +16,8 @@ public interface SubscriptionStore {
 
     Optional<GraphSubscription> findById(UUID tenantId, String subscriptionId);
 
+    Optional<GraphSubscription> findBySubscriptionId(String subscriptionId);
+
     List<GraphSubscription> findExpiringBefore(Instant threshold);
 
     List<GraphSubscription> findAllForTenant(UUID tenantId);

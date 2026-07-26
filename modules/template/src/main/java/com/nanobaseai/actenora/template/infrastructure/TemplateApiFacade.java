@@ -12,6 +12,7 @@ import com.nanobaseai.actenora.template.application.port.out.RenderedDocumentRep
 import com.nanobaseai.actenora.template.domain.RenderFormat;
 import com.nanobaseai.actenora.template.domain.MeetingTemplate;
 import com.nanobaseai.actenora.template.domain.RenderJob;
+import com.nanobaseai.actenora.template.domain.TemplateVersion;
 
 import java.util.List;
 import java.util.Optional;
@@ -64,6 +65,21 @@ public class TemplateApiFacade implements TemplateApi {
     @Override
     public TemplateVersionId publish(TenantId tenantId, TemplateVersionId versionId) {
         return studioService.publish(tenantId, versionId).id();
+    }
+
+    @Override
+    public MeetingTemplate setDefaultTemplate(TenantId tenantId, MeetingTemplateId templateId) {
+        return studioService.setDefaultTemplate(tenantId, templateId);
+    }
+
+    @Override
+    public Optional<MeetingTemplate> findDefaultTemplate(TenantId tenantId) {
+        return studioService.findDefaultTemplate(tenantId);
+    }
+
+    @Override
+    public Optional<TemplateVersion> resolveDefaultVersion(TenantId tenantId) {
+        return studioService.resolveDefaultVersion(tenantId);
     }
 
     @Override

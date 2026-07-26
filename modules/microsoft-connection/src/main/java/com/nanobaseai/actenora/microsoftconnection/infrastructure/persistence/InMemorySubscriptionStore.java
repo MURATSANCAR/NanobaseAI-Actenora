@@ -27,6 +27,13 @@ public final class InMemorySubscriptionStore implements SubscriptionStore {
     }
 
     @Override
+    public Optional<GraphSubscription> findBySubscriptionId(String subscriptionId) {
+        return byId.values().stream()
+                .filter(subscription -> subscription.subscriptionId().equals(subscriptionId))
+                .findFirst();
+    }
+
+    @Override
     public List<GraphSubscription> findExpiringBefore(Instant threshold) {
         Objects.requireNonNull(threshold, "threshold");
         return byId.values().stream()

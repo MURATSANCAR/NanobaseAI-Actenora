@@ -21,19 +21,14 @@ class GraphChangeNotificationProcessorHardFailTest {
 
     @Test
     void unmappedTenantHardFails() {
-        MicrosoftConnectionApi api = Mockito.mock(MicrosoftConnectionApi.class);
-        MeetingApi meetingApi = Mockito.mock(MeetingApi.class);
-        CalendarMeetingUpsertAdapter upsert =
-                new CalendarMeetingUpsertAdapter(meetingApi, new FixedTenantContext(TenantId.random(), UUID.randomUUID()));
         TenantApi tenantApi = Mockito.mock(TenantApi.class);
         Mockito.when(tenantApi.findById(Mockito.any())).thenReturn(Optional.empty());
         Mockito.when(tenantApi.findByEntraTenantId(Mockito.anyString())).thenReturn(Optional.empty());
         DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
         GraphChangeNotificationProcessor processor = new GraphChangeNotificationProcessor(
-                api,
-                upsert,
                 tenantApi,
-                factory.getBeanProvider(com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher.class)
+                factory.getBeanProvider(com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher.class),
+                factory.getBeanProvider(GraphObservability.class)
         );
 
         ActenoraException ex = assertThrows(
@@ -49,6 +44,5 @@ class GraphChangeNotificationProcessorHardFailTest {
                 ))
         );
         assertEquals("GRAPH_TENANT_UNMAPPED", ex.code());
-        Mockito.verifyNoInteractions(api);
     }
 }

@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.security.messaging;
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
+import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeWorkConsumer;
 import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
@@ -41,7 +42,8 @@ public class EventBackbonePlatformConfiguration {
             MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
             NoteApprovedForLedgerHandler noteApprovedForLedgerHandler,
             ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
-            ObjectProvider<TranscriptReadyAiAdmissionHandler> transcriptReadyHandler
+            ObjectProvider<TranscriptReadyAiAdmissionHandler> transcriptReadyHandler,
+            ObjectProvider<GraphChangeWorkConsumer> graphChangeWorkConsumer
     ) {
         TenantFairnessTracker fairness = new TenantFairnessTracker();
         InMemoryOutboxStore outboxStore = new InMemoryOutboxStore(fairness);
@@ -70,6 +72,14 @@ public class EventBackbonePlatformConfiguration {
         IdempotentEventConsumer ledgerConsumer = backbone.consumer("meeting-intelligence");
         transport.subscribe(envelope -> dispatchNoteApprovedForLedger(
                 envelope, ledgerConsumer, noteApprovedForLedgerHandler));
+
+        IdempotentEventConsumer graphConsumer = backbone.consumer("microsoft-connection");
+        transport.subscribe(envelope -> {
+            GraphChangeWorkConsumer handler = graphChangeWorkConsumer.getIfAvailable();
+            if (handler != null) {
+                EventBackboneConsumerDispatch.dispatchGraphChange(envelope, graphConsumer, handler);
+            }
+        });
 
         backbone.relay().start();
         return backbone;

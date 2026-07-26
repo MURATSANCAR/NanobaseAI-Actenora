@@ -3,17 +3,27 @@ package com.nanobaseai.actenora.security.microsoftconnection;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
+import com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackService;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.config.MicrosoftGraphSpringProperties;
+import com.nanobaseai.actenora.sharedkernel.messaging.ExponentialBackoff;
 import com.nanobaseai.actenora.transcript.api.TranscriptApi;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Platform wiring for Graph calendar → meeting upsert and Teams transcript polling.
@@ -37,6 +47,7 @@ public class MicrosoftConnectionPlatformConfiguration {
             TranscriptApi transcriptApi,
             MeetingApi meetingApi,
             FixedTenantContext fixedTenantContext,
+            SubscriptionStore subscriptionStore,
             MicrosoftGraphSpringProperties graphProperties
     ) {
         return new TeamsTranscriptIngestService(
@@ -44,44 +55,188 @@ public class MicrosoftConnectionPlatformConfiguration {
                 transcriptApi,
                 meetingApi,
                 fixedTenantContext,
+                subscriptionStore,
                 graphProperties.getDefaultMailboxUserId()
         );
     }
 
     @Bean
     TeamsTranscriptPollScheduler teamsTranscriptPollScheduler(
-            TeamsTranscriptIngestService teamsTranscriptIngestService,
+            @Lazy TeamsTranscriptIngestService teamsTranscriptIngestService,
             MeetingApi meetingApi,
             FixedTenantContext fixedTenantContext,
-            SubscriptionStore subscriptionStore
+            SubscriptionStore subscriptionStore,
+            TranscriptApi transcriptApi,
+            TranscriptPollWorkStore workStore,
+            GraphObservability observability,
+            @Value("${actenora.microsoft-graph.transcript-poll-max-attempts:24}") int maxAttempts,
+            @Value("${actenora.microsoft-graph.transcript-poll-max-age:PT48H}") Duration maxAge,
+            @Value("${actenora.microsoft-graph.transcript-poll-stale-claim:PT15M}") Duration staleClaim,
+            @Value("${actenora.microsoft-graph.transcript-poll-batch-size:50}") int batchSize,
+            @Value("${actenora.microsoft-graph.transcript-poll-backoff-base:PT1M}") Duration backoffBase,
+            @Value("${actenora.microsoft-graph.transcript-poll-backoff-cap:PT1H}") Duration backoffCap
     ) {
         return new TeamsTranscriptPollScheduler(
                 teamsTranscriptIngestService,
                 meetingApi,
                 fixedTenantContext,
-                subscriptionStore
+                subscriptionStore,
+                transcriptApi,
+                workStore,
+                new ExponentialBackoff(backoffBase, backoffCap),
+                maxAttempts,
+                maxAge,
+                staleClaim,
+                batchSize,
+                observability
         );
     }
 
     @Bean
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "jdbc")
+    TranscriptPollWorkStore jdbcTranscriptPollWorkStore(JdbcTemplate jdbcTemplate) {
+        return new JdbcTranscriptPollWorkStore(jdbcTemplate);
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            name = "actenora.persistence.mode",
+            havingValue = "inmemory",
+            matchIfMissing = true)
+    TranscriptPollWorkStore inMemoryTranscriptPollWorkStore() {
+        return new InMemoryTranscriptPollWorkStore();
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "jdbc")
+    GraphWorkerLeaseStore jdbcGraphWorkerLeaseStore(JdbcTemplate jdbcTemplate) {
+        return new JdbcGraphWorkerLeaseStore(jdbcTemplate);
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            name = "actenora.persistence.mode",
+            havingValue = "inmemory",
+            matchIfMissing = true)
+    GraphWorkerLeaseStore inMemoryGraphWorkerLeaseStore() {
+        return new InMemoryGraphWorkerLeaseStore();
+    }
+
+    @Bean
+    @Lazy
     @ConditionalOnProperty(name = "actenora.microsoft-graph.workers-enabled", havingValue = "true", matchIfMissing = true)
     TeamsTranscriptPollScheduledWorker teamsTranscriptPollScheduledWorker(
-            TeamsTranscriptPollScheduler scheduler
+            TeamsTranscriptPollScheduler scheduler,
+            GraphWorkerLeaseStore leaseStore
     ) {
-        return new TeamsTranscriptPollScheduledWorker(scheduler);
+        return new TeamsTranscriptPollScheduledWorker(scheduler, leaseStore, UUID.randomUUID().toString());
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "actenora.microsoft-graph.workers-enabled", havingValue = "true", matchIfMissing = true)
+    GraphReconciliationScheduledWorker graphReconciliationScheduledWorker(
+            MicrosoftConnectionApi api,
+            SubscriptionStore subscriptionStore,
+            GraphWorkerLeaseStore leaseStore,
+            GraphObservability observability,
+            CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter
+    ) {
+        return new GraphReconciliationScheduledWorker(
+                api,
+                subscriptionStore,
+                leaseStore,
+                observability,
+                calendarMeetingUpsertAdapter,
+                UUID.randomUUID().toString());
     }
 
     static final class TeamsTranscriptPollScheduledWorker {
 
         private final TeamsTranscriptPollScheduler scheduler;
+        private final GraphWorkerLeaseStore leaseStore;
+        private final String ownerId;
 
-        TeamsTranscriptPollScheduledWorker(TeamsTranscriptPollScheduler scheduler) {
+        TeamsTranscriptPollScheduledWorker(
+                TeamsTranscriptPollScheduler scheduler,
+                GraphWorkerLeaseStore leaseStore,
+                String ownerId
+        ) {
             this.scheduler = Objects.requireNonNull(scheduler);
+            this.leaseStore = Objects.requireNonNull(leaseStore);
+            this.ownerId = Objects.requireNonNull(ownerId);
         }
 
         @Scheduled(fixedDelayString = "${actenora.microsoft-graph.transcript-poll-interval:PT5M}")
         void pollFallback() {
-            scheduler.runScheduledFallback(Instant.now());
+            Instant now = Instant.now();
+            if (!leaseStore.tryAcquire("teams-transcript-poll", ownerId, now, Duration.ofMinutes(14))) {
+                return;
+            }
+            try {
+                scheduler.runScheduledFallback(now);
+            } finally {
+                leaseStore.release("teams-transcript-poll", ownerId, Instant.now());
+            }
+        }
+    }
+
+    static final class GraphReconciliationScheduledWorker {
+
+        private final MicrosoftConnectionApi api;
+        private final SubscriptionStore subscriptionStore;
+        private final GraphWorkerLeaseStore leaseStore;
+        private final GraphObservability observability;
+        private final CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter;
+        private final String ownerId;
+
+        GraphReconciliationScheduledWorker(
+                MicrosoftConnectionApi api,
+                SubscriptionStore subscriptionStore,
+                GraphWorkerLeaseStore leaseStore,
+                GraphObservability observability,
+                CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter,
+                String ownerId
+        ) {
+            this.api = Objects.requireNonNull(api);
+            this.subscriptionStore = Objects.requireNonNull(subscriptionStore);
+            this.leaseStore = Objects.requireNonNull(leaseStore);
+            this.observability = Objects.requireNonNull(observability);
+            this.calendarMeetingUpsertAdapter = Objects.requireNonNull(calendarMeetingUpsertAdapter);
+            this.ownerId = Objects.requireNonNull(ownerId);
+        }
+
+        @Scheduled(fixedDelayString = "${actenora.microsoft-graph.reconcile-interval:PT30M}")
+        void reconcile() {
+            Instant now = Instant.now();
+            if (!leaseStore.tryAcquire("graph-reconciliation", ownerId, now, Duration.ofMinutes(25))) {
+                return;
+            }
+            try {
+                api.reconcile(
+                        mailboxes(),
+                        (tenantId, events) -> calendarMeetingUpsertAdapter.upsertEvents(
+                                com.nanobaseai.actenora.sharedkernel.domain.TenantId.of(tenantId),
+                                events));
+                observability.recordReconciliation(true);
+                observability.updateExpiringSubscriptions(
+                        subscriptionStore.findExpiringBefore(Instant.now().plus(Duration.ofHours(6))).size());
+            } catch (RuntimeException ex) {
+                observability.recordReconciliation(false);
+                throw ex;
+            } finally {
+                leaseStore.release("graph-reconciliation", ownerId, Instant.now());
+            }
+        }
+
+        private List<PollingFallbackService.MailboxRef> mailboxes() {
+            Set<PollingFallbackService.MailboxRef> refs = new LinkedHashSet<>();
+            for (UUID tenantId : subscriptionStore.distinctTenantIds()) {
+                subscriptionStore.findAllForTenant(tenantId).forEach(subscription ->
+                        GraphChangeNotificationProcessor.parseMailboxUserId(subscription.resource())
+                                .ifPresent(userId -> refs.add(
+                                        new PollingFallbackService.MailboxRef(tenantId, userId))));
+            }
+            return List.copyOf(refs);
         }
     }
 }

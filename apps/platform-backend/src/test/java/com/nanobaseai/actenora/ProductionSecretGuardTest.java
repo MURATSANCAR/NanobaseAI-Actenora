@@ -24,7 +24,13 @@ class ProductionSecretGuardTest {
                 "local-graph-client-state",
                 "local-delivery-webhook-secret",
                 "actenora-local-portal-secret",
-                "localhost"
+                "localhost",
+                false,
+                "jdbc",
+                "jdbc-rabbit",
+                "CLIENT_SECRET",
+                "",
+                ""
         );
 
         IllegalStateException ex = assertThrows(
@@ -51,7 +57,13 @@ class ProductionSecretGuardTest {
                 "prod-graph-client-state-secret",
                 "prod-delivery-webhook-secret",
                 "prod-portal-link-hmac-secret",
-                "smtp.office365.com"
+                "smtp.office365.com",
+                true,
+                "jdbc",
+                "jdbc-rabbit",
+                "CERTIFICATE",
+                "/run/secrets/graph.crt",
+                "/run/secrets/graph.key"
         );
 
         assertDoesNotThrow(() -> guard.run(new DefaultApplicationArguments()));
@@ -71,7 +83,13 @@ class ProductionSecretGuardTest {
                 "prod-graph-client-state-secret",
                 "prod-delivery-webhook-secret",
                 "prod-portal-link-hmac-secret",
-                "mailhog"
+                "mailhog",
+                false,
+                "jdbc",
+                "jdbc-rabbit",
+                "CLIENT_SECRET",
+                "",
+                ""
         );
 
         assertDoesNotThrow(() -> guard.run(new DefaultApplicationArguments()));
@@ -91,9 +109,44 @@ class ProductionSecretGuardTest {
                 "local-graph-client-state",
                 "local-delivery-webhook-secret",
                 "actenora-local-portal-secret",
-                "localhost"
+                "localhost",
+                true,
+                "inmemory",
+                "inmemory",
+                "CLIENT_SECRET",
+                "",
+                ""
         );
 
         assertDoesNotThrow(() -> guard.run(new DefaultApplicationArguments()));
+    }
+
+    @Test
+    void prodGraphRequiresDurablePersistenceAndMessaging() {
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles("prod");
+        ProductionSecretGuard guard = new ProductionSecretGuard(
+                env,
+                false,
+                "prod-db-secret-xyz",
+                "prod-rabbit-secret-xyz",
+                "prod-minio-secret-xyz",
+                "prod-graph-client-state-secret",
+                "prod-delivery-webhook-secret",
+                "prod-portal-link-hmac-secret",
+                "smtp.office365.com",
+                true,
+                "inmemory",
+                "inmemory",
+                "CLIENT_SECRET",
+                "",
+                ""
+        );
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> guard.run(new DefaultApplicationArguments()));
+        assertTrue(ex.getMessage().contains("actenora.persistence.mode"));
+        assertTrue(ex.getMessage().contains("actenora.messaging.mode"));
     }
 }

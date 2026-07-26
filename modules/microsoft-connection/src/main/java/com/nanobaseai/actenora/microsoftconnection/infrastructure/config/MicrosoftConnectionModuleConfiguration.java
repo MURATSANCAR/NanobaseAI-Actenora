@@ -8,6 +8,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackSe
 import com.nanobaseai.actenora.microsoftconnection.application.ReconciliationJob;
 import com.nanobaseai.actenora.microsoftconnection.application.SubscriptionLifecycleService;
 import com.nanobaseai.actenora.microsoftconnection.application.port.CalendarGateway;
+import com.nanobaseai.actenora.microsoftconnection.application.port.GraphTelemetry;
 import com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore;
 import com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.MicrosoftTokenProvider;
@@ -23,11 +24,13 @@ import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.ClientSec
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.PemCredentialsLoader;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphCalendarGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphHttpClient;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphEgressPolicy;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphMailGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphOnlineMeetingGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphSleeper;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphSubscriptionGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphTranscriptGateway;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.mail.RateLimitedMailGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.notification.InMemoryNotificationInbox;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.InMemoryCalendarSyncCursorStore;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.InMemorySubscriptionStore;
@@ -36,6 +39,8 @@ import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -96,7 +101,11 @@ public class MicrosoftConnectionModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(GraphHttpClient.class)
-    GraphHttpClient graphHttpClient(MicrosoftGraphProperties props, MicrosoftTokenProvider tokenProvider) {
+    GraphHttpClient graphHttpClient(
+            MicrosoftGraphProperties props,
+            MicrosoftTokenProvider tokenProvider,
+            ObjectProvider<GraphTelemetry> telemetry
+    ) {
         return new GraphHttpClient(
                 props.graphBaseUrl(),
                 tokenProvider,
@@ -104,7 +113,9 @@ public class MicrosoftConnectionModuleConfiguration {
                 GraphSleeper.THREAD,
                 ExponentialBackoff.defaults(),
                 5,
-                3
+                3,
+                GraphEgressPolicy.defaults(),
+                telemetry.getIfAvailable(() -> GraphTelemetry.NOOP)
         );
     }
 
@@ -147,8 +158,16 @@ public class MicrosoftConnectionModuleConfiguration {
     }
 
     @Bean
-    MailGateway mailGateway(GraphHttpClient http, ObjectMapper mapper) {
-        return new GraphMailGateway(http, mapper);
+    MailGateway mailGateway(
+            GraphHttpClient http,
+            ObjectMapper mapper,
+            @Value("${actenora.microsoft-graph.mail.max-per-window:100}") int maxPerWindow,
+            @Value("${actenora.microsoft-graph.mail.window:PT1M}") Duration window
+    ) {
+        return new RateLimitedMailGateway(
+                new GraphMailGateway(http, mapper),
+                maxPerWindow,
+                window);
     }
 
     @Bean

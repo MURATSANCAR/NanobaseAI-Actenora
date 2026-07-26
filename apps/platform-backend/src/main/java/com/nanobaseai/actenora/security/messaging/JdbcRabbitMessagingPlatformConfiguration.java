@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.security.messaging;
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
+import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeWorkConsumer;
 import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
@@ -150,6 +151,11 @@ public class JdbcRabbitMessagingPlatformConfiguration {
         return jdbcRabbitEventBackbone.consumer("ai-processing");
     }
 
+    @Bean
+    IdempotentEventConsumer microsoftConnectionEventConsumer(EventBackbone jdbcRabbitEventBackbone) {
+        return jdbcRabbitEventBackbone.consumer("microsoft-connection");
+    }
+
     @Component
     @ConditionalOnProperty(name = "actenora.messaging.mode", havingValue = "jdbc-rabbit")
     static class JdbcRabbitInboundListeners {
@@ -157,27 +163,33 @@ public class JdbcRabbitMessagingPlatformConfiguration {
         private final IdempotentEventConsumer transcriptEventConsumer;
         private final IdempotentEventConsumer meetingIntelligenceEventConsumer;
         private final IdempotentEventConsumer aiProcessingEventConsumer;
+        private final IdempotentEventConsumer microsoftConnectionEventConsumer;
         private final MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler;
         private final NoteApprovedForLedgerHandler noteApprovedForLedgerHandler;
         private final TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler;
         private final ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler;
+        private final ObjectProvider<GraphChangeWorkConsumer> graphChangeWorkConsumer;
 
         JdbcRabbitInboundListeners(
                 @Qualifier("transcriptEventConsumer") IdempotentEventConsumer transcriptEventConsumer,
                 @Qualifier("meetingIntelligenceEventConsumer") IdempotentEventConsumer meetingIntelligenceEventConsumer,
                 @Qualifier("aiProcessingEventConsumer") IdempotentEventConsumer aiProcessingEventConsumer,
+                @Qualifier("microsoftConnectionEventConsumer") IdempotentEventConsumer microsoftConnectionEventConsumer,
                 MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
                 NoteApprovedForLedgerHandler noteApprovedForLedgerHandler,
                 TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler,
-                ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler
+                ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
+                ObjectProvider<GraphChangeWorkConsumer> graphChangeWorkConsumer
         ) {
             this.transcriptEventConsumer = transcriptEventConsumer;
             this.meetingIntelligenceEventConsumer = meetingIntelligenceEventConsumer;
             this.aiProcessingEventConsumer = aiProcessingEventConsumer;
+            this.microsoftConnectionEventConsumer = microsoftConnectionEventConsumer;
             this.meetingOccurrenceUpsertedHandler = meetingOccurrenceUpsertedHandler;
             this.noteApprovedForLedgerHandler = noteApprovedForLedgerHandler;
             this.transcriptReadyAiAdmissionHandler = transcriptReadyAiAdmissionHandler;
             this.transcriptPollScheduler = transcriptPollScheduler;
+            this.graphChangeWorkConsumer = graphChangeWorkConsumer;
         }
 
         @RabbitListener(queues = "actenora.transcript.events")
@@ -203,6 +215,22 @@ public class JdbcRabbitMessagingPlatformConfiguration {
                     meetingIntelligenceEventConsumer,
                     noteApprovedForLedgerHandler
             );
+        }
+
+        @RabbitListener(queues = "actenora.microsoft-connection.events")
+        void onMicrosoftConnectionEvent(Message message) {
+            GraphChangeWorkConsumer handler = graphChangeWorkConsumer.getIfAvailable();
+            if (handler != null) {
+                IdempotentEventConsumer.ConsumeResult result = EventBackboneConsumerDispatch.dispatchGraphChange(
+                        RabbitEventTransport.toEnvelope(message),
+                        microsoftConnectionEventConsumer,
+                        handler
+                );
+                if (result != null && result.outcome() == IdempotentEventConsumer.Outcome.RETRY) {
+                    throw new IllegalStateException(
+                            "Transient Graph change processing failure: " + result.failureCode());
+                }
+            }
         }
     }
 }

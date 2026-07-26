@@ -120,7 +120,10 @@ export function validateDesignSchema(schema: DesignSchema): TemplateValidationIs
   return issues;
 }
 
-/** Sections shown in meeting note editor when a template is locked. */
+/**
+ * Component types an author fills in by hand. Everything else (logo, footer, page numbers)
+ * is rendered from meeting data or branding, so it never becomes an editor field.
+ */
 export const MEETING_NOTE_EDITABLE_SECTIONS: TemplateComponentType[] = [
   "EXECUTIVE_SUMMARY",
   "AGENDA",
@@ -130,3 +133,29 @@ export const MEETING_NOTE_EDITABLE_SECTIONS: TemplateComponentType[] = [
   "OPEN_QUESTIONS",
   "COMMITMENTS",
 ];
+
+const EDITABLE_SECTION_SET = new Set<TemplateComponentType>(MEETING_NOTE_EDITABLE_SECTIONS);
+
+/**
+ * Editor fields for a note, taken from the design its template version defines.
+ * A note pinned to an older version keeps that version's sections and ordering even
+ * after the template is redesigned. Falls back to the standard set when the version
+ * carries no design (drafts saved before a layout was chosen).
+ */
+export function editableSectionsFromDesign(
+  schema: { components: Array<{ type: string; order: number }> } | null | undefined,
+): TemplateComponentType[] {
+  if (!schema || schema.components.length === 0) {
+    return MEETING_NOTE_EDITABLE_SECTIONS;
+  }
+  const seen = new Set<TemplateComponentType>();
+  const sections = [...schema.components]
+    .sort((a, b) => a.order - b.order)
+    .map((component) => component.type as TemplateComponentType)
+    .filter((type) => {
+      if (!EDITABLE_SECTION_SET.has(type) || seen.has(type)) return false;
+      seen.add(type);
+      return true;
+    });
+  return sections.length ? sections : MEETING_NOTE_EDITABLE_SECTIONS;
+}

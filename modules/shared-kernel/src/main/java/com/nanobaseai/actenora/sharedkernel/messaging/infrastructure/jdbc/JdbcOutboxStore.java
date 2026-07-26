@@ -5,6 +5,7 @@ import com.nanobaseai.actenora.sharedkernel.messaging.OutboxEvent;
 import com.nanobaseai.actenora.sharedkernel.messaging.OutboxStatus;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxStore;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.TenantFairnessTracker;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -34,11 +35,13 @@ public final class JdbcOutboxStore implements OutboxStore {
     private static final int FAIRNESS_POOL_CAP = 500;
 
     private final DataSource dataSource;
+    private final JdbcTemplate jdbc;
     private final String outboxTable;
     private final TenantFairnessTracker fairness;
 
     public JdbcOutboxStore(DataSource dataSource, String schema, TenantFairnessTracker fairness) {
         this.dataSource = dataSource;
+        this.jdbc = new JdbcTemplate(dataSource);
         this.outboxTable = JdbcMessagingSchema.table(schema, "outbox_event");
         this.fairness = fairness;
     }
@@ -52,14 +55,9 @@ public final class JdbcOutboxStore implements OutboxStore {
                     published_at, status, attempt_count, next_attempt_at, failure_code
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """.formatted(outboxTable);
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            bindOutbox(ps, event);
-            if (ps.executeUpdate() != 1) {
-                throw new IllegalStateException("Failed to append outbox event: " + event.id());
-            }
-        } catch (SQLException ex) {
-            throw new IllegalStateException("Outbox append failed for " + event.id(), ex);
+        int inserted = jdbc.update(sql, ps -> bindOutbox(ps, event));
+        if (inserted != 1) {
+            throw new IllegalStateException("Failed to append outbox event: " + event.id());
         }
     }
 

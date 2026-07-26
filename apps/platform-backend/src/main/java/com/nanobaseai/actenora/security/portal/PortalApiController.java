@@ -37,6 +37,8 @@ import com.nanobaseai.actenora.operations.api.OperationsApi;
 import com.nanobaseai.actenora.operations.application.OperationsViews;
 import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiBrandSanitizer;
 import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService;
+import com.nanobaseai.actenora.security.microsoftconnection.GraphObservability;
+import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.template.api.MeetingTemplateId;
 import com.nanobaseai.actenora.template.api.TemplateApi;
@@ -109,6 +111,8 @@ public class PortalApiController {
     private final Optional<AuditApi> auditApi;
     private final String graphClientId;
     private final String recordingBaseUrl;
+    private final Optional<GraphObservability> graphObservability;
+    private final Optional<TeamsTranscriptPollScheduler> transcriptPollScheduler;
 
     public PortalApiController(
             IdentityApi identityApi,
@@ -125,6 +129,8 @@ public class PortalApiController {
             ObjectProvider<NanobaseAiConnectionService> nanobaseAiConnectionService,
             ObjectProvider<AiProcessingApi> aiProcessingApi,
             ObjectProvider<AuditApi> auditApi,
+            ObjectProvider<GraphObservability> graphObservability,
+            ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
             PortalTeamsPreferencesStore teamsPreferencesStore,
             @Value("${actenora.microsoft-graph.client-id:}") String graphClientId,
             @Value("${actenora.portal.recording-base-url:}") String recordingBaseUrl
@@ -143,6 +149,8 @@ public class PortalApiController {
         this.nanobaseAiConnectionService = Optional.ofNullable(nanobaseAiConnectionService.getIfAvailable());
         this.aiProcessingApi = Optional.ofNullable(aiProcessingApi.getIfAvailable());
         this.auditApi = Optional.ofNullable(auditApi.getIfAvailable());
+        this.graphObservability = Optional.ofNullable(graphObservability.getIfAvailable());
+        this.transcriptPollScheduler = Optional.ofNullable(transcriptPollScheduler.getIfAvailable());
         this.teamsPreferencesStore = Objects.requireNonNull(teamsPreferencesStore, "teamsPreferencesStore");
         this.graphClientId = graphClientId == null ? "" : graphClientId;
         this.recordingBaseUrl = recordingBaseUrl == null ? "" : recordingBaseUrl;
@@ -561,7 +569,7 @@ public class PortalApiController {
                 new ActenoraException("TEMPLATE_MODULE_UNAVAILABLE", "Template module is not enabled"));
         var templateId = api.createTemplate(principalTenantId(), body.name().trim());
         String locale = body.locale() == null || body.locale().isBlank() ? "en" : body.locale().trim();
-        return new TemplateSummaryView(templateId.value(), body.name().trim(), locale, 0, "DRAFT");
+        return new TemplateSummaryView(templateId.value(), body.name().trim(), locale, 0, "DRAFT", false);
     }
 
     @GetMapping("/templates/{templateId}")
@@ -645,6 +653,16 @@ public class PortalApiController {
         return toTemplateVersionView(published);
     }
 
+    @PutMapping("/templates/{templateId}/default")
+    @RequiresPermission(Permission.TEMPLATE_MANAGE)
+    public TemplateDetailView setDefaultTemplate(@PathVariable UUID templateId) {
+        require(Permission.TEMPLATE_MANAGE);
+        TemplateApi api = templateApi.orElseThrow(() ->
+                new ActenoraException("TEMPLATE_MODULE_UNAVAILABLE", "Template module is not enabled"));
+        MeetingTemplate template = api.setDefaultTemplate(principalTenantId(), MeetingTemplateId.of(templateId));
+        return toTemplateDetail(template, "en");
+    }
+
     @GetMapping("/meetings/{meetingId}/notes/{noteId}/template-lock")
     @RequiresPermission(Permission.MEETING_READ)
     public NoteTemplateLockView getNoteTemplateLock(
@@ -658,9 +676,17 @@ public class PortalApiController {
             markStub(response);
             return null;
         }
-        return templateApi.get()
-                .findLockedTemplateVersion(principalTenantId(), noteId)
-                .flatMap(versionId -> resolveNoteTemplateLock(principalTenantId(), versionId))
+        TemplateApi api = templateApi.get();
+        TenantId tenantId = principalTenantId();
+        Optional<NoteTemplateLockView> pinned = api.findLockedTemplateVersion(tenantId, noteId)
+                .flatMap(versionId -> resolveNoteTemplateLock(tenantId, versionId, true));
+        if (pinned.isPresent()) {
+            return pinned.get();
+        }
+        // Not yet pinned: surface the tenant default so a new note starts on the current standard.
+        return api.findDefaultTemplate(tenantId)
+                .flatMap(template -> template.latestPublished()
+                        .map(version -> toNoteTemplateLockView(template, version, false)))
                 .orElse(null);
     }
 
@@ -680,7 +706,7 @@ public class PortalApiController {
                 new ActenoraException("TEMPLATE_MODULE_UNAVAILABLE", "Template module is not enabled"));
         TemplateVersionId versionId = TemplateVersionId.of(body.templateVersionId());
         api.lockNoteToTemplateVersion(principalTenantId(), noteId, versionId);
-        return resolveNoteTemplateLock(principalTenantId(), versionId)
+        return resolveNoteTemplateLock(principalTenantId(), versionId, true)
                 .orElseThrow(() -> new ActenoraException("TEMPLATE_LOCK_FAILED", "Could not resolve template lock"));
     }
 
@@ -767,9 +793,13 @@ public class PortalApiController {
             OperationsViews.QueueDashboardView dashboard = operationsApi.get().queueDashboard();
             OperationsViews.WorkerHealthView workers = operationsApi.get().workerHealth();
             return new OperationsOverviewView(
-                    (int) dashboard.aiQueueDepth(),
+                    (int) dashboard.aiQueueDepth()
+                            + transcriptPollScheduler.map(s -> (int) s.pendingCount()).orElse(0),
                     (int) dashboard.dlqDepth(),
-                    List.of(),
+                    graphObservability
+                            .map(graph -> List.<Object>of(
+                                    new CircuitBreakerView("microsoft-graph", graph.circuitState())))
+                            .orElse(List.of()),
                     workers.workers().stream().map(w -> (Object) w).toList()
             );
         }
@@ -894,6 +924,12 @@ public class PortalApiController {
         }
         boolean connected = !subscriptions.isEmpty();
         String webhookStatus = resolveWebhookStatus(subscriptions);
+        if ("active".equals(webhookStatus) && graphObservability.isPresent()) {
+            String observed = graphObservability.get().webhookStatus();
+            if ("degraded".equals(observed)) {
+                webhookStatus = observed;
+            }
+        }
         String appId = subscriptions.stream()
                 .map(GraphSubscription::applicationId)
                 .filter(id -> id != null && !id.isBlank())
@@ -944,7 +980,8 @@ public class PortalApiController {
                 template.name(),
                 "en",
                 versionNumber,
-                status
+                status,
+                template.isDefault()
         );
     }
 
@@ -957,7 +994,9 @@ public class PortalApiController {
                 template.id().value(),
                 template.name(),
                 locale,
-                versions
+                versions,
+                template.publishedVersionId().map(TemplateVersionId::value).orElse(null),
+                template.isDefault()
         );
     }
 
@@ -993,7 +1032,8 @@ public class PortalApiController {
 
     private Optional<NoteTemplateLockView> resolveNoteTemplateLock(
             TenantId tenantId,
-            TemplateVersionId versionId
+            TemplateVersionId versionId,
+            boolean locked
     ) {
         if (templateApi.isEmpty()) {
             return Optional.empty();
@@ -1001,16 +1041,26 @@ public class PortalApiController {
         for (MeetingTemplate template : templateApi.get().listTemplates(tenantId)) {
             for (TemplateVersion version : template.versions()) {
                 if (version.id().equals(versionId)) {
-                    return Optional.of(new NoteTemplateLockView(
-                            template.id().value(),
-                            template.name(),
-                            version.id().value(),
-                            version.versionNumber()
-                    ));
+                    return Optional.of(toNoteTemplateLockView(template, version, locked));
                 }
             }
         }
         return Optional.empty();
+    }
+
+    private static NoteTemplateLockView toNoteTemplateLockView(
+            MeetingTemplate template,
+            TemplateVersion version,
+            boolean locked
+    ) {
+        return new NoteTemplateLockView(
+                template.id().value(),
+                template.name(),
+                version.id().value(),
+                version.versionNumber(),
+                locked,
+                version.designSchema().map(PortalApiController::toDesignSchemaView).orElse(null)
+        );
     }
 
     private ModelHealthView toPortalModelHealth(
@@ -1348,7 +1398,14 @@ public class PortalApiController {
     public record TemplateListView(List<TemplateSummaryView> items) {
     }
 
-    public record TemplateSummaryView(UUID id, String name, String locale, int version, String status) {
+    public record TemplateSummaryView(
+            UUID id,
+            String name,
+            String locale,
+            int version,
+            String status,
+            boolean isDefault
+    ) {
     }
 
     public record CreateTemplateBody(String name, String locale) {
@@ -1358,7 +1415,9 @@ public class PortalApiController {
             UUID id,
             String name,
             String locale,
-            List<TemplateVersionView> versions
+            List<TemplateVersionView> versions,
+            UUID publishedVersionId,
+            boolean isDefault
     ) {
     }
 
@@ -1393,11 +1452,17 @@ public class PortalApiController {
     public record SaveTemplateDesignBody(String designSchemaJson, String contentSchemaJson) {
     }
 
+    /**
+     * Effective template binding for a note. {@code locked} is false when the binding is only
+     * the tenant default suggestion, i.e. the note is not yet pinned to this version.
+     */
     public record NoteTemplateLockView(
             UUID templateId,
             String templateName,
             UUID templateVersionId,
-            int templateVersionNumber
+            int templateVersionNumber,
+            boolean locked,
+            DesignSchemaView designSchema
     ) {
     }
 
@@ -1471,6 +1536,9 @@ public class PortalApiController {
             List<Object> circuitBreakers,
             List<Object> workers
     ) {
+    }
+
+    public record CircuitBreakerView(String name, String state) {
     }
 
     public record AuditEventView(

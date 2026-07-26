@@ -6,6 +6,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscr
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 
 /**
  * Periodic reconciliation: renew subscriptions and poll calendars to heal missed notifications.
@@ -25,8 +26,39 @@ public final class ReconciliationJob {
     }
 
     public ReconciliationResult run(List<PollingFallbackService.MailboxRef> mailboxes) {
-        List<GraphSubscription> renewed = subscriptionLifecycleService.renewExpiring();
-        List<CalendarEvent> polled = pollingFallbackService.pollAll(mailboxes, (t, u) -> true);
+        return run(mailboxes, (tenantId, events) -> {
+        });
+    }
+
+    public ReconciliationResult run(
+            List<PollingFallbackService.MailboxRef> mailboxes,
+            BiConsumer<UUID, List<CalendarEvent>> eventConsumer
+    ) {
+        Objects.requireNonNull(mailboxes, "mailboxes");
+        Objects.requireNonNull(eventConsumer, "eventConsumer");
+        List<GraphSubscription> renewed = List.of();
+        List<RuntimeException> failures = new java.util.ArrayList<>();
+        try {
+            renewed = subscriptionLifecycleService.renewExpiring();
+        } catch (RuntimeException ex) {
+            failures.add(ex);
+        }
+        List<CalendarEvent> polled = new java.util.ArrayList<>();
+        for (PollingFallbackService.MailboxRef mailbox : mailboxes) {
+            try {
+                List<CalendarEvent> events = pollingFallbackService.pollMailbox(
+                        mailbox.tenantId(), mailbox.userId());
+                eventConsumer.accept(mailbox.tenantId(), events);
+                polled.addAll(events);
+            } catch (RuntimeException ex) {
+                failures.add(ex);
+            }
+        }
+        if (!failures.isEmpty()) {
+            RuntimeException failure = failures.getFirst();
+            failures.stream().skip(1).forEach(failure::addSuppressed);
+            throw failure;
+        }
         return new ReconciliationResult(renewed.size(), polled.size());
     }
 

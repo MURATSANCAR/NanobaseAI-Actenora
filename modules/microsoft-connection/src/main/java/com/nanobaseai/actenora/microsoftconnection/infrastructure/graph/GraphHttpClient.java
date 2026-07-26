@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.microsoftconnection.infrastructure.graph;
 
 import com.nanobaseai.actenora.microsoftconnection.application.model.AccessToken;
 import com.nanobaseai.actenora.microsoftconnection.application.port.MicrosoftTokenProvider;
+import com.nanobaseai.actenora.microsoftconnection.application.port.GraphTelemetry;
 import com.nanobaseai.actenora.sharedkernel.messaging.ExponentialBackoff;
 
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
@@ -28,6 +30,7 @@ public final class GraphHttpClient {
     private final int maxAttempts;
     private final int notFoundMaxAttempts;
     private final GraphEgressPolicy egressPolicy;
+    private final GraphTelemetry telemetry;
 
     public GraphHttpClient(
             URI graphBaseUrl,
@@ -46,7 +49,8 @@ public final class GraphHttpClient {
                 serverBackoff,
                 maxAttempts,
                 notFoundMaxAttempts,
-                GraphEgressPolicy.defaults());
+                GraphEgressPolicy.defaults(),
+                GraphTelemetry.NOOP);
     }
 
     public GraphHttpClient(
@@ -58,6 +62,29 @@ public final class GraphHttpClient {
             int maxAttempts,
             int notFoundMaxAttempts,
             GraphEgressPolicy egressPolicy
+    ) {
+        this(
+                graphBaseUrl,
+                tokenProvider,
+                httpClient,
+                sleeper,
+                serverBackoff,
+                maxAttempts,
+                notFoundMaxAttempts,
+                egressPolicy,
+                GraphTelemetry.NOOP);
+    }
+
+    public GraphHttpClient(
+            URI graphBaseUrl,
+            MicrosoftTokenProvider tokenProvider,
+            HttpClient httpClient,
+            GraphSleeper sleeper,
+            ExponentialBackoff serverBackoff,
+            int maxAttempts,
+            int notFoundMaxAttempts,
+            GraphEgressPolicy egressPolicy,
+            GraphTelemetry telemetry
     ) {
         this.graphBaseUrl = Objects.requireNonNull(graphBaseUrl, "graphBaseUrl");
         this.tokenProvider = Objects.requireNonNull(tokenProvider, "tokenProvider");
@@ -73,6 +100,7 @@ public final class GraphHttpClient {
         this.maxAttempts = maxAttempts;
         this.notFoundMaxAttempts = notFoundMaxAttempts;
         this.egressPolicy = Objects.requireNonNull(egressPolicy, "egressPolicy");
+        this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
         this.egressPolicy.assertAllowed(graphBaseUrl);
     }
 
@@ -133,6 +161,9 @@ public final class GraphHttpClient {
      */
     public HttpResponse<String> send(Function<AccessToken, HttpRequest> requestFactory, boolean retryNotFound) {
         Objects.requireNonNull(requestFactory, "requestFactory");
+        if (!telemetry.allowRequest()) {
+            throw GraphApiException.circuitOpen();
+        }
         int attempt = 0;
         int notFoundAttempts = 0;
         boolean refreshedOn401 = false;
@@ -141,12 +172,14 @@ public final class GraphHttpClient {
         while (attempt < maxAttempts) {
             AccessToken token = tokenProvider.getAccessToken();
             HttpRequest request = requestFactory.apply(token);
+            Instant attemptStartedAt = Instant.now();
             try {
                 HttpResponse<String> response = httpClient.send(
                         request,
                         HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
                 );
                 int status = response.statusCode();
+                telemetry.recordHttp(status, Duration.between(attemptStartedAt, Instant.now()));
                 if (status >= 200 && status < 300) {
                     return response;
                 }
@@ -199,6 +232,7 @@ public final class GraphHttpClient {
                 Thread.currentThread().interrupt();
                 throw GraphApiException.transport("Graph request interrupted", ex);
             } catch (IOException ex) {
+                telemetry.recordHttp(0, Duration.between(attemptStartedAt, Instant.now()));
                 last = GraphApiException.transport("Graph transport failure", ex);
                 sleepQuietly(serverBackoff.delayForAttempt(attempt));
                 attempt++;

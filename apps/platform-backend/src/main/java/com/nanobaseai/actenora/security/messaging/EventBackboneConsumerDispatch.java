@@ -3,6 +3,8 @@ package com.nanobaseai.actenora.security.messaging;
 import com.nanobaseai.actenora.meeting.api.event.MeetingIntegrationEvents;
 import com.nanobaseai.actenora.meetingintelligence.api.event.MeetingIntelligenceIntegrationEvents;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
+import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeNotificationProcessor;
+import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeWorkConsumer;
 import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
 import com.nanobaseai.actenora.sharedkernel.messaging.inbox.IdempotentEventConsumer;
@@ -60,5 +62,15 @@ final class EventBackboneConsumerDispatch {
             return;
         }
         consumer.consume(envelope, handler::handle);
+    }
+
+    static IdempotentEventConsumer.ConsumeResult dispatchGraphChange(
+            EventEnvelope envelope,
+            IdempotentEventConsumer consumer,
+            GraphChangeWorkConsumer handler) {
+        if (!GraphChangeNotificationProcessor.GRAPH_CHANGE_RECEIVED.equals(envelope.eventType())) {
+            return null;
+        }
+        return consumer.consume(envelope, handler::handle);
     }
 }

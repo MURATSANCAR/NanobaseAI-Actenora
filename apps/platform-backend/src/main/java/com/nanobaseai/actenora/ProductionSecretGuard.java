@@ -52,6 +52,12 @@ public class ProductionSecretGuard implements ApplicationRunner {
     private final String deliveryWebhookSecret;
     private final String portalLinkSecret;
     private final String mailHost;
+    private final boolean microsoftGraphEnabled;
+    private final String persistenceMode;
+    private final String messagingMode;
+    private final String graphAuthMode;
+    private final String graphCertificatePath;
+    private final String graphPrivateKeyPath;
 
     public ProductionSecretGuard(
             Environment environment,
@@ -62,7 +68,13 @@ public class ProductionSecretGuard implements ApplicationRunner {
             @Value("${actenora.microsoft-graph.webhook.client-state:}") String graphClientState,
             @Value("${actenora.delivery.webhook.secret:}") String deliveryWebhookSecret,
             @Value("${actenora.delivery.portal-link.secret:}") String portalLinkSecret,
-            @Value("${spring.mail.host:}") String mailHost
+            @Value("${spring.mail.host:}") String mailHost,
+            @Value("${actenora.microsoft-graph.enabled:false}") boolean microsoftGraphEnabled,
+            @Value("${actenora.persistence.mode:inmemory}") String persistenceMode,
+            @Value("${actenora.messaging.mode:inmemory}") String messagingMode,
+            @Value("${actenora.microsoft-graph.auth-mode:CLIENT_SECRET}") String graphAuthMode,
+            @Value("${actenora.microsoft-graph.certificate-pem-path:}") String graphCertificatePath,
+            @Value("${actenora.microsoft-graph.private-key-pem-path:}") String graphPrivateKeyPath
     ) {
         this.environment = environment;
         this.allowDefaultSecrets = allowDefaultSecrets;
@@ -73,28 +85,51 @@ public class ProductionSecretGuard implements ApplicationRunner {
         this.deliveryWebhookSecret = deliveryWebhookSecret;
         this.portalLinkSecret = portalLinkSecret;
         this.mailHost = mailHost;
+        this.microsoftGraphEnabled = microsoftGraphEnabled;
+        this.persistenceMode = persistenceMode;
+        this.messagingMode = messagingMode;
+        this.graphAuthMode = graphAuthMode;
+        this.graphCertificatePath = graphCertificatePath;
+        this.graphPrivateKeyPath = graphPrivateKeyPath;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        if (allowDefaultSecrets || !isProductionLike()) {
+        if (!isProductionLike()) {
             return;
         }
 
         List<String> offenders = new ArrayList<>();
-        check("spring.datasource.password", datasourcePassword, offenders);
-        check("spring.rabbitmq.password", rabbitPassword, offenders);
-        check("actenora.object-storage.secret-key", objectStorageSecret, offenders);
-        check("actenora.microsoft-graph.webhook.client-state", graphClientState, offenders);
-        check("actenora.delivery.webhook.secret", deliveryWebhookSecret, offenders);
-        check("actenora.delivery.portal-link.secret", portalLinkSecret, offenders);
-        checkMailHost(offenders);
+        if (!allowDefaultSecrets) {
+            check("spring.datasource.password", datasourcePassword, offenders);
+            check("spring.rabbitmq.password", rabbitPassword, offenders);
+            check("actenora.object-storage.secret-key", objectStorageSecret, offenders);
+            check("actenora.microsoft-graph.webhook.client-state", graphClientState, offenders);
+            check("actenora.delivery.webhook.secret", deliveryWebhookSecret, offenders);
+            check("actenora.delivery.portal-link.secret", portalLinkSecret, offenders);
+            checkMailHost(offenders);
+        }
+        if (microsoftGraphEnabled && !"jdbc".equalsIgnoreCase(persistenceMode)) {
+            offenders.add("actenora.persistence.mode (jdbc required when Microsoft Graph is enabled)");
+        }
+        if (microsoftGraphEnabled && !"jdbc-rabbit".equalsIgnoreCase(messagingMode)) {
+            offenders.add("actenora.messaging.mode (jdbc-rabbit required when Microsoft Graph is enabled)");
+        }
+        if (microsoftGraphEnabled && !"CERTIFICATE".equalsIgnoreCase(graphAuthMode)) {
+            offenders.add("actenora.microsoft-graph.auth-mode (CERTIFICATE required in production)");
+        }
+        if (microsoftGraphEnabled && (graphCertificatePath == null || graphCertificatePath.isBlank())) {
+            offenders.add("actenora.microsoft-graph.certificate-pem-path (required in production)");
+        }
+        if (microsoftGraphEnabled && (graphPrivateKeyPath == null || graphPrivateKeyPath.isBlank())) {
+            offenders.add("actenora.microsoft-graph.private-key-pem-path (required in production)");
+        }
 
         if (!offenders.isEmpty()) {
             throw new IllegalStateException(
-                    "Refusing to start with default/local secrets on a production profile. "
+                    "Refusing to start with unsafe production configuration. "
                             + "Offending properties: " + offenders
-                            + ". Set strong secrets via environment variables.");
+                            + ". Set durable modes, certificate authentication, and strong secrets via environment variables.");
         }
         log.info("Production secret guard passed");
     }

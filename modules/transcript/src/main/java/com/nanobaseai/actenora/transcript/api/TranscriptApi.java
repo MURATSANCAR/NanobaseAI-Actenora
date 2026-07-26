@@ -109,6 +109,11 @@ public class TranscriptApi {
                 .toList();
     }
 
+    public boolean hasTranscriptForMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
+        requireRepositories();
+        return transcriptRepository.findLatestByMeetingOccurrenceId(tenantId, meetingOccurrenceId).isPresent();
+    }
+
     public List<String> listSpeakersForMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
         return listSegmentsForMeeting(tenantId, meetingOccurrenceId).stream()
                 .map(TranscriptSegmentView::speaker)

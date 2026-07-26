@@ -60,8 +60,16 @@ export function serializeTemplateNoteBody(body: TemplateNoteBody): string {
   return JSON.stringify(body);
 }
 
-export function plainTextFromTemplateNote(body: TemplateNoteBody): string {
-  return MEETING_NOTE_EDITABLE_SECTIONS.map((type) => body.sections[type]?.trim())
+/** Flattens a template note for search, export and plain-text surfaces. */
+export function plainTextFromTemplateNote(
+  body: TemplateNoteBody,
+  order: TemplateComponentType[] = MEETING_NOTE_EDITABLE_SECTIONS,
+): string {
+  const extras = (Object.keys(body.sections) as TemplateComponentType[]).filter(
+    (type) => !order.includes(type),
+  );
+  return [...order, ...extras]
+    .map((type) => body.sections[type]?.trim())
     .filter(Boolean)
     .join("\n\n");
 }

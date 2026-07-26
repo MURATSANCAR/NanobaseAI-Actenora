@@ -108,6 +108,16 @@
       }
     },
     {
+      "name": "actenora.microsoft-connection.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "microsoft-connection.events"
+      }
+    },
+    {
       "name": "actenora.commands",
       "vhost": "/",
       "durable": true,
@@ -281,6 +291,14 @@
       "destination": "actenora.meeting-intelligence.events",
       "destination_type": "queue",
       "routing_key": "meetingintelligence.#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.microsoft-connection.events",
+      "destination_type": "queue",
+      "routing_key": "microsoft.GraphChangeNotificationReceived.v1",
       "arguments": {}
     },
     {

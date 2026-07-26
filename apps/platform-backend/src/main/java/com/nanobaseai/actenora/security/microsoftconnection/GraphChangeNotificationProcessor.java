@@ -1,7 +1,5 @@
 package com.nanobaseai.actenora.security.microsoftconnection;
 
-import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
-import com.nanobaseai.actenora.microsoftconnection.application.model.CalendarEvent;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphChangeNotification;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
@@ -16,7 +14,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,8 +21,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Wave 5 — processes Graph change notifications after idempotent claim:
- * enqueues a durable work item, triggers calendar sync, and upserts meetings.
+ * Validates tenant ownership and atomically enqueues durable Graph change work.
+ * Calendar synchronization is deliberately performed by {@link GraphChangeWorkConsumer},
+ * outside the Graph callback thread.
  */
 @Component
 @ConditionalOnProperty(name = "actenora.microsoft-graph.enabled", havingValue = "true")
@@ -33,32 +31,29 @@ public final class GraphChangeNotificationProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(GraphChangeNotificationProcessor.class);
 
-    static final String GRAPH_CHANGE_RECEIVED = "microsoft.GraphChangeNotificationReceived.v1";
+    public static final String GRAPH_CHANGE_RECEIVED = "microsoft.GraphChangeNotificationReceived.v1";
 
     private static final Pattern USER_EVENTS = Pattern.compile("users/([^/]+)/events");
 
-    private final MicrosoftConnectionApi microsoftConnectionApi;
-    private final CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter;
     private final TenantApi tenantApi;
     private final Optional<OutboxPublisher> outboxPublisher;
+    private final Optional<GraphObservability> observability;
 
     public GraphChangeNotificationProcessor(
-            MicrosoftConnectionApi microsoftConnectionApi,
-            CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter,
             TenantApi tenantApi,
-            ObjectProvider<OutboxPublisher> outboxPublisher
+            ObjectProvider<OutboxPublisher> outboxPublisher,
+            ObjectProvider<GraphObservability> observability
     ) {
-        this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi, "microsoftConnectionApi");
-        this.calendarMeetingUpsertAdapter = Objects.requireNonNull(
-                calendarMeetingUpsertAdapter, "calendarMeetingUpsertAdapter");
         this.tenantApi = Objects.requireNonNull(tenantApi, "tenantApi");
         this.outboxPublisher = Optional.ofNullable(outboxPublisher.getIfAvailable());
+        this.observability = Optional.ofNullable(observability.getIfAvailable());
     }
 
     public void process(GraphChangeNotification notification) {
         Objects.requireNonNull(notification, "notification");
         Optional<TenantId> tenantId = GraphTenantResolver.resolve(notification.tenantId(), tenantApi);
         if (tenantId.isEmpty()) {
+            observability.ifPresent(GraphObservability::recordTenantUnmapped);
             log.error(
                     "GRAPH_TENANT_UNMAPPED subscriptionId={} rawTenantId={}",
                     notification.subscriptionId(),
@@ -71,25 +66,13 @@ public final class GraphChangeNotificationProcessor {
             );
         }
         enqueueWorkItem(notification, tenantId.get().value());
-        parseMailboxUserId(notification.resource()).ifPresent(userId -> {
-            try {
-                List<CalendarEvent> events = microsoftConnectionApi.syncCalendar(tenantId.get().value(), userId);
-                calendarMeetingUpsertAdapter.upsertEvents(tenantId.get(), events);
-            } catch (RuntimeException ex) {
-                log.warn(
-                        "Calendar sync/upsert after Graph notification failed tenantId={} userId={} subscriptionId={}: {}",
-                        tenantId.get().value(),
-                        userId,
-                        notification.subscriptionId(),
-                        ex.getMessage()
-                );
-            }
-        });
     }
 
     private void enqueueWorkItem(GraphChangeNotification notification, UUID tenantId) {
         if (outboxPublisher.isEmpty()) {
-            return;
+            throw new ActenoraException(
+                    "GRAPH_DURABLE_MESSAGING_UNAVAILABLE",
+                    "Graph notifications require an outbox publisher");
         }
         TenantId envelopeTenant = tenantId == null ? TenantId.of(UUID.fromString("00000000-0000-0000-0000-000000000000"))
                 : TenantId.of(tenantId);

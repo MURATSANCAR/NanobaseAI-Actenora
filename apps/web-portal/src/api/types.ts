@@ -195,6 +195,7 @@ export interface TemplateSummary {
   locale: string;
   version: number;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  isDefault: boolean;
 }
 
 export interface DesignComponentView {
@@ -224,13 +225,21 @@ export interface TemplateDetail {
   name: string;
   locale: string;
   versions: TemplateVersionDetail[];
+  publishedVersionId: string | null;
+  isDefault: boolean;
 }
 
+/**
+ * Effective template binding for a note. `locked` is false while the binding is only the
+ * tenant default suggestion — the note is pinned on first save.
+ */
 export interface NoteTemplateLock {
   templateId: string;
   templateName: string;
   templateVersionId: string;
   templateVersionNumber: number;
+  locked: boolean;
+  designSchema: DesignSchemaView | null;
 }
 
 export interface TeamsSettings {
@@ -347,6 +356,7 @@ export interface ApiClient {
     body: { designSchemaJson: string; contentSchemaJson?: string },
   ): Promise<TemplateVersionDetail>;
   publishTemplateVersion(templateId: string, versionId: string): Promise<TemplateVersionDetail>;
+  setDefaultTemplate(templateId: string): Promise<TemplateDetail>;
   getNoteTemplateLock(meetingId: string, noteId: string): Promise<NoteTemplateLock | null>;
   lockNoteTemplate(meetingId: string, noteId: string, templateVersionId: string): Promise<NoteTemplateLock>;
   getTeamsSettings(): Promise<TeamsSettings>;

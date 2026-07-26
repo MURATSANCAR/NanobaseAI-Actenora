@@ -54,6 +54,7 @@ import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.template.application.DocumentRenderService;
 import com.nanobaseai.actenora.template.application.TemplateStudioService;
 import com.nanobaseai.actenora.template.domain.SchemaJsonParser;
+import com.nanobaseai.actenora.template.domain.TemplateDomainException;
 import com.nanobaseai.actenora.template.infrastructure.TemplateApiFacade;
 import com.nanobaseai.actenora.template.infrastructure.persistence.InMemoryMeetingTemplateRepository;
 import com.nanobaseai.actenora.template.infrastructure.persistence.InMemoryNoteTemplateLockRepository;
@@ -78,6 +79,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -190,6 +192,9 @@ class PortalApiBindingTest {
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService.class),
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi.class),
                 optionalBeans.getBeanProvider(AuditApi.class),
+                optionalBeans.getBeanProvider(com.nanobaseai.actenora.security.microsoftconnection.GraphObservability.class),
+                optionalBeans.getBeanProvider(
+                        com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler.class),
                 new PortalTeamsPreferencesStore(),
                 "test-graph-client-id",
                 ""
@@ -365,6 +370,89 @@ class PortalApiBindingTest {
                 new PortalApiController.CreateTemplateVersionBody("initial"));
         assertEquals("DRAFT", draft.status());
         assertEquals(1, draft.versionNumber());
+    }
+
+    @Test
+    void defaultTemplateRequiresPublishedVersionAndPinsLatestPublished() {
+        PortalApiController.TemplateSummaryView created = controller.createTemplate(
+                new PortalApiController.CreateTemplateBody("Board minutes", "en"));
+        assertFalse(created.isDefault());
+
+        PortalApiController.TemplateVersionView draft = controller.createTemplateDraft(
+                created.id(),
+                new PortalApiController.CreateTemplateVersionBody("v1"));
+
+        // A draft-only template cannot become the tenant default.
+        assertThrows(TemplateDomainException.class, () -> controller.setDefaultTemplate(created.id()));
+
+        controller.saveTemplateDesign(
+                created.id(),
+                draft.id(),
+                new PortalApiController.SaveTemplateDesignBody(
+                        designJson("EXECUTIVE_SUMMARY", "DECISIONS"), null));
+        controller.publishTemplateVersion(created.id(), draft.id());
+
+        PortalApiController.TemplateDetailView asDefault = controller.setDefaultTemplate(created.id());
+        assertTrue(asDefault.isDefault());
+        assertEquals(draft.id(), asDefault.publishedVersionId());
+        assertTrue(controller.listTemplates(null).items().stream().allMatch(
+                PortalApiController.TemplateSummaryView::isDefault));
+
+        // Publishing v2 moves the default pointer for notes created from now on.
+        PortalApiController.TemplateVersionView second = controller.createTemplateDraft(
+                created.id(),
+                new PortalApiController.CreateTemplateVersionBody("v2"));
+        controller.saveTemplateDesign(
+                created.id(),
+                second.id(),
+                new PortalApiController.SaveTemplateDesignBody(designJson("EXECUTIVE_SUMMARY"), null));
+        controller.publishTemplateVersion(created.id(), second.id());
+
+        PortalApiController.TemplateDetailView latest = controller.getTemplate(created.id());
+        assertEquals(second.id(), latest.publishedVersionId());
+        assertTrue(latest.isDefault());
+    }
+
+    @Test
+    void onlyOneTemplateStaysDefaultPerTenant() {
+        UUID first = publishedTemplate("Standard minutes");
+        UUID second = publishedTemplate("Project minutes");
+
+        controller.setDefaultTemplate(first);
+        controller.setDefaultTemplate(second);
+
+        List<PortalApiController.TemplateSummaryView> items = controller.listTemplates(null).items();
+        assertEquals(1, items.stream().filter(PortalApiController.TemplateSummaryView::isDefault).count());
+        assertTrue(items.stream()
+                .filter(PortalApiController.TemplateSummaryView::isDefault)
+                .allMatch(item -> item.id().equals(second)));
+    }
+
+    private UUID publishedTemplate(String name) {
+        PortalApiController.TemplateSummaryView created = controller.createTemplate(
+                new PortalApiController.CreateTemplateBody(name, "en"));
+        PortalApiController.TemplateVersionView draft = controller.createTemplateDraft(
+                created.id(), new PortalApiController.CreateTemplateVersionBody("v1"));
+        controller.saveTemplateDesign(
+                created.id(),
+                draft.id(),
+                new PortalApiController.SaveTemplateDesignBody(designJson("EXECUTIVE_SUMMARY"), null));
+        controller.publishTemplateVersion(created.id(), draft.id());
+        return created.id();
+    }
+
+    private static String designJson(String... types) {
+        StringBuilder components = new StringBuilder();
+        for (int i = 0; i < types.length; i++) {
+            if (i > 0) {
+                components.append(',');
+            }
+            components.append("{\"id\":\"").append(UUID.randomUUID())
+                    .append("\",\"type\":\"").append(types[i])
+                    .append("\",\"order\":").append(i + 1)
+                    .append(",\"props\":{}}");
+        }
+        return "{\"schemaVersion\":1,\"pageSize\":\"A4\",\"components\":[" + components + "]}";
     }
 
     @Test

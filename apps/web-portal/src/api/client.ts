@@ -123,6 +123,10 @@ function createHttpApiClient(baseUrl: string): ApiClient {
       httpJson(baseUrl, `/api/v1/portal/templates/${templateId}/versions/${versionId}/publish`, {
         method: "POST",
       }),
+    setDefaultTemplate: (templateId) =>
+      httpJson(baseUrl, `/api/v1/portal/templates/${templateId}/default`, {
+        method: "PUT",
+      }),
     getNoteTemplateLock: async (meetingId, noteId) => {
       try {
         return await httpJson(baseUrl, `/api/v1/portal/meetings/${meetingId}/notes/${noteId}/template-lock`);

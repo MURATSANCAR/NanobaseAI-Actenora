@@ -17,6 +17,7 @@ public class GraphApiException extends ActenoraException {
     public static final String CODE_RATE_LIMITED = "GRAPH_RATE_LIMITED";
     public static final String CODE_SERVER_ERROR = "GRAPH_SERVER_ERROR";
     public static final String CODE_TRANSPORT = "GRAPH_TRANSPORT_ERROR";
+    public static final String CODE_CIRCUIT_OPEN = "GRAPH_CIRCUIT_OPEN";
 
     private final int statusCode;
     private final Duration retryAfter;
@@ -87,5 +88,14 @@ public class GraphApiException extends ActenoraException {
 
     public static GraphApiException transport(String message, Throwable cause) {
         return new GraphApiException(CODE_TRANSPORT, message, 0, null, true, cause);
+    }
+
+    public static GraphApiException circuitOpen() {
+        return new GraphApiException(
+                CODE_CIRCUIT_OPEN,
+                "Microsoft Graph circuit breaker is open",
+                0,
+                Duration.ofSeconds(30),
+                true);
     }
 }

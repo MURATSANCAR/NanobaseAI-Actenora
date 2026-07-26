@@ -38,6 +38,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -61,10 +62,11 @@ class MicrosoftGraphWebhookBindingTest {
 
     private MicrosoftGraphWebhookController controller;
     private MicrosoftConnectionApi api;
+    private InMemorySubscriptionStore subscriptionStore;
 
     @BeforeEach
     void setUp() {
-        InMemorySubscriptionStore subscriptionStore = new InMemorySubscriptionStore();
+        subscriptionStore = new InMemorySubscriptionStore();
         api = new MicrosoftConnectionApi(
                 new CalendarSyncService(new StubCalendarGateway(), new StubCursorStore(), InstantClock.systemUTC()),
                 new MeetingTranscriptService(new StubOnlineMeetingGateway(), new StubTranscriptGateway()),
@@ -83,17 +85,15 @@ class MicrosoftGraphWebhookBindingTest {
         );
         controller = new MicrosoftGraphWebhookController(
                 api,
-                buildProcessor(api),
+                buildProcessor(),
+                subscriptionStore,
+                emptyProvider(GraphObservability.class),
                 new MockEnvironment(),
                 CLIENT_STATE
         );
     }
 
-    private static GraphChangeNotificationProcessor buildProcessor(MicrosoftConnectionApi api) {
-        MeetingApi meetingApi = org.mockito.Mockito.mock(MeetingApi.class);
-        org.mockito.Mockito.when(meetingApi.listBusinessContexts()).thenReturn(List.of());
-        CalendarMeetingUpsertAdapter upsertAdapter =
-                new CalendarMeetingUpsertAdapter(meetingApi, new FixedTenantContext(TenantId.random(), UUID.randomUUID()));
+    private static GraphChangeNotificationProcessor buildProcessor() {
         TenantApi tenantApi = org.mockito.Mockito.mock(TenantApi.class);
         org.mockito.Mockito.when(tenantApi.findById(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> {
             TenantId id = inv.getArgument(0);
@@ -126,7 +126,10 @@ class MicrosoftGraphWebhookBindingTest {
                             0L
                     ));
                 });
-        return new GraphChangeNotificationProcessor(api, upsertAdapter, tenantApi, emptyOutboxProvider());
+        return new GraphChangeNotificationProcessor(
+                tenantApi,
+                outboxProvider(),
+                emptyProvider(GraphObservability.class));
     }
 
     @Test
@@ -172,6 +175,28 @@ class MicrosoftGraphWebhookBindingTest {
     }
 
     @Test
+    void subscriptionSpecificClientStateOverridesGlobalSecret() {
+        UUID tenantId = UUID.randomUUID();
+        subscriptionStore.save(new GraphSubscription(
+                tenantId,
+                "sub-1",
+                "users/organizer@contoso.com/events",
+                "created,updated",
+                "https://notifications.example.test/graph",
+                "subscription-secret",
+                Instant.now().plus(Duration.ofHours(12)),
+                "app-id"));
+
+        GraphWebhookResultView globalSecret =
+                process(new GraphNotificationBatch(List.of(changeItem(CLIENT_STATE))));
+        GraphWebhookResultView subscriptionSecret =
+                process(new GraphNotificationBatch(List.of(changeItem("subscription-secret"))));
+
+        assertEquals(1, globalSecret.rejected());
+        assertEquals(1, subscriptionSecret.processed());
+    }
+
+    @Test
     void lifecycleNotificationDispatched() {
         GraphNotificationItem lifecycle = new GraphNotificationItem(
                 "sub-1", null, null, null, "reauthorizationRequired", CLIENT_STATE,
@@ -188,7 +213,9 @@ class MicrosoftGraphWebhookBindingTest {
         prod.setActiveProfiles("prod");
         MicrosoftGraphWebhookController prodController = new MicrosoftGraphWebhookController(
                 api,
-                buildProcessor(api),
+                buildProcessor(),
+                new InMemorySubscriptionStore(),
+                emptyProvider(GraphObservability.class),
                 prod,
                 ""
         );
@@ -200,6 +227,21 @@ class MicrosoftGraphWebhookBindingTest {
     private static ObjectProvider<com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher> emptyOutboxProvider() {
         DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
         return factory.getBeanProvider(com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher.class);
+    }
+
+    private static ObjectProvider<com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher> outboxProvider() {
+        StaticListableBeanFactory factory = new StaticListableBeanFactory();
+        factory.addBean(
+                "outboxPublisher",
+                org.mockito.Mockito.mock(
+                        com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher.class));
+        return factory.getBeanProvider(
+                com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher.class);
+    }
+
+    private static <T> ObjectProvider<T> emptyProvider(Class<T> type) {
+        DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
+        return factory.getBeanProvider(type);
     }
 
     private GraphWebhookResultView process(MicrosoftGraphWebhookController target, GraphNotificationBatch batch) {

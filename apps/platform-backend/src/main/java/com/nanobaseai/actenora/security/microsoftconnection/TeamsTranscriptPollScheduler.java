@@ -8,20 +8,21 @@ import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
+import com.nanobaseai.actenora.sharedkernel.messaging.ExponentialBackoff;
+import com.nanobaseai.actenora.transcript.api.TranscriptApi;
 import com.nanobaseai.actenora.transcript.api.contract.MeetingOccurrenceContracts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * Event-driven + scheduled Teams transcript polling queue.
+ * Event-driven durable Teams transcript polling worker.
  */
 public final class TeamsTranscriptPollScheduler {
 
@@ -31,19 +32,44 @@ public final class TeamsTranscriptPollScheduler {
     private final MeetingApi meetingApi;
     private final FixedTenantContext tenantContext;
     private final SubscriptionStore subscriptionStore;
-    private final ConcurrentLinkedQueue<PollTarget> queue = new ConcurrentLinkedQueue<>();
-    private final Set<String> queuedKeys = ConcurrentHashMap.newKeySet();
+    private final TranscriptApi transcriptApi;
+    private final TranscriptPollWorkStore workStore;
+    private final ExponentialBackoff backoff;
+    private final int maxAttempts;
+    private final Duration maxAge;
+    private final Duration staleClaimAfter;
+    private final int batchSize;
+    private final GraphObservability observability;
 
     public TeamsTranscriptPollScheduler(
             TeamsTranscriptIngestService ingestService,
             MeetingApi meetingApi,
             FixedTenantContext tenantContext,
-            SubscriptionStore subscriptionStore
+            SubscriptionStore subscriptionStore,
+            TranscriptApi transcriptApi,
+            TranscriptPollWorkStore workStore,
+            ExponentialBackoff backoff,
+            int maxAttempts,
+            Duration maxAge,
+            Duration staleClaimAfter,
+            int batchSize,
+            GraphObservability observability
     ) {
         this.ingestService = Objects.requireNonNull(ingestService);
         this.meetingApi = Objects.requireNonNull(meetingApi);
         this.tenantContext = Objects.requireNonNull(tenantContext);
         this.subscriptionStore = Objects.requireNonNull(subscriptionStore);
+        this.transcriptApi = Objects.requireNonNull(transcriptApi);
+        this.workStore = Objects.requireNonNull(workStore);
+        this.backoff = Objects.requireNonNull(backoff);
+        if (maxAttempts < 1 || batchSize < 1) {
+            throw new IllegalArgumentException("maxAttempts and batchSize must be positive");
+        }
+        this.maxAttempts = maxAttempts;
+        this.maxAge = Objects.requireNonNull(maxAge);
+        this.staleClaimAfter = Objects.requireNonNull(staleClaimAfter);
+        this.batchSize = batchSize;
+        this.observability = observability;
     }
 
     public void onMeetingOccurrenceUpserted(EventEnvelope envelope) {
@@ -57,7 +83,7 @@ public final class TeamsTranscriptPollScheduler {
         try {
             MeetingResponse meeting = meetingApi.getMeeting(payload.meetingOccurrenceId());
             if (isReadyForTranscriptPoll(meeting, Instant.now())) {
-                enqueue(payload.tenantId(), payload.meetingOccurrenceId());
+                workStore.enqueue(payload.tenantId(), payload.meetingOccurrenceId(), Instant.now());
             }
         } catch (RuntimeException ex) {
             log.debug("Skip transcript enqueue for meetingOccurrenceId={}: {}",
@@ -68,34 +94,73 @@ public final class TeamsTranscriptPollScheduler {
     public void runScheduledFallback(Instant now) {
         for (UUID tenantId : distinctTenantIds()) {
             tenantContext.use(TenantId.of(tenantId), CalendarMeetingUpsertAdapter.SYSTEM_ACTOR);
-            MeetingListResponse page = meetingApi.listMeetings(new CursorPageRequest(null, null, null, 100));
-            for (MeetingResponse meeting : page.items()) {
-                if (isReadyForTranscriptPoll(meeting, now)) {
-                    enqueue(tenantId, meeting.id());
+            String cursor = null;
+            do {
+                MeetingListResponse page = meetingApi.listMeetings(new CursorPageRequest(null, null, cursor, 100));
+                for (MeetingResponse meeting : page.items()) {
+                    if (isReadyForTranscriptPoll(meeting, now)
+                            && !transcriptApi.hasTranscriptForMeeting(TenantId.of(tenantId), meeting.id())) {
+                        workStore.enqueue(tenantId, meeting.id(), now);
+                    }
                 }
-            }
+                cursor = page.nextCursor();
+            } while (StringUtils.hasText(cursor));
         }
-        drainQueue();
+        drainDue(now);
+        if (observability != null) {
+            long oldestSeconds = workStore.oldestPendingCreatedAt()
+                    .map(created -> Math.max(0L, Duration.between(created, now).toSeconds()))
+                    .orElse(0L);
+            observability.updateTranscriptGauges(workStore.countPending(), oldestSeconds);
+        }
     }
 
-    public void drainQueue() {
-        PollTarget target;
-        while ((target = queue.poll()) != null) {
-            queuedKeys.remove(key(target.tenantId(), target.meetingOccurrenceId()));
+    public void drainDue(Instant now) {
+        for (TranscriptPollWorkStore.WorkItem target : workStore.claimDue(now, batchSize, staleClaimAfter)) {
+            int attempt = target.attemptCount() + 1;
             try {
-                ingestService.pollMeeting(TenantId.of(target.tenantId()), target.meetingOccurrenceId());
+                TeamsTranscriptIngestService.PollResult result =
+                        ingestService.pollMeeting(TenantId.of(target.tenantId()), target.meetingOccurrenceId());
+                if (result == TeamsTranscriptIngestService.PollResult.INGESTED
+                        || result == TeamsTranscriptIngestService.PollResult.ALREADY_INGESTED) {
+                    workStore.complete(target.tenantId(), target.meetingOccurrenceId(), now);
+                    recordPoll(result.name().toLowerCase());
+                } else if (result == TeamsTranscriptIngestService.PollResult.CONFIGURATION_MISSING) {
+                    workStore.deadLetter(
+                            target.tenantId(), target.meetingOccurrenceId(), attempt,
+                            "GRAPH_MAILBOX_CONFIGURATION_MISSING", now);
+                    recordPoll("configuration_missing");
+                } else {
+                    rescheduleOrDeadLetter(target, attempt, "TRANSCRIPT_NOT_AVAILABLE", now);
+                    recordPoll("not_available");
+                }
             } catch (RuntimeException ex) {
                 log.warn("Transcript poll failed tenantId={} meetingId={}: {}",
                         target.tenantId(), target.meetingOccurrenceId(), ex.getMessage());
+                rescheduleOrDeadLetter(target, attempt, ex.getClass().getSimpleName(), now);
+                recordPoll("failed");
             }
         }
     }
 
-    private void enqueue(UUID tenantId, UUID meetingOccurrenceId) {
-        String key = key(tenantId, meetingOccurrenceId);
-        if (queuedKeys.add(key)) {
-            queue.add(new PollTarget(tenantId, meetingOccurrenceId));
+    private void rescheduleOrDeadLetter(
+            TranscriptPollWorkStore.WorkItem target,
+            int attempt,
+            String failureCode,
+            Instant now
+    ) {
+        if (attempt >= maxAttempts || target.createdAt().plus(maxAge).isBefore(now)) {
+            workStore.deadLetter(
+                    target.tenantId(), target.meetingOccurrenceId(), attempt, failureCode, now);
+            return;
         }
+        workStore.reschedule(
+                target.tenantId(),
+                target.meetingOccurrenceId(),
+                attempt,
+                now.plus(backoff.delayForAttempt(attempt - 1)),
+                failureCode,
+                now);
     }
 
     static boolean isReadyForTranscriptPoll(MeetingResponse meeting, Instant now) {
@@ -113,10 +178,13 @@ public final class TeamsTranscriptPollScheduler {
         return new java.util.LinkedHashSet<>(subscriptionStore.distinctTenantIds());
     }
 
-    private static String key(UUID tenantId, UUID meetingOccurrenceId) {
-        return tenantId + ":" + meetingOccurrenceId;
+    public long pendingCount() {
+        return workStore.countPending();
     }
 
-    private record PollTarget(UUID tenantId, UUID meetingOccurrenceId) {
+    private void recordPoll(String outcome) {
+        if (observability != null) {
+            observability.recordTranscriptPoll(outcome);
+        }
     }
 }

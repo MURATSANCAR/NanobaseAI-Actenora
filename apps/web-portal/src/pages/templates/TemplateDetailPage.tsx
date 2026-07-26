@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageShell } from "@/components/qa/PageShell";
 import { AsyncState } from "@/components/ui/AsyncState";
+import { StatusBadge } from "@/components/qa/StatusBadge";
 import { TemplateEditorShell, toEditorSchema } from "@/components/template/TemplateEditorShell";
 import type { TemplateVersionRow } from "@/components/template/TemplateVersionSidebar";
 import { useApi } from "@/api/ApiProvider";
@@ -124,6 +125,16 @@ export function TemplateDetailPage() {
     onError: () => setStatusMessage(t("admin.savePendingBackend")),
   });
 
+  const defaultMutation = useMutation({
+    mutationFn: () => api.setDefaultTemplate(templateId),
+    onSuccess: async () => {
+      setStatusMessage(t("templates.default.updated"));
+      await qc.invalidateQueries({ queryKey: queryKeys.templateDetail(templateId) });
+      await qc.invalidateQueries({ queryKey: queryKeys.templates });
+    },
+    onError: () => setStatusMessage(t("templates.default.requiresPublished")),
+  });
+
   function addComponent(type: TemplateComponentType) {
     const nextOrder = schema.components.length
       ? Math.max(...schema.components.map((c) => c.order)) + 1
@@ -149,6 +160,27 @@ export function TemplateDetailPage() {
           {t("templates.mockups.back")}
         </Link>
       </div>
+      {detail ? (
+        <div className="card-static mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="flex items-center gap-2">
+            <StatusBadge
+              label={detail.isDefault ? t("templates.default.badge") : t("templates.default.column")}
+              status={detail.isDefault ? "APPROVED" : "OPEN"}
+            />
+            <p className="text-sm text-slate-600">{t("templates.default.explainer")}</p>
+          </div>
+          {!detail.isDefault && mutationsEnabled ? (
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              disabled={!detail.publishedVersionId || defaultMutation.isPending}
+              onClick={() => defaultMutation.mutate()}
+            >
+              {t("templates.default.action")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <AsyncState status={status} error={q.error}>
         {detail ? (
           <TemplateEditorShell

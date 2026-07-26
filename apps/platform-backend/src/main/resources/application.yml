@@ -45,7 +45,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
@@ -144,6 +144,19 @@ actenora:
     workers-enabled: ${ACTENORA_MICROSOFT_GRAPH_WORKERS_ENABLED:true}
     default-mailbox-user-id: ${ACTENORA_MICROSOFT_GRAPH_DEFAULT_MAILBOX_USER_ID:}
     transcript-poll-interval: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_INTERVAL:PT5M}
+    transcript-poll-max-attempts: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_MAX_ATTEMPTS:24}
+    transcript-poll-max-age: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_MAX_AGE:PT48H}
+    transcript-poll-stale-claim: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_STALE_CLAIM:PT15M}
+    transcript-poll-batch-size: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_BATCH_SIZE:50}
+    transcript-poll-backoff-base: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_BACKOFF_BASE:PT1M}
+    transcript-poll-backoff-cap: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_BACKOFF_CAP:PT1H}
+    reconcile-interval: ${ACTENORA_MICROSOFT_GRAPH_RECONCILE_INTERVAL:PT30M}
+    mail:
+      max-per-window: ${ACTENORA_MICROSOFT_GRAPH_MAIL_MAX_PER_WINDOW:100}
+      window: ${ACTENORA_MICROSOFT_GRAPH_MAIL_WINDOW:PT1M}
+    circuit-breaker:
+      failure-threshold: ${ACTENORA_MICROSOFT_GRAPH_CIRCUIT_FAILURE_THRESHOLD:10}
+      open-duration: ${ACTENORA_MICROSOFT_GRAPH_CIRCUIT_OPEN_DURATION:PT30S}
     webhook:
       # clientState echoed by Graph in every change/lifecycle notification (FAZ 32)
       client-state: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE:local-graph-client-state}

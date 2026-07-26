@@ -30,6 +30,14 @@ export function TemplateStudioPage() {
     },
     onError: () => setSavedMessage(t("admin.savePendingBackend")),
   });
+  const defaultMutation = useMutation({
+    mutationFn: (templateId: string) => api.setDefaultTemplate(templateId),
+    onSuccess: async () => {
+      setSavedMessage(t("templates.default.updated"));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.templates });
+    },
+    onError: () => setSavedMessage(t("templates.default.requiresPublished")),
+  });
   const status =
     q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
 
@@ -69,8 +77,9 @@ export function TemplateStudioPage() {
         </div>
       ) : null}
       <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("templates.description")}>
+        <p className="mb-3 text-sm text-slate-600">{t("templates.default.explainer")}</p>
         <DataTable
-          headers={[t("table.title"), "Locale", t("filter.status")]}
+          headers={[t("table.title"), "Locale", t("filter.status"), t("templates.default.column")]}
           rows={
             q.data?.items.map((item) => [
               <Link key={`${item.id}-name`} to={`/templates/${item.id}`} className="font-semibold text-violet-800 hover:underline">
@@ -78,6 +87,23 @@ export function TemplateStudioPage() {
               </Link>,
               item.locale,
               <StatusBadge key={item.id} label={tb("artifactStatus", item.status)} status={item.status} />,
+              item.isDefault ? (
+                <StatusBadge key={`${item.id}-default`} label={t("templates.default.badge")} status="APPROVED" />
+              ) : (
+                <button
+                  key={`${item.id}-default`}
+                  type="button"
+                  className="btn-secondary text-xs"
+                  disabled={
+                    !auth.nav("templates") ||
+                    item.status !== "PUBLISHED" ||
+                    defaultMutation.isPending
+                  }
+                  onClick={() => defaultMutation.mutate(item.id)}
+                >
+                  {t("templates.default.action")}
+                </button>
+              ),
             ]) ?? []
           }
         />
@@ -389,7 +415,7 @@ export function AiJobTimelinePage() {
 export function OperationsCenterPage() {
   const auth = useAuth();
   const api = useApi();
-  const { t } = useI18n();
+  const { t, tb } = useI18n();
   const q = useQuery({
     queryKey: queryKeys.operations,
     queryFn: () => api.getOperationsOverview(),
@@ -423,7 +449,7 @@ export function OperationsCenterPage() {
               <ul className="space-y-2 text-sm">
                 {q.data.circuitBreakers.map((c) => (
                   <li key={c.name} className="rounded-xl bg-white/50 px-3 py-2">
-                    {c.name}: <span className="font-medium">{c.state}</span>
+                    {c.name}: <span className="font-medium">{tb("circuitBreakerState", c.state)}</span>
                   </li>
                 ))}
               </ul>
