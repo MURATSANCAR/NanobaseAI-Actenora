@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.microsoftconnection.api;
 
 import com.nanobaseai.actenora.microsoftconnection.application.CalendarSyncService;
 import com.nanobaseai.actenora.microsoftconnection.application.MeetingTranscriptService;
+import com.nanobaseai.actenora.microsoftconnection.application.OnlineMeetingTranscriptionEnabler;
 import com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackService;
 import com.nanobaseai.actenora.microsoftconnection.application.ReconciliationJob;
 import com.nanobaseai.actenora.microsoftconnection.application.SubscriptionLifecycleService;
