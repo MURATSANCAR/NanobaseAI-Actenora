@@ -32,12 +32,6 @@ spring:
     port: ${MAIL_PORT:1025}
   flyway:
     enabled: true
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${ACTENORA_ENTRA_ISSUER_URI:}
-          audiences: ${ACTENORA_ENTRA_AUDIENCE:}
 
 management:
   health:
@@ -79,3 +73,26 @@ actenora:
       default-ttl-seconds: 300
     retention:
       audit-retention-days: 2555
+
+---
+# Opt-in Entra sign-in against a real tenant without leaving the local profile:
+#   SPRING_PROFILES_ACTIVE=local,entra-local
+# Kept separate so the plain local profile never boots a JWT decoder with a blank issuer.
+spring:
+  config:
+    activate:
+      on-profile: entra-local
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ACTENORA_ENTRA_ISSUER_URI}
+          audiences: ${ACTENORA_ENTRA_AUDIENCE}
+
+actenora:
+  security:
+    auth:
+      mode: ${ACTENORA_AUTH_MODE:entra}
+  portal:
+    auth:
+      mode: ${ACTENORA_PORTAL_AUTH_MODE:msal}
