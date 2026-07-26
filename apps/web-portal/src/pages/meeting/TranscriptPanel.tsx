@@ -14,6 +14,7 @@ export function TranscriptPanel({
   qualityFlags,
   highlightEvidence,
   selectedSegmentId,
+  playbackSegmentId,
   onClearHighlight,
   onSegmentSelect,
 }: {
@@ -22,6 +23,7 @@ export function TranscriptPanel({
   qualityFlags: string[];
   highlightEvidence: EvidenceRef | null;
   selectedSegmentId: string | null;
+  playbackSegmentId?: string | null;
   onClearHighlight: () => void;
   onSegmentSelect: (ref: EvidenceRef) => void;
 }) {
@@ -116,6 +118,7 @@ export function TranscriptPanel({
             const seg = filtered[row.index]!;
             const active =
               highlightEvidence?.segmentId === seg.id || selectedSegmentId === seg.id;
+            const playing = playbackSegmentId === seg.id;
             return (
               <article
                 key={seg.id}
@@ -132,7 +135,11 @@ export function TranscriptPanel({
                 }}
                 className={[
                   "cursor-pointer border-b border-white/60 px-3 py-2 text-sm transition",
-                  active ? "bg-violet-100/70 ring-1 ring-inset ring-violet-300" : "hover:bg-violet-50/40",
+                  active
+                    ? "bg-violet-100/70 ring-1 ring-inset ring-violet-300"
+                    : playing
+                      ? "bg-teal-50/80 ring-1 ring-inset ring-teal-200"
+                      : "hover:bg-violet-50/40",
                 ].join(" ")}
                 style={{
                   position: "absolute",

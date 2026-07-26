@@ -1,16 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Download } from "lucide-react";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
 import type { EvidenceRef } from "@/api/types";
 import { MeetingProcessingStrip } from "@/components/meeting/MeetingProcessingStrip";
+import { MeetingRecordingPlayer } from "@/components/meeting/MeetingRecordingPlayer";
 import { PageShell } from "@/components/qa/PageShell";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { useI18n } from "@/i18n";
 import { exportMeetingDetailJson, exportMeetingSummaryCsv } from "@/lib/export";
 import { findArtifactsForSegment } from "@/lib/evidence";
+import { findSegmentAtTime } from "@/lib/recordingSync";
 import {
   MEETING_PROCESSING_POLL_MS,
   meetingNeedsProcessingPoll,
@@ -25,7 +27,11 @@ export function MeetingDetailPage() {
   const { t } = useI18n();
   const [highlight, setHighlight] = useState<EvidenceRef | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
+  const [playbackMs, setPlaybackMs] = useState(0);
+  const [seekRequestMs, setSeekRequestMs] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | undefined>();
+
+  const clearSeekRequest = useCallback(() => setSeekRequestMs(null), []);
 
   const detailQ = useQuery({
     queryKey: queryKeys.meetingDetail(meetingId),
@@ -50,22 +56,29 @@ export function MeetingDetailPage() {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedSegmentId, detailQ.data]);
 
-  const handleEvidence = (ref: EvidenceRef) => {
-    setHighlight(ref);
-    setSelectedSegmentId(ref.segmentId);
-  };
-
-  const handleSegmentSelect = (ref: EvidenceRef) => {
-    setSelectedSegmentId(ref.segmentId);
-    setHighlight(ref);
-  };
-
   const transcriptParams = useMemo(() => ({}), []);
   const transcriptQ = useQuery({
     queryKey: queryKeys.transcript(meetingId, transcriptParams),
     queryFn: () => api.getMeetingTranscript(meetingId, transcriptParams),
     enabled: Boolean(meetingId),
   });
+
+  const playbackSegmentId = useMemo(() => {
+    if (!transcriptQ.data?.segments.length) return null;
+    return findSegmentAtTime(transcriptQ.data.segments, playbackMs)?.id ?? null;
+  }, [transcriptQ.data?.segments, playbackMs]);
+
+  const handleEvidence = (ref: EvidenceRef) => {
+    setHighlight(ref);
+    setSelectedSegmentId(ref.segmentId);
+    setSeekRequestMs(ref.startMs);
+  };
+
+  const handleSegmentSelect = (ref: EvidenceRef) => {
+    setSelectedSegmentId(ref.segmentId);
+    setHighlight(ref);
+    setSeekRequestMs(ref.startMs);
+  };
 
   const status =
     detailQ.isLoading
@@ -122,6 +135,13 @@ export function MeetingDetailPage() {
             {meetingNeedsProcessingPoll(detailQ.data) ? (
               <MeetingProcessingStrip lastUpdated={lastUpdated} />
             ) : null}
+            <MeetingRecordingPlayer
+              recording={detailQ.data.recording}
+              playbackMs={playbackMs}
+              seekRequestMs={seekRequestMs}
+              onTimeUpdate={setPlaybackMs}
+              onSeekApplied={clearSeekRequest}
+            />
             <div className="grid min-h-[70vh] gap-3 xl:grid-cols-[18rem_minmax(0,1fr)_minmax(0,1.1fr)]">
             <MeetingLeftPanel detail={detailQ.data} />
             <MeetingCenterPanel
@@ -143,7 +163,8 @@ export function MeetingDetailPage() {
                 speakers={transcriptQ.data.speakers}
                 qualityFlags={detailQ.data.qualityFlags}
                 highlightEvidence={highlight}
-                selectedSegmentId={selectedSegmentId}
+                selectedSegmentId={selectedSegmentId ?? playbackSegmentId}
+                playbackSegmentId={playbackSegmentId}
                 onClearHighlight={() => {
                   setHighlight(null);
                   setSelectedSegmentId(null);

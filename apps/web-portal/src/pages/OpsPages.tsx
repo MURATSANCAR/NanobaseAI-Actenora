@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
+import { StubBanner } from "@/components/admin/StubBanner";
 import { useAuth } from "@/auth/AuthProvider";
 import { MetricCard } from "@/components/qa/MetricCard";
 import { PageShell } from "@/components/qa/PageShell";
@@ -13,16 +14,48 @@ import { AlertTriangle, Layers } from "lucide-react";
 
 export function TemplateStudioPage() {
   const api = useApi();
+  const auth = useAuth();
   const { t, tb } = useI18n();
+  const [name, setName] = useState("");
+  const [locale, setLocale] = useState("en");
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const q = useQuery({ queryKey: queryKeys.templates, queryFn: () => api.listTemplates() });
   const status =
     q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
 
   return (
     <PageShell titleKey="templates.title" subtitleKey="templates.description" maxWidth="max-w-7xl">
+      {!q.isLoading && !q.data?.items.length ? <StubBanner featureKey="templates" /> : null}
+      {auth.nav("templates") ? (
+        <div className="card-static mb-4 space-y-3 p-4">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("admin.createTemplate")}</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="label-text">{t("table.title")}</span>
+              <input className="input-field" value={name} onChange={(e) => setName(e.target.value)} />
+            </label>
+            <label className="block">
+              <span className="label-text">Locale</span>
+              <select className="input-field" value={locale} onChange={(e) => setLocale(e.target.value)}>
+                <option value="en">English</option>
+                <option value="tr">Türkçe</option>
+              </select>
+            </label>
+          </div>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!name.trim()}
+            onClick={() => setSavedMessage(t("admin.savePendingBackend"))}
+          >
+            {t("admin.saveTemplate")}
+          </button>
+          {savedMessage ? <p className="text-sm text-amber-800">{savedMessage}</p> : null}
+        </div>
+      ) : null}
       <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("templates.description")}>
         <DataTable
-          headers={["Name", "Locale", t("filter.status")]}
+          headers={[t("table.title"), "Locale", t("filter.status")]}
           rows={
             q.data?.items.map((item) => [
               item.name,
@@ -58,8 +91,10 @@ export function TeamsSettingsPage() {
 
   return (
     <PageShell titleKey="teams.title" subtitleKey="teams.description" maxWidth="max-w-4xl">
+      {!q.data?.tenantConnected ? <StubBanner featureKey="teams" /> : null}
       <AsyncState status={status} error={q.error}>
         {q.data ? (
+          <>
           <div className="card-static grid gap-4 p-5 sm:grid-cols-2">
             <div>
               <p className="label-text">{t("teams.tenantConnected")}</p>
@@ -82,6 +117,15 @@ export function TeamsSettingsPage() {
               </p>
             </div>
           </div>
+          <div className="card-static mt-4 space-y-3 p-4">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("admin.teamsPreferences")}</h2>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={q.data.autoJoinEnabled} disabled />
+              {t("teams.autoJoin")}
+            </label>
+            <p className="text-xs text-slate-500">{t("admin.savePendingBackend")}</p>
+          </div>
+          </>
         ) : null}
       </AsyncState>
     </PageShell>
@@ -109,6 +153,7 @@ export function ModelManagementPage() {
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>
+            {!q.data.models.length ? <StubBanner featureKey="models" /> : null}
             <div className="space-y-3">
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("models.sectionModels")}</h2>
               <DataTable
@@ -175,6 +220,7 @@ export function AiJobTimelinePage() {
 
   return (
     <PageShell titleKey="jobs.title" subtitleKey="jobs.description" maxWidth="max-w-7xl">
+      {!q.isLoading && !q.data?.items.length ? <StubBanner featureKey="jobs" /> : null}
       <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("jobs.description")}>
         <div className="card-static divide-y divide-white/60">
           {q.data?.items.map((j) => (
@@ -278,9 +324,10 @@ export function AuditViewerPage() {
 
   return (
     <PageShell titleKey="audit.title" subtitleKey="audit.description" maxWidth="max-w-7xl">
+      {!q.isLoading && !q.data?.items.length ? <StubBanner featureKey="audit" /> : null}
       <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("audit.description")}>
         <DataTable
-          headers={["Action", "Actor", "Resource", "At"]}
+          headers={[t("table.action"), t("table.actor"), t("table.resource"), t("table.at")]}
           rows={
             q.data?.items.map((e) => [
               e.action,

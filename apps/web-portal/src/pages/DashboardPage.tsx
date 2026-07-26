@@ -8,6 +8,7 @@ import { PageShell } from "@/components/qa/PageShell";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { useI18n } from "@/i18n";
+import { OnboardingBanner } from "@/pages/OnboardingPage";
 
 export function DashboardPage() {
   const api = useApi();
@@ -27,6 +28,7 @@ export function DashboardPage() {
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>
+            <OnboardingBanner />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <MetricCard
                 label={t("dashboard.pendingApprovals")}

@@ -29,6 +29,8 @@ import {
 } from "./lib/evidence.ts";
 import { dueDateTone, isOverdue } from "./lib/dueDates.ts";
 import { mergeSearchResults, searchMeetings } from "./lib/globalSearch.ts";
+import { findSegmentAtTime, formatPlaybackClock } from "./lib/recordingSync.ts";
+import { markOnboardingStep, onboardingProgress, defaultOnboardingState } from "./lib/onboarding.ts";
 
 test("App export is defined", () => {
   assert.equal(typeof assertDefined(App), "function");
@@ -258,4 +260,21 @@ test("global search merges filtered results", () => {
   );
   assert.equal(hits.length, 1);
   assert.equal(mergeSearchResults([hits, hits]).length, 2);
+});
+
+test("recording sync finds segment at playback time", () => {
+  const segments = [
+    { id: "a", speaker: "A", text: "one", startMs: 0, endMs: 5000, markers: [] },
+    { id: "b", speaker: "B", text: "two", startMs: 5001, endMs: 10000, markers: [] },
+  ];
+  assert.equal(findSegmentAtTime(segments, 2500)?.id, "a");
+  assert.equal(findSegmentAtTime(segments, 7000)?.id, "b");
+  assert.equal(formatPlaybackClock(65000), "1:05");
+});
+
+test("onboarding progress tracks completed steps", () => {
+  const state = defaultOnboardingState();
+  assert.equal(onboardingProgress(state).done, 1);
+  const next = markOnboardingStep(state, "teams_connected");
+  assert.equal(onboardingProgress(next).done, 2);
 });

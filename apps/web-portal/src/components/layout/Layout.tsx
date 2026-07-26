@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { Menu, Search } from "lucide-react";
 import { AiAmbientShow } from "@/components/qa/AiAmbientShow";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import {
   GlobalSearchDialog,
   useGlobalSearchShortcut,
@@ -32,15 +33,18 @@ export function Layout() {
             <Menu className="h-5 w-5" />
           </button>
 
-          <button
-            type="button"
-            className="absolute right-3 top-3 z-30 hidden items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-3 py-2 text-sm text-slate-600 shadow-sm backdrop-blur transition hover:bg-white sm:flex"
-            onClick={() => setSearchOpen(true)}
-            aria-label={t("search.open")}
-          >
-            <Search className="h-4 w-4" />
-            <span>{t("search.shortcut")}</span>
-          </button>
+          <div className="absolute right-3 top-3 z-30 flex items-center gap-2">
+            <NotificationBell />
+            <button
+              type="button"
+              className="hidden items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-3 py-2 text-sm text-slate-600 shadow-sm backdrop-blur transition hover:bg-white sm:flex"
+              onClick={() => setSearchOpen(true)}
+              aria-label={t("search.open")}
+            >
+              <Search className="h-4 w-4" />
+              <span>{t("search.shortcut")}</span>
+            </button>
+          </div>
 
           <main className="relative flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto p-2 pt-12 sm:p-4 sm:pt-4 lg:p-5 lg:pt-5">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">

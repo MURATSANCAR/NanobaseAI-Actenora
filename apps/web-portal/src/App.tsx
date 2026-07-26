@@ -9,6 +9,7 @@ import { AuthGate } from "./components/auth/AuthGate";
 import { Layout } from "./components/layout/Layout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ApprovalsInboxPage } from "./pages/ApprovalsInboxPage";
+import { OnboardingPage } from "./pages/OnboardingPage";
 import {
   ActionCenterPage,
   CommitmentTrackerPage,
@@ -50,6 +51,7 @@ export function App({ apiClient }: { apiClient?: ApiClient }) {
                 <Route path="approvals" element={<ApprovalsInboxPage />} />
                 <Route path="meetings" element={<MeetingListPage />} />
                 <Route path="meetings/:meetingId" element={<MeetingDetailPage />} />
+                <Route path="onboarding" element={<OnboardingPage />} />
                 <Route path="decisions" element={<DecisionLedgerPage />} />
                 <Route path="actions" element={<ActionCenterPage />} />
                 <Route path="commitments" element={<CommitmentTrackerPage />} />

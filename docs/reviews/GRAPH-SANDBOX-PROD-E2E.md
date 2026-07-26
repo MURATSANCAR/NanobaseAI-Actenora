@@ -1,6 +1,13 @@
 # Graph Sandbox Prod E2E — Implementation Review
 
-Milestones B–F wire real Microsoft Graph calendar/transcript flows into Actenora without mock business datasets.
+Milestones A–F close the real Microsoft Graph → meeting note loop without mock business datasets.
+
+## A — Durable Graph edge
+
+- JDBC `JdbcSubscriptionStore` / `JdbcNotificationInbox` / `JdbcCalendarSyncCursorStore` (`persistence.mode=jdbc` + Graph enabled)
+- Subscription admin REST `/api/v1/microsoft/subscriptions` (create/list/renew)
+- Lifecycle renew on `reauthorizationRequired` / `missed`
+- Claim idempotency tests + webhook clientState negatives
 
 ## B — Calendar → Meeting upsert
 
@@ -29,15 +36,14 @@ Milestones B–F wire real Microsoft Graph calendar/transcript flows into Acteno
 
 - `docs/operations/GRAPH-SANDBOX-RUNBOOK.md`
 - `application-graph-sandbox.yml`
-- `scripts/acceptance-graph-sandbox.sh`
-- Subscription admin REST `/api/v1/microsoft/subscriptions`
-- Lifecycle webhook renew on reauth/missed
-- Full `actenora.microsoft-graph.*` bindings in `application-prod.yml` + `.env.example`
+- `scripts/acceptance-graph-sandbox.sh` (fails closed if Graph disabled)
+- Full `ACTENORA_MICROSOFT_GRAPH_*` bindings in `application-prod.yml` / `application.yml` / `.env.example`
 
 ## Explicit non-goals
 
 - No `PortalLocalSeedRunner` or canned meetings/users
 - No demo tenant seed runners
+- `prod-fixture` keeps Graph disabled for CI isolation
 
 ## Verification
 

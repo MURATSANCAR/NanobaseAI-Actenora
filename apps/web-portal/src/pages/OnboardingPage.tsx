@@ -9,7 +9,6 @@ import { PageShell } from "@/components/qa/PageShell";
 import { useAuth } from "@/auth/AuthProvider";
 import { useI18n } from "@/i18n";
 import {
-  defaultOnboardingState,
   isOnboardingComplete,
   loadOnboardingState,
   markOnboardingStep,
@@ -47,16 +46,19 @@ export function OnboardingPage() {
   });
 
   useEffect(() => {
-    let next = state;
-    if (auth.user) next = markOnboardingStep(next, "signed_in");
-    if (teamsQ.data?.tenantConnected) next = markOnboardingStep(next, "teams_connected");
-    if ((templatesQ.data?.items.length ?? 0) > 0) next = markOnboardingStep(next, "templates_ready");
-    if ((meetingsQ.data?.items.length ?? 0) > 0) next = markOnboardingStep(next, "first_meeting");
-    if (JSON.stringify(next) !== JSON.stringify(state)) {
-      setState(next);
-      saveOnboardingState(next);
-    }
-  }, [auth.user, teamsQ.data, templatesQ.data, meetingsQ.data, state]);
+    setState((prev) => {
+      let next = prev;
+      if (auth.user) next = markOnboardingStep(next, "signed_in");
+      if (teamsQ.data?.tenantConnected) next = markOnboardingStep(next, "teams_connected");
+      if ((templatesQ.data?.items.length ?? 0) > 0) next = markOnboardingStep(next, "templates_ready");
+      if ((meetingsQ.data?.items.length ?? 0) > 0) next = markOnboardingStep(next, "first_meeting");
+      if (JSON.stringify(next) !== JSON.stringify(prev)) {
+        saveOnboardingState(next);
+        return next;
+      }
+      return prev;
+    });
+  }, [auth.user, teamsQ.data, templatesQ.data, meetingsQ.data]);
 
   const progress = onboardingProgress(state);
   const complete = isOnboardingComplete(state);

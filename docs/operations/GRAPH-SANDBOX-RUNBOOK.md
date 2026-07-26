@@ -17,8 +17,8 @@ Copy `.env.example` and set:
 | `SPRING_PROFILES_ACTIVE` | `graph-sandbox,local` |
 | `ACTENORA_MICROSOFT_GRAPH_ENABLED` | `true` |
 | `ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE` | Shared secret matching subscription `clientState` |
-| `MICROSOFT_TENANT_ID` | Entra directory tenant ID |
-| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | App credentials (`MICROSOFT_GRAPH_AUTH_MODE=CLIENT_SECRET`) |
+| `ACTENORA_MICROSOFT_GRAPH_TENANT_ID` / `CLIENT_ID` / `CLIENT_SECRET` | Preferred Graph credentials (`AUTH_MODE=CLIENT_SECRET` for sandbox) |
+| `MICROSOFT_TENANT_ID` / `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Legacy aliases still accepted |
 | `ACTENORA_MICROSOFT_GRAPH_DEFAULT_MAILBOX_USER_ID` | UPN or Graph user id for transcript/calendar API calls |
 | `POSTGRES_*`, `RABBITMQ_*`, `OBJECT_STORAGE_*` | JDBC + messaging + transcript storage |
 
