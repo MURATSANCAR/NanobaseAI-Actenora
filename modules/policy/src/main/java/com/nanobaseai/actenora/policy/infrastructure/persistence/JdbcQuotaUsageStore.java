@@ -22,17 +22,16 @@ public final class JdbcQuotaUsageStore implements QuotaUsagePort {
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(dimension, "dimension");
         Objects.requireNonNull(day, "day");
-        Long value = jdbc.queryForObject(
+        return jdbc.query(
                 """
                         SELECT used_amount FROM policy.quota_usage_daily
                         WHERE tenant_id = ? AND usage_day = ? AND dimension = ?
                         """,
-                Long.class,
+                (rs, rowNum) -> rs.getLong("used_amount"),
                 tenantId.value(),
                 day,
                 dimension.name()
-        );
-        return value == null ? 0L : value;
+        ).stream().findFirst().orElse(0L);
     }
 
     @Override
@@ -51,12 +50,11 @@ public final class JdbcQuotaUsageStore implements QuotaUsagePort {
 
     @Override
     public int getConcurrentAiJobs(TenantId tenantId) {
-        Integer value = jdbc.queryForObject(
+        return jdbc.query(
                 "SELECT concurrent_ai_jobs FROM policy.concurrency_usage WHERE tenant_id = ?",
-                Integer.class,
+                (rs, rowNum) -> rs.getInt("concurrent_ai_jobs"),
                 tenantId.value()
-        );
-        return value == null ? 0 : value;
+        ).stream().findFirst().orElse(0);
     }
 
     @Override
