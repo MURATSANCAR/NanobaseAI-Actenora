@@ -62,12 +62,6 @@ public class MicrosoftConnectionModuleConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(ObjectMapper.class)
-    ObjectMapper microsoftObjectMapper() {
-        return new ObjectMapper();
-    }
-
-    @Bean
     @ConditionalOnMissingBean(MicrosoftGraphProperties.class)
     MicrosoftGraphProperties microsoftGraphProperties(MicrosoftGraphSpringProperties spring) {
         return spring.toProperties();
