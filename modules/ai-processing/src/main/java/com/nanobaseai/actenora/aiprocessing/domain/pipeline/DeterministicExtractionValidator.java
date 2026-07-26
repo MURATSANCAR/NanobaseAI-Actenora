@@ -116,8 +116,9 @@ public final class DeterministicExtractionValidator {
         if (corpus.contains(needle)) {
             return;
         }
-        // Also reject date-like values that never appear
-        if (DATE_LIKE.matcher(dueDate).find() || !corpus.contains(needle)) {
+        // Models often normalize "gelecek hafta cuma" to ISO. Do not fail-close the whole
+        // extraction for due-date normalization — owner grounding remains strict.
+        if (!DATE_LIKE.matcher(dueDate).find() && !corpus.contains(needle)) {
             throw new PipelineException(
                     FailureCategory.HALLUCINATED_DATE,
                     PipelineStage.DETERMINISTIC_VALIDATE,

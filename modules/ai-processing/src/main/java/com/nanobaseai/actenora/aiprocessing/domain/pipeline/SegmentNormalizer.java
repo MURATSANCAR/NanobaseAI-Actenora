@@ -15,16 +15,24 @@ public final class SegmentNormalizer {
             "(?i)\\b(decision|karar|action|aksiyon|todo|risk|commitment|taahhüt|open\\s*question|"
                     + "açık\\s*soru|we\\s+(decided|agree|will)|kararlaştırıldı)\\b"
     );
+    private static final Pattern CUE_MARKUP = Pattern.compile("</?v(?:\\s+[^>]*)?>|</?c(?:\\.[^>]*)?>|</?b>|</?i>|</?u>");
 
     public List<SegmentInput> normalize(List<SegmentInput> raw) {
         Objects.requireNonNull(raw, "raw");
         List<SegmentInput> out = new ArrayList<>(raw.size());
         for (SegmentInput segment : raw) {
-            String cleaned = collapseWhitespace(segment.content());
+            String cleaned = collapseWhitespace(stripCueMarkup(segment.content()));
             boolean marker = segment.markerNear() || MARKER.matcher(cleaned).find();
             out.add(segment.withContent(cleaned).withMarker(marker));
         }
         return List.copyOf(out);
+    }
+
+    private static String stripCueMarkup(String content) {
+        if (content == null || content.isEmpty()) {
+            return "";
+        }
+        return CUE_MARKUP.matcher(content).replaceAll("");
     }
 
     private static String collapseWhitespace(String content) {

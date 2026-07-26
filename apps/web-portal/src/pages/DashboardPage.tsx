@@ -59,7 +59,7 @@ export function DashboardPage() {
                 icon={Activity}
                 tone="text-status-run"
                 delay={180}
-                to="/jobs"
+                to="/models"
               />
             </div>
 

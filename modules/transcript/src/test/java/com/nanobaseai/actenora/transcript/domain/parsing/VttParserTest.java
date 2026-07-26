@@ -43,6 +43,27 @@ class VttParserTest {
     }
 
     @Test
+    void stripsClosingVoiceTagsFromTeamsVtt() {
+        String vtt = """
+                WEBVTT
+
+                00:00:01.000 --> 00:00:02.000
+                <v Murat Sancar>Selam.</v>
+
+                00:00:02.500 --> 00:00:04.000
+                <v Murat Sancar>App'i yapılması.</v>
+                """;
+
+        VttParseResult result = VttParser.parse(tenantId, transcriptId, bytes(vtt));
+
+        assertEquals(2, result.segments().size());
+        assertEquals("Selam.", result.segments().get(0).content());
+        assertEquals("App'i yapılması.", result.segments().get(1).content());
+        assertFalse(result.segments().get(0).content().contains("</v>"));
+        assertFalse(result.segments().get(1).content().contains("<v"));
+    }
+
+    @Test
     void allowsSegmentsWithoutSpeakerName() {
         String vtt = """
                 WEBVTT

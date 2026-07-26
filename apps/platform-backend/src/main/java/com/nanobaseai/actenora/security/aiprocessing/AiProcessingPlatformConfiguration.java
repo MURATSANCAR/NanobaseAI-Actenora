@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.security.aiprocessing;
 import com.nanobaseai.actenora.ActenoraProfiles;
 import com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi;
 import com.nanobaseai.actenora.security.messaging.TranscriptReadyAiAdmissionHandler;
+import com.nanobaseai.actenora.tenant.api.TenantApi;
 import com.nanobaseai.actenora.aiprocessing.api.ExtractionPipelineApi;
 import com.nanobaseai.actenora.aiprocessing.api.MultiModelRoutingApi;
 import com.nanobaseai.actenora.aiprocessing.application.AiJobService;
@@ -64,6 +65,7 @@ import com.nanobaseai.actenora.modelmanagement.domain.ModelDeployment;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelStatus;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -75,6 +77,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -347,26 +350,43 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
-    TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler(AiProcessingApi aiProcessingApi) {
-        return new TranscriptReadyAiAdmissionHandler(aiProcessingApi);
+    TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler(
+            AiProcessingApi aiProcessingApi,
+            TenantApi tenantApi
+    ) {
+        return new TranscriptReadyAiAdmissionHandler(aiProcessingApi, tenantApi);
     }
 
     @Bean
     @ConditionalOnProperty(name = "actenora.ai.worker.enabled", havingValue = "true", matchIfMissing = true)
-    AiJobInferenceWorker aiJobInferenceWorker(AiJobInferenceExecutor inferenceExecutor) {
-        return new AiJobInferenceWorker(inferenceExecutor);
+    AiJobInferenceWorker aiJobInferenceWorker(
+            AiJobInferenceExecutor inferenceExecutor,
+            AiProcessingApi aiProcessingApi,
+            @Value("${actenora.ai.worker.stale-running-after:PT20M}") Duration staleRunningAfter
+    ) {
+        return new AiJobInferenceWorker(inferenceExecutor, aiProcessingApi, staleRunningAfter);
     }
 
     static final class AiJobInferenceWorker {
         private final AiJobInferenceExecutor inferenceExecutor;
+        private final AiProcessingApi aiProcessingApi;
+        private final Duration staleRunningAfter;
 
-        AiJobInferenceWorker(AiJobInferenceExecutor inferenceExecutor) {
+        AiJobInferenceWorker(
+                AiJobInferenceExecutor inferenceExecutor,
+                AiProcessingApi aiProcessingApi,
+                Duration staleRunningAfter
+        ) {
             this.inferenceExecutor = Objects.requireNonNull(inferenceExecutor, "inferenceExecutor");
+            this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
+            this.staleRunningAfter = Objects.requireNonNull(staleRunningAfter, "staleRunningAfter");
         }
 
         @Scheduled(fixedDelayString = "${actenora.ai.worker.poll-interval:PT15S}")
         void poll() {
-            inferenceExecutor.executeNext(Instant.now());
+            Instant now = Instant.now();
+            aiProcessingApi.recoverStaleRunning(now, staleRunningAfter);
+            inferenceExecutor.executeNext(now);
         }
     }
 

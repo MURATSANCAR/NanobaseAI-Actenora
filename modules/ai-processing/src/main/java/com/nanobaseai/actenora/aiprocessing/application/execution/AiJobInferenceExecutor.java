@@ -301,7 +301,8 @@ public final class AiJobInferenceExecutor {
                 job.transcriptId(),
                 job.meetingOccurrenceId(),
                 promptId,
-                segments
+                segments,
+                job.language()
         ));
 
         if (result.success()) {
@@ -312,7 +313,12 @@ public final class AiJobInferenceExecutor {
                     : elapsedMs(startedNanos);
             AiJob completed = jobService.completeAttempt(
                     job.id(), latencyMs, inputTokens, outputTokens, now);
-            UUID meetingNoteId = handoffFinalNote(job, result).orElse(null);
+            UUID meetingNoteId = null;
+            try {
+                meetingNoteId = handoffFinalNote(job, result).orElse(null);
+            } catch (RuntimeException ex) {
+                // Job already succeeded; handoff failures must not unwind the attempt.
+            }
             return ExecutionOutcome.succeeded(
                     completed.id(), attemptId, completed.status(), latencyMs, meetingNoteId);
         }

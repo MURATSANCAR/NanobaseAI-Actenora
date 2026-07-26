@@ -84,42 +84,49 @@ public class MeetingIntelligencePlatformConfiguration {
         return new InMemoryMeetingNoteVersionRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(DecisionRepository.class)
     @Bean
     public DecisionRepository inMemoryDecisionRepository() {
         return new InMemoryDecisionRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(ActionItemRepository.class)
     @Bean
     public ActionItemRepository inMemoryActionItemRepository() {
         return new InMemoryActionItemRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(RiskRepository.class)
     @Bean
     public RiskRepository inMemoryRiskRepository() {
         return new InMemoryRiskRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(CommitmentRepository.class)
     @Bean
     public CommitmentRepository inMemoryCommitmentRepository() {
         return new InMemoryCommitmentRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(OpenQuestionRepository.class)
     @Bean
     public OpenQuestionRepository inMemoryOpenQuestionRepository() {
         return new InMemoryOpenQuestionRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(EvidenceLinkRepository.class)
     @Bean
     public EvidenceLinkRepository inMemoryEvidenceLinkRepository() {
         return new InMemoryEvidenceLinkRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(QualityFlagRepository.class)
     @Bean
     public QualityFlagRepository inMemoryQualityFlagRepository() {

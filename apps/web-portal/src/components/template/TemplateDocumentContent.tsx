@@ -25,9 +25,9 @@ const HEADING_ACCENT: Partial<Record<TemplateComponentType, string>> = {
   COMMITMENTS: "text-fuchsia-700",
 };
 
-/** Fixed A4 canvas size (px) — scaled by parent stage, never clipped. */
-export const A4_PAGE_WIDTH_PX = 595;
-export const A4_PAGE_HEIGHT_PX = 842;
+/** Fixed A4 canvas size (px @96dpi) — scaled by parent stage, never clipped. */
+export const A4_PAGE_WIDTH_PX = 794;
+export const A4_PAGE_HEIGHT_PX = 1123;
 
 /** Rendered A4 document body used by compact card and fullscreen stage. */
 export function TemplateDocumentContent({
@@ -47,7 +47,7 @@ export function TemplateDocumentContent({
   return (
     <div className={`flex h-full min-h-full flex-col gap-3 text-slate-700 ${textSize}`}>
       <TemplateBrandHeader compact={density === "compact"} />
-      <div className="flex flex-1 flex-col gap-2.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
         {bodyComponents.length ? (
           bodyComponents.map((component) => (
             <PreviewBlock key={component.id} component={component} density={density} />

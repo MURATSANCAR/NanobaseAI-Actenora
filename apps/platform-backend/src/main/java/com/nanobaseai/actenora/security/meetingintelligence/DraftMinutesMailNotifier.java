@@ -63,7 +63,7 @@ public final class DraftMinutesMailNotifier {
         message.setSubject("[Actenora] Taslak tutanak hazır: " + title);
         message.setText(
                 "Merhaba,\n\n"
-                        + "\"" + title + "\" toplantısı için LLM taslak tutanağı hazırlandı.\n\n"
+                        + "\"" + title + "\" toplantısı için NanobaseAI EasyMeeting taslak tutanağı hazırlandı.\n\n"
                         + "Yönetici özeti:\n" + summary + "\n\n"
                         + "Not id: " + noteId + "\n"
                         + "Portal: " + link + "\n\n"

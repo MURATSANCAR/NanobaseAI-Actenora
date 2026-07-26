@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Download } from "lucide-react";
 import { useApi } from "@/api/ApiProvider";
@@ -7,13 +7,11 @@ import { queryKeys } from "@/api/client";
 import type { EvidenceRef } from "@/api/types";
 import { MeetingHeaderBar } from "@/components/meeting/MeetingHeaderBar";
 import { MeetingProgressPipeline } from "@/components/meeting/MeetingProgressPipeline";
-import { MeetingRecordingPlayer } from "@/components/meeting/MeetingRecordingPlayer";
 import { PageShell } from "@/components/qa/PageShell";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { useI18n } from "@/i18n";
 import { exportMeetingDetailJson, exportMeetingSummaryCsv } from "@/lib/export";
 import { findArtifactsForSegment } from "@/lib/evidence";
-import { findSegmentAtTime } from "@/lib/recordingSync";
 import {
   MEETING_PROCESSING_POLL_MS,
   meetingNeedsProcessingPoll,
@@ -27,11 +25,7 @@ export function MeetingDetailPage() {
   const { t } = useI18n();
   const [highlight, setHighlight] = useState<EvidenceRef | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
-  const [playbackMs, setPlaybackMs] = useState(0);
-  const [seekRequestMs, setSeekRequestMs] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | undefined>();
-
-  const clearSeekRequest = useCallback(() => setSeekRequestMs(null), []);
 
   const detailQ = useQuery({
     queryKey: queryKeys.meetingDetail(meetingId),
@@ -65,21 +59,20 @@ export function MeetingDetailPage() {
 
   const hasTranscript = Boolean(transcriptQ.data?.segments.length);
 
-  const playbackSegmentId = useMemo(() => {
-    if (!transcriptQ.data?.segments.length) return null;
-    return findSegmentAtTime(transcriptQ.data.segments, playbackMs)?.id ?? null;
-  }, [transcriptQ.data?.segments, playbackMs]);
-
   const handleEvidence = (ref: EvidenceRef) => {
     setHighlight(ref);
     setSelectedSegmentId(ref.segmentId);
-    setSeekRequestMs(ref.startMs);
+    // Bring the conversation panel into view — jump used to only scroll inside an off-screen list.
+    requestAnimationFrame(() => {
+      document
+        .getElementById("meeting-conversation")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const handleSegmentSelect = (ref: EvidenceRef) => {
     setSelectedSegmentId(ref.segmentId);
     setHighlight(ref);
-    setSeekRequestMs(ref.startMs);
   };
 
   const status =
@@ -142,14 +135,6 @@ export function MeetingDetailPage() {
               lastUpdated={lastUpdated}
             />
 
-            <MeetingRecordingPlayer
-              recording={detailQ.data.recording}
-              playbackMs={playbackMs}
-              seekRequestMs={seekRequestMs}
-              onTimeUpdate={setPlaybackMs}
-              onSeekApplied={clearSeekRequest}
-            />
-
             <MeetingCenterPanel
               detail={detailQ.data}
               onEvidence={handleEvidence}
@@ -171,8 +156,7 @@ export function MeetingDetailPage() {
                 speakers={transcriptQ.data.speakers}
                 qualityFlags={detailQ.data.qualityFlags}
                 highlightEvidence={highlight}
-                selectedSegmentId={selectedSegmentId ?? playbackSegmentId}
-                playbackSegmentId={playbackSegmentId}
+                selectedSegmentId={selectedSegmentId}
                 onClearHighlight={() => {
                   setHighlight(null);
                   setSelectedSegmentId(null);

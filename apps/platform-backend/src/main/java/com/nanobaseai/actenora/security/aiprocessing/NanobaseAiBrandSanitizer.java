@@ -6,12 +6,15 @@ import java.util.regex.Pattern;
 
 /**
  * Strips third-party technology vendor tokens from user-facing text.
- * Public product surface is NanobaseAI only.
+ * Public product surface is NanobaseAI EasyMeeting.
  */
 public final class NanobaseAiBrandSanitizer {
 
+    public static final String PRODUCT_DISPLAY_NAME = "NanobaseAI EasyMeeting";
+
     private static final Pattern VENDOR = Pattern.compile(
             "(?i)\\b("
+                    + "llm|"
                     + "qwen(?:[\\d._-]*)?|"
                     + "ollama|"
                     + "vllm|"
@@ -35,11 +38,11 @@ public final class NanobaseAiBrandSanitizer {
 
     public static String sanitize(String message) {
         if (message == null || message.isBlank()) {
-            return "NanobaseAI intelligence is unavailable.";
+            return PRODUCT_DISPLAY_NAME + " is unavailable.";
         }
-        String cleaned = VENDOR.matcher(message).replaceAll("NanobaseAI");
-        cleaned = cleaned.replaceAll("(?i)openai-compatible", "NanobaseAI");
-        cleaned = cleaned.replaceAll("(?i)open\\s*ai", "NanobaseAI");
+        String cleaned = VENDOR.matcher(message).replaceAll(PRODUCT_DISPLAY_NAME);
+        cleaned = cleaned.replaceAll("(?i)openai-compatible", PRODUCT_DISPLAY_NAME);
+        cleaned = cleaned.replaceAll("(?i)open\\s*ai", PRODUCT_DISPLAY_NAME);
         if (cleaned.toLowerCase(Locale.ROOT).contains("mock")) {
             cleaned = cleaned.replaceAll("(?i)\\bmock\\b", "offline");
         }
@@ -47,14 +50,9 @@ public final class NanobaseAiBrandSanitizer {
     }
 
     public static String displayModelName(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return "NanobaseAI";
-        }
-        String sanitized = sanitize(raw);
-        if (sanitized.toLowerCase(Locale.ROOT).contains("nanobaseai")) {
-            return sanitized;
-        }
-        return "NanobaseAI · " + sanitized;
+        // Never surface underlying model / deployment keys to the portal.
+        Objects.requireNonNullElse(raw, "");
+        return PRODUCT_DISPLAY_NAME;
     }
 
     public static String publicMode(String internalKind) {
@@ -69,6 +67,10 @@ public final class NanobaseAiBrandSanitizer {
     }
 
     public static String requireNonVendor(String message) {
-        return Objects.requireNonNullElse(sanitize(message), "NanobaseAI intelligence is unavailable.");
+        return Objects.requireNonNullElse(sanitize(message), PRODUCT_DISPLAY_NAME + " is unavailable.");
+    }
+
+    public static String draftStatusLabel() {
+        return "Taslak (" + PRODUCT_DISPLAY_NAME + ")";
     }
 }

@@ -13,8 +13,8 @@ export function TemplateBrandHeader({ compact = false }: { compact?: boolean }) 
   return (
     <div
       className={[
-        "relative overflow-hidden rounded-lg bg-gradient-to-r from-violet-600 via-indigo-500 to-sky-500 text-white",
-        compact ? "px-3 py-2" : "px-4 py-3",
+        "relative shrink-0 overflow-hidden rounded-lg bg-gradient-to-r from-violet-600 via-indigo-500 to-sky-500 text-white",
+        compact ? "px-3 py-2.5" : "px-4 py-3.5",
       ].join(" ")}
     >
       <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-white/15 blur-xl" aria-hidden />
@@ -29,8 +29,8 @@ export function TemplateBrandHeader({ compact = false }: { compact?: boolean }) 
         >
           <Sparkles className={compact ? "h-4 w-4" : "h-5 w-5"} />
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1 leading-snug">
+          <div className="flex flex-wrap items-center gap-2">
             <span className={compact ? "text-sm font-bold tracking-tight" : "text-base font-bold tracking-tight"}>
               {t("brand.name")}
             </span>
@@ -38,7 +38,7 @@ export function TemplateBrandHeader({ compact = false }: { compact?: boolean }) 
               {t("templates.brand.aiBadge")}
             </span>
           </div>
-          <p className={compact ? "text-[10px] text-white/85" : "text-[11px] text-white/90"}>
+          <p className={compact ? "mt-0.5 text-[10px] text-white/85" : "mt-0.5 text-[11px] text-white/90"}>
             {t("templates.brand.slogan")}
           </p>
         </div>
@@ -54,7 +54,7 @@ export function TemplateBrandFooter({ pageLabel }: { pageLabel?: string }) {
   const { t } = useI18n();
 
   return (
-    <div className="mt-auto flex items-center justify-between gap-2 rounded-lg bg-slate-900 px-3 py-2 text-white">
+    <div className="mt-auto flex shrink-0 items-center justify-between gap-2 rounded-lg bg-slate-900 px-3 py-2 text-white">
       <div className="flex items-center gap-2">
         <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-sky-500" aria-hidden>
           <Sparkles className="h-3 w-3" />

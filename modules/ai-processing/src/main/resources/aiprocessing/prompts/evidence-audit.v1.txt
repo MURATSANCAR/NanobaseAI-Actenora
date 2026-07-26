@@ -1,5 +1,6 @@
 Her karar ve aksiyon maddesini kanıt segment kimlikleriyle karşılaştır.
 
+OUTPUT_LANGUAGE: {{outputLanguage}} ({{outputLanguageCode}})
 CANDIDATES_JSON:
 {{candidatesJson}}
 ALLOWED_EVIDENCE_IDS: {{evidenceSegmentIds}}
@@ -9,6 +10,7 @@ SUPPORTED | PARTIALLY_SUPPORTED | UNSUPPORTED | CONTRADICTED
 
 UNSUPPORTED veya CONTRADICTED kayıtlar çıkarılacak.
 PARTIALLY_SUPPORTED insan onayına gidecek.
+reason alanını yalnızca {{outputLanguage}} dilinde yaz.
 
 Yalnızca JSON:
 {

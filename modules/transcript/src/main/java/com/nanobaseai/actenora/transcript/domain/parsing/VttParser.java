@@ -33,6 +33,8 @@ public final class VttParser {
     private static final Pattern TIMESTAMP_LOOSE = Pattern.compile("-->");
     private static final Pattern SPEAKER_V = Pattern.compile("^<v(?:\\s+([^>]+))?>(.*)$");
     private static final Pattern SPEAKER_COLON = Pattern.compile("^([^:]{1,80}):\\s+(.*)$");
+    /** Teams / WebVTT voice and styling tags left in cue text (e.g. trailing {@code </v>}). */
+    private static final Pattern CUE_MARKUP = Pattern.compile("</?v(?:\\s+[^>]*)?>|</?c(?:\\.[^>]*)?>|</?b>|</?i>|</?u>");
 
     private VttParser() {
     }
@@ -113,6 +115,7 @@ public final class VttParser {
                         working = colon.group(2).trim();
                     }
                 }
+                working = stripCueMarkup(working);
                 if (working.isEmpty()) {
                     continue;
                 }
@@ -122,7 +125,7 @@ public final class VttParser {
                 content.append(working);
             }
 
-            String rawContent = content.toString();
+            String rawContent = stripCueMarkup(content.toString());
             String normalizedContent = WhitespaceNormalizer.normalize(rawContent);
             if (normalizedContent.isEmpty()) {
                 issues.add(NormalizationIssue.of(
@@ -222,6 +225,13 @@ public final class VttParser {
                 + Long.parseLong(mm) * 60_000L
                 + Long.parseLong(ss) * 1_000L
                 + Long.parseLong(mss);
+    }
+
+    static String stripCueMarkup(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        return CUE_MARKUP.matcher(text).replaceAll("").trim();
     }
 
     private static boolean looksLikeSpeaker(String candidate) {

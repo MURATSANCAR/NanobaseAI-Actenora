@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvidenceRef, MarkerKind, TranscriptSegment } from "@/api/types";
 import { useI18n } from "@/i18n";
 import { segmentEvidenceRef } from "@/lib/evidence";
-import { evidenceScrollOffset, filterSegments, findEvidenceIndex } from "@/lib/filters";
+import { filterSegments, findEvidenceIndex } from "@/lib/filters";
 
 const ROW_HEIGHT = 88;
 const MARKERS: MarkerKind[] = ["DECISION", "ACTION", "RISK", "QUESTION", "IMPORTANT"];
@@ -32,7 +32,6 @@ export function TranscriptPanel({
   qualityFlags,
   highlightEvidence,
   selectedSegmentId,
-  playbackSegmentId,
   onClearHighlight,
   onSegmentSelect,
 }: {
@@ -41,7 +40,6 @@ export function TranscriptPanel({
   qualityFlags: string[];
   highlightEvidence: EvidenceRef | null;
   selectedSegmentId: string | null;
-  playbackSegmentId?: string | null;
   onClearHighlight: () => void;
   onSegmentSelect: (ref: EvidenceRef) => void;
 }) {
@@ -62,6 +60,11 @@ export function TranscriptPanel({
     [segments, speaker, q, marker],
   );
 
+  const visibleQualityFlags = useMemo(
+    () => qualityFlags.filter((f) => !isInternalQualityFlag(f)),
+    [qualityFlags],
+  );
+
   const virtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => parentRef.current,
@@ -71,14 +74,25 @@ export function TranscriptPanel({
 
   useEffect(() => {
     if (!highlightEvidence) return;
+    const inAll = findEvidenceIndex(segments, highlightEvidence.segmentId);
+    if (inAll < 0) return;
     const idx = findEvidenceIndex(filtered, highlightEvidence.segmentId);
-    if (idx < 0 || !parentRef.current) return;
-    const top = evidenceScrollOffset(idx, ROW_HEIGHT, parentRef.current.clientHeight);
-    parentRef.current.scrollTo({ top, behavior: "smooth" });
-  }, [highlightEvidence, filtered]);
+    if (idx < 0) {
+      // Active filters hide the target segment — clear them so jump can land.
+      setSpeaker("");
+      setQ("");
+      setMarker("");
+      return;
+    }
+    virtualizer.scrollToIndex(idx, { align: "center", behavior: "smooth" });
+  }, [highlightEvidence, filtered, segments, virtualizer]);
 
   return (
-    <section className="card-static flex min-h-[28rem] flex-col gap-4 p-4 sm:p-5" aria-label={t("meeting.transcript")}>
+    <section
+      id="meeting-conversation"
+      className="card-static flex min-h-[28rem] flex-col gap-4 p-4 sm:p-5 scroll-mt-20"
+      aria-label={t("meeting.transcript")}
+    >
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/60 pb-3">
         <div className="flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-sky-500 text-white shadow-md shadow-violet-200">
@@ -134,11 +148,11 @@ export function TranscriptPanel({
         </label>
       </div>
 
-      {qualityFlags.length ? (
+      {visibleQualityFlags.length ? (
         <ul className="space-y-1 text-xs">
-          {qualityFlags.map((f) => (
+          {visibleQualityFlags.map((f) => (
             <li key={f} className="rounded-lg border-l-4 border-violet-500 bg-violet-50/50 px-3 py-1.5 text-violet-900">
-              {f}
+              {tb("qualityFlag", f)}
             </li>
           ))}
         </ul>
@@ -153,8 +167,10 @@ export function TranscriptPanel({
           {virtualizer.getVirtualItems().map((row) => {
             const seg = filtered[row.index]!;
             const active =
-              highlightEvidence?.segmentId === seg.id || selectedSegmentId === seg.id;
-            const playing = playbackSegmentId === seg.id;
+              (highlightEvidence != null &&
+                highlightEvidence.segmentId.trim().toLowerCase() === seg.id.trim().toLowerCase()) ||
+              (selectedSegmentId != null &&
+                selectedSegmentId.trim().toLowerCase() === seg.id.trim().toLowerCase());
             const palette = speakerColors.get(seg.speaker) ?? SPEAKER_PALETTE[0]!;
             const initials = speakerInitials(seg.speaker);
 
@@ -212,7 +228,6 @@ export function TranscriptPanel({
                         "rounded-2xl rounded-tl-md px-3 py-2 text-sm leading-relaxed shadow-sm",
                         palette.bubble,
                         active ? `ring-2 ${palette.ring}` : "",
-                        playing ? "ring-2 ring-teal-400 shadow-teal-100" : "",
                       ].join(" ")}
                     >
                       {seg.text}
@@ -240,4 +255,16 @@ function formatMs(ms: number): string {
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+/** Pipeline/ops flags must not appear in the meeting workspace UI. */
+function isInternalQualityFlag(flag: string): boolean {
+  const normalized = flag.trim().toUpperCase();
+  return (
+    normalized.includes("LLM") ||
+    normalized === "SYNTHESIS_FALLBACK" ||
+    normalized === "REQUIRES_MANUAL_REVIEW" ||
+    normalized.startsWith("SV-") ||
+    normalized.startsWith("PV-")
+  );
 }

@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Activity,
   CheckSquare,
   ClipboardCheck,
   ClipboardList,
@@ -42,7 +41,6 @@ export const ACTENORA_NAV_GROUPS: ActenoraNavGroup[] = [
       { to: "/decisions", icon: Scale, labelKey: "nav.decisions" },
       { to: "/actions", icon: CheckSquare, labelKey: "nav.actions" },
       { to: "/commitments", icon: Handshake, labelKey: "nav.commitments" },
-      { to: "/jobs", icon: Activity, labelKey: "nav.jobs" },
     ],
   },
   {

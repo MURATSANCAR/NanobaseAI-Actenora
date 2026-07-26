@@ -27,8 +27,18 @@ public final class ExtractionPipelineDtos {
             UUID transcriptId,
             UUID meetingOccurrenceId,
             String promptId,
-            List<SegmentView> segments
+            List<SegmentView> segments,
+            String language
     ) {
+        public PipelineRunCommand(
+                UUID tenantId,
+                UUID transcriptId,
+                UUID meetingOccurrenceId,
+                String promptId,
+                List<SegmentView> segments
+        ) {
+            this(tenantId, transcriptId, meetingOccurrenceId, promptId, segments, null);
+        }
     }
 
     public record PipelineRunView(

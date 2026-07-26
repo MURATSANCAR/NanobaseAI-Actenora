@@ -100,6 +100,30 @@ public final class MeetingNote {
         return versionEntity;
     }
 
+    /**
+     * Re-maps a newer AI extraction onto an existing note (same meeting occurrence).
+     * Creates a new DRAFT AI version without requiring human correction metadata.
+     */
+    public MeetingNoteVersion appendAiRemap(
+            String executiveSummary,
+            ModelPromptSchemaProvenance provenance,
+            Instant now
+    ) {
+        if (currentVersionNumber < 1) {
+            return attachInitialAiVersion(executiveSummary, provenance, now);
+        }
+        int next = currentVersionNumber + 1;
+        MeetingNoteVersion versionEntity = MeetingNoteVersion.createAiMapped(
+                tenantId, id, next, executiveSummary, provenance, now
+        );
+        this.currentVersionId = versionEntity.id();
+        this.currentVersionNumber = next;
+        this.updatedAt = now;
+        this.version = this.version + 1;
+        this.reviewStatus = NoteReviewStatus.ACTIVE;
+        return versionEntity;
+    }
+
     public MeetingNoteVersion appendHumanEdit(
             String executiveSummary,
             String correctionReason,

@@ -22,6 +22,7 @@ import {
   findEvidenceIndex,
 } from "./lib/filters.ts";
 import { meetingNeedsProcessingPoll } from "./lib/meetingProcessing.ts";
+import { deriveMeetingPipelineStages } from "./lib/meetingPipeline.ts";
 import {
   evidenceMatchesSegment,
   findArtifactsForSegment,
@@ -130,6 +131,8 @@ test("evidence navigation index and scroll offset", () => {
     { id: "c", speaker: "C", text: "three", startMs: 4, endMs: 5 },
   ];
   assert.equal(findEvidenceIndex(segments, "b"), 1);
+  assert.equal(findEvidenceIndex(segments, "B"), 1);
+  assert.equal(findEvidenceIndex(segments, " missing "), -1);
   assert.equal(findEvidenceIndex(segments, "missing"), -1);
   assert.equal(evidenceScrollOffset(0, 72, 300), 0);
   assert.ok(evidenceScrollOffset(10, 72, 300) > 0);
@@ -209,6 +212,45 @@ test("meeting processing poll when partial or in-flight status", () => {
   assert.equal(meetingNeedsProcessingPoll(base), false);
 });
 
+test("pipeline review is active for draft notes and done after approval", () => {
+  const base = {
+    meeting: { id: "m1", title: "T", status: "ENDED" as const, scheduledStartAt: "", participantCount: 0 },
+    participants: [],
+    seriesTitle: null,
+    businessContext: null,
+    versions: [],
+    approvalHistory: [],
+    notes: [
+      {
+        id: "n1",
+        visibility: "SHARED" as const,
+        body: "TOPLANTI TUTANAĞI\nÖzet",
+        updatedAt: "",
+        authorId: "u1",
+        approvalStatus: "DRAFT",
+        draft: true,
+        version: 1,
+      },
+    ],
+    decisions: [],
+    actions: [],
+    risks: [],
+    commitments: [],
+    qualityFlags: [],
+    partial: false,
+  };
+  const draftStages = deriveMeetingPipelineStages(base, true);
+  assert.equal(draftStages.find((s) => s.id === "REVIEW")?.state, "active");
+  assert.equal(draftStages.find((s) => s.id === "NOTES")?.state, "done");
+
+  const approved = {
+    ...base,
+    notes: [{ ...base.notes[0]!, draft: false, approvalStatus: "APPROVED" }],
+  };
+  const approvedStages = deriveMeetingPipelineStages(approved, true);
+  assert.equal(approvedStages.find((s) => s.id === "REVIEW")?.state, "done");
+});
+
 test("approver role can decide approvals", () => {
   assert.equal(canDecideApprovals(permissionsForRole("APPROVER")), true);
   assert.equal(canDecideApprovals(permissionsForRole("VIEWER")), false);
@@ -271,6 +313,50 @@ test("recording sync finds segment at playback time", () => {
   assert.equal(findSegmentAtTime(segments, 2500)?.id, "a");
   assert.equal(findSegmentAtTime(segments, 7000)?.id, "b");
   assert.equal(formatPlaybackClock(65000), "1:05");
+});
+
+test("minutes document parses Turkish plain-text tutanak", async () => {
+  const { parseMinutesBody, serializeMinutesBody, parseSectionContent } = await import(
+    "./lib/minutesDocument.ts"
+  );
+  const body = `TOPLANTI TUTANAĞI
+Toplantı Başlığı: teams entegrasyon toplantısı
+Durum: Taslak (LLM)
+
+1. YÖNETİCİ ÖZETİ
+Özet metni burada.
+
+2. ALINAN KARARLAR
+—
+
+3. AKSİYON MADDELERİ
+1. Murat Sancar tarafından analiz tamamlanması. (Sorumlu: Murat Sancar, Son tarih: —)
+
+4. RİSKLER
+1. Gecikme riski.
+
+5. TAAHHÜTLER
+1. Burak bitireceğini söyledi.
+
+6. AÇIK SORULAR
+1. Takvim ne zaman?
+`;
+  const doc = parseMinutesBody(body);
+  assert.ok(doc);
+  assert.equal(doc!.title, "teams entegrasyon toplantısı");
+  assert.equal(doc!.statusLabel, "Taslak (NanobaseAI EasyMeeting)");
+  const summary = doc!.sections.find((s) => s.type === "EXECUTIVE_SUMMARY");
+  assert.equal(parseSectionContent(summary!.value, "paragraph").paragraph, "Özet metni burada.");
+  const actions = doc!.sections.find((s) => s.type === "ACTIONS");
+  assert.equal(parseSectionContent(actions!.value, "list").items.length, 1);
+  const decisions = doc!.sections.find((s) => s.type === "DECISIONS");
+  assert.equal(parseSectionContent(decisions!.value, "list").empty, true);
+  const roundTrip = parseMinutesBody(serializeMinutesBody(doc!));
+  assert.equal(roundTrip!.title, doc!.title);
+  assert.equal(
+    parseSectionContent(roundTrip!.sections.find((s) => s.type === "RISKS")!.value, "list").items[0],
+    "Gecikme riski.",
+  );
 });
 
 test("onboarding progress tracks completed steps", () => {

@@ -86,6 +86,7 @@ export interface MeetingNote {
   authorId: string;
   approvalStatus?: string | null;
   draft?: boolean;
+  version?: number;
 }
 
 export interface DecisionItem {
@@ -347,6 +348,11 @@ export interface ApiClient {
     params?: { speaker?: string; q?: string },
   ): Promise<TranscriptResponse>;
   updateMeetingNote(meetingId: string, noteId: string, body: string): Promise<MeetingNote>;
+  submitNoteForApproval(
+    meetingId: string,
+    noteId: string,
+    expectedVersion?: number,
+  ): Promise<ApprovalRecord>;
   decideApproval(
     approvalId: string,
     decision: "APPROVE" | "REJECT",

@@ -1,7 +1,6 @@
 import type { MeetingDetailResponse, MeetingOccurrenceStatus } from "@/api/types";
 
 export type MeetingPipelineStageId =
-  | "RECORDING"
   | "TRANSCRIPT"
   | "AI_ANALYSIS"
   | "NOTES"
@@ -41,6 +40,16 @@ function hasArtifacts(detail: MeetingDetailResponse): boolean {
   );
 }
 
+export function hasPendingNoteApprovals(detail: MeetingDetailResponse): boolean {
+  return detail.approvalHistory.some((a) => a.status === "PENDING");
+}
+
+export function draftNotesNeedingSubmit(detail: MeetingDetailResponse) {
+  return detail.notes.filter(
+    (n) => n.draft || n.approvalStatus === "DRAFT" || n.approvalStatus === "CHANGES_REQUESTED",
+  );
+}
+
 /** Derives post-meeting pipeline stages from meeting detail and transcript availability. */
 export function deriveMeetingPipelineStages(
   detail: MeetingDetailResponse,
@@ -49,15 +58,18 @@ export function deriveMeetingPipelineStages(
   const status = detail.meeting.status;
   const failed = status === "FAILED";
 
-  const recordingDone =
-    Boolean(detail.recording?.url) || POST_MEETING.includes(status);
   const transcriptDone = hasTranscript;
   const analysisDone = hasArtifacts(detail) || noteHasContent(detail);
   const notesDone = noteHasContent(detail);
-  const reviewDone = status === "READY" && !detail.partial;
+  const pendingApprovals = hasPendingNoteApprovals(detail);
+  const drafts = draftNotesNeedingSubmit(detail);
+  const reviewDone = notesDone && drafts.length === 0 && !pendingApprovals;
+  const reviewWaiting = notesDone && (drafts.length > 0 || pendingApprovals);
 
   const processing =
-    detail.partial || status === "PROCESSING" || (status === "ENDED" && !reviewDone);
+    detail.partial ||
+    status === "PROCESSING" ||
+    (status === "ENDED" && !notesDone);
 
   function stage(
     id: MeetingPipelineStageId,
@@ -66,13 +78,16 @@ export function deriveMeetingPipelineStages(
   ): MeetingPipelineStage {
     if (failed && id === "REVIEW") return { id, state: "failed" };
     if (done) return { id, state: "done" };
+    if (id === "REVIEW" && reviewWaiting) return { id, state: "active" };
     if (processing && prerequisite) return { id, state: "active" };
     return { id, state: "pending" };
   }
 
+  const postMeetingStarted =
+    POST_MEETING.includes(status) || status === "IN_PROGRESS" || hasTranscript;
+
   return [
-    stage("RECORDING", recordingDone, POST_MEETING.includes(status) || status === "IN_PROGRESS"),
-    stage("TRANSCRIPT", transcriptDone, recordingDone),
+    stage("TRANSCRIPT", transcriptDone, postMeetingStarted),
     stage("AI_ANALYSIS", analysisDone, transcriptDone),
     stage("NOTES", notesDone, analysisDone || transcriptDone),
     stage("REVIEW", reviewDone, notesDone),
@@ -80,5 +95,8 @@ export function deriveMeetingPipelineStages(
 }
 
 export function pipelineIsActive(stages: MeetingPipelineStage[]): boolean {
-  return stages.some((s) => s.state === "active") || stages.some((s) => s.state === "pending" && s.id !== "REVIEW");
+  return (
+    stages.some((s) => s.state === "active" && s.id !== "REVIEW") ||
+    stages.some((s) => s.state === "pending" && s.id !== "REVIEW")
+  );
 }

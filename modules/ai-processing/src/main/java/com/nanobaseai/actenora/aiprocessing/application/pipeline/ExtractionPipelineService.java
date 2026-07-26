@@ -134,6 +134,7 @@ public final class ExtractionPipelineService {
 
             List<ExtractionBundle> perChunk = new ArrayList<>();
             String meetingTitle = request.meetingOccurrenceId().toString();
+            String language = request.language();
             for (TranscriptChunk chunk : chunks) {
                 metrics.incrementChunkCount();
                 ExtractionBundle bundle = extractChunkWithRetry(
@@ -142,6 +143,7 @@ public final class ExtractionPipelineService {
                         chunk,
                         corpus,
                         meetingTitle,
+                        language,
                         metrics
                 );
                 perChunk.add(bundle);
@@ -153,9 +155,9 @@ public final class ExtractionPipelineService {
                     .collect(Collectors.toCollection(HashSet::new));
             deterministicValidator.validate(merged, allowed, corpus);
 
-            FinalNoteDraft deterministic = finalNoteAssembler.assemble(merged);
+            FinalNoteDraft deterministic = finalNoteAssembler.assemble(merged, language);
             FinalNoteDraft note = new MinutesSynthesisAndAudit(modelRuntime)
-                    .synthesizeAndAudit(merged, deterministic, allowed, meetingTitle);
+                    .synthesizeAndAudit(merged, deterministic, allowed, meetingTitle, language);
             metrics.addDurationMs((System.nanoTime() - pipelineStarted) / 1_000_000L);
             return PipelineRunResult.succeeded(promptVersionId, modelVersion, note, metrics);
         } catch (PipelineException ex) {
@@ -196,13 +198,14 @@ public final class ExtractionPipelineService {
             TranscriptChunk chunk,
             String fullCorpus,
             String meetingTitle,
+            String language,
             PipelineRunMetrics metrics
     ) {
         String previousFingerprint = null;
         PipelineException last = null;
         for (int attempt = 0; attempt < 2; attempt++) {
             try {
-                return extractOnce(prompt, descriptor, chunk, fullCorpus, meetingTitle, metrics);
+                return extractOnce(prompt, descriptor, chunk, fullCorpus, meetingTitle, language, metrics);
             } catch (PipelineException ex) {
                 last = ex;
                 RetryDecision decision = retryClassifier.classify(ex, previousFingerprint);
@@ -239,11 +242,12 @@ public final class ExtractionPipelineService {
             TranscriptChunk chunk,
             String fullCorpus,
             String meetingTitle,
+            String language,
             PipelineRunMetrics metrics
     ) {
         List<String> evidenceIds = chunk.segmentIds();
-        String userPrompt = renderPrompt(prompt.template(), chunk, evidenceIds, meetingTitle);
-        String systemPrompt = ExtractionPromptRules.SYSTEM_RULES;
+        String userPrompt = renderPrompt(prompt.template(), chunk, evidenceIds, meetingTitle, language);
+        String systemPrompt = ExtractionPromptRules.systemRulesFor(language);
 
         contextWindowGuard.assertFits(
                 systemPrompt + "\n" + userPrompt,
@@ -291,9 +295,10 @@ public final class ExtractionPipelineService {
             String template,
             TranscriptChunk chunk,
             List<String> evidenceIds,
-            String meetingTitle
+            String meetingTitle,
+            String language
     ) {
-        return template
+        return ExtractionPromptRules.applyLanguage(template, language)
                 .replace("{{meetingTitle}}", meetingTitle == null ? "" : meetingTitle)
                 .replace("{{meetingDate}}", "")
                 .replace("{{participants}}", "")

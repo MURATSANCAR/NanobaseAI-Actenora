@@ -241,6 +241,7 @@ public class PortalApiController {
         java.util.Set<UUID> seenDecisionIds = new java.util.LinkedHashSet<>();
         java.util.Set<UUID> seenCommitmentIds = new java.util.LinkedHashSet<>();
         java.util.Set<UUID> seenActionIds = new java.util.LinkedHashSet<>();
+        Map<String, TranscriptSegmentView> segmentsById = loadTranscriptSegmentsById(meetingId);
 
         if (meetingIntelligenceApi.isPresent()) {
             for (MeetingNoteDetailResponse note : meetingIntelligenceApi.get().listNotesForMeeting(meetingId)) {
@@ -255,12 +256,15 @@ public class PortalApiController {
                         note.updatedAt() == null ? null : note.updatedAt().toString(),
                         note.currentVersion() == null ? null : note.currentVersion().createdByUserId(),
                         approvalStatus,
-                        "DRAFT".equals(approvalStatus)
+                        "DRAFT".equals(approvalStatus),
+                        note.version()
                 ));
                 if (note.currentVersion() != null) {
                     versions.add(new MeetingVersionView(
                             note.currentVersion().versionNumber(),
-                            "DRAFT".equals(approvalStatus) ? "Taslak (LLM)" : "v" + note.currentVersion().versionNumber(),
+                            "DRAFT".equals(approvalStatus)
+                                    ? NanobaseAiBrandSanitizer.draftStatusLabel()
+                                    : "v" + note.currentVersion().versionNumber(),
                             note.currentVersion().createdAt() == null
                                     ? null
                                     : note.currentVersion().createdAt().toString()
@@ -279,7 +283,7 @@ public class PortalApiController {
                         }
                     }
                 }
-                Map<UUID, List<PortalEvidenceView>> evidenceBySubject = indexEvidence(note);
+                Map<UUID, List<PortalEvidenceView>> evidenceBySubject = indexEvidence(note, segmentsById);
                 for (var decision : note.decisions()) {
                     if (decision == null || !seenDecisionIds.add(decision.id())) {
                         continue;
@@ -481,8 +485,43 @@ public class PortalApiController {
                         : updated.currentVersion().approvalStatus().name(),
                 updated.currentVersion() == null
                         || updated.currentVersion().approvalStatus() == null
-                        || "DRAFT".equals(updated.currentVersion().approvalStatus().name())
+                        || "DRAFT".equals(updated.currentVersion().approvalStatus().name()),
+                updated.version()
         );
+    }
+
+    @PostMapping("/meetings/{meetingId}/notes/{noteId}/submit-for-approval")
+    @RequiresPermission(Permission.MEETING_WRITE)
+    public ApprovalRecordView submitNoteForApproval(
+            @PathVariable UUID meetingId,
+            @PathVariable UUID noteId,
+            @RequestBody(required = false) SubmitNoteApprovalBody body
+    ) {
+        AuthenticatedPrincipal principal = require(Permission.MEETING_WRITE);
+        meetingApi.getMeeting(meetingId);
+        if (meetingIntelligenceApi.isEmpty()) {
+            throw new ActenoraException(
+                    "NOTE_APPROVAL_UNAVAILABLE",
+                    "Meeting intelligence module is not available; approval submit is not wired"
+            );
+        }
+        var note = meetingIntelligenceApi.get().getNoteDetail(noteId);
+        if (!meetingId.equals(note.meetingOccurrenceId())) {
+            throw new ActenoraException("NOTE_MEETING_MISMATCH", "Note does not belong to this meeting");
+        }
+        long expectedVersion = body == null || body.expectedVersion() == null
+                ? note.version()
+                : body.expectedVersion();
+        ApprovalId approvalId = noteApprovalService.submitForApproval(
+                principal.tenantId().value(),
+                noteId,
+                principal.userId().toString(),
+                null,
+                expectedVersion
+        );
+        ApprovalRequestView view = approvalApi.get(principal.tenantId().value(), approvalId)
+                .orElseThrow();
+        return toApprovalRecord(view, noteId, principal.displayName());
     }
 
     @PostMapping("/approvals/{approvalId}/decide")
@@ -999,7 +1038,33 @@ public class PortalApiController {
         );
     }
 
-    private static Map<UUID, List<PortalEvidenceView>> indexEvidence(MeetingNoteDetailResponse note) {
+    private Map<String, TranscriptSegmentView> loadTranscriptSegmentsById(UUID meetingId) {
+        if (transcriptApi.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            List<TranscriptSegmentView> segments =
+                    transcriptApi.get().listSegmentsForMeeting(principalTenantId(), meetingId);
+            Map<String, TranscriptSegmentView> byId = new LinkedHashMap<>();
+            for (TranscriptSegmentView segment : segments) {
+                if (segment == null || segment.id() == null) {
+                    continue;
+                }
+                byId.put(segment.id().toString(), segment);
+            }
+            return byId;
+        } catch (TranscriptDomainException ex) {
+            if ("TRANSCRIPT_NOT_FOUND".equals(ex.code())) {
+                return Map.of();
+            }
+            throw ex;
+        }
+    }
+
+    private static Map<UUID, List<PortalEvidenceView>> indexEvidence(
+            MeetingNoteDetailResponse note,
+            Map<String, TranscriptSegmentView> segmentsById
+    ) {
         Map<UUID, List<PortalEvidenceView>> bySubject = new LinkedHashMap<>();
         if (note.evidenceLinks() == null) {
             return bySubject;
@@ -1008,10 +1073,33 @@ public class PortalApiController {
             if (link == null || link.subjectId() == null || link.evidenceSegmentId() == null) {
                 continue;
             }
+            String segmentId = link.evidenceSegmentId().trim();
+            TranscriptSegmentView segment = segmentsById.get(segmentId);
+            if (segment == null) {
+                // Case-insensitive fallback for UUID string mismatches.
+                for (Map.Entry<String, TranscriptSegmentView> entry : segmentsById.entrySet()) {
+                    if (entry.getKey().equalsIgnoreCase(segmentId)) {
+                        segment = entry.getValue();
+                        segmentId = entry.getKey();
+                        break;
+                    }
+                }
+            }
+            long startMs = segment == null ? 0L : segment.startMs();
+            long endMs = segment == null ? 0L : segment.endMs();
+            String quote = segment == null || segment.text() == null ? "" : truncateQuote(segment.text());
             bySubject.computeIfAbsent(link.subjectId(), ignored -> new ArrayList<>())
-                    .add(new PortalEvidenceView(link.evidenceSegmentId(), 0L, 0L, ""));
+                    .add(new PortalEvidenceView(segmentId, startMs, endMs, quote));
         }
         return bySubject;
+    }
+
+    private static String truncateQuote(String text) {
+        String trimmed = text.trim();
+        if (trimmed.length() <= 180) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 177) + "...";
     }
 
     private static String decisionStatus(com.nanobaseai.actenora.meetingintelligence.api.dto.DecisionResponse decision) {
@@ -1054,7 +1142,7 @@ public class PortalApiController {
                 ? "DRAFT"
                 : note.currentVersion().approvalStatus().name();
         if ("DRAFT".equals(approval)) {
-            sb.append("Durum: Taslak (LLM)").append('\n');
+            sb.append("Durum: ").append(NanobaseAiBrandSanitizer.draftStatusLabel()).append('\n');
         }
         sb.append('\n').append("1. YÖNETİCİ ÖZETİ").append('\n');
         sb.append(summary.isBlank() ? "—" : summary).append('\n');
@@ -1557,7 +1645,8 @@ public class PortalApiController {
             String updatedAt,
             UUID authorId,
             String approvalStatus,
-            boolean draft
+            boolean draft,
+            long version
     ) {
     }
 
@@ -1631,6 +1720,9 @@ public class PortalApiController {
     }
 
     public record UpdateNoteBody(String body) {
+    }
+
+    public record SubmitNoteApprovalBody(Long expectedVersion) {
     }
 
     public record DecideBody(

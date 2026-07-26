@@ -41,6 +41,7 @@ public final class TranscriptIntegrationEvents {
 
     /**
      * Emitted when segments are parsed and ready for downstream AI.
+     * {@code language} is the transcript / user output language (BCP-47 primary subtag preferred).
      */
     public record TranscriptReady(
             UUID eventId,
@@ -48,9 +49,22 @@ public final class TranscriptIntegrationEvents {
             UUID tenantId,
             UUID transcriptId,
             UUID meetingOccurrenceId,
-            int segmentCount
+            int segmentCount,
+            String language
     ) implements IntegrationEvent {
         public static final String TYPE = TRANSCRIPT_READY;
+
+        /** Backward-compatible ctor when language is unknown. */
+        public TranscriptReady(
+                UUID eventId,
+                Instant occurredAt,
+                UUID tenantId,
+                UUID transcriptId,
+                UUID meetingOccurrenceId,
+                int segmentCount
+        ) {
+            this(eventId, occurredAt, tenantId, transcriptId, meetingOccurrenceId, segmentCount, null);
+        }
     }
 
     public record TranscriptParsed(

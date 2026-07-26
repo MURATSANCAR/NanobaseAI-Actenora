@@ -2,6 +2,7 @@ import type { ApprovalRecord, MeetingDetailResponse, MeetingNote } from "@/api/t
 import { useAuth } from "@/auth/AuthProvider";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { useI18n } from "@/i18n";
+import { formatMeetingVersionLabel } from "@/lib/brandSanitize";
 
 export function MeetingLeftPanel({ detail }: { detail: MeetingDetailResponse }) {
   const auth = useAuth();
@@ -50,7 +51,7 @@ export function MeetingLeftPanel({ detail }: { detail: MeetingDetailResponse }) 
         <ul className="space-y-2 text-sm">
           {detail.versions.map((v) => (
             <li key={v.version} className="rounded-xl bg-white/50 px-3 py-2 text-slate-700">
-              v{v.version} — {v.label}
+              {formatMeetingVersionLabel(v.version, v.label)}
               <span className="block text-xs text-slate-500">{new Date(v.createdAt).toLocaleString()}</span>
             </li>
           ))}

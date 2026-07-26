@@ -4,13 +4,14 @@ import { StatusBadge } from "@/components/qa/StatusBadge";
 import { useI18n } from "@/i18n";
 import {
   deriveMeetingPipelineStages,
+  draftNotesNeedingSubmit,
+  hasPendingNoteApprovals,
   type MeetingPipelineStage,
   type MeetingPipelineStageId,
 } from "@/lib/meetingPipeline";
 import { meetingNeedsProcessingPoll } from "@/lib/meetingProcessing";
 
 const STAGE_ICONS: Record<MeetingPipelineStageId, typeof Sparkles> = {
-  RECORDING: Circle,
   TRANSCRIPT: Circle,
   AI_ANALYSIS: Sparkles,
   NOTES: Sparkles,
@@ -31,6 +32,9 @@ export function MeetingProgressPipeline({
   const polling = meetingNeedsProcessingPoll(detail);
   const allDone = stages.every((s) => s.state === "done");
   const failed = detail.meeting.status === "FAILED";
+  const reviewActive = stages.find((s) => s.id === "REVIEW")?.state === "active";
+  const needsSubmit = draftNotesNeedingSubmit(detail).length > 0;
+  const needsDecide = hasPendingNoteApprovals(detail);
 
   if (allDone && !failed) {
     return (
@@ -77,11 +81,22 @@ export function MeetingProgressPipeline({
         ) : null}
       </div>
 
-      <ol className="grid gap-2 sm:grid-cols-5">
+      <ol className="grid gap-2 sm:grid-cols-4">
         {stages.map((stage, index) => (
           <StageStep key={stage.id} stage={stage} index={index} isLast={index === stages.length - 1} />
         ))}
       </ol>
+
+      {reviewActive ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200/80 bg-amber-50/70 px-4 py-3">
+          <p className="text-sm text-amber-950">
+            {needsDecide ? t("meeting.review.pendingHint") : t("meeting.review.draftHint")}
+          </p>
+          <a href="#meeting-review" className="btn-primary px-3 py-1.5 text-xs">
+            {needsSubmit ? t("meeting.review.goSubmit") : t("meeting.review.goDecide")}
+          </a>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -122,7 +137,7 @@ function StageStep({
                   : "bg-slate-200/80 text-slate-500",
           ].join(" ")}
         >
-          {stage.state === "active" ? (
+          {stage.state === "active" && stage.id !== "REVIEW" ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           ) : stage.state === "done" ? (
             <Check className="h-4 w-4" aria-hidden />
@@ -135,7 +150,11 @@ function StageStep({
         <span className="text-[10px] font-bold uppercase tracking-wide leading-tight">
           {t(`meeting.pipeline.stage.${stage.id}`)}
         </span>
-        <span className="mt-1 text-[10px] opacity-80">{t(`meeting.pipeline.state.${stage.state}`)}</span>
+        <span className="mt-1 text-[10px] opacity-80">
+          {stage.id === "REVIEW" && stage.state === "active"
+            ? t("meeting.pipeline.state.review")
+            : t(`meeting.pipeline.state.${stage.state}`)}
+        </span>
       </div>
       {!isLast ? (
         <span

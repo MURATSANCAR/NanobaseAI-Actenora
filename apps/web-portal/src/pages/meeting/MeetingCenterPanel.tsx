@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { FileText, ListChecks, ShieldAlert, Target, Zap } from "lucide-react";
 import { MeetingNoteEditor } from "@/components/meeting/MeetingNoteEditor";
-import { PendingApprovalsPanel } from "@/components/meeting/PendingApprovalsPanel";
+import { MeetingReviewPanel } from "@/components/meeting/MeetingReviewPanel";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { DueDateBadge } from "@/components/ui/DueDateBadge";
 import { portalMutationsEnabled, queryKeys, resolvePortalAuthMode } from "@/api/client";
@@ -112,8 +112,6 @@ export function MeetingCenterPanel({
   const publishedTemplates =
     templatesQuery.data?.items.filter((item) => item.status === "PUBLISHED") ?? [];
   const canCompleteActions = auth.can("meetings:edit") && mutationsEnabled;
-  const canDecideApproval = auth.canApprove && mutationsEnabled;
-  const hasPendingApprovals = detail.approvalHistory.some((a) => a.status === "PENDING");
 
   const tabs: { id: InsightTab; label: string; count: number; icon: typeof FileText }[] = [
     { id: "decisions", label: t("meeting.decisions"), count: detail.decisions.length, icon: Target },
@@ -124,6 +122,8 @@ export function MeetingCenterPanel({
 
   return (
     <div className="space-y-5">
+      <MeetingReviewPanel detail={detail} />
+
       {selectedSegmentId ? (
         <p className="rounded-xl border border-violet-200/70 bg-violet-50/50 px-4 py-2.5 text-sm text-violet-900">
           {t("evidence.linkedFromTranscript")}
@@ -134,7 +134,7 @@ export function MeetingCenterPanel({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-violet-700">
             <FileText className="h-4 w-4" aria-hidden />
-            {t("meeting.notes")}
+            {t("meeting.minutesDocumentTitle")}
           </h2>
           <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
             {auth.can("meetings:edit") ? t("meeting.editEnabled") : t("meeting.readOnly")}
@@ -219,13 +219,6 @@ export function MeetingCenterPanel({
         />
       </section>
 
-      {hasPendingApprovals ? (
-        <PendingApprovalsPanel
-          meetingId={meetingId}
-          items={detail.approvalHistory}
-          canDecide={canDecideApproval}
-        />
-      ) : null}
     </div>
   );
 }

@@ -1,5 +1,8 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
+import com.nanobaseai.actenora.aiprocessing.domain.prompt.ExtractionPromptRules;
+import com.nanobaseai.actenora.aiprocessing.domain.prompt.OutputLanguagePolicy;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -20,13 +23,18 @@ public final class FinalNoteAssembler {
     }
 
     public FinalNoteDraft assemble(ExtractionBundle bundle) {
+        return assemble(bundle, "tr");
+    }
+
+    public FinalNoteDraft assemble(ExtractionBundle bundle, String language) {
         Objects.requireNonNull(bundle, "bundle");
+        String lang = ExtractionPromptRules.normalizeLanguage(language);
         List<String> flags = new ArrayList<>(bundle.qualityFlags());
         boolean manual = validator.requiresManualReview(bundle);
         if (manual && flags.stream().noneMatch(f -> f.equalsIgnoreCase("LOW_CONFIDENCE"))) {
             flags.add("LOW_CONFIDENCE");
         }
-        String summary = buildSummary(bundle);
+        String summary = buildSummary(bundle, lang);
         return new FinalNoteDraft(
                 summary,
                 bundle.decisions(),
@@ -42,13 +50,16 @@ public final class FinalNoteAssembler {
         );
     }
 
-    private static String buildSummary(ExtractionBundle bundle) {
+    private static String buildSummary(ExtractionBundle bundle, String language) {
+        boolean en = "en".equals(language);
         StringBuilder sb = new StringBuilder();
         if (!bundle.topics().isEmpty()) {
-            sb.append("Konular: ");
+            sb.append(en ? "Topics: " : "Konular: ");
             sb.append(bundle.topics().getFirst().text());
             if (bundle.topics().size() > 1) {
-                sb.append(" (+").append(bundle.topics().size() - 1).append(" daha)");
+                sb.append(en
+                        ? " (+" + (bundle.topics().size() - 1) + " more)"
+                        : " (+" + (bundle.topics().size() - 1) + " daha)");
             }
             sb.append('.');
         }
@@ -56,22 +67,25 @@ public final class FinalNoteAssembler {
             if (!sb.isEmpty()) {
                 sb.append(' ');
             }
-            sb.append(bundle.decisions().size()).append(" karar kaydedildi.");
+            sb.append(bundle.decisions().size())
+                    .append(en ? " decision(s) recorded." : " karar kaydedildi.");
         }
         if (!bundle.actionItems().isEmpty()) {
             if (!sb.isEmpty()) {
                 sb.append(' ');
             }
-            sb.append(bundle.actionItems().size()).append(" aksiyon maddesi.");
+            sb.append(bundle.actionItems().size())
+                    .append(en ? " action item(s)." : " aksiyon maddesi.");
         }
         if (!bundle.risks().isEmpty()) {
             if (!sb.isEmpty()) {
                 sb.append(' ');
             }
-            sb.append(bundle.risks().size()).append(" risk.");
+            sb.append(bundle.risks().size())
+                    .append(en ? " risk(s)." : " risk.");
         }
         if (sb.isEmpty()) {
-            return "Çıkarım tamamlandı; birincil konu/karar bulunamadı. Manuel inceleme önerilir.";
+            return OutputLanguagePolicy.emptySummary(language);
         }
         return sb.toString();
     }

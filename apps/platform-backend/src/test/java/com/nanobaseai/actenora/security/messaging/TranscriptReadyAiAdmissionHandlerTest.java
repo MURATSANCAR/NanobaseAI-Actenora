@@ -34,7 +34,10 @@ class TranscriptReadyAiAdmissionHandlerTest {
             org.mockito.Mockito.when(job.id()).thenReturn(UUID.randomUUID());
             return AdmissionController.AdmissionDecision.accepted(job, Duration.ZERO);
         });
-        TranscriptReadyAiAdmissionHandler handler = new TranscriptReadyAiAdmissionHandler(api);
+        TranscriptReadyAiAdmissionHandler handler = new TranscriptReadyAiAdmissionHandler(
+                api,
+                tenantId -> Optional.of("en")
+        );
 
         UUID tenantId = UUID.randomUUID();
         UUID transcriptId = UUID.randomUUID();
@@ -47,7 +50,8 @@ class TranscriptReadyAiAdmissionHandlerTest {
                 + "\"tenantId\":\"" + tenantId + "\","
                 + "\"transcriptId\":\"" + transcriptId + "\","
                 + "\"meetingOccurrenceId\":\"" + meetingId + "\","
-                + "\"segmentCount\":3"
+                + "\"segmentCount\":3,"
+                + "\"language\":\"tr\""
                 + "}";
 
         handler.handle(new EventEnvelope(
@@ -74,6 +78,53 @@ class TranscriptReadyAiAdmissionHandlerTest {
         assertEquals(AiCapability.TRANSCRIPT_EXTRACTION, command.requestedCapability());
         assertEquals(JobPriority.NORMAL, command.priority());
         assertEquals(eventId, command.correlationId());
+        assertEquals("tr", command.language());
+    }
+
+    @Test
+    void fallsBackToTenantDefaultLanguageWhenPayloadOmitsLanguage() {
+        AtomicReference<AdmissionController.SubmitAiJobCommand> captured = new AtomicReference<>();
+        AiProcessingApi api = new StubAiApi(command -> {
+            captured.set(command);
+            AiJob job = org.mockito.Mockito.mock(AiJob.class);
+            org.mockito.Mockito.when(job.id()).thenReturn(UUID.randomUUID());
+            return AdmissionController.AdmissionDecision.accepted(job, Duration.ZERO);
+        });
+        UUID tenantId = UUID.randomUUID();
+        TranscriptReadyAiAdmissionHandler handler = new TranscriptReadyAiAdmissionHandler(
+                api,
+                id -> id.equals(tenantId) ? Optional.of("en-US") : Optional.empty()
+        );
+
+        UUID transcriptId = UUID.randomUUID();
+        UUID meetingId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        Instant occurredAt = Instant.parse("2026-07-26T10:00:00Z");
+        String payload = "{"
+                + "\"eventId\":\"" + eventId + "\","
+                + "\"occurredAt\":\"" + occurredAt + "\","
+                + "\"tenantId\":\"" + tenantId + "\","
+                + "\"transcriptId\":\"" + transcriptId + "\","
+                + "\"meetingOccurrenceId\":\"" + meetingId + "\","
+                + "\"segmentCount\":1"
+                + "}";
+
+        handler.handle(new EventEnvelope(
+                eventId,
+                TranscriptIntegrationEvents.TRANSCRIPT_READY,
+                1,
+                occurredAt,
+                TenantId.of(tenantId),
+                "Transcript",
+                transcriptId.toString(),
+                eventId,
+                null,
+                null,
+                "transcript",
+                payload
+        ));
+
+        assertEquals("en", captured.get().language());
     }
 
     @Test

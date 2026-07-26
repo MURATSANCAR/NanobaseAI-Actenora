@@ -44,7 +44,8 @@ public final class ExtractionPipelineFacade implements ExtractionPipelineApi {
                 command.promptId() == null || command.promptId().isBlank()
                         ? InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID
                         : command.promptId(),
-                mapSegments(command.segments())
+                mapSegments(command.segments()),
+                command.language()
         );
         PipelineRunResult result = pipelineService.run(request);
         return toView(result);

@@ -24,11 +24,16 @@ export function filterSegments<T extends SegmentLike>(
   });
 }
 
+export function normalizeSegmentId(segmentId: string): string {
+  return segmentId.trim().toLowerCase();
+}
+
 export function findEvidenceIndex(
   segments: readonly SegmentLike[],
   segmentId: string,
 ): number {
-  return segments.findIndex((s) => s.id === segmentId);
+  const needle = normalizeSegmentId(segmentId);
+  return segments.findIndex((s) => normalizeSegmentId(s.id) === needle);
 }
 
 /**

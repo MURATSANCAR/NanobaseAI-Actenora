@@ -86,22 +86,28 @@ public final class MapAiCandidatesToNoteService {
         TenantId tenantId = TenantId.of(command.tenantId());
         AiCandidateBundle candidates = command.candidates();
 
-        MeetingNote note = MeetingNote.create(
-                tenantId,
-                command.meetingOccurrenceId(),
-                NoteReviewStatus.ACTIVE,
-                now
+        List<MeetingNote> existing = noteRepository.findByMeetingOccurrenceIdAndTenantId(
+                command.meetingOccurrenceId(), tenantId);
+        MeetingNote note;
+        MeetingNoteVersion version;
+        ModelPromptSchemaProvenance provenance = ModelPromptSchemaProvenance.of(
+                command.modelId(),
+                command.promptVersionId(),
+                command.schemaId(),
+                command.aiConfidence()
         );
-        MeetingNoteVersion version = note.attachInitialAiVersion(
-                candidates.executiveSummary(),
-                ModelPromptSchemaProvenance.of(
-                        command.modelId(),
-                        command.promptVersionId(),
-                        command.schemaId(),
-                        command.aiConfidence()
-                ),
-                now
-        );
+        if (existing.isEmpty()) {
+            note = MeetingNote.create(
+                    tenantId,
+                    command.meetingOccurrenceId(),
+                    NoteReviewStatus.ACTIVE,
+                    now
+            );
+            version = note.attachInitialAiVersion(candidates.executiveSummary(), provenance, now);
+        } else {
+            note = existing.getFirst();
+            version = note.appendAiRemap(candidates.executiveSummary(), provenance, now);
+        }
 
         boolean anyMissingEvidence = false;
         List<QualityFlag> flags = new ArrayList<>();
@@ -239,6 +245,11 @@ public final class MapAiCandidatesToNoteService {
         if (dueDate == null || dueDate.isBlank()) {
             return null;
         }
-        return LocalDate.parse(dueDate.trim());
+        try {
+            return LocalDate.parse(dueDate.trim());
+        } catch (RuntimeException ex) {
+            // Relative phrases ("gelecek hafta cuma") stay in text; do not fail the mapping.
+            return null;
+        }
     }
 }

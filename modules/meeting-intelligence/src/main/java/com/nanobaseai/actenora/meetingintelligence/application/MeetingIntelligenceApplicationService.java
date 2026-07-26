@@ -250,16 +250,24 @@ public final class MeetingIntelligenceApplicationService {
         MeetingNote note = requireNote(noteId, tenantId);
         MeetingNoteVersion current = versionRepository.findByIdAndTenantId(note.currentVersionId(), tenantId)
                 .orElseThrow(() -> new IntelligenceResourceNotFoundException("MeetingNoteVersion", note.currentVersionId()));
+        UUID versionId = current.id();
         return IntelligenceMapper.toDetailResponse(
                 note,
                 current,
-                decisionRepository.findByNoteId(noteId, tenantId),
-                actionItemRepository.findByNoteId(noteId, tenantId),
-                riskRepository.findByNoteId(noteId, tenantId),
-                commitmentRepository.findByNoteId(noteId, tenantId),
-                openQuestionRepository.findByNoteId(noteId, tenantId),
-                evidenceLinkRepository.findByNoteId(noteId, tenantId),
-                qualityFlagRepository.findByNoteId(noteId, tenantId)
+                decisionRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(d -> versionId.equals(d.noteVersionId())).toList(),
+                actionItemRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(a -> versionId.equals(a.noteVersionId())).toList(),
+                riskRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(r -> versionId.equals(r.noteVersionId())).toList(),
+                commitmentRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(c -> versionId.equals(c.noteVersionId())).toList(),
+                openQuestionRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(q -> versionId.equals(q.noteVersionId())).toList(),
+                evidenceLinkRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(e -> versionId.equals(e.noteVersionId())).toList(),
+                qualityFlagRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(f -> versionId.equals(f.noteVersionId())).toList()
         );
     }
 

@@ -13,8 +13,12 @@ export type LinkedArtifact =
   | { kind: "risk"; item: RiskItem }
   | { kind: "commitment"; item: CommitmentItem };
 
+export function normalizeSegmentId(segmentId: string): string {
+  return segmentId.trim().toLowerCase();
+}
+
 export function evidenceMatchesSegment(evidence: EvidenceRef, segmentId: string): boolean {
-  return evidence.segmentId === segmentId;
+  return normalizeSegmentId(evidence.segmentId) === normalizeSegmentId(segmentId);
 }
 
 export function findArtifactsForSegment(

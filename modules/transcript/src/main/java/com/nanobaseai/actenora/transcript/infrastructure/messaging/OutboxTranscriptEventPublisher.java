@@ -58,7 +58,8 @@ public final class OutboxTranscriptEventPublisher implements TranscriptEventPubl
                 transcript.tenantId().value(),
                 transcript.id().value(),
                 transcript.meetingOccurrenceId(),
-                segmentCount);
+                segmentCount,
+                transcript.language().orElse(null));
         outboxPublisher.enqueue(toEnvelope(
                 eventId,
                 TranscriptIntegrationEvents.TRANSCRIPT_READY,
@@ -101,13 +102,18 @@ public final class OutboxTranscriptEventPublisher implements TranscriptEventPubl
     }
 
     private static String payloadJson(TranscriptIntegrationEvents.TranscriptReady e) {
-        return "{"
-                + "\"eventId\":\"" + e.eventId() + "\","
-                + "\"occurredAt\":\"" + e.occurredAt() + "\","
-                + "\"tenantId\":\"" + e.tenantId() + "\","
-                + "\"transcriptId\":\"" + e.transcriptId() + "\","
-                + "\"meetingOccurrenceId\":\"" + e.meetingOccurrenceId() + "\","
-                + "\"segmentCount\":" + e.segmentCount()
-                + "}";
+        StringBuilder sb = new StringBuilder();
+        sb.append('{')
+                .append("\"eventId\":\"").append(e.eventId()).append("\",")
+                .append("\"occurredAt\":\"").append(e.occurredAt()).append("\",")
+                .append("\"tenantId\":\"").append(e.tenantId()).append("\",")
+                .append("\"transcriptId\":\"").append(e.transcriptId()).append("\",")
+                .append("\"meetingOccurrenceId\":\"").append(e.meetingOccurrenceId()).append("\",")
+                .append("\"segmentCount\":").append(e.segmentCount());
+        if (e.language() != null && !e.language().isBlank()) {
+            sb.append(",\"language\":\"").append(e.language().trim()).append('"');
+        }
+        sb.append('}');
+        return sb.toString();
     }
 }

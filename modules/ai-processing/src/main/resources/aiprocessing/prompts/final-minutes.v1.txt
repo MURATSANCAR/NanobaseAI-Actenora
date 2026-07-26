@@ -2,6 +2,7 @@ Aşağıdaki parça analizlerini birleştirerek profesyonel bir toplantı tutana
 Yalnızca verilen aday bilgiler ve kanıt segment kimlikleri üzerinden çalış. Ham varsayım üretme.
 
 MEETING_TITLE: {{meetingTitle}}
+OUTPUT_LANGUAGE: {{outputLanguage}} ({{outputLanguageCode}})
 CANDIDATE_JSON:
 {{candidatesJson}}
 ALLOWED_EVIDENCE_IDS: {{evidenceSegmentIds}}
@@ -10,9 +11,10 @@ GÖREVLER
 1. Tekrarları birleştir; candidateId çakışmalarını çöz.
 2. Öneri/karar ayrımını koru (proposals ≠ decisions).
 3. confidence < 0.75 olan kritik öğeleri qualityFlags içine NEEDS_REVIEW olarak işaretle.
-4. purpose ve executiveSummary Türkçe yaz; özet en fazla 150 kelime; kabul edilmemiş öneriyi karar gibi sunma.
+4. purpose ve executiveSummary dahil tüm metin alanlarını {{outputLanguage}} dilinde yaz; özet en fazla 150 kelime; kabul edilmemiş öneriyi karar gibi sunma. Kullanıcı dilinin dışında meta/İngilizce cümle üretme.
 5. agendaTopics / nextSteps üret; kanıtsız öğeleri çıkar.
-6. reviewRequired=true yalnızca belirsiz/eksik kritik alan varsa.
+6. Adaylardaki commitments, actionItems, risks ve openQuestions boş kalmasın: özet içinde geçen taahhüt/aksiyon/risk/açık soruları ilgili dizilere taşı (yalnızca CANDIDATE_JSON + ALLOWED_EVIDENCE_IDS üzerinden).
+7. reviewRequired=true yalnızca belirsiz/eksik kritik alan varsa.
 
 Yalnızca şu JSON'u döndür:
 {

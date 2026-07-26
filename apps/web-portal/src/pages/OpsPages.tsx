@@ -10,6 +10,7 @@ import { PageShell } from "@/components/qa/PageShell";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { AsyncState, DataTable, PaginationBar } from "@/components/ui/AsyncState";
 import { useI18n } from "@/i18n";
+import { sanitizeProductCopy } from "@/lib/brandSanitize";
 import { AlertTriangle, Layers } from "lucide-react";
 
 export function TemplateStudioPage() {
@@ -201,10 +202,12 @@ export function ModelManagementPage() {
   const auth = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
-  const { t, tb } = useI18n();
+  const { t, tb, locale } = useI18n();
   const [baseUrl, setBaseUrl] = useState("http://127.0.0.1:8000");
   const [enabled, setEnabled] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [jobsCursor, setJobsCursor] = useState<string | undefined>();
+  const jobsParams = useMemo(() => ({ cursor: jobsCursor, limit: 25 }), [jobsCursor]);
 
   const connection = useQuery({
     queryKey: queryKeys.intelligence,
@@ -216,6 +219,16 @@ export function ModelManagementPage() {
     queryFn: () => api.getModelHealth(),
     enabled: auth.nav("models"),
   });
+  const jobsQuery = useQuery({
+    queryKey: queryKeys.jobs(jobsParams),
+    queryFn: () => api.listAiJobs(jobsParams),
+    enabled: auth.nav("models"),
+  });
+  const jobsStatus = asyncStatusFromQuery(
+    jobsQuery.isLoading,
+    jobsQuery.isError,
+    !jobsQuery.data?.items.length,
+  );
 
   useEffect(() => {
     if (connection.data) {
@@ -345,8 +358,10 @@ export function ModelManagementPage() {
               <DataTable
                 headers={["Name", "Key", t("filter.status")]}
                 rows={q.data.models.map((m) => [
-                  m.displayName,
-                  <span key={m.modelKey} className="font-mono text-xs text-slate-500">{m.modelKey}</span>,
+                  sanitizeProductCopy(m.displayName),
+                  <span key={m.modelKey} className="text-xs text-slate-500">
+                    {sanitizeProductCopy(m.modelKey)}
+                  </span>,
                   <StatusBadge
                     key={`${m.modelKey}-s`}
                     label={`${m.enabled ? t("models.enabled") : t("models.disabled")} · ${tb("artifactStatus", m.status)}`}
@@ -360,8 +375,8 @@ export function ModelManagementPage() {
               <DataTable
                 headers={["Deployment", "Node", "Health"]}
                 rows={q.data.deployments.map((d) => [
-                  d.deploymentKey,
-                  d.nodeName,
+                  sanitizeProductCopy(d.deploymentKey),
+                  sanitizeProductCopy(d.nodeName),
                   <StatusBadge
                     key={d.deploymentKey}
                     label={d.healthy ? t("common.healthy") : t("common.unhealthy")}
@@ -389,42 +404,40 @@ export function ModelManagementPage() {
           </>
         ) : null}
       </AsyncState>
-    </PageShell>
-  );
-}
 
-export function AiJobTimelinePage() {
-  const api = useApi();
-  const { t, tb } = useI18n();
-  const [cursor, setCursor] = useState<string | undefined>();
-  const params = useMemo(() => ({ cursor, limit: 25 }), [cursor]);
-  const q = useQuery({
-    queryKey: queryKeys.jobs(params),
-    queryFn: () => api.listAiJobs(params),
-  });
-  const status = asyncStatusFromQuery(q.isLoading, q.isError, !q.data?.items.length);
-
-  return (
-    <PageShell titleKey="jobs.title" subtitleKey="jobs.description" maxWidth="max-w-7xl">
-      {q.data?.compositionStub ? <StubBanner featureKey="jobs" /> : null}
-      <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("jobs.description")}>
-        <div className="card-static divide-y divide-white/60">
-          {q.data?.items.map((j) => (
-            <div key={j.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
-              <strong className="text-slate-800">{j.stage}</strong>
-              <StatusBadge label={tb("artifactStatus", j.status)} status={j.status} />
-              <span className="text-slate-500">
-                {t("jobs.started")} {new Date(j.startedAt).toLocaleString()}
-              </span>
-            </div>
-          ))}
+      <div className="mt-8 space-y-3" data-testid="models-recent-processing">
+        <div>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+            {t("models.sectionJobs")}
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">{t("jobs.description")}</p>
         </div>
-        <PaginationBar
-          nextCursor={q.data?.nextCursor}
-          onNext={() => setCursor(q.data?.nextCursor ?? undefined)}
-          onReset={() => setCursor(undefined)}
-        />
-      </AsyncState>
+        {jobsQuery.data?.compositionStub ? <StubBanner featureKey="jobs" /> : null}
+        <AsyncState
+          status={jobsStatus}
+          error={jobsQuery.error}
+          emptyTitle={t("jobs.emptyTitle")}
+          emptyDescription={t("jobs.emptyBody")}
+        >
+          <div className="card-static divide-y divide-white/60">
+            {jobsQuery.data?.items.map((j) => (
+              <div key={j.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
+                <strong className="text-slate-800">{tb("aiJobStage", j.stage)}</strong>
+                <StatusBadge label={tb("aiJobStatus", j.status)} status={j.status} />
+                <span className="text-slate-500">
+                  {t("jobs.started")}{" "}
+                  {new Date(j.startedAt).toLocaleString(locale === "tr" ? "tr-TR" : "en-US")}
+                </span>
+              </div>
+            ))}
+          </div>
+          <PaginationBar
+            nextCursor={jobsQuery.data?.nextCursor}
+            onNext={() => setJobsCursor(jobsQuery.data?.nextCursor ?? undefined)}
+            onReset={() => setJobsCursor(undefined)}
+          />
+        </AsyncState>
+      </div>
     </PageShell>
   );
 }

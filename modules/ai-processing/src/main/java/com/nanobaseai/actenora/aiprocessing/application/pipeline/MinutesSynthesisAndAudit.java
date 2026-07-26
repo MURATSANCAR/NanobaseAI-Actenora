@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidat
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.ExtractionPromptRules;
+import com.nanobaseai.actenora.aiprocessing.domain.prompt.OutputLanguagePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.json.ExtractionBundleMapper;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.json.ExtractionJsonSchemaValidator;
@@ -79,19 +80,31 @@ public final class MinutesSynthesisAndAudit {
             Set<String> allowedEvidenceIds,
             String meetingTitle
     ) {
-        FinalNoteDraft synthesized = synthesize(merged, deterministicDraft, allowedEvidenceIds, meetingTitle);
-        return audit(synthesized, allowedEvidenceIds);
+        return synthesizeAndAudit(merged, deterministicDraft, allowedEvidenceIds, meetingTitle, "tr");
+    }
+
+    public FinalNoteDraft synthesizeAndAudit(
+            ExtractionBundle merged,
+            FinalNoteDraft deterministicDraft,
+            Set<String> allowedEvidenceIds,
+            String meetingTitle,
+            String language
+    ) {
+        FinalNoteDraft synthesized = synthesize(
+                merged, deterministicDraft, allowedEvidenceIds, meetingTitle, language);
+        return audit(synthesized, allowedEvidenceIds, language);
     }
 
     private FinalNoteDraft synthesize(
             ExtractionBundle merged,
             FinalNoteDraft fallback,
             Set<String> allowedEvidenceIds,
-            String meetingTitle
+            String meetingTitle,
+            String language
     ) {
         try {
             String candidatesJson = objectMapper.writeValueAsString(toCandidateNode(merged));
-            String userPrompt = finalMinutesTemplate
+            String userPrompt = ExtractionPromptRules.applyLanguage(finalMinutesTemplate, language)
                     .replace("{{meetingTitle}}", meetingTitle == null ? "" : meetingTitle)
                     .replace("{{candidatesJson}}", candidatesJson)
                     .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds));
@@ -99,7 +112,7 @@ public final class MinutesSynthesisAndAudit {
                     InferenceTaskType.FINAL_NOTE.name(),
                     "pv-meeting-final-note-v1",
                     InMemoryPromptRegistry.FINAL_NOTE_PROMPT_ID,
-                    ExtractionPromptRules.SYSTEM_RULES,
+                    ExtractionPromptRules.systemRulesFor(language),
                     userPrompt,
                     List.copyOf(allowedEvidenceIds),
                     Math.max(2048, modelRuntime.descriptor().maxOutputTokens())
@@ -111,7 +124,10 @@ public final class MinutesSynthesisAndAudit {
             JsonNode node = schemaValidator.parseAndValidate(json);
             ExtractionBundle bundle = bundleMapper.fromJson(node);
             stripUnknownEvidence(bundle, allowedEvidenceIds);
-            String summary = textOr(node.path("executiveSummary").asText(null), fallback.executiveSummary());
+            String summary = OutputLanguagePolicy.sanitizeUserFacingText(
+                    textOr(node.path("executiveSummary").asText(null), fallback.executiveSummary()),
+                    language
+            );
             List<String> flags = new ArrayList<>(fallback.qualityFlags());
             for (String flag : bundle.qualityFlags()) {
                 if (!flags.contains(flag)) {
@@ -157,17 +173,17 @@ public final class MinutesSynthesisAndAudit {
         }
     }
 
-    private FinalNoteDraft audit(FinalNoteDraft draft, Set<String> allowedEvidenceIds) {
+    private FinalNoteDraft audit(FinalNoteDraft draft, Set<String> allowedEvidenceIds, String language) {
         try {
             String candidatesJson = objectMapper.writeValueAsString(toDraftNode(draft));
-            String userPrompt = evidenceAuditTemplate
+            String userPrompt = ExtractionPromptRules.applyLanguage(evidenceAuditTemplate, language)
                     .replace("{{candidatesJson}}", candidatesJson)
                     .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds));
             InferenceResponse response = modelRuntime.infer(new InferenceRequest(
                     InferenceTaskType.VALIDATION.name(),
                     "pv-meeting-validation-v1",
                     InMemoryPromptRegistry.VALIDATION_PROMPT_ID,
-                    ExtractionPromptRules.SYSTEM_RULES,
+                    ExtractionPromptRules.systemRulesFor(language),
                     userPrompt,
                     List.copyOf(allowedEvidenceIds),
                     Math.max(1024, modelRuntime.descriptor().maxOutputTokens() / 2)
@@ -309,6 +325,19 @@ public final class MinutesSynthesisAndAudit {
         ArrayNode actions = root.putArray("actionItems");
         for (ActionItemCandidate item : draft.actionItems()) {
             ObjectNode n = actions.addObject();
+            n.put("text", item.text());
+            ArrayNode ev = n.putArray("evidenceSegmentIds");
+            item.evidenceSegmentIds().forEach(ev::add);
+        }
+        root.set("risks", texts(draft.risks().stream().map(RiskCandidate::text).toList(),
+                draft.risks().stream().map(RiskCandidate::evidenceSegmentIds).toList(),
+                draft.risks().stream().map(RiskCandidate::confidence).toList()));
+        root.set("openQuestions", texts(draft.openQuestions().stream().map(OpenQuestionCandidate::text).toList(),
+                draft.openQuestions().stream().map(OpenQuestionCandidate::evidenceSegmentIds).toList(),
+                draft.openQuestions().stream().map(OpenQuestionCandidate::confidence).toList()));
+        ArrayNode commitments = root.putArray("commitments");
+        for (CommitmentCandidate item : draft.commitments()) {
+            ObjectNode n = commitments.addObject();
             n.put("text", item.text());
             ArrayNode ev = n.putArray("evidenceSegmentIds");
             item.evidenceSegmentIds().forEach(ev::add);

@@ -3,6 +3,7 @@ import { Calendar, ChevronDown, Users } from "lucide-react";
 import type { ApprovalRecord, MeetingDetailResponse } from "@/api/types";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { useI18n } from "@/i18n";
+import { formatMeetingVersionLabel } from "@/lib/brandSanitize";
 
 export function MeetingHeaderBar({ detail }: { detail: MeetingDetailResponse }) {
   const { t, tb } = useI18n();
@@ -72,7 +73,7 @@ export function MeetingHeaderBar({ detail }: { detail: MeetingDetailResponse }) 
                 <ul className="space-y-1.5 text-sm text-slate-700">
                   {detail.versions.map((v) => (
                     <li key={v.version} className="rounded-lg bg-white/50 px-2.5 py-1.5">
-                      v{v.version} — {v.label}
+                      {formatMeetingVersionLabel(v.version, v.label)}
                       <span className="block text-xs text-slate-500">{new Date(v.createdAt).toLocaleString()}</span>
                     </li>
                   ))}

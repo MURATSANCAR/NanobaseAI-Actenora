@@ -1,18 +1,23 @@
-Aşağıdaki toplantı transkript parçasını analiz et.
+Aşağıdaki toplantı konuşması parçasını analiz et.
 Bu aşamada toplantı tutanağı yazma. Yalnızca yapılandırılmış aday bilgiler çıkar.
 
 MEETING_TITLE: {{meetingTitle}}
 MEETING_DATE: {{meetingDate}}
 PARTICIPANTS: {{participants}}
+OUTPUT_LANGUAGE: {{outputLanguage}} ({{outputLanguageCode}})
 Allowed evidenceSegmentIds: {{evidenceSegmentIds}}
 
-TRANSCRIPT CHUNK:
+MEETING_CONVERSATION_CHUNK:
 {{chunk}}
 
 GÖREV
 Konular (+kısa özet), açık kararlar (+gerekçe/status), aksiyonlar (+ownerType/priority/relativeDate),
 taahhütler, issues, riskler (+likelihood/mitigation), açık sorular, proposals, importantFacts çıkar.
 Öneriyi karar sayma (proposals'a koy). Sahibi/tarihi açık değilse null. Kanıtsız kayıt üretme.
+Durum güncellemesi / tek konuşmacılı brifing olsa bile: kim neyi ne zamana bitirecek → commitments + actionItems;
+katılım yokluğu, iletilmeyen takvim, belirsiz teslim → risks ve/veya openQuestions.
+dueDate yalnızca konuşmada geçen tarih ifadesini aynen yaz (ISO uydurma); relativeDate kullanabilirsin.
+Tüm metin alanlarını yalnızca {{outputLanguage}} dilinde yaz; kullanıcı dilinin dışında ifade üretme.
 candidateId formatı: chunk-{n}-{type}-{seq} (ör. chunk-1-decision-01).
 
 Aşağıdaki JSON şemasında yanıt ver (yalnızca JSON):

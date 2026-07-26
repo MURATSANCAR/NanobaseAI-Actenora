@@ -18,7 +18,6 @@ import {
 import { MeetingDetailPage } from "./pages/meeting/MeetingDetailPage";
 import { MeetingListPage } from "./pages/MeetingListPage";
 import {
-  AiJobTimelinePage,
   AuditViewerPage,
   ModelManagementPage,
   OperationsCenterPage,
@@ -62,7 +61,7 @@ export function App({ apiClient }: { apiClient?: ApiClient }) {
                 <Route path="templates" element={<TemplateStudioPage />} />
                 <Route path="teams" element={<TeamsSettingsPage />} />
                 <Route path="models" element={<ModelManagementPage />} />
-                <Route path="jobs" element={<AiJobTimelinePage />} />
+                <Route path="jobs" element={<Navigate to="/models" replace />} />
                 <Route path="operations" element={<OperationsCenterPage />} />
                 <Route path="audit" element={<AuditViewerPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

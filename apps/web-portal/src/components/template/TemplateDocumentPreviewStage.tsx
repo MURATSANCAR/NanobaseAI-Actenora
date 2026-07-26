@@ -7,9 +7,11 @@ import {
 } from "@/components/template/TemplateDocumentContent";
 import { useI18n } from "@/i18n";
 
-const STAGE_PAD = 48;
+const STAGE_PAD_X = 32;
+/** Prefer filling stage width; allow modest upscale so the page reads larger on wide screens. */
+const MAX_SCALE = 1.15;
 
-/** Isolated fullscreen A4 preview — scaled to fit, content never clipped. */
+/** Isolated fullscreen A4 preview — scaled to fit stage width, content never clipped. */
 export function TemplateDocumentPreviewStage({ components }: { components: DesignComponent[] }) {
   const { t } = useI18n();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -20,11 +22,11 @@ export function TemplateDocumentPreviewStage({ components }: { components: Desig
     if (!stage) return;
 
     const update = () => {
-      const w = stage.clientWidth - STAGE_PAD;
-      const h = stage.clientHeight - STAGE_PAD;
-      if (w <= 0 || h <= 0) return;
-      const fit = Math.min(w / A4_PAGE_WIDTH_PX, h / A4_PAGE_HEIGHT_PX);
-      setScale(Math.max(0.25, Math.min(fit, 1.25)));
+      const w = stage.clientWidth - STAGE_PAD_X;
+      if (w <= 0) return;
+      // Fill stage width; page may scroll vertically inside the stage.
+      const fit = w / A4_PAGE_WIDTH_PX;
+      setScale(Math.max(0.35, Math.min(fit, MAX_SCALE)));
     };
 
     update();
@@ -42,7 +44,7 @@ export function TemplateDocumentPreviewStage({ components }: { components: Desig
 
   return (
     <section
-      className="flex min-h-[calc(100dvh-13rem)] flex-col overflow-hidden rounded-2xl border border-slate-300/80 bg-slate-400/30 shadow-inner"
+      className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-2xl border border-slate-300/80 bg-slate-400/30 shadow-inner"
       aria-label={t("templates.preview.title")}
     >
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-300/60 bg-slate-900/90 px-4 py-2.5 text-white backdrop-blur">
@@ -57,21 +59,21 @@ export function TemplateDocumentPreviewStage({ components }: { components: Desig
 
       <div
         ref={stageRef}
-        className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto p-6"
+        className="relative flex min-h-0 flex-1 items-start justify-center overflow-auto p-4 sm:p-5"
       >
         <div
           className="shrink-0"
           style={{ width: scaledW, height: scaledH }}
         >
           <div
-            className="origin-top-left overflow-visible rounded-sm bg-white shadow-2xl ring-1 ring-slate-900/10"
+            className="origin-top-left overflow-hidden rounded-sm bg-white shadow-2xl ring-1 ring-slate-900/10"
             style={{
               width: A4_PAGE_WIDTH_PX,
               height: A4_PAGE_HEIGHT_PX,
               transform: `scale(${scale})`,
             }}
           >
-            <div className="h-full overflow-y-auto p-6">
+            <div className="h-full overflow-hidden p-7">
               <TemplateDocumentContent components={components} density="normal" />
             </div>
           </div>

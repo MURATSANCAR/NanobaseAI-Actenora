@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { MeetingMinutesDocument } from "@/components/meeting/MeetingMinutesDocument";
 import { TemplateNoteSectionEditor } from "@/components/template/TemplateNoteSectionEditor";
 import { TemplateBrandFooter, TemplateBrandHeader } from "@/components/template/TemplateBrandBanner";
 import { StatusBadge } from "@/components/qa/StatusBadge";
@@ -7,6 +8,10 @@ import { queryKeys } from "@/api/client";
 import { useApi } from "@/api/ApiProvider";
 import type { DesignSchemaView, MeetingNote, TemplateSummary } from "@/api/types";
 import type { TemplateComponentType } from "@/types/template";
+import {
+  parseMinutesBody,
+  serializeMinutesBody,
+} from "@/lib/minutesDocument";
 import { editableSectionsFromDesign } from "@/lib/templateStandards";
 import {
   createTemplateNoteBody,
@@ -168,6 +173,10 @@ export function MeetingNoteEditor({
   }
 
   const draftBadge = Boolean(note.draft || note.approvalStatus === "DRAFT");
+  const minutesDoc = useMemo(
+    () => parseMinutesBody(draft, meetingTitle ?? ""),
+    [draft, meetingTitle],
+  );
 
   if (usesTemplate && effective) {
     return (
@@ -189,11 +198,58 @@ export function MeetingNoteEditor({
     );
   }
 
+  if (variant === "document" && minutesDoc) {
+    const templatePicker =
+      canEdit && publishedTemplates.length ? (
+        <div className="border-t border-slate-100 bg-violet-50/40 px-5 py-3">
+          <label className="block">
+            <span className="label-text">{t("templates.note.applyTemplate")}</span>
+            <select
+              className="input-field mt-1"
+              defaultValue=""
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value) void applyTemplate(value);
+                e.currentTarget.value = "";
+              }}
+            >
+              <option value="">{t("templates.note.chooseTemplate")}</option>
+              {publishedTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : null;
+
+    return (
+      <MeetingMinutesDocument
+        document={minutesDoc}
+        canEdit={canEdit}
+        draftBadge={draftBadge}
+        saving={saving}
+        onSave={onSave}
+        footerExtra={templatePicker}
+        onSectionChange={(type, value) => {
+          const next = {
+            ...minutesDoc,
+            sections: minutesDoc.sections.map((s) =>
+              s.type === type ? { ...s, value } : s,
+            ),
+          };
+          onChange(serializeMinutesBody(next));
+        }}
+      />
+    );
+  }
+
   if (variant === "document") {
     return (
-      <article className="meeting-note-document overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xl shadow-violet-100/30">
-        <TemplateBrandHeader compact />
-        <div className="border-b border-slate-100 px-5 py-4">
+      <article className="meeting-note-document overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-2xl shadow-violet-200/40 ring-1 ring-violet-100/60">
+        <TemplateBrandHeader />
+        <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50/80 to-sky-50/50 px-5 py-4">
           <div className="flex flex-wrap items-center gap-2">
             {meetingTitle ? <h2 className="text-lg font-bold text-slate-900">{meetingTitle}</h2> : null}
             <StatusBadge label={tb("noteVisibility", note.visibility)} status={note.visibility} />
