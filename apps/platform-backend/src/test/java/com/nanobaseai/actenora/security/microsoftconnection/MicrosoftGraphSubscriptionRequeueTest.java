@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.security.microsoftconnection;
 
 import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.config.MicrosoftGraphSpringProperties;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
@@ -28,7 +29,11 @@ class MicrosoftGraphSubscriptionRequeueTest {
     @BeforeEach
     void setUp() {
         workStore = new InMemoryTranscriptPollWorkStore();
-        controller = new MicrosoftGraphSubscriptionController(mock(MicrosoftConnectionApi.class), workStore);
+        controller = new MicrosoftGraphSubscriptionController(
+                mock(MicrosoftConnectionApi.class),
+                workStore,
+                mock(GraphMailboxSyncService.class),
+                new MicrosoftGraphSpringProperties());
         tenantId = UUID.randomUUID();
         meetingId = UUID.randomUUID();
         TenantSecurityContext.set(new AuthenticatedPrincipal(

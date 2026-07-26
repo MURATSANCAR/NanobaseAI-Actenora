@@ -1,8 +1,7 @@
 package com.nanobaseai.actenora.security.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
-import com.nanobaseai.actenora.security.microsoftconnection.CalendarMeetingUpsertAdapter;
+import com.nanobaseai.actenora.security.microsoftconnection.GraphMailboxSyncService;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeNotificationProcessor;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeWorkConsumer;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
@@ -24,11 +23,10 @@ class GraphChangeWorkConsumerRetryTest {
 
     @Test
     void transientFailureRetriesThenDeadLetters() {
-        MicrosoftConnectionApi api = mock(MicrosoftConnectionApi.class);
-        when(api.syncCalendar(any(), anyString())).thenThrow(new IllegalStateException("Graph unavailable"));
+        GraphMailboxSyncService syncService = mock(GraphMailboxSyncService.class);
+        when(syncService.syncMailbox(any(), anyString())).thenThrow(new IllegalStateException("Graph unavailable"));
         GraphChangeWorkConsumer handler = new GraphChangeWorkConsumer(
-                api,
-                mock(CalendarMeetingUpsertAdapter.class),
+                syncService,
                 new ObjectMapper());
         EventBackbone backbone = EventBackbone.inMemory(
                 EventMessagingConfig.defaults("test").withMaxAttempts(2));

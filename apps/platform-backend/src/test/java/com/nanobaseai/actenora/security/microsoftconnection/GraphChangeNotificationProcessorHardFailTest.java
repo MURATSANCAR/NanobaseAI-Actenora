@@ -28,7 +28,9 @@ class GraphChangeNotificationProcessorHardFailTest {
         GraphChangeNotificationProcessor processor = new GraphChangeNotificationProcessor(
                 tenantApi,
                 factory.getBeanProvider(com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher.class),
-                factory.getBeanProvider(GraphObservability.class)
+                factory.getBeanProvider(GraphObservability.class),
+                factory.getBeanProvider(GraphChangeWorkConsumer.class),
+                "jdbc-rabbit"
         );
 
         ActenoraException ex = assertThrows(

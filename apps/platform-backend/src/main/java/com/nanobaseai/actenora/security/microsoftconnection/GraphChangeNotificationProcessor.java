@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.tenant.api.TenantApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -33,20 +34,26 @@ public final class GraphChangeNotificationProcessor {
 
     public static final String GRAPH_CHANGE_RECEIVED = "microsoft.GraphChangeNotificationReceived.v1";
 
-    private static final Pattern USER_EVENTS = Pattern.compile("users/([^/]+)/events");
+    private static final Pattern USER_EVENTS = Pattern.compile("users/([^/]+)/events", Pattern.CASE_INSENSITIVE);
 
     private final TenantApi tenantApi;
     private final Optional<OutboxPublisher> outboxPublisher;
     private final Optional<GraphObservability> observability;
+    private final boolean inMemoryMessaging;
+    private final ObjectProvider<GraphChangeWorkConsumer> graphChangeWorkConsumer;
 
     public GraphChangeNotificationProcessor(
             TenantApi tenantApi,
             ObjectProvider<OutboxPublisher> outboxPublisher,
-            ObjectProvider<GraphObservability> observability
+            ObjectProvider<GraphObservability> observability,
+            ObjectProvider<GraphChangeWorkConsumer> graphChangeWorkConsumer,
+            @Value("${actenora.messaging.mode:inmemory}") String messagingMode
     ) {
         this.tenantApi = Objects.requireNonNull(tenantApi, "tenantApi");
         this.outboxPublisher = Optional.ofNullable(outboxPublisher.getIfAvailable());
         this.observability = Optional.ofNullable(observability.getIfAvailable());
+        this.graphChangeWorkConsumer = Objects.requireNonNull(graphChangeWorkConsumer, "graphChangeWorkConsumer");
+        this.inMemoryMessaging = "inmemory".equalsIgnoreCase(messagingMode);
     }
 
     public void process(GraphChangeNotification notification) {
@@ -65,7 +72,40 @@ public final class GraphChangeNotificationProcessor {
                             + "'; provision TenantApi Entra binding before calendar sync"
             );
         }
+        if (inMemoryMessaging) {
+            dispatchSynchronously(notification, tenantId.get().value());
+            return;
+        }
         enqueueWorkItem(notification, tenantId.get().value());
+    }
+
+    private void dispatchSynchronously(GraphChangeNotification notification, UUID tenantId) {
+        GraphChangeWorkConsumer consumer = graphChangeWorkConsumer.getIfAvailable();
+        if (consumer == null) {
+            throw new ActenoraException(
+                    "GRAPH_SYNC_UNAVAILABLE",
+                    "Graph calendar sync consumer is not configured");
+        }
+        consumer.handle(toEnvelope(notification, tenantId));
+    }
+
+    private static EventEnvelope toEnvelope(GraphChangeNotification notification, UUID tenantId) {
+        String payload = buildPayload(notification, tenantId);
+        UUID eventId = UUID.randomUUID();
+        return new EventEnvelope(
+                eventId,
+                GRAPH_CHANGE_RECEIVED,
+                1,
+                Instant.now(),
+                TenantId.of(tenantId),
+                "GraphSubscription",
+                notification.subscriptionId(),
+                eventId,
+                null,
+                null,
+                "microsoft-connection",
+                payload
+        );
     }
 
     private void enqueueWorkItem(GraphChangeNotification notification, UUID tenantId) {
@@ -76,13 +116,7 @@ public final class GraphChangeNotificationProcessor {
         }
         TenantId envelopeTenant = tenantId == null ? TenantId.of(UUID.fromString("00000000-0000-0000-0000-000000000000"))
                 : TenantId.of(tenantId);
-        String payload = "{"
-                + "\"notificationId\":\"" + escape(notification.notificationId()) + "\","
-                + "\"subscriptionId\":\"" + escape(notification.subscriptionId()) + "\","
-                + "\"changeType\":\"" + escape(notification.changeType()) + "\","
-                + "\"resource\":\"" + escape(notification.resource()) + "\","
-                + "\"tenantId\":\"" + (tenantId == null ? "" : tenantId) + "\""
-                + "}";
+        String payload = buildPayload(notification, tenantId);
         UUID eventId = UUID.randomUUID();
         outboxPublisher.get().enqueue(new EventEnvelope(
                 eventId,
@@ -98,6 +132,16 @@ public final class GraphChangeNotificationProcessor {
                 "microsoft-connection",
                 payload
         ));
+    }
+
+    private static String buildPayload(GraphChangeNotification notification, UUID tenantId) {
+        return "{"
+                + "\"notificationId\":\"" + escape(notification.notificationId()) + "\","
+                + "\"subscriptionId\":\"" + escape(notification.subscriptionId()) + "\","
+                + "\"changeType\":\"" + escape(notification.changeType()) + "\","
+                + "\"resource\":\"" + escape(notification.resource()) + "\","
+                + "\"tenantId\":\"" + (tenantId == null ? "" : tenantId) + "\""
+                + "}";
     }
 
     static Optional<UUID> parseTenantId(String tenantId) {

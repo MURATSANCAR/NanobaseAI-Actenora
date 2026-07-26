@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.security.microsoftconnection;
 import com.nanobaseai.actenora.identity.api.RequiresPermission;
 import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.config.MicrosoftGraphSpringProperties;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscription;
 import com.nanobaseai.actenora.microsoftconnection.application.model.SubscriptionCreateRequest;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
@@ -33,13 +34,19 @@ public class MicrosoftGraphSubscriptionController {
 
     private final MicrosoftConnectionApi microsoftConnectionApi;
     private final TranscriptPollWorkStore transcriptPollWorkStore;
+    private final GraphMailboxSyncService graphMailboxSyncService;
+    private final MicrosoftGraphSpringProperties graphProperties;
 
     public MicrosoftGraphSubscriptionController(
             MicrosoftConnectionApi microsoftConnectionApi,
-            TranscriptPollWorkStore transcriptPollWorkStore
+            TranscriptPollWorkStore transcriptPollWorkStore,
+            GraphMailboxSyncService graphMailboxSyncService,
+            MicrosoftGraphSpringProperties graphProperties
     ) {
         this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi);
         this.transcriptPollWorkStore = Objects.requireNonNull(transcriptPollWorkStore);
+        this.graphMailboxSyncService = Objects.requireNonNull(graphMailboxSyncService);
+        this.graphProperties = Objects.requireNonNull(graphProperties);
     }
 
     @GetMapping
@@ -70,6 +77,20 @@ public class MicrosoftGraphSubscriptionController {
         return SubscriptionView.from(created);
     }
 
+    @PostMapping("/sync-mailbox")
+    @RequiresPermission(Permission.TENANT_ADMINISTER)
+    public MailboxSyncView syncMailbox() {
+        UUID tenantId = TenantSecurityContext.require().tenantId().value();
+        String mailboxUserId = graphProperties.getDefaultMailboxUserId();
+        if (mailboxUserId == null || mailboxUserId.isBlank()) {
+            throw new ActenoraException(
+                    "GRAPH_MAILBOX_NOT_CONFIGURED",
+                    "actenora.microsoft-graph.default-mailbox-user-id is required");
+        }
+        GraphMailboxSyncService.SyncResult result = graphMailboxSyncService.syncMailbox(tenantId, mailboxUserId);
+        return new MailboxSyncView(result.mailboxUserId(), result.eventsSynced());
+    }
+
     @PostMapping("/renew-expiring")
     @RequiresPermission(Permission.OPERATIONS_MANAGE)
     public List<SubscriptionView> renewExpiring() {
@@ -88,6 +109,9 @@ public class MicrosoftGraphSubscriptionController {
                     "TRANSCRIPT_POLL_NOT_REQUEUEABLE",
                     "No dead-lettered transcript poll exists for the meeting occurrence");
         }
+    }
+
+    public record MailboxSyncView(String mailboxUserId, int eventsSynced) {
     }
 
     public record CreateSubscriptionBody(

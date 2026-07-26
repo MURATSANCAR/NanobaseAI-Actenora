@@ -2,7 +2,6 @@ package com.nanobaseai.actenora.security.microsoftconnection;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -17,17 +16,14 @@ import java.util.Objects;
 @ConditionalOnProperty(name = "actenora.microsoft-graph.enabled", havingValue = "true")
 public final class GraphChangeWorkConsumer {
 
-    private final MicrosoftConnectionApi microsoftConnectionApi;
-    private final CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter;
+    private final GraphMailboxSyncService graphMailboxSyncService;
     private final ObjectMapper objectMapper;
 
     public GraphChangeWorkConsumer(
-            MicrosoftConnectionApi microsoftConnectionApi,
-            CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter,
+            GraphMailboxSyncService graphMailboxSyncService,
             ObjectMapper objectMapper
     ) {
-        this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi);
-        this.calendarMeetingUpsertAdapter = Objects.requireNonNull(calendarMeetingUpsertAdapter);
+        this.graphMailboxSyncService = Objects.requireNonNull(graphMailboxSyncService);
         this.objectMapper = Objects.requireNonNull(objectMapper);
     }
 
@@ -43,10 +39,7 @@ public final class GraphChangeWorkConsumer {
         String userId = GraphChangeNotificationProcessor.parseMailboxUserId(resource)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Graph notification resource does not identify a mailbox: " + resource));
-        var events = microsoftConnectionApi.syncCalendar(envelope.tenantId().value(), userId);
-        calendarMeetingUpsertAdapter.upsertEvents(envelope.tenantId(), events);
-        microsoftConnectionApi.ensureTranscriptionForCalendarEvents(
-                envelope.tenantId().value(), userId, events);
+        graphMailboxSyncService.syncMailbox(envelope.tenantId().value(), userId);
     }
 
     private static String text(JsonNode payload, String field) {

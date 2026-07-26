@@ -134,7 +134,9 @@ class MicrosoftGraphWebhookBindingTest {
         return new GraphChangeNotificationProcessor(
                 tenantApi,
                 outboxProvider(),
-                emptyProvider(GraphObservability.class));
+                emptyProvider(GraphObservability.class),
+                emptyProvider(GraphChangeWorkConsumer.class),
+                "jdbc-rabbit");
     }
 
     @Test

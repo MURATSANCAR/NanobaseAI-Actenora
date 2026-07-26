@@ -34,6 +34,14 @@ import java.util.UUID;
 public class MicrosoftConnectionPlatformConfiguration {
 
     @Bean
+    GraphMailboxSyncService graphMailboxSyncService(
+            MicrosoftConnectionApi microsoftConnectionApi,
+            CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter
+    ) {
+        return new GraphMailboxSyncService(microsoftConnectionApi, calendarMeetingUpsertAdapter);
+    }
+
+    @Bean
     CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter(
             MeetingApi meetingApi,
             FixedTenantContext fixedTenantContext
