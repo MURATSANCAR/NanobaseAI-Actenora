@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.security.microsoftconnection;
 
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
+import com.nanobaseai.actenora.microsoftconnection.application.ReconciliationJob;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscription;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.InMemorySubscriptionStore;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -11,14 +12,19 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class GraphReconciliationScheduledWorkerTest {
 
     @Test
     void reconcilesDistinctSubscribedMailboxesUnderLease() {
         MicrosoftConnectionApi api = mock(MicrosoftConnectionApi.class);
+        when(api.reconcile(anyList(), any()))
+                .thenReturn(new ReconciliationJob.ReconciliationResult(1, 0, 0, 0));
         InMemorySubscriptionStore subscriptions = new InMemorySubscriptionStore();
         UUID tenantId = UUID.randomUUID();
         subscriptions.save(new GraphSubscription(
@@ -44,7 +50,7 @@ class GraphReconciliationScheduledWorkerTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<java.util.List<com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackService.MailboxRef>>
                 captor = ArgumentCaptor.forClass(java.util.List.class);
-        verify(api).reconcile(captor.capture(), org.mockito.ArgumentMatchers.any());
+        verify(api).reconcile(captor.capture(), any());
         assertEquals(1, captor.getValue().size());
         assertEquals("organizer@contoso.com", captor.getValue().getFirst().userId());
     }

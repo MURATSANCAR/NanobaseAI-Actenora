@@ -17,7 +17,7 @@ Copy `.env.example` and set:
 |----------|---------|
 | `SPRING_PROFILES_ACTIVE` | `graph-sandbox,local` |
 | `ACTENORA_MICROSOFT_GRAPH_ENABLED` | `true` |
-| `ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE` | Shared secret matching subscription `clientState` |
+| `ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE` | Bootstrap/default secret; runtime validates the stored `clientState` for each subscription |
 | `ACTENORA_MICROSOFT_GRAPH_TENANT_ID` / `CLIENT_ID` / `CLIENT_SECRET` | Preferred Graph credentials (`AUTH_MODE=CLIENT_SECRET` for sandbox) |
 | `MICROSOFT_TENANT_ID` / `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Legacy aliases still accepted |
 | `ACTENORA_MICROSOFT_GRAPH_DEFAULT_MAILBOX_USER_ID` | UPN or Graph user id for transcript/calendar API calls |
@@ -78,12 +78,13 @@ Lifecycle notifications (`reauthorizationRequired`, `missed`) trigger automatic 
 
 ## Monitoring and alerts
 
-Scrape authenticated `/actuator/prometheus`. Alert on:
+Scrape `/actuator/prometheus` from a private scrape network (endpoint is explicitly `permitAll` for Prometheus; do not expose it publicly). Alert on:
 
 - `actenora_graph_webhook_notifications_total{outcome="rejected"}` increasing
 - `actenora_graph_tenant_unmapped_total` increasing
 - `actenora_graph_subscriptions_expiring > 0`
 - `actenora_graph_subscription_lifecycle_total{event="subscriptionRemoved"}` increasing (recreate the affected subscription)
+- `actenora_graph_subscription_renew_total{outcome="failure"}` increasing
 - `actenora_graph_transcript_oldest_pending_seconds` above the agreed transcript SLO
 - `actenora_graph_http_requests_total{outcome=~"5xx|transport"}` or sustained `status="429"` increases
 - `actenora_graph_circuit_open == 1`

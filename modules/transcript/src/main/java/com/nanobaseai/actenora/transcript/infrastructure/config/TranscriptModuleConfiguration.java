@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.transcript.infrastructure.config;
 
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventMessagingConfig;
+import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
 import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.api.TranscriptDeploymentMode;
@@ -30,6 +31,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 
 import java.net.URI;
 
@@ -100,8 +102,8 @@ public class TranscriptModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(TranscriptEventPublisher.class)
-    TranscriptEventPublisher transcriptEventPublisher(EventBackbone backbone, InstantClock clock) {
-        return new OutboxTranscriptEventPublisher(backbone.outboxPublisher(), clock, "transcript");
+    TranscriptEventPublisher transcriptEventPublisher(@Lazy OutboxPublisher outboxPublisher, InstantClock clock) {
+        return new OutboxTranscriptEventPublisher(outboxPublisher, clock, "transcript");
     }
 
     @Bean

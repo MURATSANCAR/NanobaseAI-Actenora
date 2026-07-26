@@ -43,11 +43,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
 
 @Configuration
+@EnableTransactionManagement
 @EnableConfigurationProperties(MicrosoftGraphSpringProperties.class)
 @ConditionalOnProperty(name = "actenora.microsoft-graph.enabled", havingValue = "true", matchIfMissing = false)
 public class MicrosoftConnectionModuleConfiguration {

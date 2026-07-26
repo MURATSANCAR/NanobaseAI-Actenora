@@ -19,8 +19,11 @@ import java.util.function.Consumer;
 
 /**
  * Subscription create/renew plus change & lifecycle notification handling with idempotency.
+ *
+ * <p>Not {@code final}: Spring must CGLIB-proxy this bean so {@code @Transactional} on
+ * notification handlers actually opens a TX around claim + outbox enqueue.
  */
-public final class SubscriptionLifecycleService {
+public class SubscriptionLifecycleService {
 
     public static final String CONSUMER_CHANGE = "graph-change-notification";
     public static final String CONSUMER_LIFECYCLE = "graph-lifecycle-notification";
@@ -55,6 +58,19 @@ public final class SubscriptionLifecycleService {
     }
 
     public List<GraphSubscription> renewExpiring() {
+        RenewBatchResult result = renewExpiringBatch();
+        if (result.failureCount() > 0) {
+            RuntimeException failure = result.failures().getFirst();
+            result.failures().stream().skip(1).forEach(failure::addSuppressed);
+            throw failure;
+        }
+        return result.renewed();
+    }
+
+    /**
+     * Renews expiring subscriptions without aborting the batch on the first failure.
+     */
+    public RenewBatchResult renewExpiringBatch() {
         List<GraphSubscription> renewed = new ArrayList<>();
         List<RuntimeException> failures = new ArrayList<>();
         for (GraphSubscription subscription : subscriptionStore.findExpiringBefore(clock.now().plus(renewBeforeExpiry))) {
@@ -70,12 +86,18 @@ public final class SubscriptionLifecycleService {
                 failures.add(ex);
             }
         }
-        if (!failures.isEmpty()) {
-            RuntimeException failure = failures.getFirst();
-            failures.stream().skip(1).forEach(failure::addSuppressed);
-            throw failure;
+        return new RenewBatchResult(List.copyOf(renewed), List.copyOf(failures));
+    }
+
+    public record RenewBatchResult(List<GraphSubscription> renewed, List<RuntimeException> failures) {
+        public RenewBatchResult {
+            renewed = List.copyOf(Objects.requireNonNull(renewed, "renewed"));
+            failures = List.copyOf(Objects.requireNonNull(failures, "failures"));
         }
-        return List.copyOf(renewed);
+
+        public int failureCount() {
+            return failures.size();
+        }
     }
 
     /**

@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.microsoftconnection.application;
 import com.nanobaseai.actenora.microsoftconnection.application.model.CalendarEvent;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscription;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -36,14 +37,12 @@ public final class ReconciliationJob {
     ) {
         Objects.requireNonNull(mailboxes, "mailboxes");
         Objects.requireNonNull(eventConsumer, "eventConsumer");
-        List<GraphSubscription> renewed = List.of();
-        List<RuntimeException> failures = new java.util.ArrayList<>();
-        try {
-            renewed = subscriptionLifecycleService.renewExpiring();
-        } catch (RuntimeException ex) {
-            failures.add(ex);
-        }
-        List<CalendarEvent> polled = new java.util.ArrayList<>();
+
+        SubscriptionLifecycleService.RenewBatchResult renew =
+                subscriptionLifecycleService.renewExpiringBatch();
+
+        List<CalendarEvent> polled = new ArrayList<>();
+        List<RuntimeException> pollFailures = new ArrayList<>();
         for (PollingFallbackService.MailboxRef mailbox : mailboxes) {
             try {
                 List<CalendarEvent> events = pollingFallbackService.pollMailbox(
@@ -51,22 +50,57 @@ public final class ReconciliationJob {
                 eventConsumer.accept(mailbox.tenantId(), events);
                 polled.addAll(events);
             } catch (RuntimeException ex) {
-                failures.add(ex);
+                pollFailures.add(ex);
             }
         }
-        if (!failures.isEmpty()) {
+
+        ReconciliationResult result = new ReconciliationResult(
+                renew.renewed().size(),
+                renew.failureCount(),
+                polled.size(),
+                pollFailures.size()
+        );
+
+        if (result.hasFailures()) {
+            List<RuntimeException> failures = new ArrayList<>(renew.failures());
+            failures.addAll(pollFailures);
             RuntimeException failure = failures.getFirst();
             failures.stream().skip(1).forEach(failure::addSuppressed);
-            throw failure;
+            throw new ReconciliationFailedException(result, failure);
         }
-        return new ReconciliationResult(renewed.size(), polled.size());
+        return result;
     }
 
-    public record ReconciliationResult(int subscriptionsRenewed, int eventsPolled) {
+    public record ReconciliationResult(
+            int subscriptionsRenewed,
+            int subscriptionRenewFailures,
+            int eventsPolled,
+            int mailboxPollFailures
+    ) {
         public ReconciliationResult {
-            if (subscriptionsRenewed < 0 || eventsPolled < 0) {
+            if (subscriptionsRenewed < 0
+                    || subscriptionRenewFailures < 0
+                    || eventsPolled < 0
+                    || mailboxPollFailures < 0) {
                 throw new IllegalArgumentException("counts must be >= 0");
             }
+        }
+
+        public boolean hasFailures() {
+            return subscriptionRenewFailures > 0 || mailboxPollFailures > 0;
+        }
+    }
+
+    public static final class ReconciliationFailedException extends RuntimeException {
+        private final ReconciliationResult result;
+
+        public ReconciliationFailedException(ReconciliationResult result, Throwable cause) {
+            super(cause.getMessage(), cause);
+            this.result = Objects.requireNonNull(result, "result");
+        }
+
+        public ReconciliationResult result() {
+            return result;
         }
     }
 

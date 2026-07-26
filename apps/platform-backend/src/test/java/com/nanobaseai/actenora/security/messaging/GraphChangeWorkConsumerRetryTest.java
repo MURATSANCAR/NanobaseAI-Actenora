@@ -41,7 +41,7 @@ class GraphChangeWorkConsumerRetryTest {
                 TenantId.random(),
                 "GraphSubscription",
                 "sub-1",
-                null,
+                UUID.randomUUID(),
                 null,
                 null,
                 "microsoft-connection",

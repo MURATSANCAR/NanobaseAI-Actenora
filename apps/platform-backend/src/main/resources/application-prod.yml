@@ -36,6 +36,8 @@ spring:
 actenora:
   persistence:
     mode: jdbc
+  messaging:
+    mode: jdbc-rabbit
   tenancy:
     require-security-context: true
   object-storage:
@@ -76,6 +78,7 @@ actenora:
     workers-enabled: ${ACTENORA_MICROSOFT_GRAPH_WORKERS_ENABLED:true}
     default-mailbox-user-id: ${ACTENORA_MICROSOFT_GRAPH_DEFAULT_MAILBOX_USER_ID:}
     transcript-poll-interval: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_INTERVAL:PT5M}
+    reconcile-interval: ${ACTENORA_MICROSOFT_GRAPH_RECONCILE_INTERVAL:PT30M}
     subscription-renew-before: ${ACTENORA_MICROSOFT_GRAPH_SUBSCRIPTION_RENEW_BEFORE:PT6H}
     subscription-renew-window: ${ACTENORA_MICROSOFT_GRAPH_SUBSCRIPTION_RENEW_WINDOW:PT48H}
     webhook:

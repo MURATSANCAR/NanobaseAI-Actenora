@@ -138,6 +138,24 @@ public final class GraphObservability implements GraphTelemetry {
         }
     }
 
+    public void recordSubscriptionRenew(int renewed, int failed) {
+        if (renewed > 0) {
+            registry.counter("actenora.graph.subscription.renew", "outcome", "success").increment(renewed);
+        }
+        if (failed > 0) {
+            registry.counter("actenora.graph.subscription.renew", "outcome", "failure").increment(failed);
+        }
+    }
+
+    public void recordMailboxPoll(int polledEvents, int failedMailboxes) {
+        if (polledEvents > 0) {
+            registry.counter("actenora.graph.mailbox.poll", "outcome", "success").increment(polledEvents);
+        }
+        if (failedMailboxes > 0) {
+            registry.counter("actenora.graph.mailbox.poll", "outcome", "failure").increment(failedMailboxes);
+        }
+    }
+
     public void recordTranscriptPoll(String outcome) {
         registry.counter("actenora.graph.transcript.poll", "outcome", outcome).increment();
     }

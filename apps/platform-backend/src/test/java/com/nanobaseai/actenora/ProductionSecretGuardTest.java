@@ -149,4 +149,34 @@ class ProductionSecretGuardTest {
         assertTrue(ex.getMessage().contains("actenora.persistence.mode"));
         assertTrue(ex.getMessage().contains("actenora.messaging.mode"));
     }
+
+    @Test
+    void prodGraphRequiresCertificateAuth() {
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles("prod");
+        ProductionSecretGuard guard = new ProductionSecretGuard(
+                env,
+                false,
+                "prod-db-secret-xyz",
+                "prod-rabbit-secret-xyz",
+                "prod-minio-secret-xyz",
+                "prod-graph-client-state-secret",
+                "prod-delivery-webhook-secret",
+                "prod-portal-link-hmac-secret",
+                "smtp.office365.com",
+                true,
+                "jdbc",
+                "jdbc-rabbit",
+                "CLIENT_SECRET",
+                "",
+                ""
+        );
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> guard.run(new DefaultApplicationArguments()));
+        assertTrue(ex.getMessage().contains("actenora.microsoft-graph.auth-mode"));
+        assertTrue(ex.getMessage().contains("certificate-pem-path"));
+        assertTrue(ex.getMessage().contains("private-key-pem-path"));
+    }
 }

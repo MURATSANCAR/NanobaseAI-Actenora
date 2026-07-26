@@ -71,7 +71,11 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     }
 
     private static boolean isHealth(String uri) {
-        return uri != null && (uri.startsWith("/actuator/health") || uri.startsWith("/health"));
+        return uri != null && (
+                uri.startsWith("/actuator/health")
+                        || uri.startsWith("/actuator/prometheus")
+                        || uri.startsWith("/actuator/info")
+                        || uri.startsWith("/health"));
     }
 
     private static String clientKey(HttpServletRequest request) {

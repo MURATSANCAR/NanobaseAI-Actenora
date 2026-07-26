@@ -71,6 +71,7 @@ public class PlatformSecurityConfiguration {
                                     "/actuator/health",
                                     "/actuator/health/**",
                                     "/actuator/info",
+                                    "/actuator/prometheus",
                                     "/api/health",
                                     "/api/v1/delivery/webhooks/**",
                                     "/api/v1/microsoft/webhooks/**"

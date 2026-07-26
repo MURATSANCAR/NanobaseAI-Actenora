@@ -83,15 +83,16 @@ public final class GraphChangeNotificationProcessor {
                 + "\"resource\":\"" + escape(notification.resource()) + "\","
                 + "\"tenantId\":\"" + (tenantId == null ? "" : tenantId) + "\""
                 + "}";
+        UUID eventId = UUID.randomUUID();
         outboxPublisher.get().enqueue(new EventEnvelope(
-                UUID.randomUUID(),
+                eventId,
                 GRAPH_CHANGE_RECEIVED,
                 1,
                 Instant.now(),
                 envelopeTenant,
                 "GraphSubscription",
                 notification.subscriptionId(),
-                null,
+                eventId,
                 null,
                 null,
                 "microsoft-connection",

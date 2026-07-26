@@ -42,9 +42,10 @@ public class MicrosoftConnectionPlatformConfiguration {
     }
 
     @Bean
+    @Lazy
     TeamsTranscriptIngestService teamsTranscriptIngestService(
             MicrosoftConnectionApi microsoftConnectionApi,
-            TranscriptApi transcriptApi,
+            @Lazy TranscriptApi transcriptApi,
             MeetingApi meetingApi,
             FixedTenantContext fixedTenantContext,
             SubscriptionStore subscriptionStore,
@@ -61,12 +62,13 @@ public class MicrosoftConnectionPlatformConfiguration {
     }
 
     @Bean
+    @Lazy
     TeamsTranscriptPollScheduler teamsTranscriptPollScheduler(
             @Lazy TeamsTranscriptIngestService teamsTranscriptIngestService,
             MeetingApi meetingApi,
             FixedTenantContext fixedTenantContext,
             SubscriptionStore subscriptionStore,
-            TranscriptApi transcriptApi,
+            @Lazy TranscriptApi transcriptApi,
             TranscriptPollWorkStore workStore,
             GraphObservability observability,
             @Value("${actenora.microsoft-graph.transcript-poll-max-attempts:24}") int maxAttempts,
@@ -133,6 +135,7 @@ public class MicrosoftConnectionPlatformConfiguration {
     }
 
     @Bean
+    @Lazy
     @ConditionalOnProperty(name = "actenora.microsoft-graph.workers-enabled", havingValue = "true", matchIfMissing = true)
     GraphReconciliationScheduledWorker graphReconciliationScheduledWorker(
             MicrosoftConnectionApi api,
@@ -212,14 +215,24 @@ public class MicrosoftConnectionPlatformConfiguration {
                 return;
             }
             try {
-                api.reconcile(
+                var result = api.reconcile(
                         mailboxes(),
                         (tenantId, events) -> calendarMeetingUpsertAdapter.upsertEvents(
                                 com.nanobaseai.actenora.sharedkernel.domain.TenantId.of(tenantId),
                                 events));
+                observability.recordSubscriptionRenew(
+                        result.subscriptionsRenewed(), result.subscriptionRenewFailures());
+                observability.recordMailboxPoll(result.eventsPolled(), result.mailboxPollFailures());
                 observability.recordReconciliation(true);
                 observability.updateExpiringSubscriptions(
                         subscriptionStore.findExpiringBefore(Instant.now().plus(Duration.ofHours(6))).size());
+            } catch (com.nanobaseai.actenora.microsoftconnection.application.ReconciliationJob.ReconciliationFailedException ex) {
+                var result = ex.result();
+                observability.recordSubscriptionRenew(
+                        result.subscriptionsRenewed(), result.subscriptionRenewFailures());
+                observability.recordMailboxPoll(result.eventsPolled(), result.mailboxPollFailures());
+                observability.recordReconciliation(false);
+                throw ex;
             } catch (RuntimeException ex) {
                 observability.recordReconciliation(false);
                 throw ex;

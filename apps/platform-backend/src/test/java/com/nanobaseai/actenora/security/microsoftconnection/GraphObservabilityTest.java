@@ -28,4 +28,26 @@ class GraphObservabilityTest {
         observability.recordHttp(200, Duration.ofMillis(5));
         assertEquals("CLOSED", observability.circuitState());
     }
+
+    @Test
+    void recordsSubscriptionRenewSuccessAndFailureCounters() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        GraphObservability observability = new GraphObservability(registry, 5, Duration.ofSeconds(30));
+
+        observability.recordSubscriptionRenew(2, 1);
+
+        assertEquals(2.0, registry.counter("actenora.graph.subscription.renew", "outcome", "success").count());
+        assertEquals(1.0, registry.counter("actenora.graph.subscription.renew", "outcome", "failure").count());
+    }
+
+    @Test
+    void recordsMailboxPollSuccessAndFailureCounters() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        GraphObservability observability = new GraphObservability(registry, 5, Duration.ofSeconds(30));
+
+        observability.recordMailboxPoll(3, 2);
+
+        assertEquals(3.0, registry.counter("actenora.graph.mailbox.poll", "outcome", "success").count());
+        assertEquals(2.0, registry.counter("actenora.graph.mailbox.poll", "outcome", "failure").count());
+    }
 }
