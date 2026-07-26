@@ -106,7 +106,7 @@ public class MicrosoftGraphSubscriptionController {
             String resource,
             String changeType,
             String notificationUrl,
-            Instant expirationDateTime,
+            String expirationDateTime,
             String applicationId
     ) {
         static SubscriptionView from(GraphSubscription s) {
@@ -116,7 +116,7 @@ public class MicrosoftGraphSubscriptionController {
                     s.resource(),
                     s.changeType(),
                     s.notificationUrl(),
-                    s.expirationDateTime(),
+                    s.expirationDateTime().toString(),
                     s.applicationId()
             );
         }

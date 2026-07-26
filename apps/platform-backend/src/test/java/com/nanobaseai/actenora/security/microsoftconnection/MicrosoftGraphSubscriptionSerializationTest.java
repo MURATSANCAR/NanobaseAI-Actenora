@@ -39,5 +39,6 @@ class MicrosoftGraphSubscriptionSerializationTest {
         String json = mapper.writeValueAsString(List.of(view));
 
         assertTrue(json.contains("\"expirationDateTime\":\"2026-07-28T09:06:05Z\""));
+        assertTrue(!json.contains("\"expirationDateTime\":178"));
     }
 }
