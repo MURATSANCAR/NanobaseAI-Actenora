@@ -149,7 +149,7 @@ public class ModelManagementPlatformConfiguration {
                 if (definition.status() != ModelStatus.ENABLED) {
                     continue;
                 }
-                ModelRole role = resolveRole(definition);
+                List<ModelRole> roles = resolveRoles(definition);
                 for (ModelDeployment deployment : deployments.findByModelDefinitionId(definition.id())) {
                     if (deployment.isHeartbeatTimedOut(now, healthSettings.heartbeatTimeout())) {
                         deployment.applyHeartbeatTimeout(now, healthSettings.heartbeatTimeout());
@@ -157,35 +157,56 @@ public class ModelManagementPlatformConfiguration {
                     }
                     // Keep unhealthy / draining deployments so FAZ 15 can fall back
                     // SAME_MODEL_OTHER_DEPLOYMENT with accurate provenance.
-                    refs.add(new LocalDeploymentRef(
-                            deployment.id(),
-                            definition.id(),
-                            definition.modelKey(),
-                            deployment.deploymentKey(),
-                            role,
-                            definition.qualityScore(),
-                            deployment.acceptsNewWork(),
-                            false,
-                            definition.priority()
-                    ));
+                    for (ModelRole role : roles) {
+                        refs.add(new LocalDeploymentRef(
+                                deployment.id(),
+                                definition.id(),
+                                definition.modelKey(),
+                                deployment.deploymentKey(),
+                                role,
+                                definition.qualityScore(),
+                                deployment.acceptsNewWork(),
+                                false,
+                                definition.priority()
+                        ));
+                    }
                 }
             }
             refs.sort(Comparator.comparingInt(LocalDeploymentRef::priority)
-                    .thenComparing(LocalDeploymentRef::deploymentKey));
+                    .thenComparing(LocalDeploymentRef::deploymentKey)
+                    .thenComparing(d -> d.role().name()));
             return List.copyOf(refs);
         }
 
-        static ModelRole resolveRole(ModelDefinition definition) {
+        /**
+         * One physical deployment can serve multiple pipeline roles when its capability set covers them.
+         * Preferring a single role (e.g. FINAL_NOTE over TRANSCRIPT_EXTRACTION) left CHUNK_EXTRACTION
+         * with an empty FAST_EXTRACTION catalog and forced retry-queue.
+         */
+        static List<ModelRole> resolveRoles(ModelDefinition definition) {
+            List<ModelRole> roles = new ArrayList<>();
+            if (capabilityEnabled(definition, ModelCapabilityType.TRANSCRIPT_EXTRACTION)
+                    || capabilityEnabled(definition, ModelCapabilityType.DECISION_EXTRACTION)
+                    || capabilityEnabled(definition, ModelCapabilityType.ACTION_EXTRACTION)
+                    || capabilityEnabled(definition, ModelCapabilityType.RISK_EXTRACTION)) {
+                roles.add(ModelRole.FAST_EXTRACTION);
+            }
+            if (capabilityEnabled(definition, ModelCapabilityType.FINAL_NOTE)
+                    || capabilityEnabled(definition, ModelCapabilityType.SUMMARIZATION)) {
+                roles.add(ModelRole.QWEN27_FINAL);
+            }
             if (capabilityEnabled(definition, ModelCapabilityType.VALIDATION)) {
-                return ModelRole.VALIDATION;
+                roles.add(ModelRole.VALIDATION);
             }
-            if (capabilityEnabled(definition, ModelCapabilityType.FINAL_NOTE)) {
-                return ModelRole.QWEN27_FINAL;
+            if (roles.isEmpty()) {
+                roles.add(ModelRole.QWEN27_FINAL);
             }
-            if (capabilityEnabled(definition, ModelCapabilityType.TRANSCRIPT_EXTRACTION)) {
-                return ModelRole.FAST_EXTRACTION;
-            }
-            return ModelRole.QWEN27_FINAL;
+            return List.copyOf(roles);
+        }
+
+        /** @deprecated use {@link #resolveRoles(ModelDefinition)} */
+        static ModelRole resolveRole(ModelDefinition definition) {
+            return resolveRoles(definition).getFirst();
         }
 
         private static boolean capabilityEnabled(ModelDefinition definition, ModelCapabilityType type) {
