@@ -275,7 +275,9 @@ export interface ApiClient {
   completeAction(actionId: string): Promise<ActionItem>;
   listCommitments(params?: ListArtifactsParams): Promise<CursorPage<CommitmentItem>>;
   listTemplates(): Promise<{ items: TemplateSummary[] }>;
+  createTemplate(body: { name: string; locale?: string }): Promise<TemplateSummary>;
   getTeamsSettings(): Promise<TeamsSettings>;
+  updateTeamsSettings(body: { autoJoinEnabled: boolean }): Promise<TeamsSettings>;
   getModelHealth(): Promise<ModelHealthResponse>;
   listAiJobs(params?: { cursor?: string; limit?: number }): Promise<CursorPage<AiJob>>;
   getOperationsOverview(): Promise<OperationsOverview>;

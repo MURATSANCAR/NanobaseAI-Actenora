@@ -11,6 +11,7 @@ USER_OID="${VITE_MOCK_ENTRA_OID:?VITE_MOCK_ENTRA_OID required (sandbox user oid)
 EMAIL="${VITE_MOCK_EMAIL:-operator@example.test}"
 GRAPH_EVENT_ID="${ACTENORA_GRAPH_EVENT_IMMUTABLE_ID:-}"
 MEETING_ID="${ACTENORA_MEETING_OCCURRENCE_ID:-}"
+CROSS_TENANT_MEETING_ID="${ACTENORA_CROSS_TENANT_MEETING_ID:-}"
 
 auth_headers=(
   -H "X-Mock-Entra-Oid: ${USER_OID}"
@@ -45,20 +46,34 @@ BODY=$(curl -sf -X POST \
 [[ "${BODY}" == "${TOKEN}" ]] || fail "webhook validation handshake (got: ${BODY})"
 echo "OK webhook validation handshake"
 
-# Negative: blank clientState must not be accepted when expected state is configured
-REJECT_HTTP=$(curl -s -o /tmp/actenora-wh.json -w "%{http_code}" -X POST \
+# Negative: blank clientState
+REJECT_HTTP=$(curl -s -o /tmp/actenora-wh-blank.json -w "%{http_code}" -X POST \
   -H "Content-Type: application/json" \
   -d '{"value":[{"subscriptionId":"sub-neg","changeType":"updated","resource":"users/u/events","clientState":"","tenantId":"'"${TENANT_ID}"'","resourceData":{"id":"evt-neg"}}]}' \
   "${BASE_URL}/api/v1/microsoft/webhooks/graph-notifications" || true)
-# Accepted with rejected count, or 4xx — either is fine as long as not silently processed as success-only
 if [[ "${REJECT_HTTP}" == "202" ]]; then
-  grep -Eq '"rejected":\s*[1-9]' /tmp/actenora-wh.json \
+  grep -Eq '"rejected":\s*[1-9]' /tmp/actenora-wh-blank.json \
     || fail "blank clientState must be rejected in webhook batch"
   echo "OK blank clientState rejected"
 elif [[ "${REJECT_HTTP}" =~ ^4 ]]; then
   echo "OK blank clientState denied (${REJECT_HTTP})"
 else
   fail "unexpected webhook response for blank clientState HTTP ${REJECT_HTTP}"
+fi
+
+# Negative: wrong clientState
+WRONG_HTTP=$(curl -s -o /tmp/actenora-wh-wrong.json -w "%{http_code}" -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"value":[{"subscriptionId":"sub-neg2","changeType":"updated","resource":"users/u/events","clientState":"definitely-wrong-client-state","tenantId":"'"${TENANT_ID}"'","resourceData":{"id":"evt-neg2"}}]}' \
+  "${BASE_URL}/api/v1/microsoft/webhooks/graph-notifications" || true)
+if [[ "${WRONG_HTTP}" == "202" ]]; then
+  grep -Eq '"rejected":\s*[1-9]' /tmp/actenora-wh-wrong.json \
+    || fail "wrong clientState must be rejected in webhook batch"
+  echo "OK wrong clientState rejected"
+elif [[ "${WRONG_HTTP}" =~ ^4 ]]; then
+  echo "OK wrong clientState denied (${WRONG_HTTP})"
+else
+  fail "unexpected webhook response for wrong clientState HTTP ${WRONG_HTTP}"
 fi
 
 if [[ -n "${MEETING_ID}" ]]; then
@@ -69,6 +84,15 @@ if [[ -n "${MEETING_ID}" ]]; then
   echo "OK portal transcript endpoint (${#SEG} bytes)"
 elif [[ -n "${GRAPH_EVENT_ID}" ]]; then
   echo "INFO set ACTENORA_MEETING_OCCURRENCE_ID after calendar upsert to assert portal detail"
+fi
+
+if [[ -n "${CROSS_TENANT_MEETING_ID}" ]]; then
+  CROSS_HTTP=$(curl -s -o /tmp/actenora-cross.json -w "%{http_code}" \
+    "${auth_headers[@]}" \
+    "${BASE_URL}/api/v1/portal/meetings/${CROSS_TENANT_MEETING_ID}" || true)
+  [[ "${CROSS_HTTP}" == "403" ]] \
+    || fail "cross-tenant meeting must return 403 (got ${CROSS_HTTP})"
+  echo "OK cross-tenant meeting denied (403)"
 fi
 
 echo "Graph sandbox acceptance finished (green)."

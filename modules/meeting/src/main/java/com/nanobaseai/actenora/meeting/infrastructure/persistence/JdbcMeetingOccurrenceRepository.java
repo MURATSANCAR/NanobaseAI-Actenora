@@ -104,6 +104,16 @@ public final class JdbcMeetingOccurrenceRepository implements MeetingOccurrenceR
     }
 
     @Override
+    public boolean existsById(UUID id) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM meeting.meeting_occurrences WHERE id = ?",
+                Integer.class,
+                id
+        );
+        return count != null && count > 0;
+    }
+
+    @Override
     public Optional<MeetingOccurrence> findByTenantIdAndGraphEventImmutableId(
             TenantId tenantId, String graphEventImmutableId) {
         String sql = "SELECT " + COLUMNS + """

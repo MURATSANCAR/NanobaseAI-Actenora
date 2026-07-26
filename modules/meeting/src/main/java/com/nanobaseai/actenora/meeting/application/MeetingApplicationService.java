@@ -16,6 +16,7 @@ import com.nanobaseai.actenora.meeting.application.port.MeetingParticipantReposi
 import com.nanobaseai.actenora.meeting.application.port.MeetingQuotaPort;
 import com.nanobaseai.actenora.meeting.application.port.MeetingSeriesRepository;
 import com.nanobaseai.actenora.meeting.application.port.TenantContextPort;
+import com.nanobaseai.actenora.meeting.domain.collaboration.UnauthorizedMeetingAccessException;
 import com.nanobaseai.actenora.meeting.domain.exception.BusinessContextNotFoundException;
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateGraphIdentityException;
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateOccurrenceIdentityException;
@@ -246,8 +247,14 @@ public final class MeetingApplicationService {
     }
 
     private MeetingOccurrence requireOccurrence(UUID id, TenantId tenantId) {
-        return occurrenceRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new MeetingNotFoundException(id));
+        Optional<MeetingOccurrence> owned = occurrenceRepository.findByIdAndTenantId(id, tenantId);
+        if (owned.isPresent()) {
+            return owned.get();
+        }
+        if (occurrenceRepository.existsById(id)) {
+            throw new UnauthorizedMeetingAccessException(id);
+        }
+        throw new MeetingNotFoundException(id);
     }
 
     private void assertUniqueGraphIdentity(TenantId tenantId, String graphEventImmutableId) {

@@ -203,6 +203,7 @@
   "admin.createTemplate": "Şablon oluştur",
   "admin.saveTemplate": "Şablonu kaydet",
   "admin.savePendingBackend": "Kayıt sıraya alındı — portal yönetim API'leri henüz backend'e bağlı değil.",
+  "admin.templateSaved": "Şablon oluşturuldu.",
   "admin.teamsPreferences": "Teams tercihleri",
   "admin.stub.templates.title": "Şablon API yapılandırılmadı",
   "admin.stub.templates.body": "Şablon Stüdyosu, portal BFF şablon listesi ve CRUD sunana kadar bekliyor.",

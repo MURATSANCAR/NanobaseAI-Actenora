@@ -45,11 +45,23 @@ import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.IdentityClaims;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
+import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
+import com.nanobaseai.actenora.template.application.DocumentRenderService;
+import com.nanobaseai.actenora.template.application.TemplateStudioService;
+import com.nanobaseai.actenora.template.domain.SchemaJsonParser;
+import com.nanobaseai.actenora.template.infrastructure.TemplateApiFacade;
+import com.nanobaseai.actenora.template.infrastructure.persistence.InMemoryMeetingTemplateRepository;
+import com.nanobaseai.actenora.template.infrastructure.persistence.InMemoryNoteTemplateLockRepository;
+import com.nanobaseai.actenora.template.infrastructure.persistence.InMemoryRenderJobRepository;
+import com.nanobaseai.actenora.template.infrastructure.persistence.InMemoryRenderedDocumentRepository;
+import com.nanobaseai.actenora.template.api.TemplateApi;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -127,6 +139,30 @@ class PortalApiBindingTest {
         ObjectProvider<OperationsApi> operationsProvider = beanFactory.getBeanProvider(OperationsApi.class);
         ObjectProvider<TranscriptApi> transcriptProvider = beanFactory.getBeanProvider(TranscriptApi.class);
 
+        InMemoryMeetingTemplateRepository templateRepo = new InMemoryMeetingTemplateRepository();
+        InstantClock templateClock = new InstantClock(Clock.systemUTC());
+        TemplateStudioService templateStudio = new TemplateStudioService(
+                templateRepo,
+                new InMemoryNoteTemplateLockRepository(),
+                new SchemaJsonParser(new ObjectMapper()),
+                templateClock
+        );
+        DocumentRenderService renderService = new DocumentRenderService(
+                templateRepo,
+                new InMemoryNoteTemplateLockRepository(),
+                new InMemoryRenderJobRepository(),
+                new InMemoryRenderedDocumentRepository(),
+                templateClock
+        );
+        TemplateApi templateApi = new TemplateApiFacade(
+                templateStudio,
+                renderService,
+                new InMemoryRenderedDocumentRepository()
+        );
+
+        StaticListableBeanFactory optionalBeans = new StaticListableBeanFactory();
+        optionalBeans.addBean("templateApi", templateApi);
+
         controller = new PortalApiController(
                 stubIdentityApi(),
                 meetingApi,
@@ -135,7 +171,13 @@ class PortalApiBindingTest {
                 noteApproval,
                 intelligenceProvider,
                 operationsProvider,
-                transcriptProvider
+                transcriptProvider,
+                optionalBeans.getBeanProvider(TemplateApi.class),
+                optionalBeans.getBeanProvider(com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi.class),
+                optionalBeans.getBeanProvider(com.nanobaseai.actenora.modelmanagement.api.ModelManagementApi.class),
+                new PortalTeamsPreferencesStore(),
+                "test-graph-client-id",
+                ""
         );
 
         bind(tenantId, userId, Set.of(
@@ -195,6 +237,31 @@ class PortalApiBindingTest {
         PortalApiController.MeetingDetailView detail = controller.meetingDetail(created.id());
         assertEquals(created.id(), detail.meeting().id());
         assertEquals(1, detail.participants().size());
+    }
+
+    @Test
+    void templatesListAndCreateAgainstTemplateModule() {
+        PortalApiController.TemplateListView empty = controller.listTemplates(null);
+        assertTrue(empty.items().isEmpty());
+
+        PortalApiController.TemplateSummaryView created = controller.createTemplate(
+                new PortalApiController.CreateTemplateBody("Executive summary", "en"));
+        assertEquals("Executive summary", created.name());
+        assertEquals("DRAFT", created.status());
+
+        PortalApiController.TemplateListView listed = controller.listTemplates(null);
+        assertEquals(1, listed.items().size());
+        assertEquals(created.id(), listed.items().get(0).id());
+    }
+
+    @Test
+    void teamsPreferencesPersistInPortalStore() {
+        PortalApiController.TeamsSettingsView initial = controller.teamsSettings(null);
+        assertFalse(initial.autoJoinEnabled());
+
+        PortalApiController.TeamsSettingsView updated = controller.updateTeamsSettings(
+                new PortalApiController.UpdateTeamsSettingsBody(true));
+        assertTrue(updated.autoJoinEnabled());
     }
 
     @Test

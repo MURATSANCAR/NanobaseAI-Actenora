@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.template.domain.TemplateDomainException;
 import com.nanobaseai.actenora.template.domain.TemplateVersion;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +43,10 @@ public class TemplateStudioService {
         MeetingTemplate template = MeetingTemplate.create(tenantId, name, now);
         templateRepository.save(template);
         return template;
+    }
+
+    public List<MeetingTemplate> listTemplates(TenantId tenantId) {
+        return templateRepository.listByTenant(tenantId);
     }
 
     public TemplateVersion createDraftVersion(TenantId tenantId, MeetingTemplateId templateId, String changelog) {

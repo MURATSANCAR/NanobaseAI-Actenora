@@ -63,11 +63,14 @@ import com.nanobaseai.actenora.modelmanagement.domain.ModelStatus;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -88,6 +91,7 @@ import java.util.UUID;
  * FAZ 16 — optional MeetingNoteHandoffPort persists FinalNoteDraft via Meeting Intelligence.
  */
 @Configuration
+@EnableScheduling
 @EnableConfigurationProperties({LocalProviderProperties.class, AiRoutingProperties.class})
 public class AiProcessingPlatformConfiguration {
 
@@ -260,6 +264,25 @@ public class AiProcessingPlatformConfiguration {
     @Bean
     TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler(AiProcessingApi aiProcessingApi) {
         return new TranscriptReadyAiAdmissionHandler(aiProcessingApi);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "actenora.ai.worker.enabled", havingValue = "true", matchIfMissing = true)
+    AiJobInferenceWorker aiJobInferenceWorker(AiJobInferenceExecutor inferenceExecutor) {
+        return new AiJobInferenceWorker(inferenceExecutor);
+    }
+
+    static final class AiJobInferenceWorker {
+        private final AiJobInferenceExecutor inferenceExecutor;
+
+        AiJobInferenceWorker(AiJobInferenceExecutor inferenceExecutor) {
+            this.inferenceExecutor = Objects.requireNonNull(inferenceExecutor, "inferenceExecutor");
+        }
+
+        @Scheduled(fixedDelayString = "${actenora.ai.worker.poll-interval:PT15S}")
+        void poll() {
+            inferenceExecutor.executeNext(Instant.now());
+        }
     }
 
     @Bean

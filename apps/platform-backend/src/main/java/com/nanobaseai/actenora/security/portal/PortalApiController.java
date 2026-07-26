@@ -24,9 +24,19 @@ import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteUpdateRequest;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNote;
+import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
+import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscription;
+import com.nanobaseai.actenora.modelmanagement.api.ModelManagementApi;
+import com.nanobaseai.actenora.modelmanagement.application.ActorPrincipal;
+import com.nanobaseai.actenora.modelmanagement.application.ModelControlPermission;
+import com.nanobaseai.actenora.modelmanagement.domain.DeploymentStatus;
 import com.nanobaseai.actenora.operations.api.OperationsApi;
 import com.nanobaseai.actenora.operations.application.OperationsViews;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.template.api.TemplateApi;
+import com.nanobaseai.actenora.template.domain.MeetingTemplate;
+import com.nanobaseai.actenora.template.domain.TemplateVersion;
+import com.nanobaseai.actenora.template.domain.TemplateVersionStatus;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
@@ -35,6 +45,7 @@ import com.nanobaseai.actenora.transcript.api.dto.TranscriptSegmentView;
 import com.nanobaseai.actenora.transcript.domain.TranscriptDomainException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -50,6 +61,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -77,6 +90,12 @@ public class PortalApiController {
     private final Optional<MeetingIntelligenceApi> meetingIntelligenceApi;
     private final Optional<OperationsApi> operationsApi;
     private final Optional<TranscriptApi> transcriptApi;
+    private final Optional<TemplateApi> templateApi;
+    private final Optional<MicrosoftConnectionApi> microsoftConnectionApi;
+    private final Optional<ModelManagementApi> modelManagementApi;
+    private final PortalTeamsPreferencesStore teamsPreferencesStore;
+    private final String graphClientId;
+    private final String recordingBaseUrl;
 
     public PortalApiController(
             IdentityApi identityApi,
@@ -86,7 +105,13 @@ public class PortalApiController {
             MeetingNoteApprovalService noteApprovalService,
             ObjectProvider<MeetingIntelligenceApi> meetingIntelligenceApi,
             ObjectProvider<OperationsApi> operationsApi,
-            ObjectProvider<TranscriptApi> transcriptApi
+            ObjectProvider<TranscriptApi> transcriptApi,
+            ObjectProvider<TemplateApi> templateApi,
+            ObjectProvider<MicrosoftConnectionApi> microsoftConnectionApi,
+            ObjectProvider<ModelManagementApi> modelManagementApi,
+            PortalTeamsPreferencesStore teamsPreferencesStore,
+            @Value("${actenora.microsoft-graph.client-id:}") String graphClientId,
+            @Value("${actenora.portal.recording-base-url:}") String recordingBaseUrl
     ) {
         this.identityApi = Objects.requireNonNull(identityApi, "identityApi");
         this.meetingApi = Objects.requireNonNull(meetingApi, "meetingApi");
@@ -96,6 +121,12 @@ public class PortalApiController {
         this.meetingIntelligenceApi = Optional.ofNullable(meetingIntelligenceApi.getIfAvailable());
         this.operationsApi = Optional.ofNullable(operationsApi.getIfAvailable());
         this.transcriptApi = Optional.ofNullable(transcriptApi.getIfAvailable());
+        this.templateApi = Optional.ofNullable(templateApi.getIfAvailable());
+        this.microsoftConnectionApi = Optional.ofNullable(microsoftConnectionApi.getIfAvailable());
+        this.modelManagementApi = Optional.ofNullable(modelManagementApi.getIfAvailable());
+        this.teamsPreferencesStore = Objects.requireNonNull(teamsPreferencesStore, "teamsPreferencesStore");
+        this.graphClientId = graphClientId == null ? "" : graphClientId;
+        this.recordingBaseUrl = recordingBaseUrl == null ? "" : recordingBaseUrl;
     }
 
     @GetMapping("/me")
@@ -227,7 +258,8 @@ public class PortalApiController {
                 List.of(),
                 commitments,
                 List.of(),
-                false
+                false,
+                resolveRecording(meeting)
         );
     }
 
@@ -426,27 +458,59 @@ public class PortalApiController {
     }
 
     @GetMapping("/templates")
-    @RequiresPermission(Permission.MEETING_READ)
+    @RequiresPermission(Permission.TEMPLATE_MANAGE)
     public TemplateListView listTemplates(HttpServletResponse response) {
-        require(Permission.MEETING_READ);
-        markStub(response);
-        return new TemplateListView(List.of());
+        require(Permission.TEMPLATE_MANAGE);
+        if (templateApi.isEmpty()) {
+            markStub(response);
+            return new TemplateListView(List.of());
+        }
+        List<TemplateSummaryView> items = templateApi.get().listTemplates(principalTenantId()).stream()
+                .map(PortalApiController::toTemplateSummary)
+                .toList();
+        return new TemplateListView(items);
+    }
+
+    @PostMapping("/templates")
+    @RequiresPermission(Permission.TEMPLATE_MANAGE)
+    public TemplateSummaryView createTemplate(@RequestBody CreateTemplateBody body) {
+        require(Permission.TEMPLATE_MANAGE);
+        if (body == null || body.name() == null || body.name().isBlank()) {
+            throw new ActenoraException("INVALID_TEMPLATE_NAME", "Template name is required");
+        }
+        TemplateApi api = templateApi.orElseThrow(() ->
+                new ActenoraException("TEMPLATE_MODULE_UNAVAILABLE", "Template module is not enabled"));
+        var templateId = api.createTemplate(principalTenantId(), body.name().trim());
+        String locale = body.locale() == null || body.locale().isBlank() ? "en" : body.locale().trim();
+        return new TemplateSummaryView(templateId.value(), body.name().trim(), locale, 0, "DRAFT");
     }
 
     @GetMapping("/teams/settings")
     @RequiresPermission(Permission.TENANT_READ)
     public TeamsSettingsView teamsSettings(HttpServletResponse response) {
         require(Permission.TENANT_READ);
-        markStub(response);
-        return new TeamsSettingsView(false, "", "not_configured", false);
+        return buildTeamsSettings(TenantSecurityContext.require().tenantId().value(), response);
+    }
+
+    @PutMapping("/teams/settings")
+    @RequiresPermission(Permission.TENANT_ADMINISTER)
+    public TeamsSettingsView updateTeamsSettings(@RequestBody UpdateTeamsSettingsBody body) {
+        AuthenticatedPrincipal principal = require(Permission.TENANT_ADMINISTER);
+        if (body != null) {
+            teamsPreferencesStore.setAutoJoinEnabled(principal.tenantId().value(), body.autoJoinEnabled());
+        }
+        return buildTeamsSettings(principal.tenantId().value(), null);
     }
 
     @GetMapping("/model-control/health")
     @RequiresPermission(Permission.MODEL_CONTROL)
     public ModelHealthView modelHealth(HttpServletResponse response) {
         require(Permission.MODEL_CONTROL);
-        markStub(response);
-        return new ModelHealthView(List.of(), List.of(), new RoutingView("prefer-registry", List.of()));
+        if (modelManagementApi.isEmpty()) {
+            markStub(response);
+            return new ModelHealthView(List.of(), List.of(), new RoutingView("prefer-registry", List.of()));
+        }
+        return toPortalModelHealth(modelManagementApi.get().healthView(requireModelActor()));
     }
 
     @GetMapping("/ai-jobs")
@@ -495,6 +559,109 @@ public class PortalApiController {
         if (response != null) {
             response.setHeader(COMPOSITION_STUB_HEADER, "stub");
         }
+    }
+
+    private TeamsSettingsView buildTeamsSettings(UUID tenantId, HttpServletResponse response) {
+        List<GraphSubscription> subscriptions = microsoftConnectionApi
+                .map(api -> api.listSubscriptions(tenantId))
+                .orElse(List.of());
+        if (microsoftConnectionApi.isEmpty()) {
+            markStub(response);
+            return new TeamsSettingsView(false, graphClientId, "not_configured", teamsPreferencesStore.autoJoinEnabled(tenantId));
+        }
+        boolean connected = !subscriptions.isEmpty();
+        String webhookStatus = resolveWebhookStatus(subscriptions);
+        String appId = subscriptions.stream()
+                .map(GraphSubscription::applicationId)
+                .filter(id -> id != null && !id.isBlank())
+                .findFirst()
+                .orElse(graphClientId);
+        return new TeamsSettingsView(
+                connected,
+                appId == null ? "" : appId,
+                webhookStatus,
+                teamsPreferencesStore.autoJoinEnabled(tenantId)
+        );
+    }
+
+    private static String resolveWebhookStatus(List<GraphSubscription> subscriptions) {
+        if (subscriptions.isEmpty()) {
+            return "not_configured";
+        }
+        Instant now = Instant.now();
+        boolean active = subscriptions.stream().anyMatch(sub -> sub.expirationDateTime().isAfter(now));
+        return active ? "active" : "expired";
+    }
+
+    private RecordingView resolveRecording(MeetingResponse meeting) {
+        String url = meeting.joinWebUrl();
+        if ((url == null || url.isBlank()) && meeting.teamsMeetingId() != null && !recordingBaseUrl.isBlank()) {
+            url = recordingBaseUrl.replace("{meetingId}", meeting.teamsMeetingId());
+        }
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        return new RecordingView(url, null, null);
+    }
+
+    private static TemplateSummaryView toTemplateSummary(MeetingTemplate template) {
+        Optional<TemplateVersion> latest = template.versions().stream()
+                .max(Comparator.comparingInt(TemplateVersion::versionNumber));
+        int versionNumber = latest.map(TemplateVersion::versionNumber).orElse(0);
+        String status;
+        if (template.publishedVersionId().isPresent()) {
+            status = TemplateVersionStatus.PUBLISHED.name();
+        } else if (latest.isPresent()) {
+            status = latest.get().status().name();
+        } else {
+            status = TemplateVersionStatus.DRAFT.name();
+        }
+        return new TemplateSummaryView(
+                template.id().value(),
+                template.name(),
+                "en",
+                versionNumber,
+                status
+        );
+    }
+
+    private ModelHealthView toPortalModelHealth(
+            com.nanobaseai.actenora.modelmanagement.application.ModelHealthView health
+    ) {
+        List<ModelSummaryView> models = new ArrayList<>();
+        List<DeploymentSummaryView> deployments = new ArrayList<>();
+        for (var entry : health.models()) {
+            String displayName = entry.modelKey();
+            if (modelManagementApi.isPresent()) {
+                try {
+                    displayName = modelManagementApi.get().getModel(entry.modelKey()).displayName();
+                } catch (RuntimeException ignored) {
+                    /* keep modelKey */
+                }
+            }
+            models.add(new ModelSummaryView(
+                    entry.modelKey(),
+                    displayName,
+                    entry.acceptingNewWork(),
+                    entry.status().name()
+            ));
+            for (var deployment : entry.deployments()) {
+                boolean healthy = deployment.status() == DeploymentStatus.HEALTHY && !deployment.heartbeatTimedOut();
+                deployments.add(new DeploymentSummaryView(
+                        deployment.deploymentKey(),
+                        entry.modelKey(),
+                        deployment.deploymentKey(),
+                        healthy
+                ));
+            }
+        }
+        return new ModelHealthView(models, deployments, new RoutingView("prefer-registry", List.of()));
+    }
+
+    private ActorPrincipal requireModelActor() {
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
+        String role = principal.roles().stream().findFirst().orElse("OPERATIONS");
+        return ActorPrincipal.of(principal.userId(), role, EnumSet.allOf(ModelControlPermission.class));
     }
 
     private AuthenticatedPrincipal require(Permission permission) {
@@ -672,8 +839,12 @@ public class PortalApiController {
             List<Object> risks,
             List<CommitmentItemView> commitments,
             List<String> qualityFlags,
-            boolean partial
+            boolean partial,
+            RecordingView recording
     ) {
+    }
+
+    public record RecordingView(String url, String contentType, Long durationMs) {
     }
 
     public record TranscriptView(List<? extends Object> segments, List<String> speakers) {
@@ -742,7 +913,16 @@ public class PortalApiController {
     ) {
     }
 
-    public record TemplateListView(List<Object> items) {
+    public record TemplateListView(List<TemplateSummaryView> items) {
+    }
+
+    public record TemplateSummaryView(UUID id, String name, String locale, int version, String status) {
+    }
+
+    public record CreateTemplateBody(String name, String locale) {
+    }
+
+    public record UpdateTeamsSettingsBody(boolean autoJoinEnabled) {
     }
 
     public record TeamsSettingsView(
@@ -754,13 +934,22 @@ public class PortalApiController {
     }
 
     public record ModelHealthView(
-            List<Object> models,
-            List<Object> deployments,
+            List<ModelSummaryView> models,
+            List<DeploymentSummaryView> deployments,
             RoutingView routing
     ) {
     }
 
-    public record RoutingView(String strategy, List<Object> roles) {
+    public record ModelSummaryView(String modelKey, String displayName, boolean enabled, String status) {
+    }
+
+    public record DeploymentSummaryView(String deploymentKey, String modelKey, String nodeName, boolean healthy) {
+    }
+
+    public record RoutingView(String strategy, List<RoleRoutingView> roles) {
+    }
+
+    public record RoleRoutingView(String role, String primaryModel, String fallbackModel) {
     }
 
     public record AiJobView(

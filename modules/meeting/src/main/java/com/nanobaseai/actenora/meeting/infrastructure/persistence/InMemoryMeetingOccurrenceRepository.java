@@ -31,6 +31,11 @@ public final class InMemoryMeetingOccurrenceRepository implements MeetingOccurre
     }
 
     @Override
+    public boolean existsById(UUID id) {
+        return store.containsKey(id);
+    }
+
+    @Override
     public Optional<MeetingOccurrence> findByTenantIdAndGraphEventImmutableId(
             TenantId tenantId, String graphEventImmutableId) {
         return store.values().stream()

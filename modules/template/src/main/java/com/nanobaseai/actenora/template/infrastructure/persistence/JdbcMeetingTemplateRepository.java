@@ -85,6 +85,30 @@ public final class JdbcMeetingTemplateRepository implements MeetingTemplateRepos
     }
 
     @Override
+    public List<MeetingTemplate> listByTenant(TenantId tenantId) {
+        String sql = """
+                SELECT id, tenant_id, name, published_version_id, created_at, updated_at
+                FROM template.meeting_template WHERE tenant_id = ?
+                ORDER BY name
+                """;
+        return jdbc.query(sql, (rs, rowNum) -> {
+            UUID published = rs.getObject("published_version_id", UUID.class);
+            MeetingTemplateId templateId = MeetingTemplateId.of(rs.getObject("id", UUID.class));
+            TenantId tid = TenantId.of(rs.getObject("tenant_id", UUID.class));
+            List<TemplateVersion> versions = loadVersions(tid, templateId);
+            return MeetingTemplate.builder()
+                    .id(templateId)
+                    .tenantId(tid)
+                    .name(rs.getString("name"))
+                    .publishedVersionId(published == null ? null : TemplateVersionId.of(published))
+                    .versions(versions)
+                    .createdAt(JdbcInstant.get(rs, "created_at"))
+                    .updatedAt(JdbcInstant.get(rs, "updated_at"))
+                    .build();
+        }, tenantId.value());
+    }
+
+    @Override
     public Optional<TemplateVersion> findVersion(TenantId tenantId, TemplateVersionId versionId) {
         String sql = """
                 SELECT id, template_id, tenant_id, version_number, status, design_schema_json,

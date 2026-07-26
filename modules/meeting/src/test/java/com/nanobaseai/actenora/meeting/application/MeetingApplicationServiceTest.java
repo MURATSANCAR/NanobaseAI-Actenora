@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.meeting.domain.exception.DuplicateOccurrenceIdent
 import com.nanobaseai.actenora.meeting.domain.exception.InvalidDateRangeException;
 import com.nanobaseai.actenora.meeting.domain.exception.InvalidMeetingTransitionException;
 import com.nanobaseai.actenora.meeting.domain.exception.InvalidParticipantException;
+import com.nanobaseai.actenora.meeting.domain.collaboration.UnauthorizedMeetingAccessException;
 import com.nanobaseai.actenora.meeting.domain.exception.MeetingNotFoundException;
 import com.nanobaseai.actenora.meeting.domain.exception.OptimisticLockConflictException;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus;
@@ -140,7 +141,7 @@ class MeetingApplicationServiceTest {
         MeetingResponse meeting = createMeeting(contextId, "g-iso", "i-iso", Instant.parse("2026-07-25T10:00:00Z"));
 
         tenantContext.use(tenantB, actorB);
-        assertThrows(MeetingNotFoundException.class, () -> api.getMeeting(meeting.id()));
+        assertThrows(UnauthorizedMeetingAccessException.class, () -> api.getMeeting(meeting.id()));
     }
 
     @Test

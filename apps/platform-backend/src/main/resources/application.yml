@@ -105,6 +105,9 @@ actenora:
       streaming-enabled: ${ACTENORA_AI_PROVIDER_STREAMING_ENABLED:true}
       served-model-ids: ${ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS:qwen2.5-32b-instruct,qwen-local}
       max-attempts: ${ACTENORA_AI_PROVIDER_MAX_ATTEMPTS:3}
+    worker:
+      enabled: ${ACTENORA_AI_WORKER_ENABLED:true}
+      poll-interval: ${ACTENORA_AI_WORKER_POLL_INTERVAL:PT15S}
     routing:
       # false = FAZ 12 capability route stays authoritative, no routing/provenance audit
       enabled: ${ACTENORA_AI_ROUTING_ENABLED:true}
@@ -126,6 +129,7 @@ actenora:
     auth:
       # mock = X-Mock-* headers (local); msal = Entra Bearer via SPA (prod)
       mode: ${ACTENORA_PORTAL_AUTH_MODE:mock}
+    recording-base-url: ${ACTENORA_PORTAL_RECORDING_BASE_URL:}
   microsoft-graph:
     # Bounded context + its Graph notification webhook are disabled locally by default (FAZ 32)
     enabled: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:false}

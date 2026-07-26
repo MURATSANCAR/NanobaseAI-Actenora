@@ -15,6 +15,11 @@ public interface MeetingOccurrenceRepository {
 
     Optional<MeetingOccurrence> findByIdAndTenantId(UUID id, TenantId tenantId);
 
+    /**
+     * Cross-tenant existence check used to distinguish 404 vs 403 on isolation violations.
+     */
+    boolean existsById(UUID id);
+
     Optional<MeetingOccurrence> findByTenantIdAndGraphEventImmutableId(
             TenantId tenantId, String graphEventImmutableId);
 

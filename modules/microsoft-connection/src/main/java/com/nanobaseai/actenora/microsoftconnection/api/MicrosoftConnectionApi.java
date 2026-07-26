@@ -66,6 +66,14 @@ public final class MicrosoftConnectionApi {
         return meetingTranscriptService.meetingMetadata(tenantId, userId, meetingId);
     }
 
+    public Optional<OnlineMeetingMetadata> getMeetingByJoinWebUrl(
+            UUID tenantId,
+            String userId,
+            String joinWebUrl
+    ) {
+        return meetingTranscriptService.meetingMetadataByJoinWebUrl(tenantId, userId, joinWebUrl);
+    }
+
     public List<ParticipantMetadata> listParticipants(UUID tenantId, String userId, String meetingId) {
         return meetingTranscriptService.participants(tenantId, userId, meetingId);
     }

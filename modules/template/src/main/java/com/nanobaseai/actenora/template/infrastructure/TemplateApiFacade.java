@@ -10,8 +10,10 @@ import com.nanobaseai.actenora.template.application.DocumentRenderService;
 import com.nanobaseai.actenora.template.application.TemplateStudioService;
 import com.nanobaseai.actenora.template.application.port.out.RenderedDocumentRepository;
 import com.nanobaseai.actenora.template.domain.RenderFormat;
+import com.nanobaseai.actenora.template.domain.MeetingTemplate;
 import com.nanobaseai.actenora.template.domain.RenderJob;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,6 +30,11 @@ public class TemplateApiFacade implements TemplateApi {
         this.studioService = studioService;
         this.renderService = renderService;
         this.documentRepository = documentRepository;
+    }
+
+    @Override
+    public List<MeetingTemplate> listTemplates(TenantId tenantId) {
+        return studioService.listTemplates(tenantId);
     }
 
     @Override

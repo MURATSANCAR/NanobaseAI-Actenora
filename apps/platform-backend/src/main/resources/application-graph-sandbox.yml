@@ -17,6 +17,14 @@ actenora:
   portal:
     auth:
       mode: mock
+  ai:
+    provider:
+      # Real local inference path (not mock dataset). Override via ACTENORA_AI_PROVIDER_KIND.
+      kind: ${ACTENORA_AI_PROVIDER_KIND:openai}
+      base-url: ${ACTENORA_AI_PROVIDER_BASE_URL:http://127.0.0.1:8000}
+    worker:
+      enabled: true
+      poll-interval: ${ACTENORA_AI_WORKER_POLL_INTERVAL:PT15S}
   microsoft-graph:
     enabled: true
     auth-mode: ${ACTENORA_MICROSOFT_GRAPH_AUTH_MODE:CLIENT_SECRET}

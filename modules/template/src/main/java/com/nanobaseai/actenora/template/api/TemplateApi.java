@@ -1,7 +1,9 @@
 package com.nanobaseai.actenora.template.api;
 
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.template.domain.MeetingTemplate;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,6 +12,8 @@ import java.util.UUID;
  * Cross-module callers use types in this package only.
  */
 public interface TemplateApi {
+
+    List<MeetingTemplate> listTemplates(TenantId tenantId);
 
     MeetingTemplateId createTemplate(TenantId tenantId, String name);
 

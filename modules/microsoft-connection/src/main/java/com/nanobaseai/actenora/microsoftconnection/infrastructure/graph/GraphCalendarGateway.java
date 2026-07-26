@@ -107,7 +107,8 @@ public final class GraphCalendarGateway implements CalendarGateway {
                     address
             ));
         }
-        String onlineMeetingId = text(item.path("onlineMeeting"), "conferenceId");
+        // Calendar onlineMeeting.conferenceId is NOT the Graph onlineMeetings/{id}.
+        // Leave onlineMeetingId null; resolve via JoinWebUrl at transcript poll time.
         return Optional.of(new CalendarEvent(
                 resolution.immutableIdentity(),
                 id,
@@ -119,7 +120,7 @@ public final class GraphCalendarGateway implements CalendarGateway {
                 parseGraphDateTime(item.path("end")),
                 originalStart != null ? originalStart : startAt,
                 joinUrl,
-                onlineMeetingId,
+                null,
                 Boolean.TRUE.equals(item.path("isCancelled").asBoolean(false)),
                 attendees
         ));

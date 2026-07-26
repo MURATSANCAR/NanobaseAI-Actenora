@@ -102,7 +102,17 @@ function createHttpApiClient(baseUrl: string): ApiClient {
       httpJson(baseUrl, `/api/v1/portal/actions/${actionId}/complete`, { method: "POST" }),
     listCommitments: (params) => httpJson(baseUrl, `/api/v1/portal/commitments${q(params)}`),
     listTemplates: () => httpJson(baseUrl, "/api/v1/portal/templates"),
+    createTemplate: (body) =>
+      httpJson(baseUrl, "/api/v1/portal/templates", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
     getTeamsSettings: () => httpJson(baseUrl, "/api/v1/portal/teams/settings"),
+    updateTeamsSettings: (body) =>
+      httpJson(baseUrl, "/api/v1/portal/teams/settings", {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }),
     getModelHealth: () => httpJson(baseUrl, "/api/v1/portal/model-control/health"),
     listAiJobs: (params) => httpJson(baseUrl, `/api/v1/portal/ai-jobs${q(params)}`),
     getOperationsOverview: () => httpJson(baseUrl, "/api/v1/portal/operations/overview"),

@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.template.application.port.out.MeetingTemplateRepo
 import com.nanobaseai.actenora.template.domain.MeetingTemplate;
 import com.nanobaseai.actenora.template.domain.TemplateVersion;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,6 +28,14 @@ public final class InMemoryMeetingTemplateRepository implements MeetingTemplateR
     @Override
     public Optional<MeetingTemplate> findById(TenantId tenantId, MeetingTemplateId id) {
         return Optional.ofNullable(byId.get(key(tenantId, id)));
+    }
+
+    @Override
+    public List<MeetingTemplate> listByTenant(TenantId tenantId) {
+        return byId.values().stream()
+                .filter(t -> t.tenantId().equals(tenantId))
+                .sorted((a, b) -> a.name().compareToIgnoreCase(b.name()))
+                .toList();
     }
 
     @Override

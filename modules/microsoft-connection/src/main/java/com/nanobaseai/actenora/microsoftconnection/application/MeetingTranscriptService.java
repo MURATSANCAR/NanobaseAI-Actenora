@@ -33,6 +33,14 @@ public final class MeetingTranscriptService {
         return onlineMeetingGateway.getByMeetingId(tenantId, userId, meetingId);
     }
 
+    public Optional<OnlineMeetingMetadata> meetingMetadataByJoinWebUrl(
+            UUID tenantId,
+            String userId,
+            String joinWebUrl
+    ) {
+        return onlineMeetingGateway.getByJoinWebUrl(tenantId, userId, joinWebUrl);
+    }
+
     public List<ParticipantMetadata> participants(UUID tenantId, String userId, String meetingId) {
         return onlineMeetingGateway.listParticipants(tenantId, userId, meetingId);
     }

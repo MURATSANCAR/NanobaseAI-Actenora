@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useApi } from "@/api/ApiProvider";
@@ -15,11 +15,21 @@ import { AlertTriangle, Layers } from "lucide-react";
 export function TemplateStudioPage() {
   const api = useApi();
   const auth = useAuth();
+  const queryClient = useQueryClient();
   const { t, tb } = useI18n();
   const [name, setName] = useState("");
   const [locale, setLocale] = useState("en");
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const q = useQuery({ queryKey: queryKeys.templates, queryFn: () => api.listTemplates() });
+  const createMutation = useMutation({
+    mutationFn: () => api.createTemplate({ name: name.trim(), locale }),
+    onSuccess: async () => {
+      setSavedMessage(t("admin.templateSaved"));
+      setName("");
+      await queryClient.invalidateQueries({ queryKey: queryKeys.templates });
+    },
+    onError: () => setSavedMessage(t("admin.savePendingBackend")),
+  });
   const status =
     q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
 
@@ -45,8 +55,8 @@ export function TemplateStudioPage() {
           <button
             type="button"
             className="btn-primary"
-            disabled={!name.trim()}
-            onClick={() => setSavedMessage(t("admin.savePendingBackend"))}
+            disabled={!name.trim() || createMutation.isPending}
+            onClick={() => createMutation.mutate()}
           >
             {t("admin.saveTemplate")}
           </button>
@@ -76,11 +86,18 @@ function asyncStatusFromQuery(loading: boolean, error: boolean, empty: boolean) 
 export function TeamsSettingsPage() {
   const auth = useAuth();
   const api = useApi();
+  const queryClient = useQueryClient();
   const { t, tb } = useI18n();
   const q = useQuery({
     queryKey: queryKeys.teams,
     queryFn: () => api.getTeamsSettings(),
     enabled: auth.nav("teams"),
+  });
+  const updateMutation = useMutation({
+    mutationFn: (autoJoinEnabled: boolean) => api.updateTeamsSettings({ autoJoinEnabled }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.teams });
+    },
   });
 
   if (!auth.isLoading && !auth.nav("teams")) {
@@ -120,10 +137,17 @@ export function TeamsSettingsPage() {
           <div className="card-static mt-4 space-y-3 p-4">
             <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("admin.teamsPreferences")}</h2>
             <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" checked={q.data.autoJoinEnabled} disabled />
+              <input
+                type="checkbox"
+                checked={q.data.autoJoinEnabled}
+                disabled={updateMutation.isPending || auth.user?.role !== "ADMIN"}
+                onChange={(e) => updateMutation.mutate(e.target.checked)}
+              />
               {t("teams.autoJoin")}
             </label>
-            <p className="text-xs text-slate-500">{t("admin.savePendingBackend")}</p>
+            {updateMutation.isError ? (
+              <p className="text-xs text-amber-800">{t("admin.savePendingBackend")}</p>
+            ) : null}
           </div>
           </>
         ) : null}

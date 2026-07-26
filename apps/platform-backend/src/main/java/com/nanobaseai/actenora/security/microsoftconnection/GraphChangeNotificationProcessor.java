@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.model.CalendarEvent;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphChangeNotification;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
 import com.nanobaseai.actenora.tenant.api.TenantApi;
@@ -57,15 +58,19 @@ public final class GraphChangeNotificationProcessor {
     public void process(GraphChangeNotification notification) {
         Objects.requireNonNull(notification, "notification");
         Optional<TenantId> tenantId = GraphTenantResolver.resolve(notification.tenantId(), tenantApi);
-        enqueueWorkItem(notification, tenantId.map(TenantId::value).orElse(null));
         if (tenantId.isEmpty()) {
-            log.warn(
-                    "Graph change notification tenant unresolved; subscriptionId={} rawTenantId={}",
+            log.error(
+                    "GRAPH_TENANT_UNMAPPED subscriptionId={} rawTenantId={}",
                     notification.subscriptionId(),
                     notification.tenantId()
             );
-            return;
+            throw new ActenoraException(
+                    "GRAPH_TENANT_UNMAPPED",
+                    "No Actenora tenant mapped for Graph tenantId='" + notification.tenantId()
+                            + "'; provision TenantApi Entra binding before calendar sync"
+            );
         }
+        enqueueWorkItem(notification, tenantId.get().value());
         parseMailboxUserId(notification.resource()).ifPresent(userId -> {
             try {
                 List<CalendarEvent> events = microsoftConnectionApi.syncCalendar(tenantId.get().value(), userId);

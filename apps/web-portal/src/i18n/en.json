@@ -203,6 +203,7 @@
   "admin.createTemplate": "Create template",
   "admin.saveTemplate": "Save template",
   "admin.savePendingBackend": "Save is queued — portal admin APIs are not wired to the backend yet.",
+  "admin.templateSaved": "Template created.",
   "admin.teamsPreferences": "Teams preferences",
   "admin.stub.templates.title": "Templates API not configured",
   "admin.stub.templates.body": "Template Studio is waiting for the portal BFF to expose template list and CRUD.",
