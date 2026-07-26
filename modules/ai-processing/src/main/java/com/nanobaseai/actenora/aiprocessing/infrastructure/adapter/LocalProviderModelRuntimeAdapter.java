@@ -71,6 +71,7 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
         if (!healthy()) {
             throw new ModelUnavailableException("Local model provider unhealthy");
         }
+        String servedModelId = resolveServedModelId();
         UUID jobId = UUID.randomUUID();
         UUID attemptId = UUID.randomUUID();
         WorkerRequestEnvelope envelope = WorkerRequestEnvelope.builder()
@@ -78,7 +79,7 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
                 .attemptId(attemptId)
                 .taskType(InferenceTaskType.valueOf(request.taskType()))
                 .modelId(modelDefinitionId)
-                .servedModelId(descriptor.servedModelId())
+                .servedModelId(servedModelId)
                 .promptVersion(request.promptVersionId())
                 .schemaVersion(request.schemaVersion())
                 .timeoutSeconds(120)
@@ -94,10 +95,33 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
                     result.tokenUsage().inputTokens(),
                     result.tokenUsage().outputTokens(),
                     result.latencyMs(),
-                    descriptor.modelVersion()
+                    servedModelId + "@local-v1"
             );
         } catch (LocalModelProviderException ex) {
             throw new ModelUnavailableException(ex.getMessage(), ex);
         }
+    }
+
+    /**
+     * Prefer the descriptor id when the live provider still serves it; otherwise pick a
+     * concrete runtime id from the provider allowlist (skip generic placeholders).
+     */
+    private String resolveServedModelId() {
+        String configured = descriptor.servedModelId();
+        var known = provider.capabilities() == null
+                ? java.util.Set.<String>of()
+                : provider.capabilities().servedModelIds();
+        if (known == null || known.isEmpty()) {
+            return configured;
+        }
+        if (known.contains(configured)) {
+            return configured;
+        }
+        return known.stream()
+                .filter(id -> id != null && !id.isBlank())
+                .filter(id -> !id.equals("nanobaseai-primary") && !id.equals("nanobaseai-local"))
+                .findFirst()
+                .or(() -> known.stream().filter(id -> id != null && !id.isBlank()).findFirst())
+                .orElse(configured);
     }
 }

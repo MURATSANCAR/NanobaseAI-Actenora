@@ -75,10 +75,10 @@ public final class ExtractionJsonSchemaValidator {
     }
 
     /**
-     * Local models often omit root {@code confidence}. Default it (and empty arrays)
-     * so otherwise-valid extractions are not fail-closed on a single numeric field.
+     * Local models often omit root {@code confidence} or emit plain strings in record arrays.
+     * Normalize those shapes so otherwise-useful extractions are not fail-closed.
      */
-    private static void normalizeTolerantDefaults(ObjectNode node) {
+    private void normalizeTolerantDefaults(ObjectNode node) {
         for (String arrayField : RECORD_ARRAYS) {
             if (!node.has(arrayField) || node.get(arrayField).isNull()) {
                 node.putArray(arrayField);
@@ -90,13 +90,84 @@ public final class ExtractionJsonSchemaValidator {
         if (!node.has("evidenceSegmentIds") || node.get("evidenceSegmentIds").isNull()) {
             node.putArray("evidenceSegmentIds");
         }
-        if (!node.has("confidence") || node.get("confidence").isNull()) {
-            node.put("confidence", 0.5d);
-            JsonNode flags = node.get("qualityFlags");
-            if (flags instanceof ArrayNode arrayNode) {
-                arrayNode.add("confidence_defaulted");
+        ArrayNode qualityFlags = (ArrayNode) node.get("qualityFlags");
+        ArrayNode rootEvidence = (ArrayNode) node.get("evidenceSegmentIds");
+
+        for (String arrayField : RECORD_ARRAYS) {
+            JsonNode arrayNode = node.get(arrayField);
+            if (!(arrayNode instanceof ArrayNode array)) {
+                continue;
+            }
+            ArrayNode normalized = objectMapper.createArrayNode();
+            boolean coerced = false;
+            boolean dropped = false;
+            for (JsonNode item : array) {
+                ObjectNode record = coerceRecordItem(item, rootEvidence);
+                if (record == null) {
+                    dropped = true;
+                    continue;
+                }
+                if (item.isTextual() || !item.isObject()) {
+                    coerced = true;
+                }
+                normalized.add(record);
+            }
+            node.set(arrayField, normalized);
+            if (coerced) {
+                qualityFlags.add(arrayField + "_items_coerced");
+            }
+            if (dropped) {
+                qualityFlags.add(arrayField + "_items_dropped");
             }
         }
+
+        if (!node.has("confidence") || node.get("confidence").isNull()) {
+            node.put("confidence", 0.5d);
+            qualityFlags.add("confidence_defaulted");
+        }
+    }
+
+    private ObjectNode coerceRecordItem(JsonNode item, ArrayNode rootEvidence) {
+        if (item == null || item.isNull()) {
+            return null;
+        }
+        ObjectNode record;
+        if (item.isTextual()) {
+            String text = item.asText();
+            if (text == null || text.isBlank()) {
+                return null;
+            }
+            record = objectMapper.createObjectNode();
+            record.put("text", text.trim());
+        } else if (item.isObject()) {
+            record = (ObjectNode) item.deepCopy();
+            if (!record.hasNonNull("text") || !record.get("text").isTextual()
+                    || record.get("text").asText().isBlank()) {
+                return null;
+            }
+        } else {
+            return null;
+        }
+
+        if (!record.has("evidenceSegmentIds") || !record.get("evidenceSegmentIds").isArray()
+                || record.get("evidenceSegmentIds").isEmpty()) {
+            ArrayNode evidence = objectMapper.createArrayNode();
+            if (rootEvidence != null) {
+                for (JsonNode id : rootEvidence) {
+                    if (id != null && id.isTextual() && !id.asText().isBlank()) {
+                        evidence.add(id.asText());
+                    }
+                }
+            }
+            if (evidence.isEmpty()) {
+                return null;
+            }
+            record.set("evidenceSegmentIds", evidence);
+        }
+        if (!record.has("confidence") || record.get("confidence").isNull()) {
+            record.put("confidence", 0.7d);
+        }
+        return record;
     }
 
     public void validate(JsonNode node) {

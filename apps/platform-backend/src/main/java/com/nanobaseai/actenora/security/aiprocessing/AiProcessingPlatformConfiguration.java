@@ -185,12 +185,20 @@ public class AiProcessingPlatformConfiguration {
             SwappableLocalModelProvider provider,
             ModelDefinitionRepository modelDefinitions
     ) {
+        var known = provider.capabilities() == null
+                ? Set.<String>of()
+                : provider.capabilities().servedModelIds();
         var selected = modelDefinitions.findAll().stream()
                 .filter(ModelDefinition::acceptsNewWork)
                 .filter(definition -> definition.supportsCapability(
                         com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType.TRANSCRIPT_EXTRACTION)
                         || definition.supportsCapability(
                         com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType.FINAL_NOTE))
+                .sorted(java.util.Comparator
+                        .comparing((ModelDefinition definition) ->
+                                known == null || known.isEmpty() || !known.contains(definition.servedModelId()))
+                        .thenComparingInt(ModelDefinition::priority)
+                        .thenComparing(ModelDefinition::modelKey))
                 .findFirst();
         UUID modelDefinitionId = selected
                 .map(ModelDefinition::id)
