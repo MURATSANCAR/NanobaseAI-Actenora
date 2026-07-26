@@ -166,15 +166,15 @@ class PortalApiBindingTest {
     @Test
     void listMeetingsAndDashboardAgainstSeededMeetings() {
         var ctx = meetingApi.createBusinessContext(new CreateBusinessContextRequest(
-                "PROJECT", "P1", "Demo", "demo"
+                "PROJECT", "P1", "Context", "ctx"
         ));
         Instant start = Instant.parse("2026-07-20T09:00:00Z");
         MeetingResponse created = meetingApi.createMeeting(new CreateMeetingRequest(
                 ctx.id(), null, null, "g1", "i1", start, null, null, null,
-                "Q3 roadmap sync", MeetingType.STANDALONE, start, start.plusSeconds(3600),
+                "standup", MeetingType.STANDALONE, start, start.plusSeconds(3600),
                 ProcessingPriority.NORMAL,
                 List.of(new CreateMeetingRequest.ParticipantInput(
-                        "oid", "Ada", "ada@x.com", "ORGANIZER", false
+                        "oid", "Organizer", "org@example.com", "ORGANIZER", false
                 ))
         ));
 
@@ -182,7 +182,7 @@ class PortalApiBindingTest {
                 controller.listMeetings(null, null, 10, null);
         assertEquals(1, page.items().size());
         assertEquals(created.id(), page.items().get(0).id());
-        assertEquals("Q3 roadmap sync", page.items().get(0).title());
+        assertEquals("standup", page.items().get(0).title());
         assertEquals(1, page.items().get(0).participantCount());
 
         PortalApiController.DashboardView dashboard = controller.dashboard();
@@ -210,9 +210,9 @@ class PortalApiBindingTest {
         TenantSecurityContext.set(new AuthenticatedPrincipal(
                 tenant,
                 user,
-                "local-oid-admin",
-                "ada@actenora.local",
-                "Ada Admin",
+                "local-oid",
+                "user@example.com",
+                "Test User",
                 roles,
                 permissions,
                 true

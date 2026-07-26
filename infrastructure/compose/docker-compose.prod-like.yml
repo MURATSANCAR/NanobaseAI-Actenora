@@ -266,11 +266,11 @@ services:
         VITE_API_MODE: http
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
         VITE_PORTAL_AUTH_MODE: mock
-        VITE_MOCK_ENTRA_OID: ${VITE_MOCK_ENTRA_OID:-fixture-oid-admin}
-        VITE_MOCK_ENTRA_TID: ${VITE_MOCK_ENTRA_TID:-fixture-dev-tid}
-        VITE_MOCK_EMAIL: ${VITE_MOCK_EMAIL:-ada@actenora.fixture}
-        VITE_MOCK_DISPLAY_NAME: ${VITE_MOCK_DISPLAY_NAME:-Ada Fixture}
-        VITE_MOCK_GLOBAL_ADMIN: ${VITE_MOCK_GLOBAL_ADMIN:-true}
+        VITE_MOCK_ENTRA_OID: ${VITE_MOCK_ENTRA_OID:-}
+        VITE_MOCK_ENTRA_TID: ${VITE_MOCK_ENTRA_TID:-}
+        VITE_MOCK_EMAIL: ${VITE_MOCK_EMAIL:-}
+        VITE_MOCK_DISPLAY_NAME: ${VITE_MOCK_DISPLAY_NAME:-}
+        VITE_MOCK_GLOBAL_ADMIN: ${VITE_MOCK_GLOBAL_ADMIN:-false}
     container_name: actenora-prodlike-web-portal
     depends_on:
       platform-backend:
