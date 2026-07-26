@@ -132,14 +132,8 @@ public class EventBackbonePlatformConfiguration {
             IdempotentEventConsumer consumer,
             MeetingOccurrenceUpsertedHandler handler,
             TeamsTranscriptPollScheduler pollScheduler) {
-        EventBackboneConsumerDispatch.dispatchOccurrenceUpserted(envelope, consumer, handler, pollScheduler);
-    }
-
-    private static void dispatchOccurrenceUpserted(
-            EventEnvelope envelope,
-            IdempotentEventConsumer consumer,
-            MeetingOccurrenceUpsertedHandler handler) {
-        EventBackboneConsumerDispatch.dispatchOccurrenceUpserted(envelope, consumer, handler);
+        EventBackboneConsumerDispatch.dispatchOccurrenceUpserted(
+                envelope, consumer, handler, pollScheduler);
     }
 
     private static void dispatchTranscriptReady(

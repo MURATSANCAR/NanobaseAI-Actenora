@@ -18,8 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
@@ -104,10 +103,11 @@ class GraphNotificationLifecycleTransactionTest {
 
         @Bean
         DataSource dataSource() {
-            DataSource dataSource = new EmbeddedDatabaseBuilder()
-                    .setType(EmbeddedDatabaseType.H2)
-                    .generateUniqueName(true)
-                    .build();
+            DriverManagerDataSource dataSource = new DriverManagerDataSource();
+            dataSource.setDriverClassName("org.h2.Driver");
+            dataSource.setUrl(
+                    "jdbc:h2:mem:graph-lifecycle-tx-" + UUID.randomUUID()
+                            + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH");
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
             jdbc.execute("CREATE SCHEMA microsoftconnection");
             jdbc.execute("CREATE SCHEMA operations");
