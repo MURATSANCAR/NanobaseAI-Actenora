@@ -104,6 +104,16 @@ public final class JdbcMeetingOccurrenceRepository implements MeetingOccurrenceR
     }
 
     @Override
+    public Optional<MeetingOccurrence> findByTenantIdAndGraphEventImmutableId(
+            TenantId tenantId, String graphEventImmutableId) {
+        String sql = "SELECT " + COLUMNS + """
+                 FROM meeting.meeting_occurrences
+                 WHERE tenant_id = ? AND graph_event_immutable_id = ?
+                """;
+        return jdbc.query(sql, ROW_MAPPER, tenantId.value(), graphEventImmutableId).stream().findFirst();
+    }
+
+    @Override
     public boolean existsByTenantIdAndGraphEventImmutableId(TenantId tenantId, String graphEventImmutableId) {
         Integer count = jdbc.queryForObject(
                 """

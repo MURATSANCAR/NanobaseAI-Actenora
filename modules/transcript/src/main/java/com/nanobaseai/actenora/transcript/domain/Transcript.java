@@ -78,6 +78,33 @@ public final class Transcript {
                 .build();
     }
 
+    public static Transcript createGraphIngest(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            String externalTranscriptId,
+            ContentHash contentHash,
+            String language,
+            Instant now) {
+        TranscriptId id = TranscriptId.of(UUID.randomUUID());
+        String rawKey = TenantObjectKeys.rawVtt(tenantId, meetingOccurrenceId, id.value());
+        return builder()
+                .id(id)
+                .tenantId(tenantId)
+                .meetingOccurrenceId(meetingOccurrenceId)
+                .source(TranscriptSource.TEAMS_GRAPH)
+                .externalTranscriptId(externalTranscriptId)
+                .language(language)
+                .sourceFormat(SourceFormat.VTT)
+                .rawStorageKey(rawKey)
+                .contentHash(contentHash)
+                .status(TranscriptStatus.STORED)
+                .fetchedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .version(0)
+                .build();
+    }
+
     public void markDuplicate(Instant now) {
         this.status = TranscriptStatus.DUPLICATE;
         touch(now);

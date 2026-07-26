@@ -12,6 +12,7 @@ import com.nanobaseai.actenora.meeting.api.dto.UpdateBusinessContextRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -31,6 +32,8 @@ public interface MeetingApi {
     MeetingResponse updateMeeting(UUID meetingId, UpdateMeetingRequest request);
 
     MeetingResponse getMeeting(UUID meetingId);
+
+    Optional<MeetingResponse> findByGraphEventImmutableId(String graphEventImmutableId);
 
     MeetingListResponse listMeetings(CursorPageRequest pageRequest);
 

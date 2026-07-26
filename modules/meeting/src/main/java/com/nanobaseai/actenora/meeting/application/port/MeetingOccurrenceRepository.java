@@ -15,6 +15,9 @@ public interface MeetingOccurrenceRepository {
 
     Optional<MeetingOccurrence> findByIdAndTenantId(UUID id, TenantId tenantId);
 
+    Optional<MeetingOccurrence> findByTenantIdAndGraphEventImmutableId(
+            TenantId tenantId, String graphEventImmutableId);
+
     boolean existsByTenantIdAndGraphEventImmutableId(TenantId tenantId, String graphEventImmutableId);
 
     boolean existsByTenantIdAndIcalUidAndOriginalStartAt(TenantId tenantId, String icalUid, Instant originalStartAt);

@@ -5,17 +5,24 @@ import com.nanobaseai.actenora.sharedkernel.port.storage.AuthorizedUrl;
 import com.nanobaseai.actenora.transcript.api.dto.TranscriptCommandResponse;
 import com.nanobaseai.actenora.transcript.api.dto.TranscriptDownloadAuthorizationResponse;
 import com.nanobaseai.actenora.transcript.api.dto.TranscriptNormalizeResponse;
+import com.nanobaseai.actenora.transcript.api.dto.TranscriptSegmentView;
 import com.nanobaseai.actenora.transcript.api.dto.TranscriptUploadResponse;
 import com.nanobaseai.actenora.transcript.application.TranscriptIngestionService;
 import com.nanobaseai.actenora.transcript.application.TranscriptNormalizationService;
 import com.nanobaseai.actenora.transcript.application.port.in.AuthorizeTranscriptDownloadQuery;
+import com.nanobaseai.actenora.transcript.application.port.in.IngestGraphVttCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.NormalizeTranscriptCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.ReparseTranscriptCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.UploadManualVttCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.UploadManualVttResult;
+import com.nanobaseai.actenora.transcript.application.port.out.TranscriptRepository;
+import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
 import com.nanobaseai.actenora.transcript.domain.Transcript;
+import com.nanobaseai.actenora.transcript.domain.TranscriptDomainException;
 
 import java.time.Duration;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -26,12 +33,24 @@ public class TranscriptApi {
 
     private final TranscriptIngestionService ingestionService;
     private final TranscriptNormalizationService normalizationService;
+    private final TranscriptRepository transcriptRepository;
+    private final TranscriptSegmentRepository segmentRepository;
+
+    public TranscriptApi(
+            TranscriptIngestionService ingestionService,
+            TranscriptNormalizationService normalizationService,
+            TranscriptRepository transcriptRepository,
+            TranscriptSegmentRepository segmentRepository) {
+        this.ingestionService = ingestionService;
+        this.normalizationService = normalizationService;
+        this.transcriptRepository = transcriptRepository;
+        this.segmentRepository = segmentRepository;
+    }
 
     public TranscriptApi(
             TranscriptIngestionService ingestionService,
             TranscriptNormalizationService normalizationService) {
-        this.ingestionService = ingestionService;
-        this.normalizationService = normalizationService;
+        this(ingestionService, normalizationService, null, null);
     }
 
     public TranscriptUploadResponse uploadManualVtt(
@@ -58,6 +77,45 @@ public class TranscriptApi {
                 result.duplicate());
     }
 
+    public TranscriptUploadResponse ingestFromGraphVtt(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            String externalTranscriptId,
+            byte[] content,
+            String language) {
+        UploadManualVttResult result = ingestionService.ingestFromGraphVtt(new IngestGraphVttCommand(
+                tenantId,
+                meetingOccurrenceId,
+                externalTranscriptId,
+                content,
+                language));
+        return new TranscriptUploadResponse(
+                result.transcriptId().value(),
+                result.contentHash().sha256Hex(),
+                result.status(),
+                result.rawStorageKey(),
+                result.duplicate());
+    }
+
+    public List<TranscriptSegmentView> listSegmentsForMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
+        requireRepositories();
+        Transcript transcript = transcriptRepository.findLatestByMeetingOccurrenceId(tenantId, meetingOccurrenceId)
+                .orElseThrow(() -> new TranscriptDomainException(
+                        "TRANSCRIPT_NOT_FOUND",
+                        "No transcript found for meeting occurrence"));
+        return segmentRepository.findByTranscript(tenantId, transcript.id()).stream()
+                .sorted(Comparator.comparingInt(s -> s.sequence()))
+                .map(TranscriptSegmentView::from)
+                .toList();
+    }
+
+    public List<String> listSpeakersForMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
+        return listSegmentsForMeeting(tenantId, meetingOccurrenceId).stream()
+                .map(TranscriptSegmentView::speaker)
+                .distinct()
+                .toList();
+    }
+
     public TranscriptDownloadAuthorizationResponse authorizeDownload(
             TenantId tenantId,
             TranscriptId transcriptId,
@@ -82,5 +140,13 @@ public class TranscriptApi {
     public TranscriptNormalizeResponse renormalize(
             TenantId tenantId, TranscriptId transcriptId, UUID dictionaryId) {
         return normalize(tenantId, transcriptId, dictionaryId);
+    }
+
+    private void requireRepositories() {
+        if (transcriptRepository == null || segmentRepository == null) {
+            throw new TranscriptDomainException(
+                    "TRANSCRIPT_QUERY_UNAVAILABLE",
+                    "Transcript query repositories are not configured");
+        }
     }
 }

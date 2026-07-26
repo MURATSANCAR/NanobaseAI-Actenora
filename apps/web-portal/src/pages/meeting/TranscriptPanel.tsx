@@ -2,6 +2,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvidenceRef, MarkerKind, TranscriptSegment } from "@/api/types";
 import { useI18n } from "@/i18n";
+import { segmentEvidenceRef } from "@/lib/evidence";
 import { evidenceScrollOffset, filterSegments, findEvidenceIndex } from "@/lib/filters";
 
 const ROW_HEIGHT = 72;
@@ -12,13 +13,17 @@ export function TranscriptPanel({
   speakers,
   qualityFlags,
   highlightEvidence,
+  selectedSegmentId,
   onClearHighlight,
+  onSegmentSelect,
 }: {
   segments: TranscriptSegment[];
   speakers: string[];
   qualityFlags: string[];
   highlightEvidence: EvidenceRef | null;
+  selectedSegmentId: string | null;
   onClearHighlight: () => void;
+  onSegmentSelect: (ref: EvidenceRef) => void;
 }) {
   const { t } = useI18n();
   const [speaker, setSpeaker] = useState("");
@@ -109,14 +114,25 @@ export function TranscriptPanel({
         <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
           {virtualizer.getVirtualItems().map((row) => {
             const seg = filtered[row.index]!;
-            const active = highlightEvidence?.segmentId === seg.id;
+            const active =
+              highlightEvidence?.segmentId === seg.id || selectedSegmentId === seg.id;
             return (
               <article
                 key={seg.id}
                 role="listitem"
+                tabIndex={0}
+                onClick={() =>
+                  onSegmentSelect(segmentEvidenceRef(seg.id, seg.startMs, seg.endMs, seg.text))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSegmentSelect(segmentEvidenceRef(seg.id, seg.startMs, seg.endMs, seg.text));
+                  }
+                }}
                 className={[
-                  "border-b border-white/60 px-3 py-2 text-sm",
-                  active ? "bg-violet-100/70" : "hover:bg-violet-50/40",
+                  "cursor-pointer border-b border-white/60 px-3 py-2 text-sm transition",
+                  active ? "bg-violet-100/70 ring-1 ring-inset ring-violet-300" : "hover:bg-violet-50/40",
                 ].join(" ")}
                 style={{
                   position: "absolute",

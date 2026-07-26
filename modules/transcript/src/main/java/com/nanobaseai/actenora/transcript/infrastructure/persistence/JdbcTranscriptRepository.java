@@ -94,6 +94,26 @@ public final class JdbcTranscriptRepository implements TranscriptRepository {
         return jdbc.query(sql, ROW_MAPPER, tenantId.value(), contentHash.sha256Hex()).stream().findFirst();
     }
 
+    @Override
+    public Optional<Transcript> findByTenantAndExternalTranscriptId(TenantId tenantId, String externalTranscriptId) {
+        String sql = "SELECT " + COLUMNS + """
+                 FROM transcript.transcripts
+                 WHERE tenant_id = ? AND external_transcript_id = ?
+                """;
+        return jdbc.query(sql, ROW_MAPPER, tenantId.value(), externalTranscriptId).stream().findFirst();
+    }
+
+    @Override
+    public Optional<Transcript> findLatestByMeetingOccurrenceId(TenantId tenantId, UUID meetingOccurrenceId) {
+        String sql = "SELECT " + COLUMNS + """
+                 FROM transcript.transcripts
+                 WHERE tenant_id = ? AND meeting_occurrence_id = ?
+                 ORDER BY created_at DESC
+                 LIMIT 1
+                """;
+        return jdbc.query(sql, ROW_MAPPER, tenantId.value(), meetingOccurrenceId).stream().findFirst();
+    }
+
     private void insert(Transcript transcript) {
         String sql = """
                 INSERT INTO transcript.transcripts (

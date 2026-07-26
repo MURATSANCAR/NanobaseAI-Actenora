@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 public final class MeetingApplicationService {
@@ -194,6 +195,16 @@ public final class MeetingApplicationService {
     public MeetingResponse detail(UUID id) {
         TenantId tenantId = tenantContext.requireTenantId();
         return MeetingMapper.toResponse(requireOccurrence(id, tenantId));
+    }
+
+    public Optional<MeetingResponse> findByGraphEventImmutableId(String graphEventImmutableId) {
+        TenantId tenantId = tenantContext.requireTenantId();
+        if (graphEventImmutableId == null || graphEventImmutableId.isBlank()) {
+            return Optional.empty();
+        }
+        return occurrenceRepository.findByTenantIdAndGraphEventImmutableId(
+                        tenantId, graphEventImmutableId.trim())
+                .map(MeetingMapper::toResponse);
     }
 
     public MeetingListResponse list(CursorPageRequest pageRequest) {

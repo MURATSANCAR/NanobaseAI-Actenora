@@ -31,10 +31,17 @@ public final class InMemoryMeetingOccurrenceRepository implements MeetingOccurre
     }
 
     @Override
+    public Optional<MeetingOccurrence> findByTenantIdAndGraphEventImmutableId(
+            TenantId tenantId, String graphEventImmutableId) {
+        return store.values().stream()
+                .filter(o -> o.tenantId().equals(tenantId))
+                .filter(o -> Objects.equals(o.graphEventImmutableId(), graphEventImmutableId))
+                .findFirst();
+    }
+
+    @Override
     public boolean existsByTenantIdAndGraphEventImmutableId(TenantId tenantId, String graphEventImmutableId) {
-        return store.values().stream().anyMatch(o ->
-                o.tenantId().equals(tenantId)
-                        && Objects.equals(o.graphEventImmutableId(), graphEventImmutableId));
+        return findByTenantIdAndGraphEventImmutableId(tenantId, graphEventImmutableId).isPresent();
     }
 
     @Override

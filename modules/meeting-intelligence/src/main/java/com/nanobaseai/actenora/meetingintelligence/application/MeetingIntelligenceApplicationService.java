@@ -99,6 +99,13 @@ public final class MeetingIntelligenceApplicationService {
         return detail(noteId, tenantId);
     }
 
+    public List<MeetingNoteDetailResponse> listNotesForMeeting(UUID meetingOccurrenceId) {
+        TenantId tenantId = tenantContext.requireTenantId();
+        return noteRepository.findByMeetingOccurrenceIdAndTenantId(meetingOccurrenceId, tenantId).stream()
+                .map(note -> detail(note.id(), tenantId))
+                .toList();
+    }
+
     public MeetingNoteDetailResponse updateNote(UUID noteId, MeetingNoteUpdateRequest request) {
         TenantId tenantId = tenantContext.requireTenantId();
         UUID actor = tenantContext.requireActorUserId();

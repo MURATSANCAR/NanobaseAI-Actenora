@@ -14,6 +14,7 @@ import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 public final class MeetingApiFacade implements MeetingApi {
@@ -42,6 +43,11 @@ public final class MeetingApiFacade implements MeetingApi {
     @Override
     public MeetingResponse getMeeting(UUID meetingId) {
         return meetingService.detail(meetingId);
+    }
+
+    @Override
+    public Optional<MeetingResponse> findByGraphEventImmutableId(String graphEventImmutableId) {
+        return meetingService.findByGraphEventImmutableId(graphEventImmutableId);
     }
 
     @Override

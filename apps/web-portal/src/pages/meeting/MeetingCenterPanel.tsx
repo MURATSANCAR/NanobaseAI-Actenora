@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Children, useState, type ReactNode } from "react";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { PendingApprovalsPanel } from "@/components/meeting/PendingApprovalsPanel";
+import { DueDateBadge } from "@/components/ui/DueDateBadge";
 import { portalMutationsEnabled, resolvePortalAuthMode } from "@/api/client";
 import { useApi, useApiMode } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
@@ -17,13 +18,16 @@ import type {
 import { useAuth } from "@/auth/AuthProvider";
 import { useI18n } from "@/i18n";
 import { isOptimisticSafe } from "@/lib/approval";
+import { evidenceMatchesSegment, formatEvidenceRange } from "@/lib/evidence";
 
 export function MeetingCenterPanel({
   detail,
   onEvidence,
+  selectedSegmentId,
 }: {
   detail: MeetingDetailResponse;
   onEvidence: (ref: EvidenceRef) => void;
+  selectedSegmentId: string | null;
 }) {
   const auth = useAuth();
   const api = useApi();
@@ -102,6 +106,12 @@ export function MeetingCenterPanel({
         </span>
       </header>
 
+      {selectedSegmentId ? (
+        <p className="rounded-xl border border-violet-200/70 bg-violet-50/50 px-3 py-2 text-xs text-violet-900">
+          {t("evidence.linkedFromTranscript")}
+        </p>
+      ) : null}
+
       <ArtifactBlock title={t("meeting.notes")} emptyMessage={t("meeting.noNotesEditable")}>
         {editableNotes.map((n) => (
           <NoteEditor
@@ -125,6 +135,7 @@ export function MeetingCenterPanel({
           <DecisionRow
             key={d.id}
             item={d}
+            linked={isArtifactLinked(d.evidence, selectedSegmentId)}
             onEvidence={onEvidence}
             statusLabel={tb("artifactStatus", d.status)}
             jumpLabel={t("meeting.jumpEvidence")}
@@ -137,6 +148,7 @@ export function MeetingCenterPanel({
           <ActionRow
             key={a.id}
             item={a}
+            linked={isArtifactLinked(a.evidence, selectedSegmentId)}
             onEvidence={onEvidence}
             statusLabel={tb("artifactStatus", a.status)}
             jumpLabel={t("meeting.jumpEvidence")}
@@ -152,6 +164,7 @@ export function MeetingCenterPanel({
           <RiskRow
             key={r.id}
             item={r}
+            linked={isArtifactLinked(r.evidence, selectedSegmentId)}
             onEvidence={onEvidence}
             severityLabel={tb("riskSeverity", r.severity)}
             jumpLabel={t("meeting.jumpEvidence")}
@@ -164,6 +177,7 @@ export function MeetingCenterPanel({
           <CommitmentRow
             key={c.id}
             item={c}
+            linked={isArtifactLinked(c.evidence, selectedSegmentId)}
             onEvidence={onEvidence}
             statusLabel={tb("artifactStatus", c.status)}
             jumpLabel={t("meeting.jumpEvidence")}
@@ -180,6 +194,20 @@ export function MeetingCenterPanel({
       ) : null}
     </section>
   );
+}
+
+function isArtifactLinked(evidence: EvidenceRef[], selectedSegmentId: string | null): boolean {
+  if (!selectedSegmentId) return false;
+  return evidence.some((e) => evidenceMatchesSegment(e, selectedSegmentId));
+}
+
+function artifactRowClass(linked: boolean): string {
+  return [
+    "rounded-xl border p-3 transition",
+    linked
+      ? "border-violet-400 bg-violet-100/60 ring-2 ring-violet-300/70"
+      : "border-white/70 bg-white/50",
+  ].join(" ");
 }
 
 function ArtifactBlock({
@@ -255,17 +283,26 @@ function EvidenceButtons({
   onEvidence: (ref: EvidenceRef) => void;
   jumpLabel: string;
 }) {
+  const { t } = useI18n();
   if (!evidence.length) return null;
   return (
-    <div className="evidence-actions">
+    <div className="evidence-actions mt-2 space-y-2">
       {evidence.map((e) => (
         <button
           key={`${e.segmentId}-${e.startMs}`}
           type="button"
-          className="btn-secondary px-3 py-1.5 text-xs"
+          className="btn-secondary w-full px-3 py-2 text-left text-xs"
           onClick={() => onEvidence(e)}
         >
-          {jumpLabel}
+          <span className="block font-semibold text-violet-800">{jumpLabel}</span>
+          <span className="mt-0.5 block font-mono text-[10px] text-slate-500">
+            {formatEvidenceRange(e.startMs, e.endMs)}
+          </span>
+          {e.quote ? (
+            <span className="mt-1 block line-clamp-2 text-slate-600">
+              {t("evidence.quotePreview", { quote: e.quote })}
+            </span>
+          ) : null}
         </button>
       ))}
     </div>
@@ -274,17 +311,19 @@ function EvidenceButtons({
 
 function DecisionRow({
   item,
+  linked,
   onEvidence,
   statusLabel,
   jumpLabel,
 }: {
   item: DecisionItem;
+  linked: boolean;
   onEvidence: (ref: EvidenceRef) => void;
   statusLabel: string;
   jumpLabel: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
+    <div id={`artifact-decision-${item.id}`} className={artifactRowClass(linked)}>
       <strong className="block text-slate-900">{item.title}</strong>
       <div className="mt-1"><StatusBadge label={statusLabel} status={item.status} /></div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
@@ -294,6 +333,7 @@ function DecisionRow({
 
 function ActionRow({
   item,
+  linked,
   onEvidence,
   statusLabel,
   jumpLabel,
@@ -302,6 +342,7 @@ function ActionRow({
   onComplete,
 }: {
   item: ActionItem;
+  linked: boolean;
   onEvidence: (ref: EvidenceRef) => void;
   statusLabel: string;
   jumpLabel: string;
@@ -310,11 +351,12 @@ function ActionRow({
   onComplete: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
+    <div id={`artifact-action-${item.id}`} className={artifactRowClass(linked)}>
       <strong className="block text-slate-900">{item.title}</strong>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
         <StatusBadge label={statusLabel} status={item.status} />
         <span>{item.ownerDisplayName}</span>
+        <DueDateBadge dueAt={item.dueAt} />
       </div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
       {canComplete && item.status !== "COMPLETED" ? (
@@ -328,17 +370,19 @@ function ActionRow({
 
 function RiskRow({
   item,
+  linked,
   onEvidence,
   severityLabel,
   jumpLabel,
 }: {
   item: RiskItem;
+  linked: boolean;
   onEvidence: (ref: EvidenceRef) => void;
   severityLabel: string;
   jumpLabel: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
+    <div id={`artifact-risk-${item.id}`} className={artifactRowClass(linked)}>
       <strong className="block text-slate-900">{item.title}</strong>
       <div className="mt-1"><StatusBadge label={severityLabel} status={item.severity} /></div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
@@ -348,21 +392,24 @@ function RiskRow({
 
 function CommitmentRow({
   item,
+  linked,
   onEvidence,
   statusLabel,
   jumpLabel,
 }: {
   item: CommitmentItem;
+  linked: boolean;
   onEvidence: (ref: EvidenceRef) => void;
   statusLabel: string;
   jumpLabel: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
+    <div id={`artifact-commitment-${item.id}`} className={artifactRowClass(linked)}>
       <strong className="block text-slate-900">{item.statement}</strong>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
         <StatusBadge label={statusLabel} status={item.status} />
         <span>{item.ownerDisplayName}</span>
+        <DueDateBadge dueAt={item.dueAt} />
       </div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
     </div>

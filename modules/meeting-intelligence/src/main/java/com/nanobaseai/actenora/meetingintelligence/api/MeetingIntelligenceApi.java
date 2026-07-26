@@ -28,6 +28,8 @@ public interface MeetingIntelligenceApi {
 
     MeetingNoteDetailResponse getNoteDetail(UUID noteId);
 
+    List<MeetingNoteDetailResponse> listNotesForMeeting(UUID meetingOccurrenceId);
+
     MeetingNoteDetailResponse updateNote(UUID noteId, MeetingNoteUpdateRequest request);
 
     List<MeetingNoteVersionResponse> listVersions(UUID noteId);

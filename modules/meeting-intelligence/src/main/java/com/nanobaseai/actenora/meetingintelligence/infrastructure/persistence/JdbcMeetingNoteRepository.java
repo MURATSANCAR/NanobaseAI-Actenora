@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.sharedkernel.persistence.jdbc.JdbcInstant;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -71,6 +72,18 @@ public final class JdbcMeetingNoteRepository implements MeetingNoteRepository {
                 WHERE id = ? AND tenant_id = ?
                 """;
         return jdbc.query(sql, ROW_MAPPER, id, tenantId.value()).stream().findFirst();
+    }
+
+    @Override
+    public List<MeetingNote> findByMeetingOccurrenceIdAndTenantId(UUID meetingOccurrenceId, TenantId tenantId) {
+        String sql = """
+                SELECT id, tenant_id, meeting_occurrence_id, current_version_id, current_version_number,
+                       review_status, created_at, updated_at, version
+                FROM meetingintelligence.meeting_notes
+                WHERE meeting_occurrence_id = ? AND tenant_id = ?
+                ORDER BY created_at ASC
+                """;
+        return jdbc.query(sql, ROW_MAPPER, meetingOccurrenceId, tenantId.value());
     }
 
     private void insert(MeetingNote note) {

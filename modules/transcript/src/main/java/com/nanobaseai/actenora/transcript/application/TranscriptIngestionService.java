@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.api.TranscriptId;
 import com.nanobaseai.actenora.transcript.application.port.in.AuthorizeTranscriptDownloadQuery;
+import com.nanobaseai.actenora.transcript.application.port.in.IngestGraphVttCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.ReparseTranscriptCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.RenormalizeTranscriptCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.UploadManualVttCommand;
@@ -165,6 +166,89 @@ public class TranscriptIngestionService {
                 hash,
                 transcript.status(),
                 transcript.rawStorageKey(),
+                false);
+    }
+
+    public UploadManualVttResult ingestFromGraphVtt(IngestGraphVttCommand command) {
+        validator.validate("teams-graph.vtt", "text/vtt", command.content());
+
+        if (!knownMeetings.isKnown(command.tenantId(), command.meetingOccurrenceId())) {
+            throw new TranscriptDomainException(
+                    "UNKNOWN_MEETING_OCCURRENCE",
+                    "Meeting occurrence is not known for this tenant");
+        }
+
+        Optional<Transcript> existingByExternal = transcriptRepository.findByTenantAndExternalTranscriptId(
+                command.tenantId(), command.externalTranscriptId());
+        if (existingByExternal.isPresent()) {
+            Transcript duplicate = existingByExternal.get();
+            return new UploadManualVttResult(
+                    duplicate.id(),
+                    duplicate.contentHash(),
+                    duplicate.status(),
+                    duplicate.rawStorageKey(),
+                    true);
+        }
+
+        ContentHash hash = ContentHash.ofBytes(command.content());
+        Optional<Transcript> existingByHash = transcriptRepository.findByTenantAndContentHash(
+                command.tenantId(), hash);
+        if (existingByHash.isPresent()) {
+            Transcript duplicate = existingByHash.get();
+            return new UploadManualVttResult(
+                    duplicate.id(),
+                    hash,
+                    TranscriptStatus.DUPLICATE,
+                    duplicate.rawStorageKey(),
+                    true);
+        }
+
+        Instant now = clock.now();
+        Transcript transcript = Transcript.createGraphIngest(
+                command.tenantId(),
+                command.meetingOccurrenceId(),
+                command.externalTranscriptId(),
+                hash,
+                command.language(),
+                now);
+
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("tenant-id", command.tenantId().value().toString());
+        metadata.put("transcript-id", transcript.id().value().toString());
+        metadata.put("meeting-occurrence-id", command.meetingOccurrenceId().toString());
+        metadata.put("content-hash-sha256", hash.sha256Hex());
+        metadata.put("external-transcript-id", command.externalTranscriptId());
+        metadata.put("immutable", "true");
+        metadata.put("source-format", "vtt");
+        metadata.put("source", "teams-graph");
+
+        objectStorage.put(ObjectPutRequest.builder()
+                .key(transcript.rawStorageKey())
+                .content(new java.io.ByteArrayInputStream(command.content()))
+                .contentLength(command.content.length)
+                .contentType("text/vtt")
+                .metadata(metadata)
+                .immutable(true)
+                .build());
+
+        transcript.markPendingParse(now);
+        transcriptRepository.save(transcript);
+        eventPublisher.publishIngested(transcript);
+
+        log.info(
+                "Graph transcript stored transcriptId={} tenantId={} meetingOccurrenceId={} externalTranscriptId={} sizeBytes={}",
+                transcript.id().value(),
+                command.tenantId().value(),
+                command.meetingOccurrenceId(),
+                command.externalTranscriptId(),
+                command.content().length);
+
+        Transcript parsed = reparse(new ReparseTranscriptCommand(command.tenantId(), transcript.id()));
+        return new UploadManualVttResult(
+                parsed.id(),
+                hash,
+                parsed.status(),
+                parsed.rawStorageKey(),
                 false);
     }
 
