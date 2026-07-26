@@ -113,7 +113,7 @@ export function TemplateMockupsPage() {
     <PageShell
       titleKey="templates.mockups.title"
       subtitleKey="templates.mockups.description"
-      maxWidth="max-w-[90rem]"
+      maxWidth="max-w-[100rem]"
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Link to="/templates" className="btn-secondary inline-flex items-center gap-2 text-sm">
@@ -125,7 +125,14 @@ export function TemplateMockupsPage() {
         </span>
       </div>
 
-      <div className="relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-500 to-sky-500 px-5 py-6 text-white shadow-glow sm:px-7 sm:py-7">
+      <div
+        className={[
+          "relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-500 to-sky-500 text-white shadow-glow",
+          scenario === "studio" || scenario === "empty" || scenario === "validation"
+            ? "px-4 py-4 sm:px-5"
+            : "px-5 py-6 sm:px-7 sm:py-7",
+        ].join(" ")}
+      >
         <div className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden />
         <div className="pointer-events-none absolute -bottom-16 left-16 h-40 w-40 rounded-full bg-sky-300/20 blur-2xl" aria-hidden />
         <div className="relative flex flex-wrap items-center gap-4">
@@ -199,16 +206,23 @@ export function TemplateMockupsPage() {
       ) : null}
 
       {scenario === "studio" || scenario === "empty" || scenario === "validation" ? (
-        <div className="grid gap-4 xl:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
-          <TemplateVersionSidebar
-            templateName={t("templates.mockups.sampleTemplateName")}
-            locale={t("templates.mockups.sampleLocale")}
-            versions={MOCK_VERSIONS}
-            activeVersion={activeVersion}
-            onSelect={setActiveVersion}
-          />
-          <TemplateComponentPalette onAdd={addComponent} disabled={scenario === "validation"} />
-          <div className="space-y-3">
+        <div className="flex min-h-[calc(100dvh-12rem)] flex-col gap-3 xl:flex-row xl:items-stretch">
+          <aside className="flex w-full shrink-0 flex-col gap-3 xl:w-52 xl:max-h-[calc(100dvh-12rem)] xl:overflow-y-auto">
+            <TemplateVersionSidebar
+              templateName={t("templates.mockups.sampleTemplateName")}
+              locale={t("templates.mockups.sampleLocale")}
+              versions={MOCK_VERSIONS}
+              activeVersion={activeVersion}
+              onSelect={setActiveVersion}
+            />
+            <TemplateComponentPalette onAdd={addComponent} disabled={scenario === "validation"} />
+          </aside>
+
+          <main className="flex min-h-[min(520px,calc(100dvh-14rem))] min-w-0 flex-1 flex-col xl:min-h-0">
+            <TemplatePreviewPanel components={schema.components} layout="fullscreen" />
+          </main>
+
+          <aside className="flex w-full shrink-0 flex-col gap-3 xl:w-72 xl:max-h-[calc(100dvh-12rem)] xl:overflow-y-auto">
             {scenario === "validation" || validationIssues.length ? (
               <TemplateValidationBanner issues={validationIssues} />
             ) : null}
@@ -232,31 +246,32 @@ export function TemplateMockupsPage() {
                 {t("templates.actions.publish")}
               </button>
             </div>
-          </div>
-          <TemplatePreviewPanel components={schema.components} />
+          </aside>
         </div>
       ) : null}
 
-      <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-900 px-5 py-4 text-white">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-sky-500" aria-hidden>
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold">NanobaseAI</p>
-            <p className="text-[11px] text-white/60">{t("templates.brand.footerNote")}</p>
+      {scenario !== "studio" && scenario !== "empty" && scenario !== "validation" ? (
+        <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-900 px-5 py-4 text-white">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-sky-500" aria-hidden>
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold">NanobaseAI</p>
+              <p className="text-[11px] text-white/60">{t("templates.brand.footerNote")}</p>
+            </div>
           </div>
-        </div>
-        <a
-          href={NANOBASE_WEBSITE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-sm font-medium text-sky-300 hover:text-sky-200"
-        >
-          <Globe className="h-4 w-4" aria-hidden />
-          {NANOBASE_WEBSITE_LABEL}
-        </a>
-      </footer>
+          <a
+            href={NANOBASE_WEBSITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-medium text-sky-300 hover:text-sky-200"
+          >
+            <Globe className="h-4 w-4" aria-hidden />
+            {NANOBASE_WEBSITE_LABEL}
+          </a>
+        </footer>
+      ) : null}
     </PageShell>
   );
 }

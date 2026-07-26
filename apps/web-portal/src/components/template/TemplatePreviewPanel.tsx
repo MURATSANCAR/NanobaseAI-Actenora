@@ -27,16 +27,38 @@ const HEADING_ACCENT: Partial<Record<TemplateComponentType, string>> = {
   COMMITMENTS: "text-fuchsia-700",
 };
 
+type PreviewLayout = "compact" | "fullscreen";
+
 /** A4 document preview — international meeting-minutes standard, NanobaseAI branded. */
-export function TemplatePreviewPanel({ components }: { components: DesignComponent[] }) {
+export function TemplatePreviewPanel({
+  components,
+  layout = "compact",
+}: {
+  components: DesignComponent[];
+  layout?: PreviewLayout;
+}) {
   const { t, tb } = useI18n();
+  const fullscreen = layout === "fullscreen";
   const bodyComponents = [...components]
     .filter((c) => !BRAND_HANDLED.includes(c.type))
     .sort((a, b) => a.order - b.order);
 
+  const bodyText = fullscreen ? "text-xs leading-relaxed" : "text-[11px] leading-relaxed";
+
   return (
-    <div className="card-static p-4">
-      <header className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/60 pb-3">
+    <div
+      className={
+        fullscreen
+          ? "flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-100/80 to-slate-200/40 p-3 shadow-inner"
+          : "card-static p-4"
+      }
+    >
+      <header
+        className={[
+          "flex flex-wrap items-center justify-between gap-2 border-b border-white/60",
+          fullscreen ? "mb-2 shrink-0 pb-2" : "mb-3 pb-3",
+        ].join(" ")}
+      >
         <h3 className="text-xs font-bold uppercase tracking-wide text-violet-700">
           {t("templates.preview.title")}
         </h3>
@@ -44,22 +66,47 @@ export function TemplatePreviewPanel({ components }: { components: DesignCompone
           {t("templates.preview.hint")}
         </span>
       </header>
+
       <div
-        className="mx-auto aspect-[210/297] w-full max-w-md overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg ring-1 ring-slate-100"
-        aria-label={t("templates.preview.title")}
+        className={
+          fullscreen
+            ? "flex min-h-0 flex-1 items-center justify-center overflow-hidden p-1 sm:p-2"
+            : ""
+        }
       >
-        <div className="flex h-full flex-col gap-3 overflow-y-auto p-4 text-[11px] leading-relaxed text-slate-700">
-          <TemplateBrandHeader />
-          <div className="flex flex-1 flex-col gap-3">
-            {bodyComponents.length ? (
-              bodyComponents.map((component) => (
-                <PreviewBlock key={component.id} component={component} />
-              ))
-            ) : (
-              <p className="my-auto text-center text-slate-400">{t("templates.preview.empty")}</p>
-            )}
+        <div
+          className={[
+            "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg ring-1 ring-slate-100",
+            fullscreen
+              ? "h-full max-h-full w-auto max-w-full shadow-2xl"
+              : "mx-auto aspect-[210/297] w-full max-w-md",
+          ].join(" ")}
+          style={
+            fullscreen
+              ? { aspectRatio: "210 / 297", height: "100%", maxWidth: "100%" }
+              : undefined
+          }
+          aria-label={t("templates.preview.title")}
+        >
+          <div
+            className={[
+              "flex h-full flex-col gap-3 overflow-hidden text-slate-700",
+              bodyText,
+              fullscreen ? "p-5 sm:p-6" : "overflow-y-auto p-4",
+            ].join(" ")}
+          >
+            <TemplateBrandHeader compact={!fullscreen} />
+            <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden">
+              {bodyComponents.length ? (
+                bodyComponents.map((component) => (
+                  <PreviewBlock key={component.id} component={component} fullscreen={fullscreen} />
+                ))
+              ) : (
+                <p className="my-auto text-center text-slate-400">{t("templates.preview.empty")}</p>
+              )}
+            </div>
+            <TemplateBrandFooter pageLabel={t("templates.preview.placeholder.page")} />
           </div>
-          <TemplateBrandFooter pageLabel={t("templates.preview.placeholder.page")} />
         </div>
       </div>
     </div>
@@ -68,15 +115,23 @@ export function TemplatePreviewPanel({ components }: { components: DesignCompone
   function SectionShell({
     type,
     children,
+    fullscreen: fs,
   }: {
     type: TemplateComponentType;
     children: ReactNode;
+    fullscreen?: boolean;
   }) {
     const accent = SECTION_ACCENT[type] ?? "border-l-slate-300";
     const heading = HEADING_ACCENT[type] ?? "text-slate-600";
     return (
       <section className={`rounded-r-md border-l-2 bg-slate-50/60 px-3 py-2 ${accent}`}>
-        <h4 className={`mb-1 text-[10px] font-bold uppercase tracking-wider ${heading}`}>
+        <h4
+          className={[
+            "mb-1 font-bold uppercase tracking-wider",
+            fs ? "text-[11px]" : "text-[10px]",
+            heading,
+          ].join(" ")}
+        >
           {tb("templateComponentType", type)}
         </h4>
         {children}
@@ -84,14 +139,22 @@ export function TemplatePreviewPanel({ components }: { components: DesignCompone
     );
   }
 
-  function PreviewBlock({ component }: { component: DesignComponent }) {
+  function PreviewBlock({
+    component,
+    fullscreen: fs,
+  }: {
+    component: DesignComponent;
+    fullscreen?: boolean;
+  }) {
     const label = tb("templateComponentType", component.type);
 
     switch (component.type) {
       case "HEADER":
         return (
           <div className="border-b-2 border-violet-100 pb-2">
-            <p className="text-lg font-bold text-slate-900">{t("templates.preview.placeholder.title")}</p>
+            <p className={fs ? "text-xl font-bold text-slate-900" : "text-lg font-bold text-slate-900"}>
+              {t("templates.preview.placeholder.title")}
+            </p>
             <p className="text-slate-500">{t("templates.preview.placeholder.subtitle")}</p>
             <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-violet-400">
               {t("templates.preview.placeholder.reference")}
@@ -109,7 +172,7 @@ export function TemplatePreviewPanel({ components }: { components: DesignCompone
         );
       case "PARTICIPANT_TABLE":
         return (
-          <SectionShell type="PARTICIPANT_TABLE">
+          <SectionShell type="PARTICIPANT_TABLE" fullscreen={fs}>
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500">
@@ -136,7 +199,7 @@ export function TemplatePreviewPanel({ components }: { components: DesignCompone
         );
       case "AGENDA":
         return (
-          <SectionShell type="AGENDA">
+          <SectionShell type="AGENDA" fullscreen={fs}>
             <ol className="list-inside list-decimal space-y-0.5 text-slate-400">
               <li>{t("templates.preview.placeholder.item")}</li>
               <li>{t("templates.preview.placeholder.item")}</li>
@@ -145,7 +208,7 @@ export function TemplatePreviewPanel({ components }: { components: DesignCompone
         );
       case "ACTIONS":
         return (
-          <SectionShell type="ACTIONS">
+          <SectionShell type="ACTIONS" fullscreen={fs}>
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-amber-100 text-amber-700/80">
@@ -170,7 +233,7 @@ export function TemplatePreviewPanel({ components }: { components: DesignCompone
       case "COMMITMENTS":
       case "EXECUTIVE_SUMMARY":
         return (
-          <SectionShell type={component.type}>
+          <SectionShell type={component.type} fullscreen={fs}>
             <p className="text-slate-400">{t("templates.preview.placeholder.section")}</p>
           </SectionShell>
         );
@@ -195,7 +258,7 @@ export function TemplatePreviewPanel({ components }: { components: DesignCompone
         );
       default:
         return (
-          <SectionShell type={component.type}>
+          <SectionShell type={component.type} fullscreen={fs}>
             <p className="text-slate-400">{t("templates.preview.placeholder.section")}</p>
           </SectionShell>
         );

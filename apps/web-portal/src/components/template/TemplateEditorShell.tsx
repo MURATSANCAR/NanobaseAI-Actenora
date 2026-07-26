@@ -69,16 +69,23 @@ export function TemplateEditorShell({
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
-      <TemplateVersionSidebar
-        templateName={templateName}
-        locale={locale}
-        versions={versions}
-        activeVersion={activeVersionNumber}
-        onSelect={onSelectVersion}
-      />
-      <TemplateComponentPalette onAdd={onAddComponent} disabled={readOnly} />
-      <div className="space-y-3">
+    <div className="flex min-h-[calc(100dvh-10rem)] flex-col gap-3 xl:flex-row xl:items-stretch">
+      <aside className="flex w-full shrink-0 flex-col gap-3 xl:w-52 xl:max-h-[calc(100dvh-10rem)] xl:overflow-y-auto">
+        <TemplateVersionSidebar
+          templateName={templateName}
+          locale={locale}
+          versions={versions}
+          activeVersion={activeVersionNumber}
+          onSelect={onSelectVersion}
+        />
+        <TemplateComponentPalette onAdd={onAddComponent} disabled={readOnly} />
+      </aside>
+
+      <main className="flex min-h-[min(520px,calc(100dvh-12rem))] min-w-0 flex-1 flex-col xl:min-h-0">
+        <TemplatePreviewPanel components={components} layout="fullscreen" />
+      </main>
+
+      <aside className="flex w-full shrink-0 flex-col gap-3 xl:w-72 xl:max-h-[calc(100dvh-10rem)] xl:overflow-y-auto">
         {validationIssues.length ? <TemplateValidationBanner issues={validationIssues} /> : null}
         <TemplateDesignCanvas
           components={components}
@@ -112,8 +119,7 @@ export function TemplateEditorShell({
           ) : null}
         </div>
         {statusMessage ? <p className="text-sm text-amber-800">{statusMessage}</p> : null}
-      </div>
-      <TemplatePreviewPanel components={components} />
+      </aside>
     </div>
   );
 }
