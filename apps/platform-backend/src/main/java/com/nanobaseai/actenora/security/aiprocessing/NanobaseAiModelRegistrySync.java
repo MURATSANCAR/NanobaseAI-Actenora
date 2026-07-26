@@ -96,6 +96,16 @@ public final class NanobaseAiModelRegistrySync {
                     2
             ));
             log.info("NanobaseAI deployment registered deploymentKey={} endpoint={}", deploymentKey, baseUrl);
+        } else {
+            deployments.findByKey(deploymentKey).ifPresent(deployment -> {
+                String nextEndpoint = baseUrl.toString();
+                if (!nextEndpoint.equals(deployment.endpoint())
+                        || !hostLabel(baseUrl).equals(deployment.nodeName())) {
+                    deployment.relocate(nextEndpoint, hostLabel(baseUrl));
+                    deployments.save(deployment);
+                    log.info("NanobaseAI deployment relocated deploymentKey={} endpoint={}", deploymentKey, nextEndpoint);
+                }
+            });
         }
         try {
             registry.heartbeat(actor, deploymentKey);

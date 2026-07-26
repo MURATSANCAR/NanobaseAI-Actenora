@@ -2,6 +2,8 @@ package com.nanobaseai.actenora.aiprocessing.infrastructure.json;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FailureCategory;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.PipelineException;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.PipelineStage;
@@ -65,8 +67,36 @@ public final class ExtractionJsonSchemaValidator {
                     "Invalid JSON: " + ex.getMessage()
             );
         }
+        if (node instanceof ObjectNode objectNode) {
+            normalizeTolerantDefaults(objectNode);
+        }
         validate(node);
         return node;
+    }
+
+    /**
+     * Local models often omit root {@code confidence}. Default it (and empty arrays)
+     * so otherwise-valid extractions are not fail-closed on a single numeric field.
+     */
+    private static void normalizeTolerantDefaults(ObjectNode node) {
+        for (String arrayField : RECORD_ARRAYS) {
+            if (!node.has(arrayField) || node.get(arrayField).isNull()) {
+                node.putArray(arrayField);
+            }
+        }
+        if (!node.has("qualityFlags") || node.get("qualityFlags").isNull()) {
+            node.putArray("qualityFlags");
+        }
+        if (!node.has("evidenceSegmentIds") || node.get("evidenceSegmentIds").isNull()) {
+            node.putArray("evidenceSegmentIds");
+        }
+        if (!node.has("confidence") || node.get("confidence").isNull()) {
+            node.put("confidence", 0.5d);
+            JsonNode flags = node.get("qualityFlags");
+            if (flags instanceof ArrayNode arrayNode) {
+                arrayNode.add("confidence_defaulted");
+            }
+        }
     }
 
     public void validate(JsonNode node) {

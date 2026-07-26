@@ -108,6 +108,12 @@ public final class ModelDeployment {
         version++;
     }
 
+    public void relocate(String endpoint, String nodeName) {
+        this.endpoint = requireText(endpoint, "endpoint");
+        this.nodeName = requireText(nodeName, "nodeName");
+        version++;
+    }
+
     public void drain() {
         if (status == DeploymentStatus.OFFLINE) {
             throw ModelRegistryException.invalidState("Cannot drain an offline deployment");

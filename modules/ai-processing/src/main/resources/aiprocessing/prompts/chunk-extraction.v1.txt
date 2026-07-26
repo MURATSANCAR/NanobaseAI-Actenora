@@ -2,6 +2,8 @@ Extract structured meeting facts from the transcript chunk below.
 Only use evidenceSegmentIds from this allowed set: {{evidenceSegmentIds}}
 
 Return JSON only matching the published output schema.
+Required root fields: topics, decisions, actionItems, risks, openQuestions, commitments, qualityFlags, evidenceSegmentIds, confidence.
+confidence must be a number between 0 and 1.
 
 TRANSCRIPT CHUNK:
 {{chunk}}

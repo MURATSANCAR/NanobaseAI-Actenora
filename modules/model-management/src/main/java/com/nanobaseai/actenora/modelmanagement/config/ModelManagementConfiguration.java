@@ -63,7 +63,8 @@ public class ModelManagementConfiguration {
     @Bean
     @ConditionalOnMissingBean(DeploymentHealthSettings.class)
     DeploymentHealthSettings deploymentHealthSettings() {
-        return new DeploymentHealthSettings(Duration.ofSeconds(30));
+        // Local llama inference can run longer than 30s; keep registry healthy between jobs.
+        return new DeploymentHealthSettings(Duration.ofMinutes(2));
     }
 
     @Bean

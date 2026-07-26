@@ -147,6 +147,13 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
+    NanobaseAiDeploymentHeartbeatScheduler nanobaseAiDeploymentHeartbeatScheduler(
+            NanobaseAiConnectionService connectionService
+    ) {
+        return new NanobaseAiDeploymentHeartbeatScheduler(connectionService);
+    }
+
+    @Bean
     LocalModelProviderLocator localModelProviderLocator(SwappableLocalModelProvider provider) {
         return LocalModelProviderLocator.single(provider);
     }

@@ -16,6 +16,6 @@ public record DeploymentHealthSettings(Duration heartbeatTimeout) {
     }
 
     public static DeploymentHealthSettings defaults() {
-        return new DeploymentHealthSettings(Duration.ofSeconds(30));
+        return new DeploymentHealthSettings(Duration.ofMinutes(2));
     }
 }
