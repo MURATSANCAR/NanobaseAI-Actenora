@@ -19,4 +19,6 @@ public interface SubscriptionStore {
     List<GraphSubscription> findExpiringBefore(Instant threshold);
 
     List<GraphSubscription> findAllForTenant(UUID tenantId);
+
+    List<UUID> distinctTenantIds();
 }

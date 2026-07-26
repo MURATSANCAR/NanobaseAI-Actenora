@@ -139,7 +139,11 @@ public class MicrosoftGraphWebhookController {
                 item.clientState(),
                 item.tenantId()
         );
-        return microsoftConnectionApi.onLifecycleNotification(notification, n -> { });
+        return microsoftConnectionApi.onLifecycleNotification(notification, n -> {
+            if (n.requiresReauthorization() || n.missed()) {
+                microsoftConnectionApi.renewExpiringSubscriptions();
+            }
+        });
     }
 
     private boolean clientStateMatches(String clientState) {

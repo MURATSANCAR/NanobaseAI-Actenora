@@ -28,6 +28,10 @@ import com.nanobaseai.actenora.security.microsoftconnection.MicrosoftGraphWebhoo
 import com.nanobaseai.actenora.security.microsoftconnection.MicrosoftGraphWebhookController.GraphNotificationItem;
 import com.nanobaseai.actenora.security.microsoftconnection.MicrosoftGraphWebhookController.GraphResourceData;
 import com.nanobaseai.actenora.security.microsoftconnection.MicrosoftGraphWebhookController.GraphWebhookResultView;
+import com.nanobaseai.actenora.meeting.api.MeetingApi;
+import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
+import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.tenant.api.TenantApi;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,12 +64,13 @@ class MicrosoftGraphWebhookBindingTest {
 
     @BeforeEach
     void setUp() {
+        InMemorySubscriptionStore subscriptionStore = new InMemorySubscriptionStore();
         api = new MicrosoftConnectionApi(
                 new CalendarSyncService(new StubCalendarGateway(), new StubCursorStore(), InstantClock.systemUTC()),
                 new MeetingTranscriptService(new StubOnlineMeetingGateway(), new StubTranscriptGateway()),
                 new SubscriptionLifecycleService(
                         new StubSubscriptionGateway(),
-                        new InMemorySubscriptionStore(),
+                        subscriptionStore,
                         new InMemoryNotificationInbox(),
                         InstantClock.systemUTC(),
                         Duration.ofHours(6),
@@ -73,14 +78,24 @@ class MicrosoftGraphWebhookBindingTest {
                 ),
                 buildPollingFallback(),
                 buildReconciliationJob(),
-                new StubMailGateway()
+                new StubMailGateway(),
+                subscriptionStore
         );
         controller = new MicrosoftGraphWebhookController(
                 api,
-                new GraphChangeNotificationProcessor(api, emptyOutboxProvider()),
+                buildProcessor(api),
                 new MockEnvironment(),
                 CLIENT_STATE
         );
+    }
+
+    private static GraphChangeNotificationProcessor buildProcessor(MicrosoftConnectionApi api) {
+        MeetingApi meetingApi = org.mockito.Mockito.mock(MeetingApi.class);
+        org.mockito.Mockito.when(meetingApi.listBusinessContexts()).thenReturn(List.of());
+        CalendarMeetingUpsertAdapter upsertAdapter =
+                new CalendarMeetingUpsertAdapter(meetingApi, new FixedTenantContext(TenantId.random(), UUID.randomUUID()));
+        TenantApi tenantApi = org.mockito.Mockito.mock(TenantApi.class);
+        return new GraphChangeNotificationProcessor(api, upsertAdapter, tenantApi, emptyOutboxProvider());
     }
 
     @Test
@@ -142,7 +157,7 @@ class MicrosoftGraphWebhookBindingTest {
         prod.setActiveProfiles("prod");
         MicrosoftGraphWebhookController prodController = new MicrosoftGraphWebhookController(
                 api,
-                new GraphChangeNotificationProcessor(api, emptyOutboxProvider()),
+                buildProcessor(api),
                 prod,
                 ""
         );

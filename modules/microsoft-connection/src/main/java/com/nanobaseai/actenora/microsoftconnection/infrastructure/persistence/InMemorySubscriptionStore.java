@@ -42,6 +42,14 @@ public final class InMemorySubscriptionStore implements SubscriptionStore {
                 .toList();
     }
 
+    @Override
+    public List<UUID> distinctTenantIds() {
+        return byId.values().stream()
+                .map(GraphSubscription::tenantId)
+                .distinct()
+                .toList();
+    }
+
     private static String key(UUID tenantId, String subscriptionId) {
         return tenantId + "|" + subscriptionId;
     }

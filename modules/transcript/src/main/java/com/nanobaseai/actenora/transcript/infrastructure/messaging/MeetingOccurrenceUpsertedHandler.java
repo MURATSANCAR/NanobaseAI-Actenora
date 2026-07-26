@@ -43,7 +43,7 @@ public final class MeetingOccurrenceUpsertedHandler {
                 payload.meetingOccurrenceId());
     }
 
-    static MeetingOccurrenceContracts.MeetingOccurrenceUpsertedPayload parse(String payloadJson) {
+    public static MeetingOccurrenceContracts.MeetingOccurrenceUpsertedPayload parse(String payloadJson) {
         UUID tenantId = UUID.fromString(requireField(TENANT_ID, payloadJson, "tenantId"));
         UUID meetingOccurrenceId =
                 UUID.fromString(requireField(MEETING_OCCURRENCE_ID, payloadJson, "meetingOccurrenceId"));

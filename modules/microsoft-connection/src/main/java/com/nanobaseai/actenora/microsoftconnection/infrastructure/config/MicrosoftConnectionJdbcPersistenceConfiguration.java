@@ -6,6 +6,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.port.Subscription
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.notification.JdbcNotificationInbox;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.JdbcCalendarSyncCursorStore;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.JdbcSubscriptionStore;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +16,7 @@ import javax.sql.DataSource;
 
 @Configuration
 @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "jdbc")
-@ConditionalOnProperty(name = "actenora.microsoft-graph.enabled", havingValue = "true")
+@ConditionalOnExpression("'${actenora.microsoft-graph.enabled:false}' == 'true'")
 public class MicrosoftConnectionJdbcPersistenceConfiguration {
 
     @Bean

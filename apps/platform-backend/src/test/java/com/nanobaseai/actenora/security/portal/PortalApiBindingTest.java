@@ -33,6 +33,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerApi;
 import com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService;
 import com.nanobaseai.actenora.operations.api.OperationsApi;
+import com.nanobaseai.actenora.transcript.api.TranscriptApi;
 import com.nanobaseai.actenora.meetingintelligence.application.ledger.ContinuityLedgerService;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteLedgerPort;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.RecordingMeetingIntelligenceAuditPort;
@@ -124,6 +125,7 @@ class PortalApiBindingTest {
         ObjectProvider<MeetingIntelligenceApi> intelligenceProvider =
                 beanFactory.getBeanProvider(MeetingIntelligenceApi.class);
         ObjectProvider<OperationsApi> operationsProvider = beanFactory.getBeanProvider(OperationsApi.class);
+        ObjectProvider<TranscriptApi> transcriptProvider = beanFactory.getBeanProvider(TranscriptApi.class);
 
         controller = new PortalApiController(
                 stubIdentityApi(),
@@ -132,7 +134,8 @@ class PortalApiBindingTest {
                 approvalApi,
                 noteApproval,
                 intelligenceProvider,
-                operationsProvider
+                operationsProvider,
+                transcriptProvider
         );
 
         bind(tenantId, userId, Set.of(

@@ -23,6 +23,8 @@ public class MicrosoftGraphSpringProperties {
     private Duration subscriptionRenewBefore = Duration.ofHours(6);
     private Duration subscriptionRenewWindow = Duration.ofHours(48);
     private boolean workersEnabled = true;
+    private String defaultMailboxUserId;
+    private Duration transcriptPollInterval = Duration.ofMinutes(5);
 
     public MicrosoftGraphProperties toProperties() {
         MicrosoftGraphProperties.AuthMode mode =
@@ -147,5 +149,21 @@ public class MicrosoftGraphSpringProperties {
 
     public void setWorkersEnabled(boolean workersEnabled) {
         this.workersEnabled = workersEnabled;
+    }
+
+    public String getDefaultMailboxUserId() {
+        return defaultMailboxUserId;
+    }
+
+    public void setDefaultMailboxUserId(String defaultMailboxUserId) {
+        this.defaultMailboxUserId = defaultMailboxUserId;
+    }
+
+    public Duration getTranscriptPollInterval() {
+        return transcriptPollInterval;
+    }
+
+    public void setTranscriptPollInterval(Duration transcriptPollInterval) {
+        this.transcriptPollInterval = transcriptPollInterval;
     }
 }

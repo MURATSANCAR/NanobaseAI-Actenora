@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
+import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventMessagingConfig;
 import com.nanobaseai.actenora.sharedkernel.messaging.inbox.IdempotentEventConsumer;
 import com.nanobaseai.actenora.sharedkernel.messaging.infrastructure.jdbc.JdbcDeadLetterStore;
@@ -21,6 +22,7 @@ import com.nanobaseai.actenora.transcript.infrastructure.messaging.MeetingOccurr
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -141,33 +143,54 @@ public class JdbcRabbitMessagingPlatformConfiguration {
         return jdbcRabbitEventBackbone.consumer("meeting-intelligence");
     }
 
+    @Bean
+    IdempotentEventConsumer aiProcessingEventConsumer(EventBackbone jdbcRabbitEventBackbone) {
+        return jdbcRabbitEventBackbone.consumer("ai-processing");
+    }
+
     @Component
     @ConditionalOnProperty(name = "actenora.messaging.mode", havingValue = "jdbc-rabbit")
     static class JdbcRabbitInboundListeners {
 
         private final IdempotentEventConsumer transcriptEventConsumer;
         private final IdempotentEventConsumer meetingIntelligenceEventConsumer;
+        private final IdempotentEventConsumer aiProcessingEventConsumer;
         private final MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler;
         private final NoteApprovedForLedgerHandler noteApprovedForLedgerHandler;
+        private final TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler;
+        private final ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler;
 
         JdbcRabbitInboundListeners(
                 IdempotentEventConsumer transcriptEventConsumer,
                 IdempotentEventConsumer meetingIntelligenceEventConsumer,
+                IdempotentEventConsumer aiProcessingEventConsumer,
                 MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
-                NoteApprovedForLedgerHandler noteApprovedForLedgerHandler
+                NoteApprovedForLedgerHandler noteApprovedForLedgerHandler,
+                TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler,
+                ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler
         ) {
             this.transcriptEventConsumer = transcriptEventConsumer;
             this.meetingIntelligenceEventConsumer = meetingIntelligenceEventConsumer;
+            this.aiProcessingEventConsumer = aiProcessingEventConsumer;
             this.meetingOccurrenceUpsertedHandler = meetingOccurrenceUpsertedHandler;
             this.noteApprovedForLedgerHandler = noteApprovedForLedgerHandler;
+            this.transcriptReadyAiAdmissionHandler = transcriptReadyAiAdmissionHandler;
+            this.transcriptPollScheduler = transcriptPollScheduler;
         }
 
         @RabbitListener(queues = "actenora.transcript.events")
         void onTranscriptEvent(Message message) {
+            EventEnvelope envelope = RabbitEventTransport.toEnvelope(message);
             EventBackboneConsumerDispatch.dispatchOccurrenceUpserted(
-                    RabbitEventTransport.toEnvelope(message),
+                    envelope,
                     transcriptEventConsumer,
-                    meetingOccurrenceUpsertedHandler
+                    meetingOccurrenceUpsertedHandler,
+                    transcriptPollScheduler.getIfAvailable()
+            );
+            EventBackboneConsumerDispatch.dispatchTranscriptReady(
+                    envelope,
+                    aiProcessingEventConsumer,
+                    transcriptReadyAiAdmissionHandler
             );
         }
 

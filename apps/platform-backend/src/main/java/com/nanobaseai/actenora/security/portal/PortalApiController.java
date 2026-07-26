@@ -21,13 +21,18 @@ import com.nanobaseai.actenora.meetingintelligence.domain.ledger.event.LedgerEve
 import com.nanobaseai.actenora.meetingintelligence.domain.ledger.event.LedgerEventType;
 import com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteUpdateRequest;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNote;
 import com.nanobaseai.actenora.operations.api.OperationsApi;
 import com.nanobaseai.actenora.operations.application.OperationsViews;
+import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
+import com.nanobaseai.actenora.transcript.api.TranscriptApi;
+import com.nanobaseai.actenora.transcript.api.dto.TranscriptSegmentView;
+import com.nanobaseai.actenora.transcript.domain.TranscriptDomainException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
@@ -47,6 +52,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,6 +76,7 @@ public class PortalApiController {
     private final MeetingNoteApprovalService noteApprovalService;
     private final Optional<MeetingIntelligenceApi> meetingIntelligenceApi;
     private final Optional<OperationsApi> operationsApi;
+    private final Optional<TranscriptApi> transcriptApi;
 
     public PortalApiController(
             IdentityApi identityApi,
@@ -78,7 +85,8 @@ public class PortalApiController {
             ApprovalApi approvalApi,
             MeetingNoteApprovalService noteApprovalService,
             ObjectProvider<MeetingIntelligenceApi> meetingIntelligenceApi,
-            ObjectProvider<OperationsApi> operationsApi
+            ObjectProvider<OperationsApi> operationsApi,
+            ObjectProvider<TranscriptApi> transcriptApi
     ) {
         this.identityApi = Objects.requireNonNull(identityApi, "identityApi");
         this.meetingApi = Objects.requireNonNull(meetingApi, "meetingApi");
@@ -87,6 +95,7 @@ public class PortalApiController {
         this.noteApprovalService = Objects.requireNonNull(noteApprovalService, "noteApprovalService");
         this.meetingIntelligenceApi = Optional.ofNullable(meetingIntelligenceApi.getIfAvailable());
         this.operationsApi = Optional.ofNullable(operationsApi.getIfAvailable());
+        this.transcriptApi = Optional.ofNullable(transcriptApi.getIfAvailable());
     }
 
     @GetMapping("/me")
@@ -143,6 +152,7 @@ public class PortalApiController {
     @RequiresPermission(Permission.MEETING_READ)
     public MeetingDetailView meetingDetail(@PathVariable UUID meetingId) {
         require(Permission.MEETING_READ);
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
         MeetingResponse meeting = meetingApi.getMeeting(meetingId);
         List<ParticipantResponse> participants = meetingApi.listParticipants(meetingId);
         MeetingSummaryView summary = toSummary(meeting, participants.size());
@@ -187,14 +197,31 @@ public class PortalApiController {
             }
         }
 
+        List<MeetingNoteView> notes = new ArrayList<>();
+        List<ApprovalRecordView> approvalHistory = new ArrayList<>();
+        if (meetingIntelligenceApi.isPresent()) {
+            for (MeetingNoteDetailResponse note : meetingIntelligenceApi.get().listNotesForMeeting(meetingId)) {
+                notes.add(new MeetingNoteView(
+                        note.id(),
+                        "SHARED",
+                        note.currentVersion() == null ? "" : note.currentVersion().executiveSummary(),
+                        note.updatedAt() == null ? null : note.updatedAt().toString(),
+                        note.currentVersion() == null ? null : note.currentVersion().createdByUserId()
+                ));
+                approvalApi.findBySubject(principal.tenantId().value(), note.id()).ifPresent(approvalId ->
+                        approvalApi.get(principal.tenantId().value(), approvalId).ifPresent(view ->
+                                approvalHistory.add(toApprovalRecord(view, note.id(), null))));
+            }
+        }
+
         return new MeetingDetailView(
                 summary,
                 portalParticipants,
                 null,
                 null,
                 List.of(),
-                List.of(),
-                List.of(),
+                approvalHistory,
+                notes,
                 decisions,
                 List.of(),
                 List.of(),
@@ -202,6 +229,10 @@ public class PortalApiController {
                 List.of(),
                 false
         );
+    }
+
+    private TenantId principalTenantId() {
+        return TenantSecurityContext.require().tenantId();
     }
 
     @GetMapping("/meetings/{meetingId}/transcript")
@@ -214,8 +245,47 @@ public class PortalApiController {
     ) {
         require(Permission.MEETING_READ);
         meetingApi.getMeeting(meetingId);
-        markStub(response);
-        return new TranscriptView(List.of(), List.of());
+        if (transcriptApi.isEmpty()) {
+            markStub(response);
+            return new TranscriptView(List.of(), List.of());
+        }
+        try {
+            List<TranscriptSegmentView> segments =
+                    transcriptApi.get().listSegmentsForMeeting(principalTenantId(), meetingId);
+            if (speaker != null && !speaker.isBlank()) {
+                String needle = speaker.trim().toLowerCase(Locale.ROOT);
+                segments = segments.stream()
+                        .filter(s -> s.speaker() != null
+                                && s.speaker().toLowerCase(Locale.ROOT).contains(needle))
+                        .toList();
+            }
+            if (q != null && !q.isBlank()) {
+                String needle = q.trim().toLowerCase(Locale.ROOT);
+                segments = segments.stream()
+                        .filter(s -> s.text() != null
+                                && s.text().toLowerCase(Locale.ROOT).contains(needle))
+                        .toList();
+            }
+            List<String> speakers = transcriptApi.get().listSpeakersForMeeting(principalTenantId(), meetingId);
+            List<Object> segmentPayload = segments.stream().map(PortalApiController::toTranscriptSegment).toList();
+            return new TranscriptView(segmentPayload, speakers);
+        } catch (TranscriptDomainException ex) {
+            if ("TRANSCRIPT_NOT_FOUND".equals(ex.code())) {
+                return new TranscriptView(List.of(), List.of());
+            }
+            throw ex;
+        }
+    }
+
+    private static Map<String, Object> toTranscriptSegment(TranscriptSegmentView segment) {
+        return Map.of(
+                "id", segment.id(),
+                "speaker", segment.speaker(),
+                "text", segment.text(),
+                "startMs", segment.startMs(),
+                "endMs", segment.endMs(),
+                "markers", segment.markers()
+        );
     }
 
     @PutMapping("/meetings/{meetingId}/notes/{noteId}")

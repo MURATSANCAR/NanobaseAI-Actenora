@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.security.aiprocessing;
 
 import com.nanobaseai.actenora.ActenoraProfiles;
 import com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi;
+import com.nanobaseai.actenora.security.messaging.TranscriptReadyAiAdmissionHandler;
 import com.nanobaseai.actenora.aiprocessing.api.ExtractionPipelineApi;
 import com.nanobaseai.actenora.aiprocessing.api.MultiModelRoutingApi;
 import com.nanobaseai.actenora.aiprocessing.application.AiJobService;
@@ -254,6 +255,11 @@ public class AiProcessingPlatformConfiguration {
     @Bean
     AiProcessingApi aiProcessingApi(AiJobService aiJobService) {
         return new AiProcessingApi.Default(aiJobService);
+    }
+
+    @Bean
+    TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler(AiProcessingApi aiProcessingApi) {
+        return new TranscriptReadyAiAdmissionHandler(aiProcessingApi);
     }
 
     @Bean

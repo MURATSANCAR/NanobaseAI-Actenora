@@ -129,6 +129,17 @@ actenora:
   microsoft-graph:
     # Bounded context + its Graph notification webhook are disabled locally by default (FAZ 32)
     enabled: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:false}
+    auth-mode: ${MICROSOFT_GRAPH_AUTH_MODE:CLIENT_SECRET}
+    tenant-id: ${MICROSOFT_TENANT_ID:}
+    client-id: ${MICROSOFT_CLIENT_ID:}
+    client-secret: ${MICROSOFT_CLIENT_SECRET:}
+    certificate-pem-path: ${MICROSOFT_CERTIFICATE_PEM_PATH:}
+    private-key-pem-path: ${MICROSOFT_PRIVATE_KEY_PEM_PATH:}
+    graph-base-url: ${MICROSOFT_GRAPH_BASE_URL:https://graph.microsoft.com}
+    authority-host: ${MICROSOFT_AUTHORITY_HOST:https://login.microsoftonline.com}
+    workers-enabled: ${ACTENORA_MICROSOFT_GRAPH_WORKERS_ENABLED:true}
+    default-mailbox-user-id: ${ACTENORA_MICROSOFT_GRAPH_DEFAULT_MAILBOX_USER_ID:}
+    transcript-poll-interval: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_INTERVAL:PT5M}
     webhook:
       # clientState echoed by Graph in every change/lifecycle notification (FAZ 32)
       client-state: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE:local-graph-client-state}

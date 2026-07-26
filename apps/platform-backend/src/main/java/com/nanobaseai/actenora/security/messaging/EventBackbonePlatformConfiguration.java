@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.security.messaging;
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
+import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventMessagingConfig;
@@ -18,6 +19,7 @@ import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxStore;
 import com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.TenantFairnessTracker;
 import com.nanobaseai.actenora.transcript.infrastructure.messaging.MeetingOccurrenceUpsertedHandler;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,7 +39,9 @@ public class EventBackbonePlatformConfiguration {
     @ConditionalOnMissingBean(EventBackbone.class)
     EventBackbone platformEventBackbone(
             MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
-            NoteApprovedForLedgerHandler noteApprovedForLedgerHandler
+            NoteApprovedForLedgerHandler noteApprovedForLedgerHandler,
+            ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
+            ObjectProvider<TranscriptReadyAiAdmissionHandler> transcriptReadyHandler
     ) {
         TenantFairnessTracker fairness = new TenantFairnessTracker();
         InMemoryOutboxStore outboxStore = new InMemoryOutboxStore(fairness);
@@ -49,8 +53,15 @@ public class EventBackbonePlatformConfiguration {
                 config, outboxStore, inboxStore, deadLetterStore, transport, fairness);
 
         IdempotentEventConsumer transcriptConsumer = backbone.consumer("transcript");
+        TeamsTranscriptPollScheduler pollScheduler = transcriptPollScheduler.getIfAvailable();
         transport.subscribe(envelope -> dispatchOccurrenceUpserted(
-                envelope, transcriptConsumer, meetingOccurrenceUpsertedHandler));
+                envelope, transcriptConsumer, meetingOccurrenceUpsertedHandler, pollScheduler));
+
+        IdempotentEventConsumer aiConsumer = backbone.consumer("ai-processing");
+        TranscriptReadyAiAdmissionHandler readyHandler = transcriptReadyHandler.getIfAvailable();
+        if (readyHandler != null) {
+            transport.subscribe(envelope -> dispatchTranscriptReady(envelope, aiConsumer, readyHandler));
+        }
 
         IdempotentEventConsumer ledgerConsumer = backbone.consumer("meeting-intelligence");
         transport.subscribe(envelope -> dispatchNoteApprovedForLedger(
@@ -105,8 +116,23 @@ public class EventBackbonePlatformConfiguration {
     private static void dispatchOccurrenceUpserted(
             EventEnvelope envelope,
             IdempotentEventConsumer consumer,
+            MeetingOccurrenceUpsertedHandler handler,
+            TeamsTranscriptPollScheduler pollScheduler) {
+        EventBackboneConsumerDispatch.dispatchOccurrenceUpserted(envelope, consumer, handler, pollScheduler);
+    }
+
+    private static void dispatchOccurrenceUpserted(
+            EventEnvelope envelope,
+            IdempotentEventConsumer consumer,
             MeetingOccurrenceUpsertedHandler handler) {
         EventBackboneConsumerDispatch.dispatchOccurrenceUpserted(envelope, consumer, handler);
+    }
+
+    private static void dispatchTranscriptReady(
+            EventEnvelope envelope,
+            IdempotentEventConsumer consumer,
+            TranscriptReadyAiAdmissionHandler handler) {
+        EventBackboneConsumerDispatch.dispatchTranscriptReady(envelope, consumer, handler);
     }
 
     private static void dispatchNoteApprovedForLedger(

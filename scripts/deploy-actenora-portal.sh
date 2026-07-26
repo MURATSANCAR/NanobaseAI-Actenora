@@ -18,6 +18,13 @@ require_cmd ssh
 log "Building web-portal (base=${PORTAL_BASE})"
 (
   cd "${REPO_ROOT}"
+  # Optional: load portal Vite env from repo .env (MSAL, API URL, mock identity)
+  if [[ -f "${REPO_ROOT}/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "${REPO_ROOT}/.env"
+    set +a
+  fi
   VITE_BASE="${PORTAL_BASE}" pnpm --filter @actenora/web-portal run build
 )
 

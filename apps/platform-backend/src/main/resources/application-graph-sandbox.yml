@@ -1,0 +1,31 @@
+# Graph sandbox — real Microsoft Graph + JDBC persistence + durable messaging.
+# Activate: SPRING_PROFILES_ACTIVE=graph-sandbox,local
+spring:
+  config:
+    activate:
+      on-profile: graph-sandbox
+
+actenora:
+  persistence:
+    mode: jdbc
+  messaging:
+    mode: jdbc-rabbit
+  security:
+    auth:
+      mode: mock
+  portal:
+    auth:
+      mode: mock
+  microsoft-graph:
+    enabled: true
+    auth-mode: CLIENT_SECRET
+    workers-enabled: true
+    tenant-id: ${MICROSOFT_TENANT_ID}
+    client-id: ${MICROSOFT_CLIENT_ID}
+    client-secret: ${MICROSOFT_CLIENT_SECRET}
+    graph-base-url: ${MICROSOFT_GRAPH_BASE_URL:https://graph.microsoft.com}
+    authority-host: ${MICROSOFT_AUTHORITY_HOST:https://login.microsoftonline.com}
+    default-mailbox-user-id: ${ACTENORA_MICROSOFT_GRAPH_DEFAULT_MAILBOX_USER_ID:}
+    transcript-poll-interval: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_INTERVAL:PT5M}
+    webhook:
+      client-state: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE:local-graph-client-state}

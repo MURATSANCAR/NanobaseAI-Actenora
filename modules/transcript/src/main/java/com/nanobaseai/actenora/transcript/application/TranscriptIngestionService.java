@@ -225,7 +225,7 @@ public class TranscriptIngestionService {
         objectStorage.put(ObjectPutRequest.builder()
                 .key(transcript.rawStorageKey())
                 .content(new java.io.ByteArrayInputStream(command.content()))
-                .contentLength(command.content.length)
+                .contentLength(command.content().length)
                 .contentType("text/vtt")
                 .metadata(metadata)
                 .immutable(true)

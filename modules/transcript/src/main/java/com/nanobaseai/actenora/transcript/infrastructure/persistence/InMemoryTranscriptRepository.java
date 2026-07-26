@@ -8,6 +8,7 @@ import com.nanobaseai.actenora.transcript.domain.Transcript;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class InMemoryTranscriptRepository implements TranscriptRepository {

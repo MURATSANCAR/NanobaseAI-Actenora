@@ -92,4 +92,12 @@ public final class JdbcSubscriptionStore implements SubscriptionStore {
                 tenantId
         );
     }
+
+    @Override
+    public List<UUID> distinctTenantIds() {
+        return jdbc.queryForList(
+                "SELECT DISTINCT tenant_id FROM microsoftconnection.graph_subscription",
+                UUID.class
+        );
+    }
 }

@@ -206,7 +206,8 @@ public class MicrosoftConnectionModuleConfiguration {
             SubscriptionLifecycleService subscriptionLifecycleService,
             PollingFallbackService pollingFallbackService,
             ReconciliationJob reconciliationJob,
-            MailGateway mailGateway
+            MailGateway mailGateway,
+            SubscriptionStore subscriptionStore
     ) {
         return new MicrosoftConnectionApi(
                 calendarSyncService,
@@ -214,7 +215,8 @@ public class MicrosoftConnectionModuleConfiguration {
                 subscriptionLifecycleService,
                 pollingFallbackService,
                 reconciliationJob,
-                mailGateway
+                mailGateway,
+                subscriptionStore
         );
     }
 }

@@ -22,6 +22,13 @@ import {
   findEvidenceIndex,
 } from "./lib/filters.ts";
 import { meetingNeedsProcessingPoll } from "./lib/meetingProcessing.ts";
+import {
+  evidenceMatchesSegment,
+  findArtifactsForSegment,
+  formatEvidenceRange,
+} from "./lib/evidence.ts";
+import { dueDateTone, isOverdue } from "./lib/dueDates.ts";
+import { mergeSearchResults, searchMeetings } from "./lib/globalSearch.ts";
 
 test("App export is defined", () => {
   assert.equal(typeof assertDefined(App), "function");
@@ -202,4 +209,53 @@ test("meeting processing poll when partial or in-flight status", () => {
 test("approver role can decide approvals", () => {
   assert.equal(canDecideApprovals(permissionsForRole("APPROVER")), true);
   assert.equal(canDecideApprovals(permissionsForRole("VIEWER")), false);
+});
+
+test("evidence helpers link segments and format ranges", () => {
+  assert.equal(evidenceMatchesSegment({ segmentId: "s1", startMs: 0, endMs: 1, quote: "hi" }, "s1"), true);
+  assert.equal(formatEvidenceRange(65000, 72000), "1:05–1:12");
+  const detail = {
+    meeting: { id: "m1", title: "T", status: "READY" as const, scheduledStartAt: "", participantCount: 0 },
+    participants: [],
+    seriesTitle: null,
+    businessContext: null,
+    versions: [],
+    approvalHistory: [],
+    notes: [],
+    decisions: [
+      {
+        id: "d1",
+        meetingId: "m1",
+        title: "Decide",
+        status: "APPROVED" as const,
+        evidence: [{ segmentId: "s1", startMs: 0, endMs: 1000, quote: "yes" }],
+        createdAt: "",
+      },
+    ],
+    actions: [],
+    risks: [],
+    commitments: [],
+    qualityFlags: [],
+    partial: false,
+  };
+  assert.equal(findArtifactsForSegment(detail, "s1").length, 1);
+  assert.equal(findArtifactsForSegment(detail, "missing").length, 0);
+});
+
+test("due date helpers detect overdue items", () => {
+  const past = new Date(Date.now() - 86_400_000).toISOString();
+  const future = new Date(Date.now() + 86_400_000).toISOString();
+  assert.equal(isOverdue(past), true);
+  assert.equal(isOverdue(future), false);
+  assert.equal(dueDateTone(null), "muted");
+  assert.equal(dueDateTone(past), "warn");
+});
+
+test("global search merges filtered results", () => {
+  const hits = searchMeetings(
+    [{ id: "1", title: "Quarterly sync", status: "READY", scheduledStartAt: "", participantCount: 2 }],
+    "quarter",
+  );
+  assert.equal(hits.length, 1);
+  assert.equal(mergeSearchResults([hits, hits]).length, 2);
 });
