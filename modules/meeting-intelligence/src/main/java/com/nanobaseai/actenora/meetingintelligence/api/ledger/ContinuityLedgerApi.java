@@ -110,6 +110,10 @@ public final class ContinuityLedgerApi {
         return service.listOpenActionItems(tenantId);
     }
 
+    public List<LedgerProjectionState.TrackedActionItem> listOpenTasks(TenantId tenantId, UUID occurrenceId) {
+        return service.listOpenTasks(tenantId, occurrenceId);
+    }
+
     public Optional<LedgerProjectionState.TrackedActionItem> findActionItem(TenantId tenantId, UUID actionItemId) {
         return service.findActionItem(tenantId, actionItemId);
     }

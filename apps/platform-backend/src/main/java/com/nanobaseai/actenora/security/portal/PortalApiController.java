@@ -170,7 +170,7 @@ public class PortalApiController {
         int pendingApprovals = countPendingApprovals(principal.tenantId().value());
         int openActions = ledgerApi.listOpenActionItems(principal.tenantId()).size();
         int overdue = ledgerApi.overdueCommitments(principal.tenantId()).size();
-        int runningJobs = operationsApi.map(ops -> (int) ops.queueDashboard().aiQueueDepth()).orElse(0);
+        int runningJobs = resolveRunningJobs(principal.tenantId().value());
         return new DashboardView(pendingApprovals, openActions, overdue, runningJobs, recent);
     }
 
@@ -257,11 +257,20 @@ public class PortalApiController {
                         note.updatedAt() == null ? null : note.updatedAt().toString(),
                         note.currentVersion() == null ? null : note.currentVersion().createdByUserId()
                 ));
-                approvalApi.findBySubject(principal.tenantId().value(), note.id()).ifPresent(approvalId ->
-                        approvalApi.get(principal.tenantId().value(), approvalId).ifPresent(view ->
-                                approvalHistory.add(toApprovalRecord(view, note.id(), null))));
+                if (note.currentVersion() != null) {
+                    approvalApi.findBySubject(
+                            principal.tenantId().value(),
+                            note.currentVersion().id()
+                    ).ifPresent(approvalId ->
+                            approvalApi.get(principal.tenantId().value(), approvalId).ifPresent(view ->
+                                    approvalHistory.add(toApprovalRecord(view, note.id(), null))));
+                }
             }
         }
+
+        List<ActionItemView> actions = ledgerApi.listOpenTasks(principal.tenantId(), meetingId).stream()
+                .map(PortalApiController::toActionItemView)
+                .toList();
 
         return new MeetingDetailView(
                 summary,
@@ -272,7 +281,7 @@ public class PortalApiController {
                 approvalHistory,
                 notes,
                 decisions,
-                List.of(),
+                actions,
                 List.of(),
                 commitments,
                 List.of(),
@@ -468,9 +477,6 @@ public class PortalApiController {
         List<ActionItemView> items = ledgerApi.listOpenActionItems(principal.tenantId()).stream()
                 .map(PortalApiController::toActionItemView)
                 .toList();
-        if (items.isEmpty()) {
-            markStub(response);
-        }
         return page(items, cursor, limit);
     }
 
@@ -675,6 +681,18 @@ public class PortalApiController {
     private int countPendingApprovals(UUID tenantId) {
         return (int) approvalApi.listForTenant(tenantId).stream()
                 .filter(PortalApiController::isPendingApproval)
+                .count();
+    }
+
+    private int resolveRunningJobs(UUID tenantId) {
+        if (operationsApi.isPresent()) {
+            return (int) operationsApi.get().queueDashboard().aiQueueDepth();
+        }
+        if (aiProcessingApi.isEmpty()) {
+            return 0;
+        }
+        return (int) aiProcessingApi.get().listJobsForTenant(tenantId).stream()
+                .filter(job -> job.status().isActive())
                 .count();
     }
 

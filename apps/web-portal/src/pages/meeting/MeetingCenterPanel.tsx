@@ -82,6 +82,7 @@ export function MeetingCenterPanel({
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.meetingDetail(meetingId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.dashboard });
       void qc.invalidateQueries({ queryKey: ["actions"] });
     },
   });
