@@ -16,6 +16,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.model.Participant
 import com.nanobaseai.actenora.microsoftconnection.application.model.SubscriptionCreateRequest;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptAvailability;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptContent;
+import com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 
 import java.util.List;
@@ -36,6 +37,7 @@ public final class MicrosoftConnectionApi {
     private final PollingFallbackService pollingFallbackService;
     private final ReconciliationJob reconciliationJob;
     private final MailGateway mailGateway;
+    private final SubscriptionStore subscriptionStore;
 
     public MicrosoftConnectionApi(
             CalendarSyncService calendarSyncService,
@@ -43,7 +45,8 @@ public final class MicrosoftConnectionApi {
             SubscriptionLifecycleService subscriptionLifecycleService,
             PollingFallbackService pollingFallbackService,
             ReconciliationJob reconciliationJob,
-            MailGateway mailGateway
+            MailGateway mailGateway,
+            SubscriptionStore subscriptionStore
     ) {
         this.calendarSyncService = Objects.requireNonNull(calendarSyncService, "calendarSyncService");
         this.meetingTranscriptService = Objects.requireNonNull(meetingTranscriptService, "meetingTranscriptService");
@@ -52,6 +55,7 @@ public final class MicrosoftConnectionApi {
         this.pollingFallbackService = Objects.requireNonNull(pollingFallbackService, "pollingFallbackService");
         this.reconciliationJob = Objects.requireNonNull(reconciliationJob, "reconciliationJob");
         this.mailGateway = Objects.requireNonNull(mailGateway, "mailGateway");
+        this.subscriptionStore = Objects.requireNonNull(subscriptionStore, "subscriptionStore");
     }
 
     public List<CalendarEvent> syncCalendar(UUID tenantId, String userId) {
@@ -81,6 +85,10 @@ public final class MicrosoftConnectionApi {
 
     public GraphSubscription createSubscription(UUID tenantId, SubscriptionCreateRequest request) {
         return subscriptionLifecycleService.create(tenantId, request);
+    }
+
+    public List<GraphSubscription> listSubscriptions(UUID tenantId) {
+        return subscriptionStore.findAllForTenant(tenantId);
     }
 
     public List<GraphSubscription> renewExpiringSubscriptions() {
