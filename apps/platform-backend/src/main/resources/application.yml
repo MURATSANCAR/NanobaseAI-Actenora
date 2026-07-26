@@ -129,12 +129,12 @@ actenora:
   microsoft-graph:
     # Bounded context + its Graph notification webhook are disabled locally by default (FAZ 32)
     enabled: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:false}
-    auth-mode: ${MICROSOFT_GRAPH_AUTH_MODE:CLIENT_SECRET}
-    tenant-id: ${MICROSOFT_TENANT_ID:}
-    client-id: ${MICROSOFT_CLIENT_ID:}
-    client-secret: ${MICROSOFT_CLIENT_SECRET:}
-    certificate-pem-path: ${MICROSOFT_CERTIFICATE_PEM_PATH:}
-    private-key-pem-path: ${MICROSOFT_PRIVATE_KEY_PEM_PATH:}
+    auth-mode: ${ACTENORA_MICROSOFT_GRAPH_AUTH_MODE:${MICROSOFT_GRAPH_AUTH_MODE:CLIENT_SECRET}}
+    tenant-id: ${ACTENORA_MICROSOFT_GRAPH_TENANT_ID:${MICROSOFT_TENANT_ID:}}
+    client-id: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_ID:${MICROSOFT_CLIENT_ID:}}
+    client-secret: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_SECRET:${MICROSOFT_CLIENT_SECRET:}}
+    certificate-pem-path: ${ACTENORA_MICROSOFT_GRAPH_CERTIFICATE_PEM_PATH:${MICROSOFT_CERTIFICATE_PEM_PATH:}}
+    private-key-pem-path: ${ACTENORA_MICROSOFT_GRAPH_PRIVATE_KEY_PEM_PATH:${MICROSOFT_PRIVATE_KEY_PEM_PATH:}}
     graph-base-url: ${MICROSOFT_GRAPH_BASE_URL:https://graph.microsoft.com}
     authority-host: ${MICROSOFT_AUTHORITY_HOST:https://login.microsoftonline.com}
     workers-enabled: ${ACTENORA_MICROSOFT_GRAPH_WORKERS_ENABLED:true}

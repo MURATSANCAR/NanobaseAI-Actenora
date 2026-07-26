@@ -267,7 +267,8 @@ public class PortalApiController {
                         .toList();
             }
             List<String> speakers = transcriptApi.get().listSpeakersForMeeting(principalTenantId(), meetingId);
-            List<Object> segmentPayload = segments.stream().map(PortalApiController::toTranscriptSegment).toList();
+            List<Map<String, Object>> segmentPayload =
+                    segments.stream().map(PortalApiController::toTranscriptSegment).toList();
             return new TranscriptView(segmentPayload, speakers);
         } catch (TranscriptDomainException ex) {
             if ("TRANSCRIPT_NOT_FOUND".equals(ex.code())) {
@@ -675,7 +676,7 @@ public class PortalApiController {
     ) {
     }
 
-    public record TranscriptView(List<Object> segments, List<String> speakers) {
+    public record TranscriptView(List<? extends Object> segments, List<String> speakers) {
     }
 
     public record MeetingNoteView(

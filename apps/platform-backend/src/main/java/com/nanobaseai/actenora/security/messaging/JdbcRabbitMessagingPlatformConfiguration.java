@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.security.messaging;
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
+import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventMessagingConfig;

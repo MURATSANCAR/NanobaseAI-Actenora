@@ -18,9 +18,9 @@ Compose acceptance (`prod-fixture`), K8s HA manifests, and SLO/DR documentation 
 | **3** | Identity + tenant JDBC; require security context on prod | **Done** | [`WAVE-2-IDENTITY-TENANT-JDBC.md`](WAVE-2-IDENTITY-TENANT-JDBC.md) |
 | **4** | Domain JDBC adapters (10 BCs) | **Done** | [`WAVE-3-DOMAIN-JDBC.md`](WAVE-3-DOMAIN-JDBC.md) |
 | **5** | Production security locks (secrets, mock auth, Graph webhook) | **Done** | [`WAVE-4-PROD-SECURITY-LOCKS.md`](WAVE-4-PROD-SECURITY-LOCKS.md) |
-| **6** | Product E2E loop (Graph webhook → outbox → calendar sync scaffold) | **Partial** | [`WAVE-5-PRODUCT-E2E-LOOP.md`](WAVE-5-PRODUCT-E2E-LOOP.md) — JDBC inbox/subscription deferred |
-| **7** | Portal MSAL / BFF composition | **Partial** | [`WAVE-6-PORTAL-MSAL-COMPOSITION.md`](WAVE-6-PORTAL-MSAL-COMPOSITION.md) — MSAL SPA not implemented |
-| **8** | Compose prod-like proof + acceptance script | **Done** | [`WAVE-7-COMPOSE-PROOF.md`](WAVE-7-COMPOSE-PROOF.md), `scripts/acceptance-compose.sh` |
+| **6** | Product E2E loop (Graph → meeting → transcript → AI draft → portal) | **Done (code)** | [`GRAPH-SANDBOX-PROD-E2E.md`](GRAPH-SANDBOX-PROD-E2E.md), [`GRAPH-SANDBOX-RUNBOOK.md`](../operations/GRAPH-SANDBOX-RUNBOOK.md) — live Teams burn-in still ops-dependent |
+| **7** | Portal MSAL / BFF composition | **Partial** | [`WAVE-6-PORTAL-MSAL-COMPOSITION.md`](WAVE-6-PORTAL-MSAL-COMPOSITION.md) — BFF notes/transcript composition done; MSAL SPA deferred |
+| **8** | Compose prod-like proof + Graph sandbox acceptance | **Done (scripts)** | [`WAVE-7-COMPOSE-PROOF.md`](WAVE-7-COMPOSE-PROOF.md), `scripts/acceptance-compose.sh`, `scripts/acceptance-graph-sandbox.sh` |
 | **9** | Kubernetes HA + CD pipeline skeleton | **Partial** | [`WAVE-8-K8S-HA-CD.md`](WAVE-8-K8S-HA-CD.md) — push disabled; secrets not committed |
 | **10** | SLO / DR / load documentation | **Partial** | [`WAVE-9-SLO-DR-LOAD.md`](WAVE-9-SLO-DR-LOAD.md), [`SLO-ALERTS.md`](../operations/SLO-ALERTS.md) — no prod burn-in |
 | **11** | Enterprise production declaration | **Open** | This document — gates 6–7, 9–10 must close before sign-off |
