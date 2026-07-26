@@ -1,16 +1,13 @@
 package com.nanobaseai.actenora.security.operations;
 
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.config.MicrosoftGraphSpringProperties;
-import com.nanobaseai.actenora.operations.application.port.OpsTelemetryPort;
 import com.nanobaseai.actenora.operations.domain.WorkerHealth;
 import com.nanobaseai.actenora.operations.infrastructure.InMemoryOpsTelemetryPort;
 import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService;
 import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -20,11 +17,9 @@ import java.util.Objects;
 /**
  * Publishes platform worker heartbeats into the Operations Center telemetry feed.
  */
-@Component
-@ConditionalOnBean(OpsTelemetryPort.class)
 public final class PlatformOpsWorkerTelemetryReporter {
 
-    private final OpsTelemetryPort telemetry;
+    private final InMemoryOpsTelemetryPort telemetry;
     private final ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler;
     private final ObjectProvider<NanobaseAiConnectionService> intelligenceConnection;
     private final MicrosoftGraphSpringProperties graphProperties;
@@ -32,7 +27,7 @@ public final class PlatformOpsWorkerTelemetryReporter {
     private final boolean mailboxSyncEnabled;
 
     public PlatformOpsWorkerTelemetryReporter(
-            OpsTelemetryPort telemetry,
+            InMemoryOpsTelemetryPort telemetry,
             ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
             ObjectProvider<NanobaseAiConnectionService> intelligenceConnection,
             MicrosoftGraphSpringProperties graphProperties,
@@ -49,9 +44,6 @@ public final class PlatformOpsWorkerTelemetryReporter {
 
     @Scheduled(fixedDelayString = "${actenora.operations.worker-telemetry-interval:PT30S}", initialDelayString = "PT5S")
     void publishWorkerHeartbeats() {
-        if (!(telemetry instanceof InMemoryOpsTelemetryPort inMemory)) {
-            return;
-        }
         Instant now = Instant.now();
         List<WorkerHealth> workers = new ArrayList<>();
 
@@ -89,7 +81,7 @@ public final class PlatformOpsWorkerTelemetryReporter {
             ));
         }
 
-        inMemory.setWorkers(workers);
+        telemetry.setWorkers(workers);
     }
 
     private static WorkerHealth worker(

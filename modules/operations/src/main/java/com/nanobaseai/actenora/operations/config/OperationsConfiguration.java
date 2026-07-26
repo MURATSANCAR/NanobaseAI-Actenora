@@ -34,10 +34,15 @@ import org.springframework.context.annotation.Configuration;
 public class OperationsConfiguration {
 
     @Bean
-    @ConditionalOnMissingBean(OpsTelemetryPort.class)
-    OpsTelemetryPort opsTelemetryPort() {
-        // Empty until a real telemetry adapter is wired — never preload demo metrics.
+    @ConditionalOnMissingBean(InMemoryOpsTelemetryPort.class)
+    InMemoryOpsTelemetryPort inMemoryOpsTelemetryPort() {
         return new InMemoryOpsTelemetryPort();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(OpsTelemetryPort.class)
+    OpsTelemetryPort opsTelemetryPort(InMemoryOpsTelemetryPort telemetry) {
+        return telemetry;
     }
 
     @Bean
