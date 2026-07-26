@@ -26,9 +26,9 @@ test("msal mode requires api scope", () => {
 });
 
 test("mock mode does not require entra settings", () => {
-  assert.equal(isMsalAuthEnabled({ VITE_PORTAL_AUTH_MODE: "mock" }), false);
-  assert.equal(buildMsalConfig({ VITE_PORTAL_AUTH_MODE: "mock" }), null);
-  assert.deepEqual(msalApiScopes({ VITE_PORTAL_AUTH_MODE: "mock" }), []);
+  assert.equal(isMsalAuthEnabled({ VITE_PORTAL_AUTH_MODE: "headers" }), false);
+  assert.equal(buildMsalConfig({ VITE_PORTAL_AUTH_MODE: "headers" }), null);
+  assert.deepEqual(msalApiScopes({ VITE_PORTAL_AUTH_MODE: "headers" }), []);
 });
 
 test("msal config builds when complete", () => {

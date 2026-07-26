@@ -25,6 +25,8 @@ import {
   TeamsSettingsPage,
   TemplateStudioPage,
 } from "./pages/OpsPages";
+import { TemplateDetailPage } from "./pages/templates/TemplateDetailPage";
+import { TemplateMockupsPage } from "./pages/templates/TemplateMockupsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,6 +57,8 @@ export function App({ apiClient }: { apiClient?: ApiClient }) {
                 <Route path="decisions" element={<DecisionLedgerPage />} />
                 <Route path="actions" element={<ActionCenterPage />} />
                 <Route path="commitments" element={<CommitmentTrackerPage />} />
+                <Route path="templates/mockups" element={<TemplateMockupsPage />} />
+                <Route path="templates/:templateId" element={<TemplateDetailPage />} />
                 <Route path="templates" element={<TemplateStudioPage />} />
                 <Route path="teams" element={<TeamsSettingsPage />} />
                 <Route path="models" element={<ModelManagementPage />} />

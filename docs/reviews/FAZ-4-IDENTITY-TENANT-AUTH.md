@@ -61,11 +61,11 @@ Yok.
 ### Local mock headers
 
 ```text
-X-Mock-Entra-Oid
-X-Mock-Entra-Tid
-X-Mock-Email
-X-Mock-Display-Name
-X-Mock-Global-Admin
+X-Actenora-Entra-Oid
+X-Actenora-Entra-Tid
+X-Actenora-Email
+X-Actenora-Display-Name
+X-Actenora-Global-Admin
 ```
 
 Provision a tenant with matching `entra_tenant_id` before calling APIs.

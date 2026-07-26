@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * Explicit CORS origin allowlist (deny-by-default when empty in prod).
- * Mock identity headers are only allowed when {@code actenora.security.auth.mode=mock}.
+ * Operator identity headers are only allowed when {@code actenora.security.auth.mode=headers}.
  */
 @Configuration
 public class CorsAllowlistConfig {
@@ -21,7 +21,7 @@ public class CorsAllowlistConfig {
     @Bean
     public CorsFilter corsFilter(
             @Value("${actenora.security.cors.allowed-origins:}") String allowedOrigins,
-            @Value("${actenora.security.auth.mode:mock}") String authMode
+            @Value("${actenora.security.auth.mode:headers}") String authMode
     ) {
         CorsConfiguration config = new CorsConfiguration();
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
@@ -42,13 +42,14 @@ public class CorsAllowlistConfig {
                 "X-Request-Id",
                 "Idempotency-Key"
         ));
-        if ("mock".equalsIgnoreCase(authMode.trim())) {
+        String mode = authMode == null ? "" : authMode.trim().toLowerCase();
+        if ("headers".equals(mode) || "mock".equals(mode)) {
             headers.addAll(List.of(
-                    "X-Mock-Entra-Oid",
-                    "X-Mock-Entra-Tid",
-                    "X-Mock-Email",
-                    "X-Mock-Display-Name",
-                    "X-Mock-Global-Admin"
+                    "X-Actenora-Entra-Oid",
+                    "X-Actenora-Entra-Tid",
+                    "X-Actenora-Email",
+                    "X-Actenora-Display-Name",
+                    "X-Actenora-Global-Admin"
             ));
         }
         config.setAllowedHeaders(headers);

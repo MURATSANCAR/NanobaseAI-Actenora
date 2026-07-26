@@ -16,12 +16,12 @@ actenora:
     mode: jdbc-rabbit
   security:
     auth:
-      mode: mock
+      mode: headers
     cors:
       allowed-origins: ${ACTENORA_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
   portal:
     auth:
-      mode: mock
+      mode: headers
   delivery:
     mail:
       provider: mailhog

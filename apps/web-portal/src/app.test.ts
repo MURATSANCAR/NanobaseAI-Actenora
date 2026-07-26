@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createApiClient, mockAuthHeaders, portalMutationsEnabled } from "./api/client.ts";
+import { createApiClient, identityAuthHeaders, portalMutationsEnabled } from "./api/client.ts";
 import { familyProducts } from "./config/familyProducts.ts";
 import { translateBackend } from "./i18n/translateBackend.ts";
 import { assertDefined } from "@actenora/test-support";
@@ -36,21 +36,21 @@ test("App export is defined", () => {
   assert.equal(typeof assertDefined(App), "function");
 });
 
-test("mock auth headers are empty without env identity", () => {
-  assert.deepEqual(mockAuthHeaders({}), {});
+test("identity auth headers are empty without env identity", () => {
+  assert.deepEqual(identityAuthHeaders({}), {});
 });
 
-test("mock auth headers pass through env identity only", () => {
-  const headers = mockAuthHeaders({
-    VITE_MOCK_ENTRA_OID: "oid-1",
-    VITE_MOCK_ENTRA_TID: "tid-1",
-    VITE_MOCK_EMAIL: "user@example.com",
-    VITE_MOCK_DISPLAY_NAME: "User",
-    VITE_MOCK_GLOBAL_ADMIN: "true",
+test("identity auth headers pass through env identity only", () => {
+  const headers = identityAuthHeaders({
+    VITE_IDENTITY_ENTRA_OID: "oid-1",
+    VITE_IDENTITY_ENTRA_TID: "tid-1",
+    VITE_IDENTITY_EMAIL: "user@example.com",
+    VITE_IDENTITY_DISPLAY_NAME: "User",
+    VITE_IDENTITY_GLOBAL_ADMIN: "true",
   } as Partial<ImportMetaEnv>);
-  assert.equal(headers["X-Mock-Entra-Oid"], "oid-1");
-  assert.equal(headers["X-Mock-Entra-Tid"], "tid-1");
-  assert.equal(headers["X-Mock-Global-Admin"], "true");
+  assert.equal(headers["X-Actenora-Entra-Oid"], "oid-1");
+  assert.equal(headers["X-Actenora-Entra-Tid"], "tid-1");
+  assert.equal(headers["X-Actenora-Global-Admin"], "true");
 });
 
 test("createApiClient requires http base URL", () => {
@@ -171,13 +171,14 @@ test("backend enum values translate via locale catalogs", () => {
 });
 
 test("portal mutations enabled only for HTTP with mock or msal auth", () => {
-  assert.equal(portalMutationsEnabled("http", "mock"), true);
+  assert.equal(portalMutationsEnabled("http", "headers"), true);
   assert.equal(portalMutationsEnabled("http", "msal"), true);
 });
 
 test("portal auth mode resolves from env", () => {
   assert.equal(resolvePortalAuthMode({ VITE_PORTAL_AUTH_MODE: "msal" }), "msal");
-  assert.equal(resolvePortalAuthMode({}), "mock");
+  assert.equal(resolvePortalAuthMode({}), "headers");
+  assert.equal(resolvePortalAuthMode({ VITE_PORTAL_AUTH_MODE: "mock" }), "headers");
 });
 
 test("meeting processing poll when partial or in-flight status", () => {

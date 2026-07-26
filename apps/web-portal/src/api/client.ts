@@ -15,29 +15,32 @@ export class ApiError extends Error {
 }
 
 /**
- * Dev-only mock IdP headers when backend auth mode is mock.
- * Values must come from environment — no built-in demo identity defaults.
+ * Operator identity headers when backend auth mode is headers.
+ * Values must be a real Entra user from env — no built-in defaults.
  */
-export function mockAuthHeaders(env?: Partial<ImportMetaEnv>): Record<string, string> {
+export function identityAuthHeaders(env?: Partial<ImportMetaEnv>): Record<string, string> {
   const meta = env ?? ((typeof import.meta !== "undefined" ? import.meta.env : undefined) as
     | ImportMetaEnv
     | undefined);
-  const oid = meta?.VITE_MOCK_ENTRA_OID;
-  const tid = meta?.VITE_MOCK_ENTRA_TID;
-  const email = meta?.VITE_MOCK_EMAIL;
-  const name = meta?.VITE_MOCK_DISPLAY_NAME;
-  const globalAdmin = meta?.VITE_MOCK_GLOBAL_ADMIN;
+  const oid = meta?.VITE_IDENTITY_ENTRA_OID;
+  const tid = meta?.VITE_IDENTITY_ENTRA_TID;
+  const email = meta?.VITE_IDENTITY_EMAIL;
+  const name = meta?.VITE_IDENTITY_DISPLAY_NAME;
+  const globalAdmin = meta?.VITE_IDENTITY_GLOBAL_ADMIN;
   if (!oid || !tid || !email || !name) {
     return {};
   }
   return {
-    "X-Mock-Entra-Oid": oid,
-    "X-Mock-Entra-Tid": tid,
-    "X-Mock-Email": email,
-    "X-Mock-Display-Name": name,
-    "X-Mock-Global-Admin": globalAdmin ?? "false",
+    "X-Actenora-Entra-Oid": oid,
+    "X-Actenora-Entra-Tid": tid,
+    "X-Actenora-Email": email,
+    "X-Actenora-Display-Name": name,
+    "X-Actenora-Global-Admin": globalAdmin ?? "false",
   };
 }
+
+/** @deprecated Use {@link identityAuthHeaders} */
+export const mockAuthHeaders = identityAuthHeaders;
 
 async function httpJson<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await resolveAuthHeaders();
@@ -108,6 +111,34 @@ function createHttpApiClient(baseUrl: string): ApiClient {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    getTemplate: (templateId) => httpJson(baseUrl, `/api/v1/portal/templates/${templateId}`),
+    createTemplateDraft: (templateId, body) =>
+      httpJson(baseUrl, `/api/v1/portal/templates/${templateId}/versions`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    saveTemplateDesign: (templateId, versionId, body) =>
+      httpJson(baseUrl, `/api/v1/portal/templates/${templateId}/versions/${versionId}/design`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }),
+    publishTemplateVersion: (templateId, versionId) =>
+      httpJson(baseUrl, `/api/v1/portal/templates/${templateId}/versions/${versionId}/publish`, {
+        method: "POST",
+      }),
+    getNoteTemplateLock: async (meetingId, noteId) => {
+      try {
+        return await httpJson(baseUrl, `/api/v1/portal/meetings/${meetingId}/notes/${noteId}/template-lock`);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) return null;
+        throw err;
+      }
+    },
+    lockNoteTemplate: (meetingId, noteId, templateVersionId) =>
+      httpJson(baseUrl, `/api/v1/portal/meetings/${meetingId}/notes/${noteId}/template-lock`, {
+        method: "PUT",
+        body: JSON.stringify({ templateVersionId }),
+      }),
     getTeamsSettings: () => httpJson(baseUrl, "/api/v1/portal/teams/settings"),
     updateTeamsSettings: (body) =>
       httpJson(baseUrl, "/api/v1/portal/teams/settings", {
@@ -140,7 +171,7 @@ export function portalMutationsEnabled(
   mode: ApiMode,
   portalAuthMode: PortalAuthMode = resolvePortalAuthMode(),
 ): boolean {
-  return mode === "http" && (portalAuthMode === "mock" || portalAuthMode === "msal");
+  return mode === "http" && (portalAuthMode === "headers" || portalAuthMode === "msal");
 }
 
 export function createApiClient(opts?: {
@@ -174,6 +205,9 @@ export const queryKeys = {
   actions: (params: object) => ["actions", params] as const,
   commitments: (params: object) => ["commitments", params] as const,
   templates: ["templates"] as const,
+  templateDetail: (id: string) => ["template", id] as const,
+  noteTemplateLock: (meetingId: string, noteId: string) =>
+    ["note-template-lock", meetingId, noteId] as const,
   teams: ["teams-settings"] as const,
   intelligence: ["nanobaseai-connection"] as const,
   models: ["models"] as const,

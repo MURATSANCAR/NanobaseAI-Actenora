@@ -69,7 +69,7 @@ Local dev remains:
 
 ```
 VITE_API_MODE=http
-VITE_PORTAL_AUTH_MODE=mock
+VITE_PORTAL_AUTH_MODE=headers
 ```
 
 with env-supplied `mockAuthHeaders()` (no baked demo personas).

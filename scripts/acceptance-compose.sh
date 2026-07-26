@@ -48,15 +48,19 @@ curl -fsS "${BASE_URL}/actuator/health/liveness" | grep -q '"status":"UP"' \
   || die "/actuator/health/liveness did not report UP"
 
 if [[ "${SPRING_PROFILES_ACTIVE:-}" == *prod-fixture* ]]; then
-  log "GET /api/v1/portal/me (prod-fixture mock headers)"
+  : "${VITE_IDENTITY_ENTRA_OID:?VITE_IDENTITY_ENTRA_OID required — real Entra object id, no canned fallback}"
+  : "${VITE_IDENTITY_ENTRA_TID:?VITE_IDENTITY_ENTRA_TID required — real Entra directory id, no canned fallback}"
+  : "${VITE_IDENTITY_EMAIL:?VITE_IDENTITY_EMAIL required — real work email, no canned fallback}"
+  : "${VITE_IDENTITY_DISPLAY_NAME:?VITE_IDENTITY_DISPLAY_NAME required — real display name, no canned fallback}"
+  log "GET /api/v1/portal/me (operator-supplied mock headers)"
   portal_me="$(
     curl -fsS \
       -H "Accept: application/json" \
-      -H "X-Mock-Entra-Oid: ${VITE_MOCK_ENTRA_OID:-fixture-oid-admin}" \
-      -H "X-Mock-Entra-Tid: ${VITE_MOCK_ENTRA_TID:-fixture-dev-tid}" \
-      -H "X-Mock-Email: ${VITE_MOCK_EMAIL:-ada@actenora.fixture}" \
-      -H "X-Mock-Display-Name: ${VITE_MOCK_DISPLAY_NAME:-Ada Fixture}" \
-      -H "X-Mock-Global-Admin: ${VITE_MOCK_GLOBAL_ADMIN:-true}" \
+      -H "X-Actenora-Entra-Oid: ${VITE_IDENTITY_ENTRA_OID}" \
+      -H "X-Actenora-Entra-Tid: ${VITE_IDENTITY_ENTRA_TID}" \
+      -H "X-Actenora-Email: ${VITE_IDENTITY_EMAIL}" \
+      -H "X-Actenora-Display-Name: ${VITE_IDENTITY_DISPLAY_NAME}" \
+      -H "X-Actenora-Global-Admin: ${VITE_IDENTITY_GLOBAL_ADMIN:-false}" \
       "${BASE_URL}/api/v1/portal/me"
   )"
   echo "${portal_me}" | grep -q '"email"' || die "/api/v1/portal/me missing email in response"

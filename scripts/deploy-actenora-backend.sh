@@ -83,7 +83,6 @@ ACTENORA_MESSAGING_MODE=jdbc-rabbit
 ACTENORA_MICROSOFT_GRAPH_ENABLED=false
 ACTENORA_AI_PROVIDER_KIND=mock
 ACTENORA_AI_WORKER_ENABLED=false
-ACTENORA_PORTAL_LOCAL_SEED=false
 ACTENORA_ALLOW_DEFAULT_SECRETS=false
 EOF
 }
@@ -96,12 +95,15 @@ install_nginx_snippet() {
     "${SSH_HOST}:/tmp/actenora-portal-api.location.conf"
   rsync -az "${REPO_ROOT}/scripts/server/nginx/actenora-portal-spa.location.conf" \
     "${SSH_HOST}:/tmp/actenora-portal-spa.location.conf"
+  rsync -az "${REPO_ROOT}/scripts/server/nginx/actenora-microsoft-api.location.conf" \
+    "${SSH_HOST}:/tmp/actenora-microsoft-api.location.conf"
   ssh "${SSH_HOST}" bash -s <<EOF
 set -euo pipefail
 SITE="${NGINX_SITE}"
 UP="/tmp/actenora-portal-api.upstream.conf"
 LOC="/tmp/actenora-portal-api.location.conf"
 SPA="/tmp/actenora-portal-spa.location.conf"
+MS="/tmp/actenora-microsoft-api.location.conf"
 
 need_reload=0
 if ! sudo nginx -t >/dev/null 2>&1; then
@@ -114,6 +116,7 @@ fi
 
 if grep -q 'upstream actenora_platform_backend' "\$SITE" 2>/dev/null \
    && grep -q 'location /api/v1/portal/' "\$SITE" 2>/dev/null \
+   && grep -q 'location /api/v1/microsoft/' "\$SITE" 2>/dev/null \
    && grep -q 'location ^~ /actenora/' "\$SITE" 2>/dev/null; then
   echo "nginx already configured for Actenora BFF + SPA"
   sudo nginx -t
@@ -141,6 +144,20 @@ if ! grep -q 'location /api/v1/portal/' "\$SITE"; then
     /location \\/api\\/ \{/ && !done {
       while ((getline line < loc) > 0) print line
       close(loc)
+      done=1
+    }
+    { print }
+  ' "\$SITE" | sudo tee "\${SITE}.new" > /dev/null
+  sudo mv "\${SITE}.new" "\$SITE"
+  need_reload=1
+fi
+
+if ! grep -q 'location /api/v1/microsoft/' "\$SITE"; then
+  sudo awk -v ms="\$MS" '
+    /location \\/api\\/v1\\/portal\\/ \{/ && !done {
+      while ((getline line < ms) > 0) print line
+      close(ms)
+      print ""
       done=1
     }
     { print }

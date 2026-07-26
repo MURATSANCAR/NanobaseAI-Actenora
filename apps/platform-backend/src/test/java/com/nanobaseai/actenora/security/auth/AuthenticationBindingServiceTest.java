@@ -50,7 +50,8 @@ class AuthenticationBindingServiceTest {
                 Map.of(
                         MockIdentityProvider.HEADER_OID, "user-1",
                         MockIdentityProvider.HEADER_TID, "tid-a",
-                        MockIdentityProvider.HEADER_EMAIL, "a@example.com"
+                        MockIdentityProvider.HEADER_EMAIL, "a@example.com",
+                        MockIdentityProvider.HEADER_NAME, "User A"
                 )
         );
 
@@ -65,13 +66,15 @@ class AuthenticationBindingServiceTest {
         binder.bind(Map.of(), Map.of(
                 MockIdentityProvider.HEADER_OID, "user-1",
                 MockIdentityProvider.HEADER_TID, "tid-a",
-                MockIdentityProvider.HEADER_EMAIL, "a@example.com"
+                MockIdentityProvider.HEADER_EMAIL, "a@example.com",
+                MockIdentityProvider.HEADER_NAME, "User A"
         ));
 
         assertThrows(RuntimeException.class, () -> binder.bind(Map.of(), Map.of(
                 MockIdentityProvider.HEADER_OID, "user-1",
                 MockIdentityProvider.HEADER_TID, "tid-b",
-                MockIdentityProvider.HEADER_EMAIL, "a@example.com"
+                MockIdentityProvider.HEADER_EMAIL, "a@example.com",
+                MockIdentityProvider.HEADER_NAME, "User A"
         )));
     }
 
@@ -83,7 +86,9 @@ class AuthenticationBindingServiceTest {
 
         assertThrows(TenantNotActiveException.class, () -> binder.bind(Map.of(), Map.of(
                 MockIdentityProvider.HEADER_OID, "user-2",
-                MockIdentityProvider.HEADER_TID, "tid-a"
+                MockIdentityProvider.HEADER_TID, "tid-a",
+                MockIdentityProvider.HEADER_EMAIL, "b@example.com",
+                MockIdentityProvider.HEADER_NAME, "User B"
         )));
     }
 

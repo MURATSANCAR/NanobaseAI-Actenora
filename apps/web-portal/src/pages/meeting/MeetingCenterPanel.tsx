@@ -1,18 +1,17 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Children, useState, type ReactNode } from "react";
 import { StatusBadge } from "@/components/qa/StatusBadge";
+import { MeetingNoteEditor } from "@/components/meeting/MeetingNoteEditor";
 import { PendingApprovalsPanel } from "@/components/meeting/PendingApprovalsPanel";
 import { DueDateBadge } from "@/components/ui/DueDateBadge";
-import { portalMutationsEnabled, resolvePortalAuthMode } from "@/api/client";
+import { portalMutationsEnabled, queryKeys, resolvePortalAuthMode } from "@/api/client";
 import { useApi, useApiMode } from "@/api/ApiProvider";
-import { queryKeys } from "@/api/client";
 import type {
   ActionItem,
   CommitmentItem,
   DecisionItem,
   EvidenceRef,
   MeetingDetailResponse,
-  MeetingNote,
   RiskItem,
 } from "@/api/types";
 import { useAuth } from "@/auth/AuthProvider";
@@ -94,6 +93,13 @@ export function MeetingCenterPanel({
   );
 
   const canEditNotes = auth.can("meetings:edit") && mutationsEnabled;
+  const templatesQuery = useQuery({
+    queryKey: queryKeys.templates,
+    queryFn: () => api.listTemplates(),
+    enabled: canEditNotes,
+  });
+  const publishedTemplates =
+    templatesQuery.data?.items.filter((item) => item.status === "PUBLISHED") ?? [];
   const canCompleteActions = auth.can("meetings:edit") && mutationsEnabled;
   const canDecideApproval = auth.canApprove && mutationsEnabled;
   const hasPendingApprovals = detail.approvalHistory.some((a) => a.status === "PENDING");
@@ -115,13 +121,13 @@ export function MeetingCenterPanel({
 
       <ArtifactBlock title={t("meeting.notes")} emptyMessage={t("meeting.noNotesEditable")}>
         {editableNotes.map((n) => (
-          <NoteEditor
+          <MeetingNoteEditor
             key={n.id}
+            meetingId={meetingId}
             note={n}
             draft={noteDrafts[n.id] ?? n.body}
-            visibilityLabel={tb("noteVisibility", n.visibility)}
             canEdit={canEditNotes}
-            saveLabel={t("meeting.saveNote")}
+            publishedTemplates={publishedTemplates}
             onChange={(body) => setNoteDrafts((d) => ({ ...d, [n.id]: body }))}
             onSave={() =>
               noteMutation.mutate({ noteId: n.id, body: noteDrafts[n.id] ?? n.body })
@@ -230,47 +236,6 @@ function ArtifactBlock({
       ) : (
         <p className="text-sm text-slate-500">{emptyMessage}</p>
       )}
-    </div>
-  );
-}
-
-function NoteEditor({
-  note,
-  draft,
-  visibilityLabel,
-  canEdit,
-  saveLabel,
-  onChange,
-  onSave,
-  saving,
-}: {
-  note: MeetingNote;
-  draft: string;
-  visibilityLabel: string;
-  canEdit: boolean;
-  saveLabel: string;
-  onChange: (body: string) => void;
-  onSave: () => void;
-  saving: boolean;
-}) {
-  return (
-    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
-      <div className="mb-2">
-        <StatusBadge label={visibilityLabel} status={note.visibility} />
-      </div>
-      <textarea
-        className="input-field min-h-[5rem]"
-        value={draft}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={!canEdit}
-        aria-label={visibilityLabel}
-        rows={3}
-      />
-      {canEdit ? (
-        <button type="button" className="btn-primary mt-2" onClick={onSave} disabled={saving}>
-          {saveLabel}
-        </button>
-      ) : null}
     </div>
   );
 }

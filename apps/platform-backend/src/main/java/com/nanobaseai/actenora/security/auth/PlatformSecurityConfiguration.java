@@ -19,21 +19,19 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.util.Locale;
-
 @Configuration
 @EnableWebSecurity
 public class PlatformSecurityConfiguration {
 
     @Bean
     AuthMode authMode(
-            @Value("${actenora.security.auth.mode:mock}") String mode,
+            @Value("${actenora.security.auth.mode:headers}") String mode,
             Environment environment
     ) {
-        AuthMode authMode = AuthMode.valueOf(mode.trim().toUpperCase(Locale.ROOT));
-        if (ActenoraProfiles.isStrictProduction(environment) && authMode == AuthMode.MOCK) {
+        AuthMode authMode = AuthMode.fromConfig(mode);
+        if (ActenoraProfiles.isStrictProduction(environment) && authMode == AuthMode.HEADERS) {
             throw new IllegalStateException(
-                    "Refusing to start: actenora.security.auth.mode=mock is forbidden on production profiles");
+                    "Refusing to start: actenora.security.auth.mode=headers is forbidden on production profiles");
         }
         return authMode;
     }
@@ -42,7 +40,7 @@ public class PlatformSecurityConfiguration {
     IdentityProviderPort identityProviderPort(AuthMode authMode) {
         return switch (authMode) {
             case ENTRA -> new EntraIdentityProvider();
-            case MOCK -> new MockIdentityProvider();
+            case HEADERS -> new MockIdentityProvider();
         };
     }
 

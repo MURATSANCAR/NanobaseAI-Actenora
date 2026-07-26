@@ -10,27 +10,35 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class MockAuthProductionGuardTest {
 
     @Test
-    void mockModeAllowedOnLocalProfile() {
+    void headersModeAllowedOnLocalProfile() {
         PlatformSecurityConfiguration config = new PlatformSecurityConfiguration();
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles("local");
-        assertEquals(AuthMode.MOCK, config.authMode("mock", env));
+        assertEquals(AuthMode.HEADERS, config.authMode("headers", env));
     }
 
     @Test
-    void mockModeAllowedOnProdFixtureProfile() {
+    void legacyMockAliasMapsToHeaders() {
+        PlatformSecurityConfiguration config = new PlatformSecurityConfiguration();
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles("local");
+        assertEquals(AuthMode.HEADERS, config.authMode("mock", env));
+    }
+
+    @Test
+    void headersModeAllowedOnProdFixtureProfile() {
         PlatformSecurityConfiguration config = new PlatformSecurityConfiguration();
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles("prod", "prod-fixture");
-        assertEquals(AuthMode.MOCK, config.authMode("mock", env));
+        assertEquals(AuthMode.HEADERS, config.authMode("headers", env));
     }
 
     @Test
-    void mockModeRejectedOnProdProfile() {
+    void headersModeRejectedOnProdProfile() {
         PlatformSecurityConfiguration config = new PlatformSecurityConfiguration();
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles("prod");
-        assertThrows(IllegalStateException.class, () -> config.authMode("mock", env));
+        assertThrows(IllegalStateException.class, () -> config.authMode("headers", env));
     }
 
     @Test

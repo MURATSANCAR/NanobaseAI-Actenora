@@ -14,7 +14,7 @@ class PortalAuthModeGuardTest {
     void msalRequiresEntra() {
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles("local");
-        PortalAuthModeGuard guard = new PortalAuthModeGuard(env, "msal", "mock");
+        PortalAuthModeGuard guard = new PortalAuthModeGuard(env, "msal", "headers");
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
                 () -> guard.run(new DefaultApplicationArguments())
@@ -31,10 +31,10 @@ class PortalAuthModeGuardTest {
     }
 
     @Test
-    void mockPortalAllowedOnLocal() {
+    void headersPortalAllowedOnLocal() {
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles("local");
-        assertDoesNotThrow(() -> new PortalAuthModeGuard(env, "mock", "mock")
+        assertDoesNotThrow(() -> new PortalAuthModeGuard(env, "headers", "headers")
                 .run(new DefaultApplicationArguments()));
     }
 
@@ -44,17 +44,17 @@ class PortalAuthModeGuardTest {
         env.setActiveProfiles("prod");
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
-                () -> new PortalAuthModeGuard(env, "mock", "entra")
+                () -> new PortalAuthModeGuard(env, "headers", "entra")
                         .run(new DefaultApplicationArguments())
         );
         assertTrue(ex.getMessage().contains("must be msal"));
     }
 
     @Test
-    void prodFixtureAllowsMockPortal() {
+    void prodFixtureAllowsHeadersPortal() {
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles("prod", "prod-fixture");
-        assertDoesNotThrow(() -> new PortalAuthModeGuard(env, "mock", "mock")
+        assertDoesNotThrow(() -> new PortalAuthModeGuard(env, "headers", "headers")
                 .run(new DefaultApplicationArguments()));
     }
 

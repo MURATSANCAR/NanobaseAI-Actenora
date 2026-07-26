@@ -38,6 +38,11 @@ public class TemplateApiFacade implements TemplateApi {
     }
 
     @Override
+    public MeetingTemplate getTemplate(TenantId tenantId, MeetingTemplateId templateId) {
+        return studioService.getTemplate(tenantId, templateId);
+    }
+
+    @Override
     public MeetingTemplateId createTemplate(TenantId tenantId, String name) {
         return studioService.createTemplate(tenantId, name).id();
     }

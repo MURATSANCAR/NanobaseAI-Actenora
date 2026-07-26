@@ -1,28 +1,32 @@
 ---
-description: Forbid mock/demo/dummy business datasets in product and runtime code
+description: Forbid mock/demo/dummy datasets; use real prod operator identity only
 alwaysApply: true
 ---
 
-# No mock / demo / dummy datasets
+# No mock / demo / dummy datasets — prod identity only
 
 ## Rule
 
-Actenora must **never** ship or regenerate fake business datasets for product, local runtime, Compose, or portal UX.
+Actenora must **never** ship, regenerate, or default to fake business datasets or canned identities for product, local runtime, Compose, portal UX, or ops scripts.
 
-Forbidden in `src/main`, portal runtime, and ops configs:
+**Use real production / sandbox Entra values** supplied by the operator (real directory tenant id, real user object id, real email/display name, real Graph credentials). Never invent personas.
 
-- Seed runners that create demo tenants, meetings, notes, users, or transcripts
-- In-memory portal/API stores with canned meetings (“Q3 roadmap”, “Ada Admin”, etc.)
-- Hardcoded demo personas, sample meeting lists, or fixture tenants as product defaults
+### Forbidden in `src/main`, portal runtime, Compose, scripts, and ops configs
+
+- Seed runners that create demo tenants, meetings, notes, users, or transcripts (`PortalLocalSeed*`, `ACTENORA_PORTAL_LOCAL_SEED*`)
+- In-memory stores preloaded with canned meetings, ops telemetry, or personas (“Q3 roadmap”, “Ada Admin”, `seededDemo`, etc.)
+- Hardcoded demo personas, sample meeting lists, or fixture tenants as product or script **defaults** / fallbacks
 - `VITE_API_MODE=mock` or any client that invents domain data instead of calling the backend
+- Script defaults such as `ada@…`, `fixture-oid-admin`, `local-oid-admin`, `Ada Fixture`, `Actenora Fixture`
 - `*LocalSeed*`, `*DemoData*`, `*Dummy*`, `sampleMeeting`, canned `resetMockStore` product paths
 
-## Allowed (not datasets)
+### Allowed (not datasets)
 
 - Unit/integration **test** fixtures under `src/test` / `*.test.*` (minimal, scoped to the assertion)
-- Auth/LLM **adapters** named Mock* that talk to real empty stores (e.g. MockIdentityProvider) — still no canned meetings/notes
+- Auth/LLM **adapters** named Mock* that talk to **empty** stores (e.g. `MockIdentityProvider`, empty `InMemoryOpsTelemetryPort`) — still no canned meetings/notes/telemetry
 - Empty lists / 404 / stub HTTP composition headers when data does not exist yet
+- Operator-supplied env for header auth (`VITE_IDENTITY_*`) that mirrors a **real** Entra user in the target tenant (not a fictional persona)
 
-## If asked to add demo data
+### If asked to add demo data
 
 Refuse. Use real Graph/Teams ingest, admin provisioning APIs, or explicit operator-supplied env credentials. Never recreate deleted seed runners or `api/mock/data` stores.

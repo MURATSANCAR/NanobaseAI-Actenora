@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
 import { StubBanner } from "@/components/admin/StubBanner";
@@ -35,6 +35,11 @@ export function TemplateStudioPage() {
 
   return (
     <PageShell titleKey="templates.title" subtitleKey="templates.description" maxWidth="max-w-7xl">
+      <div className="mb-4">
+        <Link to="/templates/mockups" className="btn-secondary text-sm">
+          {t("templates.mockups.open")}
+        </Link>
+      </div>
       {!q.isLoading && !q.data?.items.length ? <StubBanner featureKey="templates" /> : null}
       {auth.nav("templates") ? (
         <div className="card-static mb-4 space-y-3 p-4">
@@ -68,7 +73,9 @@ export function TemplateStudioPage() {
           headers={[t("table.title"), "Locale", t("filter.status")]}
           rows={
             q.data?.items.map((item) => [
-              item.name,
+              <Link key={`${item.id}-name`} to={`/templates/${item.id}`} className="font-semibold text-violet-800 hover:underline">
+                {item.name}
+              </Link>,
               item.locale,
               <StatusBadge key={item.id} label={tb("artifactStatus", item.status)} status={item.status} />,
             ]) ?? []

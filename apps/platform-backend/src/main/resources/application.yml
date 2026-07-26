@@ -82,7 +82,7 @@ actenora:
     tenant-prefix-root: ${OBJECT_STORAGE_TENANT_PREFIX_ROOT:tenants}
   security:
     auth:
-      mode: ${ACTENORA_AUTH_MODE:mock}
+      mode: ${ACTENORA_AUTH_MODE:headers}
     cors:
       allowed-origins: ${ACTENORA_CORS_ALLOWED_ORIGINS:}
     rate-limit:
@@ -128,7 +128,7 @@ actenora:
   portal:
     auth:
       # mock = X-Mock-* headers (local); msal = Entra Bearer via SPA (prod)
-      mode: ${ACTENORA_PORTAL_AUTH_MODE:mock}
+      mode: ${ACTENORA_PORTAL_AUTH_MODE:headers}
     recording-base-url: ${ACTENORA_PORTAL_RECORDING_BASE_URL:}
   microsoft-graph:
     # Bounded context + its Graph notification webhook are disabled locally by default (FAZ 32)

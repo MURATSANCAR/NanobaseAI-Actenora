@@ -41,7 +41,7 @@ actenora:
   allow-default-secrets: true
   security:
     auth:
-      mode: mock
+      mode: headers
   transcript:
     mode: embedded
   env: test

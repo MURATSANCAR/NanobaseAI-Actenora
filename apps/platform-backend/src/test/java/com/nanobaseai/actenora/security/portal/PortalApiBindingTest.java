@@ -355,6 +355,16 @@ class PortalApiBindingTest {
         PortalApiController.TemplateListView listed = controller.listTemplates(null);
         assertEquals(1, listed.items().size());
         assertEquals(created.id(), listed.items().get(0).id());
+
+        PortalApiController.TemplateDetailView detail = controller.getTemplate(created.id());
+        assertEquals("Executive summary", detail.name());
+        assertTrue(detail.versions().isEmpty());
+
+        PortalApiController.TemplateVersionView draft = controller.createTemplateDraft(
+                created.id(),
+                new PortalApiController.CreateTemplateVersionBody("initial"));
+        assertEquals("DRAFT", draft.status());
+        assertEquals(1, draft.versionNumber());
     }
 
     @Test

@@ -15,6 +15,8 @@ public interface TemplateApi {
 
     List<MeetingTemplate> listTemplates(TenantId tenantId);
 
+    MeetingTemplate getTemplate(TenantId tenantId, MeetingTemplateId templateId);
+
     MeetingTemplateId createTemplate(TenantId tenantId, String name);
 
     TemplateVersionId createDraftVersion(TenantId tenantId, MeetingTemplateId templateId, String changelog);

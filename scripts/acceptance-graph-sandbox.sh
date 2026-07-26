@@ -6,19 +6,20 @@
 set -euo pipefail
 
 BASE_URL="${ACTENORA_BASE_URL:-http://localhost:8080}"
-TENANT_ID="${VITE_MOCK_ENTRA_TID:?VITE_MOCK_ENTRA_TID required (sandbox Entra tid / Actenora tenant)}"
-USER_OID="${VITE_MOCK_ENTRA_OID:?VITE_MOCK_ENTRA_OID required (sandbox user oid)}"
-EMAIL="${VITE_MOCK_EMAIL:-operator@example.test}"
+TENANT_ID="${VITE_IDENTITY_ENTRA_TID:?VITE_IDENTITY_ENTRA_TID required (real Entra directory / Actenora tenant tid)}"
+USER_OID="${VITE_IDENTITY_ENTRA_OID:?VITE_IDENTITY_ENTRA_OID required (real Entra user object id)}"
+EMAIL="${VITE_IDENTITY_EMAIL:?VITE_IDENTITY_EMAIL required (real work email)}"
+DISPLAY_NAME="${VITE_IDENTITY_DISPLAY_NAME:?VITE_IDENTITY_DISPLAY_NAME required (real display name)}"
 GRAPH_EVENT_ID="${ACTENORA_GRAPH_EVENT_IMMUTABLE_ID:-}"
 MEETING_ID="${ACTENORA_MEETING_OCCURRENCE_ID:-}"
 CROSS_TENANT_MEETING_ID="${ACTENORA_CROSS_TENANT_MEETING_ID:-}"
 
 auth_headers=(
-  -H "X-Mock-Entra-Oid: ${USER_OID}"
-  -H "X-Mock-Entra-Tid: ${TENANT_ID}"
-  -H "X-Mock-Email: ${EMAIL}"
-  -H "X-Mock-Display-Name: Graph Sandbox Operator"
-  -H "X-Mock-Global-Admin: true"
+  -H "X-Actenora-Entra-Oid: ${USER_OID}"
+  -H "X-Actenora-Entra-Tid: ${TENANT_ID}"
+  -H "X-Actenora-Email: ${EMAIL}"
+  -H "X-Actenora-Display-Name: ${DISPLAY_NAME}"
+  -H "X-Actenora-Global-Admin: ${VITE_IDENTITY_GLOBAL_ADMIN:-false}"
 )
 
 fail() { echo "FAIL: $*" >&2; exit 1; }

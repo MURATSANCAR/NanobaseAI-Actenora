@@ -1,4 +1,4 @@
-import { mockAuthHeaders } from "@/api/client";
+import { identityAuthHeaders } from "@/api/client";
 import { resolvePortalAuthMode } from "@/auth/portalAuthMode";
 
 type AuthHeaderProvider = () => Promise<Record<string, string>>;
@@ -15,5 +15,5 @@ export async function resolveAuthHeaders(env?: Partial<ImportMetaEnv>): Promise<
     if (!msalHeaderProvider) return {};
     return msalHeaderProvider();
   }
-  return mockAuthHeaders(env);
+  return identityAuthHeaders(env);
 }

@@ -24,6 +24,7 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -162,9 +163,9 @@ public class JdbcRabbitMessagingPlatformConfiguration {
         private final ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler;
 
         JdbcRabbitInboundListeners(
-                IdempotentEventConsumer transcriptEventConsumer,
-                IdempotentEventConsumer meetingIntelligenceEventConsumer,
-                IdempotentEventConsumer aiProcessingEventConsumer,
+                @Qualifier("transcriptEventConsumer") IdempotentEventConsumer transcriptEventConsumer,
+                @Qualifier("meetingIntelligenceEventConsumer") IdempotentEventConsumer meetingIntelligenceEventConsumer,
+                @Qualifier("aiProcessingEventConsumer") IdempotentEventConsumer aiProcessingEventConsumer,
                 MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
                 NoteApprovedForLedgerHandler noteApprovedForLedgerHandler,
                 TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler,

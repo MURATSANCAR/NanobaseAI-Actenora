@@ -35,8 +35,9 @@ public class OperationsConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(OpsTelemetryPort.class)
-    OpsTelemetryPort opsTelemetryPort(InstantClock clock) {
-        return InMemoryOpsTelemetryPort.seededDemo(clock.now());
+    OpsTelemetryPort opsTelemetryPort() {
+        // Empty until a real telemetry adapter is wired — never preload demo metrics.
+        return new InMemoryOpsTelemetryPort();
     }
 
     @Bean

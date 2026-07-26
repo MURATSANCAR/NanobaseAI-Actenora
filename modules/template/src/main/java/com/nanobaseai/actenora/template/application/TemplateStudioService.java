@@ -49,6 +49,10 @@ public class TemplateStudioService {
         return templateRepository.listByTenant(tenantId);
     }
 
+    public MeetingTemplate getTemplate(TenantId tenantId, MeetingTemplateId templateId) {
+        return requireTemplate(tenantId, templateId);
+    }
+
     public TemplateVersion createDraftVersion(TenantId tenantId, MeetingTemplateId templateId, String changelog) {
         MeetingTemplate template = requireTemplate(tenantId, templateId);
         TemplateVersion draft = template.createDraftVersion(changelog, clock.now());

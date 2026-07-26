@@ -2,6 +2,17 @@
 
 End-to-end NanobaseAI portal sign-in: SPA MSAL Bearer → platform API with `ACTENORA_AUTH_MODE=entra`. **No `X-Mock-*` headers in staging/prod.**
 
+Portal sign-in and Teams/Graph meeting ingest are independent: Graph uses app-only credentials (`ACTENORA_MICROSOFT_GRAPH_*`), so transcript ingest works while the portal still runs local header auth. Prod requires both.
+
+## Local toggle
+
+Portal login stays local (no Microsoft redirect) with `ACTENORA_AUTH_MODE=headers` + `VITE_PORTAL_AUTH_MODE=headers`. To try real Entra sign-in locally:
+
+```bash
+SPRING_PROFILES_ACTIVE=local,entra-local   # backend: JWT decoder + entra/msal modes
+# apps/web-portal/.env.local: VITE_PORTAL_AUTH_MODE=msal + VITE_ENTRA_*
+```
+
 ## App registrations (Entra)
 
 1. **API app** (platform-backend resource server)

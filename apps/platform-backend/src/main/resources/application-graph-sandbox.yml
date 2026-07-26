@@ -13,10 +13,10 @@ actenora:
     mode: jdbc-rabbit
   security:
     auth:
-      mode: mock
+      mode: headers
   portal:
     auth:
-      mode: mock
+      mode: headers
   ai:
     provider:
       # Real local NanobaseAI Intelligence endpoint (never offline on this profile).

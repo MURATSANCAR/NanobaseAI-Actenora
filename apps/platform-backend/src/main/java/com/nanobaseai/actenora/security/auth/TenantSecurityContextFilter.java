@@ -71,11 +71,11 @@ public final class TenantSecurityContextFilter extends OncePerRequestFilter {
             Jwt jwt = jwtAuth.getToken();
             jwtClaims = jwt.getClaims();
         }
-        Map<String, String> headers = authMode == AuthMode.MOCK ? extractHeaders(request) : Map.of();
+        Map<String, String> headers = authMode == AuthMode.HEADERS ? extractHeaders(request) : Map.of();
         try {
             return bindingService.bind(jwtClaims, headers);
         } catch (IllegalArgumentException ex) {
-            if (authMode == AuthMode.MOCK && jwtClaims.isEmpty() && headers.isEmpty()) {
+            if (authMode == AuthMode.HEADERS && jwtClaims.isEmpty() && headers.isEmpty()) {
                 return Optional.empty();
             }
             throw new TenantSecurityContextFilterException(401, "Unauthorized", ex.getMessage(), "INVALID_CLAIMS");

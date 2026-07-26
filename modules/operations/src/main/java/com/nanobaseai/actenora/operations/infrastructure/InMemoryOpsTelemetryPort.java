@@ -10,16 +10,14 @@ import com.nanobaseai.actenora.operations.domain.TenantThroughput;
 import com.nanobaseai.actenora.operations.domain.WorkerHealth;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Mutable in-memory telemetry feed for tests and local Operations Center.
+ * Mutable in-memory telemetry feed for tests and empty local Operations Center
+ * (no canned demo metrics).
  */
 public final class InMemoryOpsTelemetryPort implements OpsTelemetryPort {
 
@@ -156,40 +154,6 @@ public final class InMemoryOpsTelemetryPort implements OpsTelemetryPort {
         certificates.clear();
         slaObservations.clear();
         tenantThroughput.clear();
-    }
-
-    public static InMemoryOpsTelemetryPort seededDemo(Instant now) {
-        InMemoryOpsTelemetryPort port = new InMemoryOpsTelemetryPort();
-        port.setMeetingCount(12);
-        port.setTranscriptPendingAgeSeconds(120);
-        port.setAiQueueDepth(3);
-        port.setQueues(List.of(
-                new QueueDepth("actenora.commands", 2, 1, 1),
-                new QueueDepth("actenora.dlq", 0, 0, 0)
-        ));
-        port.setWorkers(List.of(
-                new WorkerHealth("worker-1", "ai", false, 1, 4, now, "UP")
-        ));
-        port.setModelPool(List.of(
-                new ModelPoolMember("gpt-local", "dep-1", "ACTIVE", true, false, now, 0)
-        ));
-        port.setCertificates(List.of(
-                new CertificateRecord("teams-webhook", now.plus(Duration.ofDays(90)), "CN=teams")
-        ));
-        port.setTenantThroughput(List.of(
-                new TenantThroughput(TenantId.random(), 5, 4, 4)
-        ));
-        port.addRetry(new RetryEntry(
-                UUID.randomUUID(),
-                "meeting.MeetingEnded.v1",
-                TenantId.random(),
-                2,
-                now.plusSeconds(30),
-                "TRANSIENT",
-                "RETRY",
-                UUID.randomUUID()
-        ));
-        return port;
     }
 
     public List<Object> snapshotForDebug() {

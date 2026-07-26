@@ -197,6 +197,42 @@ export interface TemplateSummary {
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
 }
 
+export interface DesignComponentView {
+  id: string;
+  type: string;
+  order: number;
+  props: Record<string, string>;
+}
+
+export interface DesignSchemaView {
+  schemaVersion: number;
+  pageSize: string;
+  components: DesignComponentView[];
+}
+
+export interface TemplateVersionDetail {
+  id: string;
+  versionNumber: number;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  changelog: string;
+  updatedAt: string;
+  designSchema: DesignSchemaView | null;
+}
+
+export interface TemplateDetail {
+  id: string;
+  name: string;
+  locale: string;
+  versions: TemplateVersionDetail[];
+}
+
+export interface NoteTemplateLock {
+  templateId: string;
+  templateName: string;
+  templateVersionId: string;
+  templateVersionNumber: number;
+}
+
 export interface TeamsSettings {
   tenantConnected: boolean;
   graphAppId: string;
@@ -300,6 +336,19 @@ export interface ApiClient {
   listCommitments(params?: ListArtifactsParams): Promise<CursorPage<CommitmentItem>>;
   listTemplates(): Promise<{ items: TemplateSummary[] }>;
   createTemplate(body: { name: string; locale?: string }): Promise<TemplateSummary>;
+  getTemplate(templateId: string): Promise<TemplateDetail>;
+  createTemplateDraft(
+    templateId: string,
+    body: { changelog?: string },
+  ): Promise<TemplateVersionDetail>;
+  saveTemplateDesign(
+    templateId: string,
+    versionId: string,
+    body: { designSchemaJson: string; contentSchemaJson?: string },
+  ): Promise<TemplateVersionDetail>;
+  publishTemplateVersion(templateId: string, versionId: string): Promise<TemplateVersionDetail>;
+  getNoteTemplateLock(meetingId: string, noteId: string): Promise<NoteTemplateLock | null>;
+  lockNoteTemplate(meetingId: string, noteId: string, templateVersionId: string): Promise<NoteTemplateLock>;
   getTeamsSettings(): Promise<TeamsSettings>;
   updateTeamsSettings(body: { autoJoinEnabled: boolean }): Promise<TeamsSettings>;
   getNanobaseAiConnection(): Promise<NanobaseAiConnection>;

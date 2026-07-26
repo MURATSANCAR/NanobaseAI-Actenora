@@ -38,7 +38,11 @@ import com.nanobaseai.actenora.operations.application.OperationsViews;
 import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiBrandSanitizer;
 import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.template.api.MeetingTemplateId;
 import com.nanobaseai.actenora.template.api.TemplateApi;
+import com.nanobaseai.actenora.template.api.TemplateVersionId;
+import com.nanobaseai.actenora.template.domain.DesignComponent;
+import com.nanobaseai.actenora.template.domain.DesignSchema;
 import com.nanobaseai.actenora.template.domain.MeetingTemplate;
 import com.nanobaseai.actenora.template.domain.TemplateVersion;
 import com.nanobaseai.actenora.template.domain.TemplateVersionStatus;
@@ -560,6 +564,126 @@ public class PortalApiController {
         return new TemplateSummaryView(templateId.value(), body.name().trim(), locale, 0, "DRAFT");
     }
 
+    @GetMapping("/templates/{templateId}")
+    @RequiresPermission(Permission.TEMPLATE_MANAGE)
+    public TemplateDetailView getTemplate(@PathVariable UUID templateId) {
+        require(Permission.TEMPLATE_MANAGE);
+        TemplateApi api = templateApi.orElseThrow(() ->
+                new ActenoraException("TEMPLATE_MODULE_UNAVAILABLE", "Template module is not enabled"));
+        MeetingTemplate template = api.getTemplate(principalTenantId(), MeetingTemplateId.of(templateId));
+        return toTemplateDetail(template, "en");
+    }
+
+    @PostMapping("/templates/{templateId}/versions")
+    @RequiresPermission(Permission.TEMPLATE_MANAGE)
+    public TemplateVersionView createTemplateDraft(
+            @PathVariable UUID templateId,
+            @RequestBody CreateTemplateVersionBody body
+    ) {
+        require(Permission.TEMPLATE_MANAGE);
+        TemplateApi api = templateApi.orElseThrow(() ->
+                new ActenoraException("TEMPLATE_MODULE_UNAVAILABLE", "Template module is not enabled"));
+        String changelog = body == null || body.changelog() == null || body.changelog().isBlank()
+                ? "Draft"
+                : body.changelog().trim();
+        TemplateVersionId versionId = api.createDraftVersion(
+                principalTenantId(),
+                MeetingTemplateId.of(templateId),
+                changelog
+        );
+        MeetingTemplate template = api.getTemplate(principalTenantId(), MeetingTemplateId.of(templateId));
+        TemplateVersion created = template.versions().stream()
+                .filter(v -> v.id().equals(versionId))
+                .findFirst()
+                .orElseThrow(() -> new ActenoraException("VERSION_NOT_FOUND", "Created version not found"));
+        return toTemplateVersionView(created);
+    }
+
+    @PutMapping("/templates/{templateId}/versions/{versionId}/design")
+    @RequiresPermission(Permission.TEMPLATE_MANAGE)
+    public TemplateVersionView saveTemplateDesign(
+            @PathVariable UUID templateId,
+            @PathVariable UUID versionId,
+            @RequestBody SaveTemplateDesignBody body
+    ) {
+        require(Permission.TEMPLATE_MANAGE);
+        TemplateApi api = templateApi.orElseThrow(() ->
+                new ActenoraException("TEMPLATE_MODULE_UNAVAILABLE", "Template module is not enabled"));
+        if (body == null || body.designSchemaJson() == null || body.designSchemaJson().isBlank()) {
+            throw new ActenoraException("INVALID_DESIGN", "designSchemaJson is required");
+        }
+        String contentJson = body.contentSchemaJson() == null ? "" : body.contentSchemaJson();
+        api.saveDraftDesign(
+                principalTenantId(),
+                TemplateVersionId.of(versionId),
+                body.designSchemaJson(),
+                contentJson
+        );
+        MeetingTemplate template = api.getTemplate(principalTenantId(), MeetingTemplateId.of(templateId));
+        TemplateVersion saved = template.versions().stream()
+                .filter(v -> v.id().value().equals(versionId))
+                .findFirst()
+                .orElseThrow(() -> new ActenoraException("VERSION_NOT_FOUND", "Template version not found"));
+        return toTemplateVersionView(saved);
+    }
+
+    @PostMapping("/templates/{templateId}/versions/{versionId}/publish")
+    @RequiresPermission(Permission.TEMPLATE_MANAGE)
+    public TemplateVersionView publishTemplateVersion(
+            @PathVariable UUID templateId,
+            @PathVariable UUID versionId
+    ) {
+        require(Permission.TEMPLATE_MANAGE);
+        TemplateApi api = templateApi.orElseThrow(() ->
+                new ActenoraException("TEMPLATE_MODULE_UNAVAILABLE", "Template module is not enabled"));
+        api.publish(principalTenantId(), TemplateVersionId.of(versionId));
+        MeetingTemplate template = api.getTemplate(principalTenantId(), MeetingTemplateId.of(templateId));
+        TemplateVersion published = template.versions().stream()
+                .filter(v -> v.id().value().equals(versionId))
+                .findFirst()
+                .orElseThrow(() -> new ActenoraException("VERSION_NOT_FOUND", "Template version not found"));
+        return toTemplateVersionView(published);
+    }
+
+    @GetMapping("/meetings/{meetingId}/notes/{noteId}/template-lock")
+    @RequiresPermission(Permission.MEETING_READ)
+    public NoteTemplateLockView getNoteTemplateLock(
+            @PathVariable UUID meetingId,
+            @PathVariable UUID noteId,
+            HttpServletResponse response
+    ) {
+        require(Permission.MEETING_READ);
+        meetingApi.getMeeting(meetingId);
+        if (templateApi.isEmpty()) {
+            markStub(response);
+            return null;
+        }
+        return templateApi.get()
+                .findLockedTemplateVersion(principalTenantId(), noteId)
+                .flatMap(versionId -> resolveNoteTemplateLock(principalTenantId(), versionId))
+                .orElse(null);
+    }
+
+    @PutMapping("/meetings/{meetingId}/notes/{noteId}/template-lock")
+    @RequiresPermission(Permission.MEETING_WRITE)
+    public NoteTemplateLockView lockNoteTemplate(
+            @PathVariable UUID meetingId,
+            @PathVariable UUID noteId,
+            @RequestBody LockNoteTemplateBody body
+    ) {
+        require(Permission.MEETING_WRITE);
+        meetingApi.getMeeting(meetingId);
+        if (body == null || body.templateVersionId() == null) {
+            throw new ActenoraException("INVALID_TEMPLATE_LOCK", "templateVersionId is required");
+        }
+        TemplateApi api = templateApi.orElseThrow(() ->
+                new ActenoraException("TEMPLATE_MODULE_UNAVAILABLE", "Template module is not enabled"));
+        TemplateVersionId versionId = TemplateVersionId.of(body.templateVersionId());
+        api.lockNoteToTemplateVersion(principalTenantId(), noteId, versionId);
+        return resolveNoteTemplateLock(principalTenantId(), versionId)
+                .orElseThrow(() -> new ActenoraException("TEMPLATE_LOCK_FAILED", "Could not resolve template lock"));
+    }
+
     @GetMapping("/teams/settings")
     @RequiresPermission(Permission.TENANT_READ)
     public TeamsSettingsView teamsSettings(HttpServletResponse response) {
@@ -822,6 +946,71 @@ public class PortalApiController {
                 versionNumber,
                 status
         );
+    }
+
+    private static TemplateDetailView toTemplateDetail(MeetingTemplate template, String locale) {
+        List<TemplateVersionView> versions = template.versions().stream()
+                .sorted(Comparator.comparingInt(TemplateVersion::versionNumber).reversed())
+                .map(PortalApiController::toTemplateVersionView)
+                .toList();
+        return new TemplateDetailView(
+                template.id().value(),
+                template.name(),
+                locale,
+                versions
+        );
+    }
+
+    private static TemplateVersionView toTemplateVersionView(TemplateVersion version) {
+        DesignSchemaView design = version.designSchema()
+                .map(PortalApiController::toDesignSchemaView)
+                .orElse(null);
+        return new TemplateVersionView(
+                version.id().value(),
+                version.versionNumber(),
+                version.status().name(),
+                version.changelog(),
+                version.updatedAt().toString(),
+                design
+        );
+    }
+
+    private static DesignSchemaView toDesignSchemaView(DesignSchema schema) {
+        List<DesignComponentView> components = schema.components().stream()
+                .map(PortalApiController::toDesignComponentView)
+                .toList();
+        return new DesignSchemaView(schema.schemaVersion(), schema.pageSize(), components);
+    }
+
+    private static DesignComponentView toDesignComponentView(DesignComponent component) {
+        return new DesignComponentView(
+                component.id().toString(),
+                component.type().name(),
+                component.order(),
+                component.props()
+        );
+    }
+
+    private Optional<NoteTemplateLockView> resolveNoteTemplateLock(
+            TenantId tenantId,
+            TemplateVersionId versionId
+    ) {
+        if (templateApi.isEmpty()) {
+            return Optional.empty();
+        }
+        for (MeetingTemplate template : templateApi.get().listTemplates(tenantId)) {
+            for (TemplateVersion version : template.versions()) {
+                if (version.id().equals(versionId)) {
+                    return Optional.of(new NoteTemplateLockView(
+                            template.id().value(),
+                            template.name(),
+                            version.id().value(),
+                            version.versionNumber()
+                    ));
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     private ModelHealthView toPortalModelHealth(
@@ -1163,6 +1352,56 @@ public class PortalApiController {
     }
 
     public record CreateTemplateBody(String name, String locale) {
+    }
+
+    public record TemplateDetailView(
+            UUID id,
+            String name,
+            String locale,
+            List<TemplateVersionView> versions
+    ) {
+    }
+
+    public record TemplateVersionView(
+            UUID id,
+            int versionNumber,
+            String status,
+            String changelog,
+            String updatedAt,
+            DesignSchemaView designSchema
+    ) {
+    }
+
+    public record DesignSchemaView(
+            int schemaVersion,
+            String pageSize,
+            List<DesignComponentView> components
+    ) {
+    }
+
+    public record DesignComponentView(
+            String id,
+            String type,
+            int order,
+            java.util.Map<String, String> props
+    ) {
+    }
+
+    public record CreateTemplateVersionBody(String changelog) {
+    }
+
+    public record SaveTemplateDesignBody(String designSchemaJson, String contentSchemaJson) {
+    }
+
+    public record NoteTemplateLockView(
+            UUID templateId,
+            String templateName,
+            UUID templateVersionId,
+            int templateVersionNumber
+    ) {
+    }
+
+    public record LockNoteTemplateBody(UUID templateVersionId) {
     }
 
     public record UpdateTeamsSettingsBody(boolean autoJoinEnabled) {
