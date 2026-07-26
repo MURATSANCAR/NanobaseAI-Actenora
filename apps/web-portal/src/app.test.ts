@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { familyProducts } from "./config/familyProducts.ts";
 import { assertDefined } from "@actenora/test-support";
 import { App } from "./App.tsx";
 import {
@@ -21,6 +22,17 @@ import { IDS, resetMockStore } from "./api/mock/data.ts";
 
 test("App export is defined", () => {
   assert.equal(typeof assertDefined(App), "function");
+});
+
+test("family product bar includes QA, BI, and Actenora links", () => {
+  const products = familyProducts();
+  assert.equal(products.length, 3);
+  assert.deepEqual(
+    products.map((p) => p.key),
+    ["qa", "bi", "actenora"],
+  );
+  assert.match(products[0]!.href, /^https:\/\//);
+  assert.match(products[2]!.href, /portal\.nanobasea\.ai$/);
 });
 
 test("role visibility gates nav and model routing", () => {

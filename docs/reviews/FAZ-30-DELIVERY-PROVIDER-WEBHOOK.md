@@ -41,7 +41,7 @@ JWT / mock identity gerekmez; tenant body’den gelir (provider callback).
 | Only delivered event | ✓ |
 | PROVIDER_ACCEPTED → DELIVERED | ✓ |
 | Webhook retry idempotent | ✓ |
-| Lookup by providerMessageId alone | deferred |
+| Lookup by providerMessageId alone | done (FAZ 31) |
 | Real Graph subscription push | deferred |
 | JDBC delivery repos | deferred |
 

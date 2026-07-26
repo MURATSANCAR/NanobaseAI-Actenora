@@ -41,7 +41,7 @@ Accept FOLLOW_UP → continuity projection follow-up chain materialize olur. Rej
 | Tenant isolation | ✓ empty lists for foreign tenant |
 | MEETING_READ / WRITE | ✓ |
 | OpenAPI dedicated prefix | ✓ `/continuity-ledger` |
-| Auto-append from approved notes | deferred |
+| Auto-append from approved notes | done (FAZ 27–29) |
 | Brief / overdue / rebuild HTTP | deferred |
 | JDBC ledger | deferred |
 | confirmDelivered HTTP | deferred (delivery) |

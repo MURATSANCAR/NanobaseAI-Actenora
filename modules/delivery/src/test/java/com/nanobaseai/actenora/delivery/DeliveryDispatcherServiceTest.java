@@ -248,6 +248,22 @@ class DeliveryDispatcherServiceTest {
     }
 
     @Test
+    void confirmViaProviderMessageIdResolvesRequest() {
+        EnqueueDeliveryResult result = enqueue(List.of(DeliveryRecipient.internal("p@t.com", "P")));
+        assertEquals(DeliveryStatus.PROVIDER_ACCEPTED, worker.pollOnce().getFirst());
+
+        DeliveryRequest request = repository.findById(tenant, result.createdIds().getFirst().value()).orElseThrow();
+        String providerMessageId = request.latestAttempt()
+                .flatMap(a -> a.providerMessage())
+                .map(m -> m.providerMessageId())
+                .orElseThrow();
+
+        UUID resolved = dispatcher.resolveByProviderMessageId(tenant.value(), providerMessageId);
+        assertEquals(request.id(), resolved);
+        assertEquals(DeliveryStatus.DELIVERED, dispatcher.confirmDelivered(tenant.value(), resolved));
+    }
+
+    @Test
     void microsoftGraphPortValidatesConfigurationAndExposesSendContract() {
         MicrosoftGraphMailProvider graph = new MicrosoftGraphMailProvider(
                 new MicrosoftGraphMailProvider.GraphMailConfig("tid", "cid", "sender@contoso.com", true),

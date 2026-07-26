@@ -44,8 +44,8 @@ DECISION_RECORDED / COMMITMENT_RECORDED
 | Meeting occurrence bağını koruma | ✓ |
 | Decision + commitment append | ✓ |
 | Rejection/change request skip | ✓ (status guard) |
-| Transactional outbox / retry idempotency | deferred |
-| Artifact source ID provenance | deferred |
+| Transactional outbox / retry idempotency | done (FAZ 28–29) |
+| Artifact source ID provenance | done (FAZ 28) |
 | Commitment due date aktarımı | deferred (source modelde yok) |
 
 ## 5. Testler

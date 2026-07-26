@@ -34,7 +34,7 @@ DECISION_RECORDED / COMMITMENT_RECORDED (aggregateId = sourceId)
 | Artifact source ID = ledger aggregate ID | ✓ |
 | Double append does not duplicate events | ✓ |
 | Manual HTTP record (null id) still works | ✓ |
-| Transactional outbox | deferred |
+| Transactional outbox | done (FAZ 29) |
 | Commitment due date from note model | deferred (modelde yok) |
 | JDBC ledger | deferred |
 

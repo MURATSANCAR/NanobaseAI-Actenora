@@ -37,7 +37,7 @@ Reject overdue listeden düşer; confirm past-due hâlâ overdue sayılır (doma
 | MEETING_WRITE | ✓ |
 | Actor = principal.userId | ✓ |
 | OpenAPI | ✓ |
-| Auto-append from approved notes | deferred |
+| Auto-append from approved notes | done (FAZ 27–29) |
 | JDBC ledger | deferred |
 
 ## 5. Testler

@@ -40,4 +40,9 @@ public interface DeliveryApi {
      * Acceptance alone must never imply delivery.
      */
     DeliveryStatus confirmDelivered(TenantId tenantId, DeliveryRequestId id);
+
+    /**
+     * FAZ 31 — resolve our delivery request id from a provider-side message id.
+     */
+    DeliveryRequestId resolveByProviderMessageId(TenantId tenantId, String providerMessageId);
 }

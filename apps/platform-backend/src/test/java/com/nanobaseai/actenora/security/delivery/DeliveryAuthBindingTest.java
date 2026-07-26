@@ -56,7 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * FAZ 19/20/23/30 — Delivery auth binding: READY → enqueue → drain → confirm / webhook.
+ * FAZ 19/20/23/30/31 — Delivery auth binding: READY → enqueue → drain → confirm / webhook.
  */
 class DeliveryAuthBindingTest {
 
@@ -69,6 +69,7 @@ class DeliveryAuthBindingTest {
     private DeliveryAuthController controller;
     private DeliveryProviderWebhookController webhookController;
     private MailHogMailProvider mailProvider;
+    private InMemoryDeliveryRequestRepository requests;
 
     @BeforeEach
     void setUp() {
@@ -91,7 +92,7 @@ class DeliveryAuthBindingTest {
                 fixed
         );
 
-        InMemoryDeliveryRequestRepository requests = new InMemoryDeliveryRequestRepository();
+        requests = new InMemoryDeliveryRequestRepository();
         mailProvider = MailHogMailProvider.localDefaults(clock::now);
         RecordingDeliveryAuditPort audit = new RecordingDeliveryAuditPort();
         DeliveryDispatcherService dispatcher = new DeliveryDispatcherService(
@@ -212,6 +213,38 @@ class DeliveryAuthBindingTest {
                 )
         );
         assertEquals(DeliveryStatus.DELIVERED, duplicate.status());
+    }
+
+    @Test
+    void providerWebhookConfirmsUsingProviderMessageIdAlone() {
+        MeetingNote note = draft();
+        ApprovalId approvalId = approve(note);
+        bind(Set.of(Permission.DELIVERY_MANAGE.code()));
+        var order = controller.requestOrder(new DeliveryAuthController.RequestDeliveryOrderBody(
+                approvalId.value(), note.currentVersionId(), "email"));
+        var enqueued = controller.enqueue(order.id(), new DeliveryAuthController.EnqueueDeliveryBody(
+                List.of(new DeliveryAuthController.RecipientBody("dave@ex.com", "EXTERNAL", "Dave")),
+                "Provider id ship",
+                "Body"
+        ));
+        UUID requestId = enqueued.createdIds().getFirst();
+        assertEquals(1, controller.drain().processed());
+
+        String providerMessageId = requests.findById(tenantId, requestId)
+                .flatMap(r -> r.latestAttempt().flatMap(a -> a.providerMessage()))
+                .map(m -> m.providerMessageId())
+                .orElseThrow();
+
+        TenantSecurityContext.clear();
+        var confirmed = webhookController.providerDelivered(
+                "test-webhook-secret",
+                new DeliveryProviderWebhookController.ProviderDeliveredBody(
+                        tenantId.value(), null, providerMessageId, "delivered"
+                )
+        );
+        assertEquals(requestId, confirmed.deliveryRequestId());
+        assertEquals(DeliveryStatus.DELIVERED, confirmed.status());
+        assertEquals(providerMessageId, confirmed.providerMessageId());
     }
 
     @Test

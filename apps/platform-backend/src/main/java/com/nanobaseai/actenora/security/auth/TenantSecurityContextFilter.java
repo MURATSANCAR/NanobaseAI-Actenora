@@ -100,8 +100,9 @@ public final class TenantSecurityContextFilter extends OncePerRequestFilter {
         if (path == null) {
             return false;
         }
-        // Provider webhooks authenticate via shared secret, not user JWT / mock headers.
-        if (path.startsWith("/api/v1/delivery/webhooks/")) {
+        // Provider webhooks authenticate via shared secret / clientState, not user JWT / mock headers.
+        if (path.startsWith("/api/v1/delivery/webhooks/")
+                || path.startsWith("/api/v1/microsoft/webhooks/")) {
             return false;
         }
         return path.startsWith("/api/");

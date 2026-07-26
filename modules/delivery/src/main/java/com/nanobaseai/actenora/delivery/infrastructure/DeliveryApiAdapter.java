@@ -79,4 +79,9 @@ public final class DeliveryApiAdapter implements DeliveryApi {
     public DeliveryStatus confirmDelivered(TenantId tenantId, DeliveryRequestId id) {
         return dispatcher.confirmDelivered(tenantId.value(), id.value());
     }
+
+    @Override
+    public DeliveryRequestId resolveByProviderMessageId(TenantId tenantId, String providerMessageId) {
+        return DeliveryRequestId.of(dispatcher.resolveByProviderMessageId(tenantId.value(), providerMessageId));
+    }
 }

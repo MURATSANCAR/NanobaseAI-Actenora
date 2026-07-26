@@ -42,8 +42,78 @@ a {
   top: 0.5rem;
 }
 
-.app-shell {
+.app-frame {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.family-top-bar {
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 92%, black);
+  color: color-mix(in srgb, white 88%, var(--foam));
+}
+
+.family-top-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.45rem clamp(1rem, 2.5vw, 2rem);
+}
+
+.family-top-bar-brand {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.family-top-bar-mark {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
+}
+
+.family-top-bar-sub {
+  font-size: 0.78rem;
+  color: color-mix(in srgb, white 62%, var(--mist));
+}
+
+.family-top-bar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.family-product-link {
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.82rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, white 18%, transparent);
+  background: color-mix(in srgb, white 6%, transparent);
+}
+
+.family-product-link:hover,
+.family-product-link:focus-visible {
+  background: color-mix(in srgb, var(--moss) 28%, transparent);
+  border-color: color-mix(in srgb, var(--mist) 45%, transparent);
+  outline: none;
+}
+
+.family-product-link.current {
+  background: color-mix(in srgb, var(--moss) 72%, black);
+  border-color: color-mix(in srgb, var(--mist) 55%, transparent);
+  font-weight: 600;
+}
+
+.app-shell {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(13rem, 16rem) 1fr;
 }

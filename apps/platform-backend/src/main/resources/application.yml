@@ -102,6 +102,12 @@ actenora:
     webhook:
       # Shared secret for provider delivery confirmation callbacks (FAZ 30)
       secret: ${ACTENORA_DELIVERY_WEBHOOK_SECRET:local-delivery-webhook-secret}
+  microsoft-graph:
+    # Bounded context + its Graph notification webhook are disabled locally by default (FAZ 32)
+    enabled: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:false}
+    webhook:
+      # clientState echoed by Graph in every change/lifecycle notification (FAZ 32)
+      client-state: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE:local-graph-client-state}
   transcript:
     # embedded = in-process module (default); remote = HTTP proxy to transcript-worker (FAZ 26)
     mode: ${ACTENORA_TRANSCRIPT_MODE:embedded}

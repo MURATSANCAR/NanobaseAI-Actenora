@@ -21,6 +21,11 @@ public interface DeliveryRequestRepository {
             String recipientEmail
     );
 
+    /**
+     * FAZ 31 — resolve a request by provider-side message id within a tenant.
+     */
+    Optional<DeliveryRequest> findByProviderMessageId(TenantId tenantId, String providerMessageId);
+
     List<DeliveryRequest> findDue(Instant now, int limit);
 
     void saveDeadLetter(DeliveryDeadLetter deadLetter);

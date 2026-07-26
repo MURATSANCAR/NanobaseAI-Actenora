@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
+import { FamilyTopBar } from "./FamilyTopBar";
 
 const links: Array<{ to: string; label: string; gate?: "models" | "operations" | "audit" | "teams" | "templates" }> = [
   { to: "/", label: "Dashboard" },
@@ -19,45 +20,48 @@ export function AppShell() {
   const auth = useAuth();
 
   return (
-    <div className="app-shell">
-      <a className="skip-link" href="#main">
-        Skip to content
-      </a>
-      <aside className="sidebar" aria-label="Primary">
-        <div className="sidebar-brand">
-          <p className="brand-mark">Actenora</p>
-          <p className="brand-sub">Web portal</p>
-        </div>
-        <nav className="side-nav">
-          {links
-            .filter((l) => !l.gate || auth.nav(l.gate))
-            .map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                end={l.to === "/"}
-                className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-              >
-                {l.label}
-              </NavLink>
-            ))}
-        </nav>
-        <div className="sidebar-user" aria-live="polite">
-          {auth.isLoading ? (
-            <span>Signing in…</span>
-          ) : auth.user ? (
-            <>
-              <strong>{auth.user.displayName}</strong>
-              <span className="muted">{auth.user.role}</span>
-            </>
-          ) : (
-            <span role="alert">Auth unavailable</span>
-          )}
-        </div>
-      </aside>
-      <main id="main" className="main-pane" tabIndex={-1}>
-        <Outlet />
-      </main>
+    <div className="app-frame">
+      <FamilyTopBar />
+      <div className="app-shell">
+        <a className="skip-link" href="#main">
+          Skip to content
+        </a>
+        <aside className="sidebar" aria-label="Primary">
+          <div className="sidebar-brand">
+            <p className="brand-mark">Actenora</p>
+            <p className="brand-sub">Web portal</p>
+          </div>
+          <nav className="side-nav">
+            {links
+              .filter((l) => !l.gate || auth.nav(l.gate))
+              .map((l) => (
+                <NavLink
+                  key={l.to}
+                  to={l.to}
+                  end={l.to === "/"}
+                  className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+                >
+                  {l.label}
+                </NavLink>
+              ))}
+          </nav>
+          <div className="sidebar-user" aria-live="polite">
+            {auth.isLoading ? (
+              <span>Signing in…</span>
+            ) : auth.user ? (
+              <>
+                <strong>{auth.user.displayName}</strong>
+                <span className="muted">{auth.user.role}</span>
+              </>
+            ) : (
+              <span role="alert">Auth unavailable</span>
+            )}
+          </div>
+        </aside>
+        <main id="main" className="main-pane" tabIndex={-1}>
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

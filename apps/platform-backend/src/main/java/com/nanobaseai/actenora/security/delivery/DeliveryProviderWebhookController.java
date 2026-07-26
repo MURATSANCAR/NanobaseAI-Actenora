@@ -23,7 +23,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * FAZ 30 — provider delivery confirmation webhook (shared-secret auth, no user JWT).
+ * FAZ 30/31 — provider delivery confirmation webhook (shared-secret auth, no user JWT).
+ * Resolves by {@code deliveryRequestId} and/or {@code providerMessageId}.
  * Acceptance ({@code PROVIDER_ACCEPTED}) alone never implies delivery.
  */
 @RestController
@@ -50,9 +51,18 @@ public class DeliveryProviderWebhookController {
     ) {
         assertSecret(secret);
         Objects.requireNonNull(body, "body");
-        if (body.tenantId() == null || body.deliveryRequestId() == null) {
-            throw new ActenoraException("INVALID_WEBHOOK_PAYLOAD", "tenantId and deliveryRequestId are required");
+        if (body.tenantId() == null) {
+            throw new ActenoraException("INVALID_WEBHOOK_PAYLOAD", "tenantId is required");
         }
+        boolean hasRequestId = body.deliveryRequestId() != null;
+        boolean hasProviderMessageId = StringUtils.hasText(body.providerMessageId());
+        if (!hasRequestId && !hasProviderMessageId) {
+            throw new ActenoraException(
+                    "INVALID_WEBHOOK_PAYLOAD",
+                    "deliveryRequestId or providerMessageId is required"
+            );
+        }
+
         String event = body.event() == null ? "delivered" : body.event().trim().toLowerCase(Locale.ROOT);
         if (!"delivered".equals(event) && !"delivery".equals(event)) {
             throw new ActenoraException(
@@ -61,11 +71,15 @@ public class DeliveryProviderWebhookController {
             );
         }
 
-        DeliveryStatus status = deliveryApi.confirmDelivered(
-                TenantId.of(body.tenantId()),
-                DeliveryRequestId.of(body.deliveryRequestId())
-        );
-        return new DeliveryWebhookResultView(body.deliveryRequestId(), status, body.providerMessageId());
+        TenantId tenantId = TenantId.of(body.tenantId());
+        DeliveryRequestId requestId;
+        if (hasRequestId) {
+            requestId = DeliveryRequestId.of(body.deliveryRequestId());
+        } else {
+            requestId = deliveryApi.resolveByProviderMessageId(tenantId, body.providerMessageId().trim());
+        }
+        DeliveryStatus status = deliveryApi.confirmDelivered(tenantId, requestId);
+        return new DeliveryWebhookResultView(requestId.value(), status, body.providerMessageId());
     }
 
     private void assertSecret(String secret) {

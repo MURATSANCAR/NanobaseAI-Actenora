@@ -432,4 +432,26 @@ public final class DeliveryDispatcherService {
         auditSuccess(request, "DELIVERY_DELIVERED", now);
         return DeliveryStatus.DELIVERED;
     }
+
+    /**
+     * FAZ 31 — resolve delivery request id by provider message id.
+     */
+    public UUID resolveByProviderMessageId(UUID tenantId, String providerMessageId) {
+        if (providerMessageId == null || providerMessageId.isBlank()) {
+            throw new DeliveryDomainException(
+                    "INVALID_PROVIDER_MESSAGE_ID",
+                    "providerMessageId is required"
+            );
+        }
+        return repository
+                .findByProviderMessageId(
+                        com.nanobaseai.actenora.sharedkernel.domain.TenantId.of(tenantId),
+                        providerMessageId.trim()
+                )
+                .map(DeliveryRequest::id)
+                .orElseThrow(() -> new DeliveryDomainException(
+                        "DELIVERY_NOT_FOUND",
+                        "delivery request not found for providerMessageId: " + providerMessageId
+                ));
+    }
 }

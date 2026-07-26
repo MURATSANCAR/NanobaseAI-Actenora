@@ -17,12 +17,22 @@ public final class InMemoryDeliveryRequestRepository implements DeliveryRequestR
 
     private final Map<UUID, DeliveryRequest> byId = new ConcurrentHashMap<>();
     private final Map<String, UUID> byIdempotency = new ConcurrentHashMap<>();
+    private final Map<String, UUID> byProviderMessage = new ConcurrentHashMap<>();
     private final Map<UUID, DeliveryDeadLetter> deadLetters = new ConcurrentHashMap<>();
 
     @Override
     public DeliveryRequest save(DeliveryRequest request) {
         byId.put(request.id(), request);
-        byIdempotency.put(idempotencyKey(request.tenantId(), request.noteVersionId(), request.recipient().email()), request.id());
+        byIdempotency.put(
+                idempotencyKey(request.tenantId(), request.noteVersionId(), request.recipient().email()),
+                request.id()
+        );
+        for (var attempt : request.attempts()) {
+            attempt.providerMessage().ifPresent(message -> byProviderMessage.put(
+                    providerMessageKey(request.tenantId(), message.providerMessageId()),
+                    request.id()
+            ));
+        }
         return request;
     }
 
@@ -39,6 +49,18 @@ public final class InMemoryDeliveryRequestRepository implements DeliveryRequestR
             String recipientEmail
     ) {
         UUID id = byIdempotency.get(idempotencyKey(tenantId, noteVersionId, recipientEmail));
+        if (id == null) {
+            return Optional.empty();
+        }
+        return findById(tenantId, id);
+    }
+
+    @Override
+    public Optional<DeliveryRequest> findByProviderMessageId(TenantId tenantId, String providerMessageId) {
+        if (providerMessageId == null || providerMessageId.isBlank()) {
+            return Optional.empty();
+        }
+        UUID id = byProviderMessage.get(providerMessageKey(tenantId, providerMessageId));
         if (id == null) {
             return Optional.empty();
         }
@@ -75,5 +97,9 @@ public final class InMemoryDeliveryRequestRepository implements DeliveryRequestR
 
     private static String idempotencyKey(TenantId tenantId, UUID noteVersionId, String email) {
         return tenantId.value() + "|" + noteVersionId + "|" + email.trim().toLowerCase();
+    }
+
+    private static String providerMessageKey(TenantId tenantId, String providerMessageId) {
+        return tenantId.value() + "|" + providerMessageId.trim();
     }
 }

@@ -327,6 +327,41 @@ paths:
         "409":
           description: Request is not PROVIDER_ACCEPTED
 
+  /api/v1/microsoft/webhooks/graph-notifications:
+    post:
+      operationId: microsoftGraphNotifications
+      summary: >-
+        Microsoft Graph change/lifecycle notification webhook (clientState auth).
+        Echoes validationToken on the subscription handshake; dispatches notifications idempotently.
+      parameters:
+        - name: validationToken
+          in: query
+          required: false
+          description: Present only on the subscription validation handshake; must be echoed as text/plain
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GraphNotificationBatch"
+      responses:
+        "200":
+          description: Validation handshake — validationToken echoed back
+          content:
+            text/plain:
+              schema:
+                type: string
+        "202":
+          description: Notifications accepted (processed / duplicate / rejected counts)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphWebhookResult"
+        "400":
+          description: Empty or invalid notification batch
+
   /api/v1/delivery/drain:
     post:
       operationId: drainDeliveryWorker
@@ -1197,7 +1232,7 @@ components:
     ProviderDeliveredWebhook:
       type: object
       additionalProperties: false
-      required: [tenantId, deliveryRequestId]
+      required: [tenantId]
       properties:
         tenantId:
           type: string
@@ -1205,9 +1240,12 @@ components:
         deliveryRequestId:
           type: string
           format: uuid
+          nullable: true
+          description: Our delivery request id; optional when providerMessageId is provided
         providerMessageId:
           type: string
           nullable: true
+          description: Provider-side message id; used alone when deliveryRequestId is omitted
         event:
           type: string
           description: Provider event name; only delivered/delivery are accepted
@@ -1227,6 +1265,69 @@ components:
         providerMessageId:
           type: string
           nullable: true
+
+    GraphNotificationBatch:
+      type: object
+      additionalProperties: true
+      required: [value]
+      properties:
+        value:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphNotificationItem"
+
+    GraphNotificationItem:
+      type: object
+      additionalProperties: true
+      properties:
+        subscriptionId:
+          type: string
+        changeType:
+          type: string
+          nullable: true
+          description: Present on change notifications (created/updated/deleted)
+        resource:
+          type: string
+          nullable: true
+        resourceData:
+          type: object
+          additionalProperties: true
+          nullable: true
+          properties:
+            "@odata.id":
+              type: string
+              nullable: true
+            id:
+              type: string
+              nullable: true
+        lifecycleEvent:
+          type: string
+          nullable: true
+          description: Present on lifecycle notifications (reauthorizationRequired/missed/subscriptionRemoved)
+        clientState:
+          type: string
+          nullable: true
+          description: Shared secret echoed by Graph; verified against configured clientState
+        tenantId:
+          type: string
+          nullable: true
+        subscriptionExpirationDateTime:
+          type: string
+          nullable: true
+
+    GraphWebhookResult:
+      type: object
+      additionalProperties: false
+      required: [received, processed, duplicates, rejected]
+      properties:
+        received:
+          type: integer
+        processed:
+          type: integer
+        duplicates:
+          type: integer
+        rejected:
+          type: integer
 
     DeliveryDrainResponse:
       type: object
