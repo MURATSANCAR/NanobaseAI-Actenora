@@ -179,6 +179,7 @@ class PortalApiBindingTest {
                 optionalBeans.getBeanProvider(TemplateApi.class),
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi.class),
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.modelmanagement.api.ModelManagementApi.class),
+                optionalBeans.getBeanProvider(com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService.class),
                 new PortalTeamsPreferencesStore(),
                 "test-graph-client-id",
                 ""
@@ -241,6 +242,45 @@ class PortalApiBindingTest {
         PortalApiController.MeetingDetailView detail = controller.meetingDetail(created.id());
         assertEquals(created.id(), detail.meeting().id());
         assertEquals(1, detail.participants().size());
+    }
+
+    @Test
+    void completeActionMarksLedgerItemCompleted() {
+        var ctx = meetingApi.createBusinessContext(new CreateBusinessContextRequest(
+                "PROJECT", "P1", "Context", "ctx"
+        ));
+        Instant start = Instant.parse("2026-07-20T09:00:00Z");
+        MeetingResponse meeting = meetingApi.createMeeting(new CreateMeetingRequest(
+                ctx.id(), null, null, "g1", "i1", start, null, null, null,
+                "standup", MeetingType.STANDALONE, start, start.plusSeconds(3600),
+                ProcessingPriority.NORMAL,
+                List.of(new CreateMeetingRequest.ParticipantInput(
+                        "oid", "Organizer", "org@example.com", "ORGANIZER", false
+                ))
+        ));
+        UUID noteId = UUID.randomUUID();
+        UUID actionId = ledgerService.recordActionItem(tenantId, meeting.id(), noteId, "Send recap");
+
+        PortalApiController.ActionItemView completed = controller.completeAction(actionId);
+        assertEquals("COMPLETED", completed.status());
+        assertEquals(0, controller.dashboard().openActions());
+    }
+
+    @Test
+    void listPendingApprovalsReturnsGroupedInbox() {
+        UUID noteVersionId = UUID.randomUUID();
+        approvalApi.openSingleStage(
+                tenantId.value(),
+                ApprovalSubjectType.MEETING_NOTE_VERSION,
+                noteVersionId,
+                userId.toString(),
+                Instant.parse("2026-12-31T00:00:00Z")
+        );
+
+        PortalApiController.PendingApprovalsInboxView inbox = controller.listPendingApprovals();
+        assertEquals(1, inbox.groups().size());
+        assertEquals(1, inbox.groups().get(0).items().size());
+        assertEquals("PENDING", inbox.groups().get(0).items().get(0).status());
     }
 
     @Test

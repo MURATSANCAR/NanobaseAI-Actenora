@@ -44,6 +44,7 @@ import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 public final class MeetingIntelligenceApplicationService {
@@ -97,6 +98,13 @@ public final class MeetingIntelligenceApplicationService {
     public MeetingNoteDetailResponse noteDetail(UUID noteId) {
         TenantId tenantId = tenantContext.requireTenantId();
         return detail(noteId, tenantId);
+    }
+
+    public Optional<MeetingNoteDetailResponse> findNoteByVersionId(UUID versionId) {
+        TenantId tenantId = tenantContext.requireTenantId();
+        return versionRepository.findByIdAndTenantId(versionId, tenantId)
+                .flatMap(version -> noteRepository.findByIdAndTenantId(version.noteId(), tenantId)
+                        .map(note -> detail(note.id(), tenantId)));
     }
 
     public List<MeetingNoteDetailResponse> listNotesForMeeting(UUID meetingOccurrenceId) {

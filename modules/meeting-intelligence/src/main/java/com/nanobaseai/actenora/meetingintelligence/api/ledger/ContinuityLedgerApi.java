@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.meetingintelligence.domain.ledger.DecisionHistory
 import com.nanobaseai.actenora.meetingintelligence.domain.ledger.DecisionHistoryEntry;
 import com.nanobaseai.actenora.meetingintelligence.domain.ledger.MeetingBrief;
 import com.nanobaseai.actenora.meetingintelligence.domain.ledger.projection.LedgerProjectionState;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.ActionItemStatus;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.math.BigDecimal;
@@ -107,6 +108,14 @@ public final class ContinuityLedgerApi {
 
     public List<LedgerProjectionState.TrackedActionItem> listOpenActionItems(TenantId tenantId) {
         return service.listOpenActionItems(tenantId);
+    }
+
+    public Optional<LedgerProjectionState.TrackedActionItem> findActionItem(TenantId tenantId, UUID actionItemId) {
+        return service.findActionItem(tenantId, actionItemId);
+    }
+
+    public void completeActionItem(TenantId tenantId, UUID actionItemId) {
+        service.transitionActionItem(tenantId, actionItemId, ActionItemStatus.COMPLETED);
     }
 
     public MeetingBrief generateBrief(TenantId tenantId, UUID targetOccurrenceId) {

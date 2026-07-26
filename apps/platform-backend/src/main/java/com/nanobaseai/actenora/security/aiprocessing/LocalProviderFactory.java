@@ -13,7 +13,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Builds the configured local provider and refuses cloud endpoints or mocks on production.
+ * Builds the NanobaseAI local intelligence runtime and refuses cloud endpoints or offline mode on production.
  */
 public final class LocalProviderFactory {
 
@@ -28,7 +28,7 @@ public final class LocalProviderFactory {
         if (kind == LocalProviderProperties.Kind.MOCK) {
             if (production) {
                 throw new IllegalStateException(
-                        "Refusing to start: actenora.ai.provider.kind=mock is forbidden on production profiles");
+                        "Refusing to start: NanobaseAI Intelligence cannot run offline on production profiles");
             }
             return new MockLocalProvider(
                     properties.getMaxConcurrency(),
@@ -41,13 +41,13 @@ public final class LocalProviderFactory {
         return switch (kind) {
             case VLLM -> new VllmProvider(config);
             case LLAMACPP -> new LlamaCppProvider(config);
-            case OPENAI -> new OpenAiCompatibleLocalProvider(config);
+            case OPENAI, NANOBASEAI -> new OpenAiCompatibleLocalProvider(config);
             case MOCK -> throw new IllegalStateException("unreachable");
         };
     }
 
     private static LocalProviderConfig config(LocalProviderProperties properties, LocalProviderProperties.Kind kind) {
-        return LocalProviderConfig.builder(kind.name().toLowerCase(Locale.ROOT), properties.getBaseUrl())
+        return LocalProviderConfig.builder("nanobaseai", properties.getBaseUrl())
                 .connectTimeout(properties.getConnectTimeout())
                 .readTimeout(properties.getReadTimeout())
                 .maxConcurrency(properties.getMaxConcurrency())
@@ -57,10 +57,10 @@ public final class LocalProviderFactory {
                 .build();
     }
 
-    static void assertLocalEndpoint(URI baseUrl) {
+    public static void assertLocalEndpoint(URI baseUrl) {
         String host = baseUrl.getHost();
         if (host == null || host.isBlank()) {
-            throw new IllegalStateException("actenora.ai.provider.base-url must include a host");
+            throw new IllegalStateException("NanobaseAI Intelligence endpoint must include a host");
         }
         String normalized = host.toLowerCase(Locale.ROOT);
         boolean local = LOCAL_HOSTS.contains(normalized)
@@ -69,7 +69,7 @@ public final class LocalProviderFactory {
                 || isPrivateIpv4(normalized);
         if (!local) {
             throw new IllegalStateException(
-                    "Refusing cloud/remote LLM endpoint (ADR-005 local-only): " + host);
+                    "NanobaseAI Intelligence only accepts local or private network endpoints");
         }
     }
 

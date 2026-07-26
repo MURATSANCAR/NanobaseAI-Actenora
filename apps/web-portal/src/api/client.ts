@@ -96,6 +96,7 @@ function createHttpApiClient(baseUrl: string): ApiClient {
         method: "POST",
         body: JSON.stringify({ decision, comment }),
       }),
+    listPendingApprovals: () => httpJson(baseUrl, "/api/v1/portal/approvals/pending"),
     listDecisions: (params) => httpJson(baseUrl, `/api/v1/portal/decisions${q(params)}`),
     listActions: (params) => httpJson(baseUrl, `/api/v1/portal/actions${q(params)}`),
     completeAction: (actionId) =>
@@ -112,6 +113,17 @@ function createHttpApiClient(baseUrl: string): ApiClient {
       httpJson(baseUrl, "/api/v1/portal/teams/settings", {
         method: "PUT",
         body: JSON.stringify(body),
+      }),
+    getNanobaseAiConnection: () => httpJson(baseUrl, "/api/v1/portal/intelligence/connection"),
+    updateNanobaseAiConnection: (body) =>
+      httpJson(baseUrl, "/api/v1/portal/intelligence/connection", {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }),
+    testNanobaseAiConnection: () =>
+      httpJson(baseUrl, "/api/v1/portal/intelligence/connection/test", {
+        method: "POST",
+        body: "{}",
       }),
     getModelHealth: () => httpJson(baseUrl, "/api/v1/portal/model-control/health"),
     listAiJobs: (params) => httpJson(baseUrl, `/api/v1/portal/ai-jobs${q(params)}`),
@@ -154,6 +166,7 @@ export function createApiClient(opts?: {
 export const queryKeys = {
   me: ["me"] as const,
   dashboard: ["dashboard"] as const,
+  approvalsPending: ["approvals-pending"] as const,
   meetings: (params: object) => ["meetings", params] as const,
   meetingDetail: (id: string) => ["meeting", id] as const,
   transcript: (id: string, params: object) => ["transcript", id, params] as const,
@@ -162,6 +175,7 @@ export const queryKeys = {
   commitments: (params: object) => ["commitments", params] as const,
   templates: ["templates"] as const,
   teams: ["teams-settings"] as const,
+  intelligence: ["nanobaseai-connection"] as const,
   models: ["models"] as const,
   jobs: (params: object) => ["ai-jobs", params] as const,
   operations: ["operations"] as const,

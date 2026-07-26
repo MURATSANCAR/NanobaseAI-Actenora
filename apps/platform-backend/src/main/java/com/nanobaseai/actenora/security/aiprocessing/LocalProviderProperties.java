@@ -14,7 +14,7 @@ import java.util.Set;
 @ConfigurationProperties(prefix = "actenora.ai.provider")
 public class LocalProviderProperties {
 
-    /** mock | openai | vllm | llamacpp */
+    /** mock | nanobaseai | openai | vllm | llamacpp — user-facing APIs expose only NanobaseAI */
     private String kind = "mock";
     private URI baseUrl = URI.create("http://127.0.0.1:8000");
     private Duration connectTimeout = Duration.ofSeconds(2);
@@ -22,7 +22,7 @@ public class LocalProviderProperties {
     private int maxConcurrency = 4;
     private boolean streamingEnabled = true;
     private long degradedProbeThresholdMs = 2_000L;
-    private Set<String> servedModelIds = new LinkedHashSet<>(Set.of("qwen2.5-32b-instruct", "qwen-local"));
+    private Set<String> servedModelIds = new LinkedHashSet<>(Set.of("nanobaseai-primary", "nanobaseai-local"));
     private int maxAttempts = 3;
 
     public Kind resolvedKind() {
@@ -103,6 +103,7 @@ public class LocalProviderProperties {
 
     public enum Kind {
         MOCK,
+        NANOBASEAI,
         OPENAI,
         VLLM,
         LLAMACPP;
@@ -111,7 +112,15 @@ public class LocalProviderProperties {
             if (value == null || value.isBlank()) {
                 return MOCK;
             }
-            return Kind.valueOf(value.trim().toUpperCase(Locale.ROOT));
+            String normalized = value.trim().toUpperCase(Locale.ROOT).replace('-', '_');
+            return switch (normalized) {
+                case "LOCAL", "NANOBASEAI", "COMPATIBLE", "NANOBASE_AI" -> NANOBASEAI;
+                case "MOCK", "OFFLINE" -> MOCK;
+                case "OPENAI" -> OPENAI;
+                case "VLLM" -> VLLM;
+                case "LLAMACPP", "LLAMA_CPP" -> LLAMACPP;
+                default -> Kind.valueOf(normalized);
+            };
         }
     }
 }

@@ -16,6 +16,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.VersionCompareRespons
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MapAiCandidatesCommand;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -27,6 +28,8 @@ public interface MeetingIntelligenceApi {
     MeetingNoteDetailResponse mapAiCandidates(MapAiCandidatesCommand command);
 
     MeetingNoteDetailResponse getNoteDetail(UUID noteId);
+
+    Optional<MeetingNoteDetailResponse> findNoteByVersionId(UUID versionId);
 
     List<MeetingNoteDetailResponse> listNotesForMeeting(UUID meetingOccurrenceId);
 

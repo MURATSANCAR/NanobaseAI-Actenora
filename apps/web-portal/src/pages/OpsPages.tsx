@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
@@ -159,11 +159,51 @@ export function TeamsSettingsPage() {
 export function ModelManagementPage() {
   const auth = useAuth();
   const api = useApi();
+  const queryClient = useQueryClient();
   const { t, tb } = useI18n();
+  const [baseUrl, setBaseUrl] = useState("http://127.0.0.1:8000");
+  const [enabled, setEnabled] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const connection = useQuery({
+    queryKey: queryKeys.intelligence,
+    queryFn: () => api.getNanobaseAiConnection(),
+    enabled: auth.nav("models"),
+  });
   const q = useQuery({
     queryKey: queryKeys.models,
     queryFn: () => api.getModelHealth(),
     enabled: auth.nav("models"),
+  });
+
+  useEffect(() => {
+    if (connection.data) {
+      setBaseUrl(connection.data.baseUrl);
+      setEnabled(connection.data.enabled);
+    }
+  }, [connection.data]);
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      api.updateNanobaseAiConnection({
+        baseUrl: baseUrl.trim(),
+        enabled,
+      }),
+    onSuccess: async () => {
+      setMessage(t("intelligence.saved"));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.intelligence });
+    },
+    onError: (err: Error) => setMessage(err.message || t("intelligence.saveFailed")),
+  });
+  const testMutation = useMutation({
+    mutationFn: () => api.testNanobaseAiConnection(),
+    onSuccess: async (data) => {
+      setMessage(
+        data.healthy ? t("intelligence.testOk") : t("intelligence.testFailed"),
+      );
+      await queryClient.invalidateQueries({ queryKey: queryKeys.intelligence });
+    },
+    onError: (err: Error) => setMessage(err.message || t("intelligence.testFailed")),
   });
 
   if (!auth.isLoading && !auth.nav("models")) {
@@ -174,6 +214,78 @@ export function ModelManagementPage() {
 
   return (
     <PageShell titleKey="models.title" subtitleKey="models.description" maxWidth="max-w-7xl">
+      <div className="card-static mb-6 space-y-4 p-5" data-testid="nanobaseai-connection">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+              {t("intelligence.section")}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">{t("intelligence.description")}</p>
+          </div>
+          {connection.data ? (
+            <StatusBadge
+              label={
+                connection.data.healthy
+                  ? t("intelligence.healthy")
+                  : t("intelligence.unreachable")
+              }
+              status={connection.data.healthy ? "healthy" : "failed"}
+            />
+          ) : null}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block sm:col-span-2">
+            <span className="label-text">{t("intelligence.endpoint")}</span>
+            <input
+              className="input-field font-mono text-sm"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder="http://127.0.0.1:8000"
+              autoComplete="off"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+            />
+            {t("intelligence.enabled")}
+          </label>
+          <div className="text-sm text-slate-600">
+            <span className="label-text">{t("intelligence.host")}</span>
+            <p className="font-mono text-xs">{connection.data?.endpointHost ?? "—"}</p>
+            {connection.data ? (
+              <p className="mt-1 text-xs text-slate-500">
+                {t("intelligence.latency")}: {connection.data.latencyMs} ms · {connection.data.mode}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={saveMutation.isPending || !baseUrl.trim()}
+            onClick={() => saveMutation.mutate()}
+          >
+            {t("intelligence.save")}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={testMutation.isPending}
+            onClick={() => testMutation.mutate()}
+          >
+            {t("intelligence.test")}
+          </button>
+        </div>
+        {message ? <p className="text-sm text-amber-900">{message}</p> : null}
+        {connection.data?.statusDetail ? (
+          <p className="text-xs text-slate-500">{connection.data.statusDetail}</p>
+        ) : null}
+      </div>
+
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>

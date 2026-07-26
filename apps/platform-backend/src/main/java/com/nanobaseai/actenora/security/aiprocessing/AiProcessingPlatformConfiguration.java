@@ -96,8 +96,27 @@ import java.util.UUID;
 public class AiProcessingPlatformConfiguration {
 
     @Bean
-    LocalModelProvider localModelProvider(LocalProviderProperties properties, Environment environment) {
-        return LocalProviderFactory.create(properties, ActenoraProfiles.isStrictProduction(environment));
+    SwappableLocalModelProvider swappableLocalModelProvider(LocalProviderProperties properties, Environment environment) {
+        LocalModelProvider initial = LocalProviderFactory.create(properties, ActenoraProfiles.isStrictProduction(environment));
+        return new SwappableLocalModelProvider(initial);
+    }
+
+    @Bean
+    LocalModelProvider localModelProvider(SwappableLocalModelProvider swappable) {
+        return swappable;
+    }
+
+    @Bean
+    NanobaseAiConnectionService nanobaseAiConnectionService(
+            SwappableLocalModelProvider swappable,
+            LocalProviderProperties properties,
+            Environment environment
+    ) {
+        return new NanobaseAiConnectionService(
+                swappable,
+                properties,
+                ActenoraProfiles.isStrictProduction(environment)
+        );
     }
 
     @Bean

@@ -18,6 +18,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.MapAiCandidatesComman
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 public final class MeetingIntelligenceApiFacade implements MeetingIntelligenceApi {
@@ -36,6 +37,11 @@ public final class MeetingIntelligenceApiFacade implements MeetingIntelligenceAp
     @Override
     public MeetingNoteDetailResponse getNoteDetail(UUID noteId) {
         return service.noteDetail(noteId);
+    }
+
+    @Override
+    public Optional<MeetingNoteDetailResponse> findNoteByVersionId(UUID versionId) {
+        return service.findNoteByVersionId(versionId);
     }
 
     @Override

@@ -32,6 +32,8 @@ import com.nanobaseai.actenora.modelmanagement.application.ModelControlPermissio
 import com.nanobaseai.actenora.modelmanagement.domain.DeploymentStatus;
 import com.nanobaseai.actenora.operations.api.OperationsApi;
 import com.nanobaseai.actenora.operations.application.OperationsViews;
+import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiBrandSanitizer;
+import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.template.api.TemplateApi;
 import com.nanobaseai.actenora.template.domain.MeetingTemplate;
@@ -63,6 +65,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -94,6 +97,7 @@ public class PortalApiController {
     private final Optional<MicrosoftConnectionApi> microsoftConnectionApi;
     private final Optional<ModelManagementApi> modelManagementApi;
     private final PortalTeamsPreferencesStore teamsPreferencesStore;
+    private final Optional<NanobaseAiConnectionService> nanobaseAiConnectionService;
     private final String graphClientId;
     private final String recordingBaseUrl;
 
@@ -109,6 +113,7 @@ public class PortalApiController {
             ObjectProvider<TemplateApi> templateApi,
             ObjectProvider<MicrosoftConnectionApi> microsoftConnectionApi,
             ObjectProvider<ModelManagementApi> modelManagementApi,
+            ObjectProvider<NanobaseAiConnectionService> nanobaseAiConnectionService,
             PortalTeamsPreferencesStore teamsPreferencesStore,
             @Value("${actenora.microsoft-graph.client-id:}") String graphClientId,
             @Value("${actenora.portal.recording-base-url:}") String recordingBaseUrl
@@ -124,6 +129,7 @@ public class PortalApiController {
         this.templateApi = Optional.ofNullable(templateApi.getIfAvailable());
         this.microsoftConnectionApi = Optional.ofNullable(microsoftConnectionApi.getIfAvailable());
         this.modelManagementApi = Optional.ofNullable(modelManagementApi.getIfAvailable());
+        this.nanobaseAiConnectionService = Optional.ofNullable(nanobaseAiConnectionService.getIfAvailable());
         this.teamsPreferencesStore = Objects.requireNonNull(teamsPreferencesStore, "teamsPreferencesStore");
         this.graphClientId = graphClientId == null ? "" : graphClientId;
         this.recordingBaseUrl = recordingBaseUrl == null ? "" : recordingBaseUrl;
@@ -377,6 +383,47 @@ public class PortalApiController {
         return toApprovalRecord(view, note.id(), principal.displayName());
     }
 
+    @GetMapping("/approvals/pending")
+    @RequiresPermission(Permission.APPROVAL_DECIDE)
+    public PendingApprovalsInboxView listPendingApprovals() {
+        require(Permission.APPROVAL_DECIDE);
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
+        UUID tenantId = principal.tenantId().value();
+        Map<UUID, MutablePendingApprovalGroup> groups = new LinkedHashMap<>();
+        for (ApprovalRequestView view : approvalApi.listForTenant(tenantId)) {
+            if (!isPendingApproval(view)) {
+                continue;
+            }
+            UUID meetingId = null;
+            String meetingTitle = "(untitled)";
+            UUID artifactId = view.subjectId();
+            if (meetingIntelligenceApi.isPresent()) {
+                Optional<MeetingNoteDetailResponse> note = meetingIntelligenceApi.get()
+                        .findNoteByVersionId(view.subjectId());
+                if (note.isPresent()) {
+                    meetingId = note.get().meetingOccurrenceId();
+                    artifactId = note.get().id();
+                    try {
+                        MeetingResponse meeting = meetingApi.getMeeting(meetingId);
+                        meetingTitle = meeting.title() == null ? "(untitled)" : meeting.title();
+                    } catch (RuntimeException ignored) {
+                        /* keep default title */
+                    }
+                }
+            }
+            UUID groupKey = meetingId != null ? meetingId : artifactId;
+            UUID groupMeetingId = meetingId != null ? meetingId : groupKey;
+            String groupTitle = meetingTitle;
+            UUID recordArtifactId = artifactId;
+            groups.computeIfAbsent(groupKey, key -> new MutablePendingApprovalGroup(groupMeetingId, groupTitle))
+                    .items.add(toPendingApprovalRecord(view, recordArtifactId));
+        }
+        List<PendingApprovalGroupView> out = groups.values().stream()
+                .map(group -> new PendingApprovalGroupView(group.meetingId, group.meetingTitle, List.copyOf(group.items)))
+                .toList();
+        return new PendingApprovalsInboxView(out);
+    }
+
     @GetMapping("/decisions")
     @RequiresPermission(Permission.MEETING_READ)
     public PortalCursorPage<DecisionItemView> listDecisions(
@@ -421,8 +468,13 @@ public class PortalApiController {
     @PostMapping("/actions/{actionId}/complete")
     @RequiresPermission(Permission.MEETING_WRITE)
     public ActionItemView completeAction(@PathVariable UUID actionId) {
-        require(Permission.MEETING_WRITE);
-        throw new ActenoraException("ACTION_NOT_FOUND", "Action not found: " + actionId);
+        AuthenticatedPrincipal principal = require(Permission.MEETING_WRITE);
+        TenantId tenantId = principal.tenantId();
+        if (ledgerApi.findActionItem(tenantId, actionId).isEmpty()) {
+            throw new ActenoraException("ACTION_NOT_FOUND", "Action not found: " + actionId);
+        }
+        ledgerApi.completeActionItem(tenantId, actionId);
+        return toActionItemView(ledgerApi.findActionItem(tenantId, actionId).orElseThrow());
     }
 
     @GetMapping("/commitments")
@@ -510,6 +562,34 @@ public class PortalApiController {
         return buildTeamsSettings(principal.tenantId().value(), null);
     }
 
+    @GetMapping("/intelligence/connection")
+    @RequiresPermission(Permission.MODEL_CONTROL)
+    public NanobaseAiConnectionView intelligenceConnection() {
+        require(Permission.MODEL_CONTROL);
+        return toConnectionView(requireIntelligence().current());
+    }
+
+    @PutMapping("/intelligence/connection")
+    @RequiresPermission(Permission.MODEL_CONTROL)
+    public NanobaseAiConnectionView updateIntelligenceConnection(@RequestBody UpdateIntelligenceConnectionBody body) {
+        require(Permission.MODEL_CONTROL);
+        NanobaseAiConnectionService.ConnectionView updated = requireIntelligence().update(
+                new NanobaseAiConnectionService.UpdateConnectionCommand(
+                        body == null ? null : body.baseUrl(),
+                        body == null ? null : body.enabled(),
+                        body == null ? null : body.servedModelIds()
+                )
+        );
+        return toConnectionView(updated);
+    }
+
+    @PostMapping("/intelligence/connection/test")
+    @RequiresPermission(Permission.MODEL_CONTROL)
+    public NanobaseAiConnectionView testIntelligenceConnection() {
+        require(Permission.MODEL_CONTROL);
+        return toConnectionView(requireIntelligence().testConnection());
+    }
+
     @GetMapping("/model-control/health")
     @RequiresPermission(Permission.MODEL_CONTROL)
     public ModelHealthView modelHealth(HttpServletResponse response) {
@@ -571,9 +651,36 @@ public class PortalApiController {
 
     private int countPendingApprovals(UUID tenantId) {
         return (int) approvalApi.listForTenant(tenantId).stream()
-                .filter(view -> view.status() == ApprovalRequestStatus.PENDING
-                        || view.status() == ApprovalRequestStatus.CHANGES_REQUESTED)
+                .filter(PortalApiController::isPendingApproval)
                 .count();
+    }
+
+    private static boolean isPendingApproval(ApprovalRequestView view) {
+        return view.status() == ApprovalRequestStatus.PENDING
+                || view.status() == ApprovalRequestStatus.CHANGES_REQUESTED;
+    }
+
+    private static ApprovalRecordView toPendingApprovalRecord(ApprovalRequestView view, UUID noteId) {
+        return new ApprovalRecordView(
+                view.id().value(),
+                view.subjectType().name(),
+                noteId,
+                "PENDING",
+                null,
+                null,
+                null
+        );
+    }
+
+    private static final class MutablePendingApprovalGroup {
+        private final UUID meetingId;
+        private final String meetingTitle;
+        private final List<ApprovalRecordView> items = new ArrayList<>();
+
+        private MutablePendingApprovalGroup(UUID meetingId, String meetingTitle) {
+            this.meetingId = meetingId;
+            this.meetingTitle = meetingTitle;
+        }
     }
 
     private static ActionItemView toActionItemView(
@@ -669,17 +776,17 @@ public class PortalApiController {
                 }
             }
             models.add(new ModelSummaryView(
-                    entry.modelKey(),
-                    displayName,
+                    NanobaseAiBrandSanitizer.displayModelName(entry.modelKey()),
+                    NanobaseAiBrandSanitizer.displayModelName(displayName),
                     entry.acceptingNewWork(),
                     entry.status().name()
             ));
             for (var deployment : entry.deployments()) {
                 boolean healthy = deployment.status() == DeploymentStatus.HEALTHY && !deployment.heartbeatTimedOut();
                 deployments.add(new DeploymentSummaryView(
-                        deployment.deploymentKey(),
-                        entry.modelKey(),
-                        deployment.deploymentKey(),
+                        NanobaseAiBrandSanitizer.displayModelName(deployment.deploymentKey()),
+                        NanobaseAiBrandSanitizer.displayModelName(entry.modelKey()),
+                        NanobaseAiBrandSanitizer.displayModelName(deployment.deploymentKey()),
                         healthy
                 ));
             }
@@ -691,6 +798,29 @@ public class PortalApiController {
         AuthenticatedPrincipal principal = TenantSecurityContext.require();
         String role = principal.roles().stream().findFirst().orElse("OPERATIONS");
         return ActorPrincipal.of(principal.userId(), role, EnumSet.allOf(ModelControlPermission.class));
+    }
+
+    private NanobaseAiConnectionService requireIntelligence() {
+        return nanobaseAiConnectionService.orElseThrow(() ->
+                new ActenoraException(
+                        "NANOBASEAI_UNAVAILABLE",
+                        "NanobaseAI Intelligence settings are not available on this runtime"
+                ));
+    }
+
+    private static NanobaseAiConnectionView toConnectionView(NanobaseAiConnectionService.ConnectionView view) {
+        return new NanobaseAiConnectionView(
+                view.productName(),
+                view.mode(),
+                view.enabled(),
+                view.endpointHost(),
+                view.baseUrl(),
+                view.healthy(),
+                view.latencyMs(),
+                view.statusDetail(),
+                List.copyOf(view.servedModelIds()),
+                view.checkedAt().toString()
+        );
     }
 
     private AuthenticatedPrincipal require(Permission permission) {
@@ -811,9 +941,15 @@ public class PortalApiController {
                  "PRIVATE_NOTE_ACCESS_DENIED",
                  "PRIVATE_NOTE_AI_ACCESS_DENIED" -> HttpStatus.FORBIDDEN;
             case "NOTE_UPDATE_UNAVAILABLE" -> HttpStatus.NOT_IMPLEMENTED;
+            case "NANOBASEAI_UNREACHABLE",
+                 "NANOBASEAI_ENDPOINT_DENIED",
+                 "NANOBASEAI_REQUIRED" -> HttpStatus.UNPROCESSABLE_ENTITY;
             default -> HttpStatus.UNPROCESSABLE_ENTITY;
         };
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                status,
+                NanobaseAiBrandSanitizer.sanitize(ex.getMessage())
+        );
         problem.setTitle(ex.code());
         problem.setProperty("code", ex.code());
         return ResponseEntity.status(status).body(problem);
@@ -936,6 +1072,16 @@ public class PortalApiController {
     ) {
     }
 
+    public record PendingApprovalGroupView(
+            UUID meetingId,
+            String meetingTitle,
+            List<ApprovalRecordView> items
+    ) {
+    }
+
+    public record PendingApprovalsInboxView(List<PendingApprovalGroupView> groups) {
+    }
+
     public record UpdateNoteBody(String body) {
     }
 
@@ -957,6 +1103,27 @@ public class PortalApiController {
     }
 
     public record UpdateTeamsSettingsBody(boolean autoJoinEnabled) {
+    }
+
+    public record UpdateIntelligenceConnectionBody(
+            String baseUrl,
+            Boolean enabled,
+            java.util.Set<String> servedModelIds
+    ) {
+    }
+
+    public record NanobaseAiConnectionView(
+            String productName,
+            String mode,
+            boolean enabled,
+            String endpointHost,
+            String baseUrl,
+            boolean healthy,
+            long latencyMs,
+            String statusDetail,
+            List<String> servedModelIds,
+            String checkedAt
+    ) {
     }
 
     public record TeamsSettingsView(

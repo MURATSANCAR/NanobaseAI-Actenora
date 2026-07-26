@@ -19,9 +19,10 @@ actenora:
       mode: mock
   ai:
     provider:
-      # Real local inference path (not mock dataset). Override via ACTENORA_AI_PROVIDER_KIND.
-      kind: ${ACTENORA_AI_PROVIDER_KIND:openai}
+      # Real local NanobaseAI Intelligence endpoint (never offline on this profile).
+      kind: ${ACTENORA_AI_PROVIDER_KIND:nanobaseai}
       base-url: ${ACTENORA_AI_PROVIDER_BASE_URL:http://127.0.0.1:8000}
+      served-model-ids: ${ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS:nanobaseai-primary,nanobaseai-local}
     worker:
       enabled: true
       poll-interval: ${ACTENORA_AI_WORKER_POLL_INTERVAL:PT15S}

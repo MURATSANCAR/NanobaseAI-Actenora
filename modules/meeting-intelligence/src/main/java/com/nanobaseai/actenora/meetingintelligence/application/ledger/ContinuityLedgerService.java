@@ -496,6 +496,10 @@ public final class ContinuityLedgerService {
                 .toList();
     }
 
+    public Optional<LedgerProjectionState.TrackedActionItem> findActionItem(TenantId tenantId, UUID actionItemId) {
+        return projectionRepository.getOrCreate(tenantId).actionItem(actionItemId);
+    }
+
     public List<ContradictionCandidate> listContradictions(TenantId tenantId) {
         return List.copyOf(projectionRepository.getOrCreate(tenantId).contradictions());
     }

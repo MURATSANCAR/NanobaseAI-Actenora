@@ -171,6 +171,16 @@ export interface TranscriptResponse {
   speakers: string[];
 }
 
+export interface PendingApprovalGroup {
+  meetingId: string;
+  meetingTitle: string;
+  items: ApprovalRecord[];
+}
+
+export interface PendingApprovalsResponse {
+  groups: PendingApprovalGroup[];
+}
+
 export interface DashboardResponse {
   pendingApprovals: number;
   openActions: number;
@@ -192,6 +202,19 @@ export interface TeamsSettings {
   graphAppId: string;
   webhookStatus: string;
   autoJoinEnabled: boolean;
+}
+
+export interface NanobaseAiConnection {
+  productName: string;
+  mode: "nanobaseai" | "offline" | string;
+  enabled: boolean;
+  endpointHost: string;
+  baseUrl: string;
+  healthy: boolean;
+  latencyMs: number;
+  statusDetail: string;
+  servedModelIds: string[];
+  checkedAt: string;
 }
 
 export interface ModelHealthResponse {
@@ -270,6 +293,7 @@ export interface ApiClient {
     decision: "APPROVE" | "REJECT",
     comment?: string,
   ): Promise<ApprovalRecord>;
+  listPendingApprovals(): Promise<PendingApprovalsResponse>;
   listDecisions(params?: ListArtifactsParams): Promise<CursorPage<DecisionItem>>;
   listActions(params?: ListArtifactsParams): Promise<CursorPage<ActionItem>>;
   completeAction(actionId: string): Promise<ActionItem>;
@@ -278,6 +302,13 @@ export interface ApiClient {
   createTemplate(body: { name: string; locale?: string }): Promise<TemplateSummary>;
   getTeamsSettings(): Promise<TeamsSettings>;
   updateTeamsSettings(body: { autoJoinEnabled: boolean }): Promise<TeamsSettings>;
+  getNanobaseAiConnection(): Promise<NanobaseAiConnection>;
+  updateNanobaseAiConnection(body: {
+    baseUrl?: string;
+    enabled?: boolean;
+    servedModelIds?: string[];
+  }): Promise<NanobaseAiConnection>;
+  testNanobaseAiConnection(): Promise<NanobaseAiConnection>;
   getModelHealth(): Promise<ModelHealthResponse>;
   listAiJobs(params?: { cursor?: string; limit?: number }): Promise<CursorPage<AiJob>>;
   getOperationsOverview(): Promise<OperationsOverview>;

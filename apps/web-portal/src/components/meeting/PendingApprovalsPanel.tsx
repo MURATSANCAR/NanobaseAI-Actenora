@@ -41,6 +41,7 @@ export function PendingApprovalsPanel({
       void qc.invalidateQueries({ queryKey: queryKeys.meetingDetail(meetingId) });
       void qc.invalidateQueries({ queryKey: ["decisions"] });
       void qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+      void qc.invalidateQueries({ queryKey: queryKeys.approvalsPending });
     },
   });
 
