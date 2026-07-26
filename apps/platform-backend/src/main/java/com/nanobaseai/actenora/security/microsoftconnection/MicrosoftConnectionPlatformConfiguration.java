@@ -42,7 +42,6 @@ public class MicrosoftConnectionPlatformConfiguration {
     }
 
     @Bean
-    @Lazy
     TeamsTranscriptIngestService teamsTranscriptIngestService(
             MicrosoftConnectionApi microsoftConnectionApi,
             @Lazy TranscriptApi transcriptApi,
@@ -64,7 +63,7 @@ public class MicrosoftConnectionPlatformConfiguration {
     @Bean
     @Lazy
     TeamsTranscriptPollScheduler teamsTranscriptPollScheduler(
-            @Lazy TeamsTranscriptIngestService teamsTranscriptIngestService,
+            TeamsTranscriptIngestService teamsTranscriptIngestService,
             MeetingApi meetingApi,
             FixedTenantContext fixedTenantContext,
             SubscriptionStore subscriptionStore,
