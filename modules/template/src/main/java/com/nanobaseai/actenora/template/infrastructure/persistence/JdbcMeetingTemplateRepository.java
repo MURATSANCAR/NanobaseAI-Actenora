@@ -56,7 +56,7 @@ public final class JdbcMeetingTemplateRepository implements MeetingTemplateRepos
     @Override
     public Optional<MeetingTemplate> findById(TenantId tenantId, MeetingTemplateId id) {
         String sql = """
-                SELECT id, tenant_id, name, published_version_id, created_at, updated_at
+                SELECT id, tenant_id, name, published_version_id, is_default, created_at, updated_at
                 FROM template.meeting_template WHERE tenant_id = ? AND id = ?
                 """;
         List<MeetingTemplate> templates = jdbc.query(sql, (rs, rowNum) -> {
@@ -66,6 +66,7 @@ public final class JdbcMeetingTemplateRepository implements MeetingTemplateRepos
                     .tenantId(TenantId.of(rs.getObject("tenant_id", UUID.class)))
                     .name(rs.getString("name"))
                     .publishedVersionId(published == null ? null : TemplateVersionId.of(published))
+                    .defaultTemplate(rs.getBoolean("is_default"))
                     .createdAt(JdbcInstant.get(rs, "created_at"))
                     .updatedAt(JdbcInstant.get(rs, "updated_at"))
                     .build();
@@ -78,6 +79,7 @@ public final class JdbcMeetingTemplateRepository implements MeetingTemplateRepos
                     .name(template.name())
                     .publishedVersionId(template.publishedVersionId().orElse(null))
                     .versions(versions)
+                    .defaultTemplate(template.isDefault())
                     .createdAt(template.createdAt())
                     .updatedAt(template.updatedAt())
                     .build();
@@ -87,7 +89,7 @@ public final class JdbcMeetingTemplateRepository implements MeetingTemplateRepos
     @Override
     public List<MeetingTemplate> listByTenant(TenantId tenantId) {
         String sql = """
-                SELECT id, tenant_id, name, published_version_id, created_at, updated_at
+                SELECT id, tenant_id, name, published_version_id, is_default, created_at, updated_at
                 FROM template.meeting_template WHERE tenant_id = ?
                 ORDER BY name
                 """;
@@ -102,6 +104,7 @@ public final class JdbcMeetingTemplateRepository implements MeetingTemplateRepos
                     .name(rs.getString("name"))
                     .publishedVersionId(published == null ? null : TemplateVersionId.of(published))
                     .versions(versions)
+                    .defaultTemplate(rs.getBoolean("is_default"))
                     .createdAt(JdbcInstant.get(rs, "created_at"))
                     .updatedAt(JdbcInstant.get(rs, "updated_at"))
                     .build();
@@ -169,11 +172,12 @@ public final class JdbcMeetingTemplateRepository implements MeetingTemplateRepos
     private void upsertTemplate(Connection conn, MeetingTemplate template) throws SQLException {
         String sql = """
                 INSERT INTO template.meeting_template (
-                    id, tenant_id, name, published_version_id, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    id, tenant_id, name, published_version_id, is_default, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     name = EXCLUDED.name,
                     published_version_id = EXCLUDED.published_version_id,
+                    is_default = EXCLUDED.is_default,
                     updated_at = EXCLUDED.updated_at
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -181,8 +185,9 @@ public final class JdbcMeetingTemplateRepository implements MeetingTemplateRepos
             ps.setObject(2, template.tenantId().value());
             ps.setString(3, template.name());
             ps.setObject(4, template.publishedVersionId().map(TemplateVersionId::value).orElse(null));
-            ps.setTimestamp(5, JdbcInstant.toTimestamp(template.createdAt()));
-            ps.setTimestamp(6, JdbcInstant.toTimestamp(template.updatedAt()));
+            ps.setBoolean(5, template.isDefault());
+            ps.setTimestamp(6, JdbcInstant.toTimestamp(template.createdAt()));
+            ps.setTimestamp(7, JdbcInstant.toTimestamp(template.updatedAt()));
             ps.executeUpdate();
         }
     }

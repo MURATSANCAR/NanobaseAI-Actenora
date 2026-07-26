@@ -53,15 +53,19 @@ public class EventBackbonePlatformConfiguration {
                 config, outboxStore, inboxStore, deadLetterStore, transport, fairness);
 
         IdempotentEventConsumer transcriptConsumer = backbone.consumer("transcript");
-        TeamsTranscriptPollScheduler pollScheduler = transcriptPollScheduler.getIfAvailable();
         transport.subscribe(envelope -> dispatchOccurrenceUpserted(
-                envelope, transcriptConsumer, meetingOccurrenceUpsertedHandler, pollScheduler));
+                envelope,
+                transcriptConsumer,
+                meetingOccurrenceUpsertedHandler,
+                transcriptPollScheduler.getIfAvailable()));
 
         IdempotentEventConsumer aiConsumer = backbone.consumer("ai-processing");
-        TranscriptReadyAiAdmissionHandler readyHandler = transcriptReadyHandler.getIfAvailable();
-        if (readyHandler != null) {
-            transport.subscribe(envelope -> dispatchTranscriptReady(envelope, aiConsumer, readyHandler));
-        }
+        transport.subscribe(envelope -> {
+            TranscriptReadyAiAdmissionHandler readyHandler = transcriptReadyHandler.getIfAvailable();
+            if (readyHandler != null) {
+                dispatchTranscriptReady(envelope, aiConsumer, readyHandler);
+            }
+        });
 
         IdempotentEventConsumer ledgerConsumer = backbone.consumer("meeting-intelligence");
         transport.subscribe(envelope -> dispatchNoteApprovedForLedger(

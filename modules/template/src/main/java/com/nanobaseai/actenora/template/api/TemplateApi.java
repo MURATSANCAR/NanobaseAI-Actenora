@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.template.api;
 
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.template.domain.MeetingTemplate;
+import com.nanobaseai.actenora.template.domain.TemplateVersion;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +25,14 @@ public interface TemplateApi {
     void saveDraftDesign(TenantId tenantId, TemplateVersionId versionId, String designSchemaJson, String contentSchemaJson);
 
     TemplateVersionId publish(TenantId tenantId, TemplateVersionId versionId);
+
+    /** Promotes the template to tenant default; new notes bind to its latest published version. */
+    MeetingTemplate setDefaultTemplate(TenantId tenantId, MeetingTemplateId templateId);
+
+    Optional<MeetingTemplate> findDefaultTemplate(TenantId tenantId);
+
+    /** Latest published version of the tenant default template, if one is configured. */
+    Optional<TemplateVersion> resolveDefaultVersion(TenantId tenantId);
 
     void lockNoteToTemplateVersion(TenantId tenantId, UUID noteId, TemplateVersionId versionId);
 

@@ -9,7 +9,6 @@ import com.nanobaseai.actenora.transcript.api.TranscriptApi;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
@@ -50,7 +49,6 @@ public class MicrosoftConnectionPlatformConfiguration {
     }
 
     @Bean
-    @Lazy
     TeamsTranscriptPollScheduler teamsTranscriptPollScheduler(
             TeamsTranscriptIngestService teamsTranscriptIngestService,
             MeetingApi meetingApi,

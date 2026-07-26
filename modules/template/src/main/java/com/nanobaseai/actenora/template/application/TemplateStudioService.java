@@ -84,6 +84,38 @@ public class TemplateStudioService {
         return published;
     }
 
+    /**
+     * Promotes one template to the tenant default and demotes any previous default.
+     * Demotion is persisted first so the single-default-per-tenant index never sees two rows.
+     */
+    public MeetingTemplate setDefaultTemplate(TenantId tenantId, MeetingTemplateId templateId) {
+        MeetingTemplate target = requireTemplate(tenantId, templateId);
+        Instant now = clock.now();
+        for (MeetingTemplate other : templateRepository.listByTenant(tenantId)) {
+            if (other.isDefault() && !other.id().equals(templateId)) {
+                other.clearDefault(now);
+                templateRepository.save(other);
+            }
+        }
+        target.markDefault(now);
+        templateRepository.save(target);
+        return target;
+    }
+
+    public Optional<MeetingTemplate> findDefaultTemplate(TenantId tenantId) {
+        return templateRepository.listByTenant(tenantId).stream()
+                .filter(MeetingTemplate::isDefault)
+                .findFirst();
+    }
+
+    /**
+     * Resolves the version a brand-new note should bind to: the latest published version
+     * of the tenant default template. Empty when no default is configured yet.
+     */
+    public Optional<TemplateVersion> resolveDefaultVersion(TenantId tenantId) {
+        return findDefaultTemplate(tenantId).flatMap(MeetingTemplate::latestPublished);
+    }
+
     public NoteTemplateLock lockNote(TenantId tenantId, UUID noteId, TemplateVersionId versionId) {
         TemplateVersion version = requireVersion(tenantId, versionId);
         version.assertPublished();

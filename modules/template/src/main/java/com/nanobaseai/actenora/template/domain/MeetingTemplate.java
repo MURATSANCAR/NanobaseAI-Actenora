@@ -22,6 +22,7 @@ public final class MeetingTemplate {
     private String name;
     private TemplateVersionId publishedVersionId;
     private final List<TemplateVersion> versions;
+    private boolean defaultTemplate;
     private final Instant createdAt;
     private Instant updatedAt;
 
@@ -31,6 +32,7 @@ public final class MeetingTemplate {
         this.name = requireName(b.name);
         this.publishedVersionId = b.publishedVersionId;
         this.versions = new ArrayList<>(b.versions == null ? List.of() : b.versions);
+        this.defaultTemplate = b.defaultTemplate;
         this.createdAt = Objects.requireNonNull(b.createdAt, "createdAt");
         this.updatedAt = Objects.requireNonNull(b.updatedAt, "updatedAt");
     }
@@ -94,6 +96,25 @@ public final class MeetingTemplate {
         this.updatedAt = now;
     }
 
+    /**
+     * Marks this template as the tenant default. Only a template with a published
+     * version can become default, so new notes always resolve to a renderable design.
+     */
+    public void markDefault(Instant now) {
+        if (latestPublished().isEmpty()) {
+            throw new TemplateDomainException(
+                    "DEFAULT_REQUIRES_PUBLISHED",
+                    "Template must have a published version before it becomes the tenant default");
+        }
+        this.defaultTemplate = true;
+        this.updatedAt = Objects.requireNonNull(now, "now");
+    }
+
+    public void clearDefault(Instant now) {
+        this.defaultTemplate = false;
+        this.updatedAt = Objects.requireNonNull(now, "now");
+    }
+
     private static String requireName(String name) {
         if (name == null || name.isBlank()) {
             throw new TemplateDomainException("INVALID_NAME", "Template name is required");
@@ -106,6 +127,7 @@ public final class MeetingTemplate {
     public String name() { return name; }
     public Optional<TemplateVersionId> publishedVersionId() { return Optional.ofNullable(publishedVersionId); }
     public List<TemplateVersion> versions() { return Collections.unmodifiableList(versions); }
+    public boolean isDefault() { return defaultTemplate; }
     public Instant createdAt() { return createdAt; }
     public Instant updatedAt() { return updatedAt; }
 
@@ -115,6 +137,7 @@ public final class MeetingTemplate {
         private String name;
         private TemplateVersionId publishedVersionId;
         private List<TemplateVersion> versions = new ArrayList<>();
+        private boolean defaultTemplate;
         private Instant createdAt;
         private Instant updatedAt;
 
@@ -126,6 +149,9 @@ public final class MeetingTemplate {
         }
         public Builder versions(List<TemplateVersion> versions) {
             this.versions = new ArrayList<>(versions); return this;
+        }
+        public Builder defaultTemplate(boolean defaultTemplate) {
+            this.defaultTemplate = defaultTemplate; return this;
         }
         public Builder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
         public Builder updatedAt(Instant updatedAt) { this.updatedAt = updatedAt; return this; }
