@@ -167,7 +167,13 @@ public class TranscriptModuleConfiguration {
     @Bean
     TranscriptApi transcriptApi(
             TranscriptIngestionService ingestionService,
-            TranscriptNormalizationService normalizationService) {
-        return new TranscriptApi(ingestionService, normalizationService);
+            TranscriptNormalizationService normalizationService,
+            TranscriptRepository transcriptRepository,
+            TranscriptSegmentRepository transcriptSegmentRepository) {
+        return new TranscriptApi(
+                ingestionService,
+                normalizationService,
+                transcriptRepository,
+                transcriptSegmentRepository);
     }
 }

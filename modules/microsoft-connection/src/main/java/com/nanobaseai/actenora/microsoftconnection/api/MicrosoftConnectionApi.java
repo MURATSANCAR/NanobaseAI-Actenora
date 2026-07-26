@@ -16,7 +16,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.model.Participant
 import com.nanobaseai.actenora.microsoftconnection.application.model.SubscriptionCreateRequest;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptAvailability;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptContent;
-import com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway;
+import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 
 import java.util.List;
 import java.util.Objects;
