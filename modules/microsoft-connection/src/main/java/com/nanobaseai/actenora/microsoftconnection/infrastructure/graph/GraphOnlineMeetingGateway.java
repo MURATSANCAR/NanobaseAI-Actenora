@@ -106,6 +106,19 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
         }
     }
 
+    @Override
+    public void enableTranscription(UUID tenantId, String userId, String meetingId) {
+        Objects.requireNonNull(meetingId, "meetingId");
+        var body = objectMapper.createObjectNode();
+        body.put("allowTranscription", true);
+        http.send(token -> http.authorizedJson(
+                "v1.0/users/" + userId + "/onlineMeetings/" + meetingId,
+                "PATCH",
+                body.toString(),
+                token
+        ));
+    }
+
     private OnlineMeetingMetadata parseMeeting(JsonNode node) {
         String id = text(node, "id");
         if (id == null) {

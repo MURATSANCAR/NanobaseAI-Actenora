@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.CalendarSyncService;
 import com.nanobaseai.actenora.microsoftconnection.application.MeetingTranscriptService;
+import com.nanobaseai.actenora.microsoftconnection.application.OnlineMeetingTranscriptionEnabler;
 import com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackService;
 import com.nanobaseai.actenora.microsoftconnection.application.ReconciliationJob;
 import com.nanobaseai.actenora.microsoftconnection.application.SubscriptionLifecycleService;
@@ -213,6 +214,15 @@ public class MicrosoftConnectionModuleConfiguration {
     }
 
     @Bean
+    OnlineMeetingTranscriptionEnabler onlineMeetingTranscriptionEnabler(
+            OnlineMeetingGateway onlineMeetingGateway,
+            InstantClock clock,
+            @Value("${actenora.microsoft-graph.auto-enable-transcription:true}") boolean autoEnableTranscription
+    ) {
+        return new OnlineMeetingTranscriptionEnabler(onlineMeetingGateway, clock, autoEnableTranscription);
+    }
+
+    @Bean
     ReconciliationJob reconciliationJob(
             SubscriptionLifecycleService subscriptionLifecycleService,
             PollingFallbackService pollingFallbackService
@@ -228,7 +238,8 @@ public class MicrosoftConnectionModuleConfiguration {
             PollingFallbackService pollingFallbackService,
             ReconciliationJob reconciliationJob,
             MailGateway mailGateway,
-            SubscriptionStore subscriptionStore
+            SubscriptionStore subscriptionStore,
+            OnlineMeetingTranscriptionEnabler transcriptionEnabler
     ) {
         return new MicrosoftConnectionApi(
                 calendarSyncService,
@@ -237,7 +248,8 @@ public class MicrosoftConnectionModuleConfiguration {
                 pollingFallbackService,
                 reconciliationJob,
                 mailGateway,
-                subscriptionStore
+                subscriptionStore,
+                transcriptionEnabler
         );
     }
 }

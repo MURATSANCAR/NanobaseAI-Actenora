@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.CalendarSyncService;
 import com.nanobaseai.actenora.microsoftconnection.application.MeetingTranscriptService;
 import com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackService;
+import com.nanobaseai.actenora.microsoftconnection.application.OnlineMeetingTranscriptionEnabler;
 import com.nanobaseai.actenora.microsoftconnection.application.ReconciliationJob;
 import com.nanobaseai.actenora.microsoftconnection.application.SubscriptionLifecycleService;
 import com.nanobaseai.actenora.microsoftconnection.application.model.CalendarEvent;
@@ -82,7 +83,9 @@ class MicrosoftGraphWebhookBindingTest {
                 buildPollingFallback(),
                 buildReconciliationJob(),
                 new StubMailGateway(),
-                subscriptionStore
+                subscriptionStore,
+                new OnlineMeetingTranscriptionEnabler(
+                        new StubOnlineMeetingGateway(), InstantClock.systemUTC(), false)
         );
         controller = new MicrosoftGraphWebhookController(
                 api,
@@ -326,6 +329,10 @@ class MicrosoftGraphWebhookBindingTest {
         @Override
         public List<ParticipantMetadata> listParticipants(UUID tenantId, String userId, String meetingId) {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void enableTranscription(UUID tenantId, String userId, String meetingId) {
         }
     }
 

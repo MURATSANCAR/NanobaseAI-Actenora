@@ -45,6 +45,8 @@ public final class GraphChangeWorkConsumer {
                         "Graph notification resource does not identify a mailbox: " + resource));
         var events = microsoftConnectionApi.syncCalendar(envelope.tenantId().value(), userId);
         calendarMeetingUpsertAdapter.upsertEvents(envelope.tenantId(), events);
+        microsoftConnectionApi.ensureTranscriptionForCalendarEvents(
+                envelope.tenantId().value(), userId, events);
     }
 
     private static String text(JsonNode payload, String field) {

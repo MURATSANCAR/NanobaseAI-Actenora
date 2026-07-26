@@ -39,6 +39,7 @@ public final class MicrosoftConnectionApi {
     private final ReconciliationJob reconciliationJob;
     private final MailGateway mailGateway;
     private final SubscriptionStore subscriptionStore;
+    private final OnlineMeetingTranscriptionEnabler transcriptionEnabler;
 
     public MicrosoftConnectionApi(
             CalendarSyncService calendarSyncService,
@@ -47,7 +48,8 @@ public final class MicrosoftConnectionApi {
             PollingFallbackService pollingFallbackService,
             ReconciliationJob reconciliationJob,
             MailGateway mailGateway,
-            SubscriptionStore subscriptionStore
+            SubscriptionStore subscriptionStore,
+            OnlineMeetingTranscriptionEnabler transcriptionEnabler
     ) {
         this.calendarSyncService = Objects.requireNonNull(calendarSyncService, "calendarSyncService");
         this.meetingTranscriptService = Objects.requireNonNull(meetingTranscriptService, "meetingTranscriptService");
@@ -57,10 +59,15 @@ public final class MicrosoftConnectionApi {
         this.reconciliationJob = Objects.requireNonNull(reconciliationJob, "reconciliationJob");
         this.mailGateway = Objects.requireNonNull(mailGateway, "mailGateway");
         this.subscriptionStore = Objects.requireNonNull(subscriptionStore, "subscriptionStore");
+        this.transcriptionEnabler = Objects.requireNonNull(transcriptionEnabler, "transcriptionEnabler");
     }
 
     public List<CalendarEvent> syncCalendar(UUID tenantId, String userId) {
         return calendarSyncService.syncMailbox(tenantId, userId);
+    }
+
+    public void ensureTranscriptionForCalendarEvents(UUID tenantId, String userId, List<CalendarEvent> events) {
+        transcriptionEnabler.enableForUpcomingMeetings(tenantId, userId, events);
     }
 
     public Optional<OnlineMeetingMetadata> getMeeting(UUID tenantId, String userId, String meetingId) {
@@ -128,7 +135,7 @@ public final class MicrosoftConnectionApi {
 
     public ReconciliationJob.ReconciliationResult reconcile(
             List<PollingFallbackService.MailboxRef> mailboxes,
-            BiConsumer<UUID, List<CalendarEvent>> eventConsumer
+            BiConsumer<PollingFallbackService.MailboxRef, List<CalendarEvent>> eventConsumer
     ) {
         return reconciliationJob.run(mailboxes, eventConsumer);
     }

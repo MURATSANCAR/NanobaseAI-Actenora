@@ -216,9 +216,13 @@ public class MicrosoftConnectionPlatformConfiguration {
             try {
                 var result = api.reconcile(
                         mailboxes(),
-                        (tenantId, events) -> calendarMeetingUpsertAdapter.upsertEvents(
-                                com.nanobaseai.actenora.sharedkernel.domain.TenantId.of(tenantId),
-                                events));
+                        (mailbox, events) -> {
+                            calendarMeetingUpsertAdapter.upsertEvents(
+                                    com.nanobaseai.actenora.sharedkernel.domain.TenantId.of(mailbox.tenantId()),
+                                    events);
+                            api.ensureTranscriptionForCalendarEvents(
+                                    mailbox.tenantId(), mailbox.userId(), events);
+                        });
                 observability.recordSubscriptionRenew(
                         result.subscriptionsRenewed(), result.subscriptionRenewFailures());
                 observability.recordMailboxPoll(result.eventsPolled(), result.mailboxPollFailures());

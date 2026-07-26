@@ -27,13 +27,13 @@ public final class ReconciliationJob {
     }
 
     public ReconciliationResult run(List<PollingFallbackService.MailboxRef> mailboxes) {
-        return run(mailboxes, (tenantId, events) -> {
+        return run(mailboxes, (mailbox, events) -> {
         });
     }
 
     public ReconciliationResult run(
             List<PollingFallbackService.MailboxRef> mailboxes,
-            BiConsumer<UUID, List<CalendarEvent>> eventConsumer
+            BiConsumer<PollingFallbackService.MailboxRef, List<CalendarEvent>> eventConsumer
     ) {
         Objects.requireNonNull(mailboxes, "mailboxes");
         Objects.requireNonNull(eventConsumer, "eventConsumer");
@@ -47,7 +47,7 @@ public final class ReconciliationJob {
             try {
                 List<CalendarEvent> events = pollingFallbackService.pollMailbox(
                         mailbox.tenantId(), mailbox.userId());
-                eventConsumer.accept(mailbox.tenantId(), events);
+                eventConsumer.accept(mailbox, events);
                 polled.addAll(events);
             } catch (RuntimeException ex) {
                 pollFailures.add(ex);

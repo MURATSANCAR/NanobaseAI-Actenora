@@ -17,4 +17,9 @@ public interface OnlineMeetingGateway {
     Optional<OnlineMeetingMetadata> getByMeetingId(UUID tenantId, String userId, String meetingId);
 
     List<ParticipantMetadata> listParticipants(UUID tenantId, String userId, String meetingId);
+
+    /**
+     * PATCH onlineMeeting to turn on native Teams transcription (idempotent).
+     */
+    void enableTranscription(UUID tenantId, String userId, String meetingId);
 }

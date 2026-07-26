@@ -142,6 +142,7 @@ actenora:
     graph-base-url: ${MICROSOFT_GRAPH_BASE_URL:https://graph.microsoft.com}
     authority-host: ${MICROSOFT_AUTHORITY_HOST:https://login.microsoftonline.com}
     workers-enabled: ${ACTENORA_MICROSOFT_GRAPH_WORKERS_ENABLED:true}
+    auto-enable-transcription: ${ACTENORA_MICROSOFT_GRAPH_AUTO_ENABLE_TRANSCRIPTION:true}
     default-mailbox-user-id: ${ACTENORA_MICROSOFT_GRAPH_DEFAULT_MAILBOX_USER_ID:}
     transcript-poll-interval: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_INTERVAL:PT5M}
     transcript-poll-max-attempts: ${ACTENORA_MICROSOFT_GRAPH_TRANSCRIPT_POLL_MAX_ATTEMPTS:24}
