@@ -1,7 +1,8 @@
 # BACKUP-RESTORE-RUNBOOK
 
 **Status:** Active (FAZ 27)  
-**Audience:** Platform operators / on-call
+**Audience:** Platform operators / on-call  
+**Drill checklist:** [`BACKUP-RESTORE-DRILL.md`](BACKUP-RESTORE-DRILL.md) (quarterly)
 
 ## Scope
 

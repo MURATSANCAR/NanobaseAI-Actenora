@@ -87,9 +87,7 @@ public class ProductionSecretGuard implements ApplicationRunner {
         check("actenora.object-storage.secret-key", objectStorageSecret, offenders);
         check("actenora.microsoft-graph.webhook.client-state", graphClientState, offenders);
         check("actenora.delivery.webhook.secret", deliveryWebhookSecret, offenders);
-        if (environment.containsProperty("actenora.delivery.portal-link.secret")) {
-            check("actenora.delivery.portal-link.secret", portalLinkSecret, offenders);
-        }
+        check("actenora.delivery.portal-link.secret", portalLinkSecret, offenders);
         checkMailHost(offenders);
 
         if (!offenders.isEmpty()) {

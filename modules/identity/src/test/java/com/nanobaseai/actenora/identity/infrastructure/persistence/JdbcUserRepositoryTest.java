@@ -5,7 +5,6 @@ import com.nanobaseai.actenora.identity.domain.SystemRole;
 import com.nanobaseai.actenora.identity.domain.User;
 import com.nanobaseai.actenora.identity.domain.UserStatus;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,19 +30,35 @@ class JdbcUserRepositoryTest {
     static void migrateSchema() {
         SimpleDriverDataSource dataSource = new SimpleDriverDataSource();
         dataSource.setDriverClass(org.h2.Driver.class);
-        dataSource.setUrl("jdbc:h2:mem:identity-jdbc;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");
+        dataSource.setUrl("jdbc:h2:mem:identity-jdbc;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH");
         dataSource.setUsername("sa");
         dataSource.setPassword("");
 
-        Flyway.configure()
-                .dataSource(dataSource)
-                .schemas("identity")
-                .createSchemas(true)
-                .locations("classpath:db/migration/identity")
-                .load()
-                .migrate();
-
         jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("CREATE SCHEMA IF NOT EXISTS identity");
+        jdbc.execute("""
+            CREATE TABLE identity.users (
+                id UUID PRIMARY KEY,
+                tenant_id UUID NOT NULL,
+                entra_object_id TEXT NOT NULL,
+                email TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                version BIGINT NOT NULL DEFAULT 0
+            )
+            """);
+        jdbc.execute("""
+            CREATE TABLE identity.user_roles (
+                user_id UUID NOT NULL,
+                tenant_id UUID NOT NULL,
+                role_code TEXT NOT NULL,
+                granted_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                granted_by UUID,
+                PRIMARY KEY (user_id, role_code)
+            )
+            """);
         repository = new JdbcUserRepository(jdbc);
     }
 

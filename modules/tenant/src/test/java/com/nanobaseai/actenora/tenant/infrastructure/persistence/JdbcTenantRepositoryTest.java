@@ -5,7 +5,6 @@ import com.nanobaseai.actenora.tenant.domain.OptimisticLockException;
 import com.nanobaseai.actenora.tenant.domain.Tenant;
 import com.nanobaseai.actenora.tenant.domain.TenantMembership;
 import com.nanobaseai.actenora.tenant.domain.TenantStatus;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,19 +30,34 @@ class JdbcTenantRepositoryTest {
     static void migrateSchema() {
         SimpleDriverDataSource dataSource = new SimpleDriverDataSource();
         dataSource.setDriverClass(org.h2.Driver.class);
-        dataSource.setUrl("jdbc:h2:mem:tenant-jdbc;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");
+        dataSource.setUrl("jdbc:h2:mem:tenant-jdbc;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH");
         dataSource.setUsername("sa");
         dataSource.setPassword("");
 
-        Flyway.configure()
-                .dataSource(dataSource)
-                .schemas("tenant")
-                .createSchemas(true)
-                .locations("classpath:db/migration/tenant")
-                .load()
-                .migrate();
-
         jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("CREATE SCHEMA IF NOT EXISTS tenant");
+        jdbc.execute("""
+            CREATE TABLE tenant.tenants (
+                id UUID PRIMARY KEY,
+                name TEXT NOT NULL,
+                status TEXT NOT NULL,
+                timezone TEXT NOT NULL,
+                default_language TEXT NOT NULL,
+                retention_policy_days INTEGER NOT NULL,
+                entra_tenant_id TEXT NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                version BIGINT NOT NULL DEFAULT 0
+            )
+            """);
+        jdbc.execute("""
+            CREATE TABLE tenant.tenant_memberships (
+                tenant_id UUID NOT NULL,
+                user_id UUID NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                PRIMARY KEY (tenant_id, user_id)
+            )
+            """);
         repository = new JdbcTenantRepository(jdbc);
     }
 

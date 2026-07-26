@@ -1,0 +1,140 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platform-backend
+  labels:
+    app.kubernetes.io/name: platform-backend
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: actenora
+    actenora.io/wave: "8"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: platform-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: platform-backend
+        app.kubernetes.io/component: api
+        app.kubernetes.io/part-of: actenora
+      annotations:
+        actenora.io/network-policy: platform-backend-graph-egress
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8080"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: platform-backend
+          image: actenora/platform-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: ACTENORA_PERSISTENCE_MODE
+              value: jdbc
+            - name: ACTENORA_MESSAGING_MODE
+              value: jdbc-rabbit
+            - name: POSTGRES_JDBC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: actenora-platform-backend
+                  key: postgres-jdbc-url
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: actenora-platform-backend
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: actenora-platform-backend
+                  key: postgres-password
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: actenora-platform-backend
+                  key: rabbitmq-host
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: actenora-platform-backend
+                  key: rabbitmq-user
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: actenora-platform-backend
+                  key: rabbitmq-password
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: actenora-platform-backend
+                  key: redis-host
+            - name: ACTENORA_ENTRA_ISSUER_URI
+              valueFrom:
+                secretKeyRef:
+                  name: actenora-platform-backend
+                  key: entra-issuer-uri
+            - name: ACTENORA_ENTRA_AUDIENCE
+              valueFrom:
+                secretKeyRef:
+                  name: actenora-platform-backend
+                  key: entra-audience
+          resources:
+            requests:
+              cpu: 500m
+              memory: 768Mi
+            limits:
+              cpu: "2"
+              memory: 1536Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: work
+              mountPath: /app/work
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: work
+          emptyDir: {}

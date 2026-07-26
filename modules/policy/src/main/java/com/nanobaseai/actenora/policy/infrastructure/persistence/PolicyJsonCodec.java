@@ -14,6 +14,7 @@ import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.persistence.jdbc.JdbcJson;
 
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -58,7 +59,7 @@ public final class PolicyJsonCodec {
     public static String writeProcessingSla(ProcessingSlaPolicy policy) {
         return JdbcJson.write(new ProcessingSlaDto(
                 policy.defaultLevel().name(),
-                new EnumMap<>(policy.targetLatencyMinutes())
+                toStringKeyedLatency(policy.targetLatencyMinutes())
         ));
     }
 
@@ -134,7 +135,7 @@ public final class PolicyJsonCodec {
                 ),
                 new ProcessingSlaDto(
                         policy.processingSla().defaultLevel().name(),
-                        new EnumMap<>(policy.processingSla().targetLatencyMinutes())
+                        toStringKeyedLatency(policy.processingSla().targetLatencyMinutes())
                 ),
                 new ConcurrencyDto(
                         policy.concurrency().maxConcurrentAiJobs(),
@@ -224,6 +225,12 @@ public final class PolicyJsonCodec {
     }
 
     private record ProcessingSlaDto(String defaultLevel, Map<String, Integer> targetLatencyMinutes) {
+    }
+
+    private static Map<String, Integer> toStringKeyedLatency(Map<SlaLevel, Integer> latency) {
+        Map<String, Integer> mapped = new LinkedHashMap<>();
+        latency.forEach((level, minutes) -> mapped.put(level.name(), minutes));
+        return mapped;
     }
 
     private record ConcurrencyDto(int maxConcurrentAiJobs, int maxConcurrentTranscriptJobs) {

@@ -116,11 +116,13 @@ public final class JdbcTenantRepository implements TenantRepositoryPort {
 
     @Override
     public void saveMembership(TenantMembership membership) {
+        if (isMember(membership.tenantId(), membership.userId())) {
+            return;
+        }
         jdbc.update(
                 """
                         INSERT INTO tenant.tenant_memberships (tenant_id, user_id, created_at)
                         VALUES (?, ?, ?)
-                        ON CONFLICT (tenant_id, user_id) DO NOTHING
                         """,
                 membership.tenantId().value(),
                 membership.userId(),

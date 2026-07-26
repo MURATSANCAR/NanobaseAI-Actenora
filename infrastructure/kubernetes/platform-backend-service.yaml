@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-backend
+  labels:
+    app.kubernetes.io/name: platform-backend
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: actenora
+    actenora.io/wave: "8"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: platform-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
