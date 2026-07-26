@@ -468,11 +468,13 @@ export function OperationsCenterPage() {
                 {t("operations.workers")}
               </h2>
               <ul className="space-y-2 text-sm">
-                {q.data.workers.map((w) => (
+                {q.data.workers.length ? q.data.workers.map((w) => (
                   <li key={w.name} className="rounded-xl bg-white/50 px-3 py-2">
-                    {w.name}: <span className="font-medium">{w.status}</span>
+                    {w.name}: <span className="font-medium">{tb("workerStatus", w.status)}</span>
                   </li>
-                ))}
+                )) : (
+                  <li className="rounded-xl bg-white/50 px-3 py-2 text-slate-500">{t("operations.workersEmpty")}</li>
+                )}
               </ul>
             </div>
           </>

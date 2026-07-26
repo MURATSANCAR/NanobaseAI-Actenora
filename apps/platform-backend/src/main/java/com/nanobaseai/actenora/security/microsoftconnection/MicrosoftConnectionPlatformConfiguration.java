@@ -149,8 +149,8 @@ public class MicrosoftConnectionPlatformConfiguration {
         return new InMemoryGraphWorkerLeaseStore();
     }
 
+    // Eager: @Scheduled is only registered after bean creation; @Lazy left these workers idle.
     @Bean
-    @Lazy
     @ConditionalOnProperty(name = "actenora.microsoft-graph.workers-enabled", havingValue = "true", matchIfMissing = true)
     TeamsTranscriptPollScheduledWorker teamsTranscriptPollScheduledWorker(
             TeamsTranscriptPollScheduler scheduler,
@@ -160,7 +160,6 @@ public class MicrosoftConnectionPlatformConfiguration {
     }
 
     @Bean
-    @Lazy
     @ConditionalOnExpression("'${actenora.microsoft-graph.workers-enabled:true}' == 'true' && '${actenora.microsoft-graph.mailbox-sync-enabled:true}' == 'true'")
     GraphPeriodicMailboxSyncWorker graphPeriodicMailboxSyncWorker(
             GraphMailboxSyncRunner graphMailboxSyncRunner,
@@ -175,7 +174,6 @@ public class MicrosoftConnectionPlatformConfiguration {
     }
 
     @Bean
-    @Lazy
     @ConditionalOnProperty(name = "actenora.microsoft-graph.workers-enabled", havingValue = "true", matchIfMissing = true)
     GraphReconciliationScheduledWorker graphReconciliationScheduledWorker(
             MicrosoftConnectionApi api,

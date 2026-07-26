@@ -800,7 +800,10 @@ public class PortalApiController {
                             .map(graph -> List.<Object>of(
                                     new CircuitBreakerView("microsoft-graph", graph.circuitState())))
                             .orElse(List.of()),
-                    workers.workers().stream().map(w -> (Object) w).toList()
+                    workers.workers().stream()
+                            .map(w -> new WorkerSummaryView(w.workerId(), w.lastHealthStatus()))
+                            .map(w -> (Object) w)
+                            .toList()
             );
         }
         markStub(response);
@@ -1539,6 +1542,9 @@ public class PortalApiController {
     }
 
     public record CircuitBreakerView(String name, String state) {
+    }
+
+    public record WorkerSummaryView(String name, String status) {
     }
 
     public record AuditEventView(
