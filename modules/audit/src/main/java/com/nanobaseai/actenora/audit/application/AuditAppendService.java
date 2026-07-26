@@ -36,4 +36,8 @@ public final class AuditAppendService {
     public List<AuditEntry> timeline(UUID tenantId, UUID resourceId) {
         return store.timeline(tenantId, resourceId);
     }
+
+    public List<AuditEntry> listForTenant(UUID tenantId) {
+        return store.listByTenant(tenantId);
+    }
 }

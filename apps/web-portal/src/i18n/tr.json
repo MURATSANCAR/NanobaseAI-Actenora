@@ -28,6 +28,8 @@
   "auth.signInMicrosoft": "Microsoft ile oturum aç",
   "auth.signInDescription": "Toplantı zekasına erişmek için kuruluş hesabınızı kullanın.",
   "auth.signOut": "Oturumu kapat",
+  "auth.misconfiguredTitle": "Oturum açma yapılandırılmamış",
+  "auth.misconfiguredBody": "NanobaseAI portal kimlik doğrulaması Entra uygulama ayarları gerektirir. Yöneticinizle iletişime geçin.",
   "approvals.title": "Onay kutusu",
   "approvals.description": "Son toplantılardaki bekleyen onayları inceleyin ve karar verin.",
   "approvals.inboxTitle": "Bekleyen onaylar",

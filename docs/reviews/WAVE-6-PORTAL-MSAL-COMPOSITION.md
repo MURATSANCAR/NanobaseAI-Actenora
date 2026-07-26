@@ -2,7 +2,7 @@
 
 ## Scope
 
-Portal BFF composition with explicit stub signaling, note update via Meeting Intelligence, MSAL auth scaffold, and HTTP mutation gating.
+Portal BFF composition with explicit stub signaling, note update via Meeting Intelligence, MSAL auth (fail-closed SPA), and HTTP mutation gating.
 
 ## Portal BFF composition
 
@@ -11,7 +11,7 @@ Portal BFF composition with explicit stub signaling, note update via Meeting Int
 | `/portal/me`, `/portal/meetings`, `/portal/dashboard` | `IdentityApi`, `MeetingApi`, `ContinuityLedgerApi` | — |
 | `/portal/commitments`, `/portal/decisions` | Ledger projections | — |
 | `/portal/operations/overview` | `OperationsApi.queueDashboard` when bean present | `X-Actenora-Composition: stub` when absent |
-| `/portal/meetings/{id}/transcript` | Deferred transcript index | stub |
+| `/portal/meetings/{id}/transcript` | Transcript composition when modules present | stub when absent |
 | `/portal/templates`, `/portal/ai-jobs`, `/portal/audit/events` | No list façade yet | stub |
 | `/portal/teams/settings`, `/portal/model-control/health` | Teams/model wiring deferred | stub |
 | `PUT /portal/meetings/{id}/notes/{noteId}` | `MeetingIntelligenceApi.updateNote` when bean present | 501 ProblemDetails when absent |
@@ -21,8 +21,6 @@ Stub responses set header:
 ```
 X-Actenora-Composition: stub
 ```
-
-Frontend can detect partial wiring without silent empty payloads.
 
 ## Note update
 
@@ -54,19 +52,18 @@ Production (`application-prod.yml`):
 - `actenora.portal.auth.mode=msal`
 - `actenora.security.auth.mode=entra`
 - Spring OAuth2 resource server JWT (`ACTENORA_ENTRA_ISSUER_URI`, `ACTENORA_ENTRA_AUDIENCE`)
+- `PortalAuthModeGuard` enforces MSAL+Entra on strict prod; MSAL without Entra refused everywhere
 
-## Frontend MSAL integration (scaffold)
+## Frontend MSAL integration
 
-1. Set env for HTTP mode against platform backend:
-   ```
-   VITE_API_MODE=http
-   VITE_API_BASE_URL=https://api.example.com
-   VITE_PORTAL_AUTH_MODE=msal
-   ```
-2. Install `@azure/msal-browser` (or existing Nanobase family MSAL wrapper).
-3. Acquire token: `const token = await msalInstance.acquireTokenSilent({ scopes: ["api://<audience>/.default"] })`
-4. Send `Authorization: Bearer ${token.accessToken}` on portal BFF calls — **do not** send `X-Mock-*` headers when `VITE_PORTAL_AUTH_MODE=msal`.
-5. Enable write UI: `portalMutationsEnabled("http", "msal")` returns `true`.
+Implemented in `apps/web-portal`:
+
+- `MsalAuthProvider` + `AuthGate` (misconfig screen when Entra vars missing)
+- `buildMsalConfig` / `msalApiScopes` fail-closed (`MsalConfigError`)
+- `resolveAuthHeaders()` sends Bearer only in msal mode — never `X-Mock-*`
+- Dockerfile refuses msal builds without `VITE_ENTRA_CLIENT_ID` + `VITE_ENTRA_API_SCOPE`
+
+Operator steps: [`docs/operations/PORTAL-MSAL-RUNBOOK.md`](../operations/PORTAL-MSAL-RUNBOOK.md).
 
 Local dev remains:
 
@@ -75,24 +72,16 @@ VITE_API_MODE=http
 VITE_PORTAL_AUTH_MODE=mock
 ```
 
-with `mockAuthHeaders()` on each request.
+with env-supplied `mockAuthHeaders()` (no baked demo personas).
 
 ## HTTP mutations flag
 
-`apps/web-portal/src/api/client.ts`:
-
-```typescript
-portalMutationsEnabled(mode, portalAuthMode)
-// mock API mode → always true
-// http + mock|msal → true (BFF mutations wired)
-```
-
-Used by `MeetingCenterPanel` for note save, approval decide, action complete.
+`portalMutationsEnabled("http", "msal"|"mock")` → `true` for note save / approval / actions.
 
 ## Tests
 
 ```bash
-mvn -pl apps/platform-backend test -Dtest=PortalApiBindingTest
+mvn -pl apps/platform-backend test -Dtest=PortalApiBindingTest,PortalAuthModeGuardTest,MockAuthProductionGuardTest
 pnpm --filter @actenora/web-portal test
 ```
 
@@ -100,13 +89,13 @@ pnpm --filter @actenora/web-portal test
 
 - [x] Stub endpoints emit `X-Actenora-Composition: stub`
 - [x] Note update via `MeetingIntelligenceApi` when available
-- [x] `actenora.portal.auth.mode` scaffold + prod defaults
-- [x] MSAL Bearer requirement documented
+- [x] `actenora.portal.auth.mode` + prod defaults
+- [x] MSAL SPA provider + fail-closed config + Bearer wiring
 - [x] HTTP mutations enabled for msal and mock local auth
+- [ ] Live Entra tenant login proof (ops — runbook)
 
 ## Deferred
 
-- Full transcript segment composition on portal BFF
 - Template list façade
 - Audit timeline list on portal BFF
-- MSAL provider implementation in web-portal (env scaffold only)
+- Full Wave 6 “nice-to-have” MSAL polish tracked separately from Gate 11 critical path

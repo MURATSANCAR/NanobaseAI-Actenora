@@ -10,6 +10,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobException;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -114,6 +115,10 @@ public final class AiJobService {
 
     public Optional<AiJob> find(UUID jobId) {
         return jobs.findById(jobId);
+    }
+
+    public List<AiJob> listForTenant(UUID tenantId) {
+        return jobs.listByTenant(tenantId);
     }
 
     private AiJob requireJob(UUID jobId) {

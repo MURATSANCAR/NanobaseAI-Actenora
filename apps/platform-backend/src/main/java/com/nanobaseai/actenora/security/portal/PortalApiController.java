@@ -5,6 +5,9 @@ import com.nanobaseai.actenora.approval.api.ApprovalDecisionType;
 import com.nanobaseai.actenora.approval.api.ApprovalId;
 import com.nanobaseai.actenora.approval.api.ApprovalRequestStatus;
 import com.nanobaseai.actenora.approval.api.ApprovalRequestView;
+import com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
+import com.nanobaseai.actenora.audit.api.AuditApi;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.RequiresPermission;
 import com.nanobaseai.actenora.identity.api.UserView;
@@ -98,6 +101,8 @@ public class PortalApiController {
     private final Optional<ModelManagementApi> modelManagementApi;
     private final PortalTeamsPreferencesStore teamsPreferencesStore;
     private final Optional<NanobaseAiConnectionService> nanobaseAiConnectionService;
+    private final Optional<AiProcessingApi> aiProcessingApi;
+    private final Optional<AuditApi> auditApi;
     private final String graphClientId;
     private final String recordingBaseUrl;
 
@@ -114,6 +119,8 @@ public class PortalApiController {
             ObjectProvider<MicrosoftConnectionApi> microsoftConnectionApi,
             ObjectProvider<ModelManagementApi> modelManagementApi,
             ObjectProvider<NanobaseAiConnectionService> nanobaseAiConnectionService,
+            ObjectProvider<AiProcessingApi> aiProcessingApi,
+            ObjectProvider<AuditApi> auditApi,
             PortalTeamsPreferencesStore teamsPreferencesStore,
             @Value("${actenora.microsoft-graph.client-id:}") String graphClientId,
             @Value("${actenora.portal.recording-base-url:}") String recordingBaseUrl
@@ -130,6 +137,8 @@ public class PortalApiController {
         this.microsoftConnectionApi = Optional.ofNullable(microsoftConnectionApi.getIfAvailable());
         this.modelManagementApi = Optional.ofNullable(modelManagementApi.getIfAvailable());
         this.nanobaseAiConnectionService = Optional.ofNullable(nanobaseAiConnectionService.getIfAvailable());
+        this.aiProcessingApi = Optional.ofNullable(aiProcessingApi.getIfAvailable());
+        this.auditApi = Optional.ofNullable(auditApi.getIfAvailable());
         this.teamsPreferencesStore = Objects.requireNonNull(teamsPreferencesStore, "teamsPreferencesStore");
         this.graphClientId = graphClientId == null ? "" : graphClientId;
         this.recordingBaseUrl = recordingBaseUrl == null ? "" : recordingBaseUrl;
@@ -609,8 +618,15 @@ public class PortalApiController {
             HttpServletResponse response
     ) {
         require(Permission.MEETING_READ);
-        markStub(response);
-        return page(List.of(), cursor, limit);
+        if (aiProcessingApi.isEmpty()) {
+            markStub(response);
+            return page(List.of(), cursor, limit);
+        }
+        UUID tenantId = TenantSecurityContext.require().tenantId().value();
+        List<AiJobView> items = aiProcessingApi.get().listJobsForTenant(tenantId).stream()
+                .map(PortalApiController::toAiJobView)
+                .toList();
+        return page(items, cursor, limit);
     }
 
     @GetMapping("/operations/overview")
@@ -639,8 +655,15 @@ public class PortalApiController {
             HttpServletResponse response
     ) {
         require(Permission.AUDIT_READ);
-        markStub(response);
-        return page(List.of(), cursor, limit);
+        if (auditApi.isEmpty()) {
+            markStub(response);
+            return page(List.of(), cursor, limit);
+        }
+        UUID tenantId = TenantSecurityContext.require().tenantId().value();
+        List<AuditEventView> items = auditApi.get().listForTenant(tenantId).stream()
+                .map(PortalApiController::toAuditEventView)
+                .toList();
+        return page(items, cursor, limit);
     }
 
     private static void markStub(HttpServletResponse response) {
@@ -694,6 +717,28 @@ public class PortalApiController {
                 "unknown",
                 null,
                 List.of()
+        );
+    }
+
+    private static AiJobView toAiJobView(AiJob job) {
+        return new AiJobView(
+                job.id(),
+                job.meetingOccurrenceId(),
+                job.status().name(),
+                job.taskType(),
+                job.startedAt().map(Instant::toString).orElse(job.queuedAt().toString()),
+                job.completedAt().map(Instant::toString).orElse(null)
+        );
+    }
+
+    private static AuditEventView toAuditEventView(AuditApi.AuditTimelineEntry entry) {
+        return new AuditEventView(
+                entry.id(),
+                entry.action(),
+                entry.actorId(),
+                entry.resourceType(),
+                entry.resourceId().toString(),
+                entry.occurredAt().toString()
         );
     }
 

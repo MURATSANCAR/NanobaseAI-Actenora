@@ -66,6 +66,14 @@ public final class InMemoryAiJobRepository implements AiJobRepository {
         return queued;
     }
 
+    @Override
+    public List<AiJob> listByTenant(UUID tenantId) {
+        return store.values().stream()
+                .filter(job -> job.tenantId().equals(tenantId))
+                .sorted(Comparator.comparing(AiJob::queuedAt).reversed())
+                .toList();
+    }
+
     public void clear() {
         store.clear();
     }

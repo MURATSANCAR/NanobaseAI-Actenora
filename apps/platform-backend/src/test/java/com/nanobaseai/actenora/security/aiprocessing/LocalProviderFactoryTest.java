@@ -27,7 +27,8 @@ class LocalProviderFactoryTest {
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
                 () -> LocalProviderFactory.create(properties("mock", null), true));
-        assertTrue(ex.getMessage().contains("mock"));
+        assertTrue(ex.getMessage().contains("offline"));
+        assertTrue(ex.getMessage().contains("production"));
     }
 
     @Test
@@ -51,7 +52,7 @@ class LocalProviderFactoryTest {
                 IllegalStateException.class,
                 () -> LocalProviderFactory.create(
                         properties("openai", URI.create("https://api.openai.com")), false));
-        assertTrue(ex.getMessage().contains("local-only"));
+        assertTrue(ex.getMessage().contains("local or private"));
     }
 
     private static LocalProviderProperties properties(String kind, URI baseUrl) {

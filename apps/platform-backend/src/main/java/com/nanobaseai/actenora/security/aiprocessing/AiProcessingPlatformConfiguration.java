@@ -95,15 +95,15 @@ import java.util.UUID;
 @EnableConfigurationProperties({LocalProviderProperties.class, AiRoutingProperties.class})
 public class AiProcessingPlatformConfiguration {
 
+    /**
+     * Single {@link LocalModelProvider} bean (swappable). Do not also expose a
+     * second {@code LocalModelProvider} alias — Spring would fail with NoUniqueBeanDefinitionException.
+     */
     @Bean
+    @Primary
     SwappableLocalModelProvider swappableLocalModelProvider(LocalProviderProperties properties, Environment environment) {
         LocalModelProvider initial = LocalProviderFactory.create(properties, ActenoraProfiles.isStrictProduction(environment));
         return new SwappableLocalModelProvider(initial);
-    }
-
-    @Bean
-    LocalModelProvider localModelProvider(SwappableLocalModelProvider swappable) {
-        return swappable;
     }
 
     @Bean
@@ -120,7 +120,7 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
-    LocalModelProviderLocator localModelProviderLocator(LocalModelProvider provider) {
+    LocalModelProviderLocator localModelProviderLocator(SwappableLocalModelProvider provider) {
         return LocalModelProviderLocator.single(provider);
     }
 
@@ -148,7 +148,7 @@ public class AiProcessingPlatformConfiguration {
 
     @Bean
     ModelRuntimePort localModelRuntimePort(
-            LocalModelProvider provider,
+            SwappableLocalModelProvider provider,
             ModelDefinitionRepository modelDefinitions
     ) {
         UUID modelDefinitionId = modelDefinitions.findAll().stream()

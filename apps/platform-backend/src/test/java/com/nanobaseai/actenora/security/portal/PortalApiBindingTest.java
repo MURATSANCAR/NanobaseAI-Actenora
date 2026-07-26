@@ -7,6 +7,10 @@ import com.nanobaseai.actenora.approval.infrastructure.ApprovalApiAdapter;
 import com.nanobaseai.actenora.approval.infrastructure.InMemoryApprovalRequestRepository;
 import com.nanobaseai.actenora.approval.infrastructure.InMemoryParticipantDisputeRepository;
 import com.nanobaseai.actenora.approval.infrastructure.RecordingApprovalAuditPort;
+import com.nanobaseai.actenora.audit.api.AuditApi;
+import com.nanobaseai.actenora.audit.application.AuditAppendService;
+import com.nanobaseai.actenora.audit.infrastructure.AuditApiAdapter;
+import com.nanobaseai.actenora.audit.infrastructure.InMemoryAuditEntryStore;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.UserView;
 import com.nanobaseai.actenora.identity.api.Permission;
@@ -67,6 +71,7 @@ import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -86,6 +91,7 @@ class PortalApiBindingTest {
     private MeetingApi meetingApi;
     private ContinuityLedgerService ledgerService;
     private ApprovalApi approvalApi;
+    private AuditApi auditApi;
 
     @BeforeEach
     void setUp() {
@@ -166,6 +172,8 @@ class PortalApiBindingTest {
 
         StaticListableBeanFactory optionalBeans = new StaticListableBeanFactory();
         optionalBeans.addBean("templateApi", templateApi);
+        auditApi = new AuditApiAdapter(new AuditAppendService(new InMemoryAuditEntryStore()));
+        optionalBeans.addBean("auditApi", auditApi);
 
         controller = new PortalApiController(
                 stubIdentityApi(),
@@ -180,6 +188,8 @@ class PortalApiBindingTest {
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi.class),
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.modelmanagement.api.ModelManagementApi.class),
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService.class),
+                optionalBeans.getBeanProvider(com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi.class),
+                optionalBeans.getBeanProvider(AuditApi.class),
                 new PortalTeamsPreferencesStore(),
                 "test-graph-client-id",
                 ""
@@ -242,6 +252,25 @@ class PortalApiBindingTest {
         PortalApiController.MeetingDetailView detail = controller.meetingDetail(created.id());
         assertEquals(created.id(), detail.meeting().id());
         assertEquals(1, detail.participants().size());
+    }
+
+    @Test
+    void listAuditEventsReturnsTenantTrail() {
+        UUID resourceId = UUID.randomUUID();
+        auditApi.append(
+                tenantId.value(),
+                userId.toString(),
+                "MEETING_CREATED",
+                "Meeting",
+                resourceId,
+                Map.of("source", "test"),
+                Instant.parse("2026-07-20T10:00:00Z")
+        );
+
+        PortalApiController.PortalCursorPage<PortalApiController.AuditEventView> page =
+                controller.listAuditEvents(null, 10, null);
+        assertEquals(1, page.items().size());
+        assertEquals("MEETING_CREATED", page.items().get(0).action());
     }
 
     @Test

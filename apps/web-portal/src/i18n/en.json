@@ -28,6 +28,8 @@
   "auth.signInMicrosoft": "Sign in with Microsoft",
   "auth.signInDescription": "Use your organization account to access meeting intelligence.",
   "auth.signOut": "Sign out",
+  "auth.misconfiguredTitle": "Sign-in is not configured",
+  "auth.misconfiguredBody": "NanobaseAI portal authentication requires Entra application settings. Contact your administrator.",
   "approvals.title": "Approvals inbox",
   "approvals.description": "Review and decide pending approvals across recent meetings.",
   "approvals.inboxTitle": "Pending approvals",

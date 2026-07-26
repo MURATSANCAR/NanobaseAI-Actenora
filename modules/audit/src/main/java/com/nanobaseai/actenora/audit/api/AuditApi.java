@@ -22,6 +22,8 @@ public interface AuditApi {
 
     List<AuditTimelineEntry> timeline(UUID tenantId, UUID resourceId);
 
+    List<AuditTimelineEntry> listForTenant(UUID tenantId);
+
     record AuditTimelineEntry(
             UUID id,
             String actorId,

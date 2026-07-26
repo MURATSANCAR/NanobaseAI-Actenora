@@ -38,6 +38,13 @@ public final class AuditApiAdapter implements AuditApi {
                 .toList();
     }
 
+    @Override
+    public List<AuditTimelineEntry> listForTenant(UUID tenantId) {
+        return service.listForTenant(tenantId).stream()
+                .map(AuditApiAdapter::toEntry)
+                .toList();
+    }
+
     private static AuditTimelineEntry toEntry(AuditEntry e) {
         return new AuditTimelineEntry(
                 e.id(), e.actorId(), e.action(), e.resourceType(), e.resourceId(), e.metadata(), e.occurredAt()

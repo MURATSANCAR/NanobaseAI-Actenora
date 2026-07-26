@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -147,6 +148,11 @@ class TranscriptReadyAiAdmissionHandlerTest {
         @Override
         public Optional<AiJob> findJob(UUID jobId) {
             return Optional.empty();
+        }
+
+        @Override
+        public List<AiJob> listJobsForTenant(UUID tenantId) {
+            return List.of();
         }
     }
 }

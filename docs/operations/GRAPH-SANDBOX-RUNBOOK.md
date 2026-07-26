@@ -78,6 +78,18 @@ Lifecycle notifications (`reauthorizationRequired`, `missed`) trigger automatic 
 ./scripts/acceptance-graph-sandbox.sh
 ```
 
+## Staging burn-in (1 real Teams meeting)
+
+Ops-only; code path exists. Complete before Gate 11 sign-off:
+
+1. Entra Graph app + **CERTIFICATE** auth + admin consent for calendar/meeting/transcript permissions
+2. HTTPS public webhook URL registered; `clientState` matches `ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE`
+3. Mailbox user + tenant **transcript policy** allow Graph transcript read
+4. Actenora tenant mapped to Entra `tid`; business context created
+5. Schedule/run **one** real Teams meeting with transcript enabled
+6. Confirm chain: webhook → calendar upsert → transcript ingest → AI draft → portal approve
+7. Portal login via MSAL Bearer (see [`PORTAL-MSAL-RUNBOOK.md`](PORTAL-MSAL-RUNBOOK.md)) — no `X-Mock-*`
+
 ## Troubleshooting
 
 | Symptom | Check |

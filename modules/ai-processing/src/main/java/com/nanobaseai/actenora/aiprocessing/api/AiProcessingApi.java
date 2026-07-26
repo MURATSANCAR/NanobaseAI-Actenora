@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,6 +36,8 @@ public interface AiProcessingApi {
     int recoverStaleRunning(Instant now, Duration staleAfter);
 
     Optional<AiJob> findJob(UUID jobId);
+
+    List<AiJob> listJobsForTenant(UUID tenantId);
 
     /**
      * Default API adapter over {@link AiJobService}.
@@ -82,6 +85,11 @@ public interface AiProcessingApi {
         @Override
         public Optional<AiJob> findJob(UUID jobId) {
             return service.find(jobId);
+        }
+
+        @Override
+        public List<AiJob> listJobsForTenant(UUID tenantId) {
+            return service.listForTenant(tenantId);
         }
     }
 }

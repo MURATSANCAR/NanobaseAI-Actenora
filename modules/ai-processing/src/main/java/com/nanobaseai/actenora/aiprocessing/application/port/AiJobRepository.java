@@ -27,4 +27,6 @@ public interface AiJobRepository {
     int countByTenantAndStatus(UUID tenantId, AiJobStatus status);
 
     List<AiJob> findQueuedOrdered();
+
+    List<AiJob> listByTenant(UUID tenantId);
 }

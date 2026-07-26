@@ -7,7 +7,19 @@
 
 **PARTIAL — not declared production-ready.**
 
-Compose acceptance (`prod-fixture`), K8s HA manifests, and SLO/DR documentation are in place. Full Entra MSAL product loop, blocking vulnerability gates, and load-tested SLO proof remain open.
+Compose acceptance (`prod-fixture`), K8s HA manifests, and SLO/DR documentation are in place. Full Entra MSAL live proof, Teams Graph burn-in, CD push, and load-tested SLO remain open.
+
+## Remaining to Gate 11 (ordered)
+
+| # | Item | Owner | Status |
+|---|------|-------|--------|
+| 1 | Portal MSAL fail-closed + prod build args (no baked demo personas) | **Code** | Done — live Entra app values still ops; see [`PORTAL-MSAL-RUNBOOK.md`](../operations/PORTAL-MSAL-RUNBOOK.md) |
+| 2 | Staging Teams Graph burn-in (1 real meeting → note approve) | **Ops** | Code path ready; checklist in [`GRAPH-SANDBOX-RUNBOOK.md`](../operations/GRAPH-SANDBOX-RUNBOOK.md) |
+| 3 | Prod secrets + `ProductionSecretGuard` green | **Ops** | [`PROD-SECRETS-CHECKLIST.md`](../operations/PROD-SECRETS-CHECKLIST.md); values + CERTIFICATE required |
+| 4 | `./scripts/test-all` + `acceptance-compose.sh` on release tag | **CI** | Scripts exist |
+| 5 | CD image push + digest promotion + rollback drill | **Ops/Platform** | Manifests partial; push disabled |
+| 6 | SLO burn-rate alerts + backup restore drill | **Ops** | Docs only |
+| 7 | Delivery PDF/mail happy-path | Deferred | Out of Gate 11 critical path |
 
 ## Stop-condition matrix (Gates 1–11)
 
@@ -19,7 +31,7 @@ Compose acceptance (`prod-fixture`), K8s HA manifests, and SLO/DR documentation 
 | **4** | Domain JDBC adapters (10 BCs) | **Done** | [`WAVE-3-DOMAIN-JDBC.md`](WAVE-3-DOMAIN-JDBC.md) |
 | **5** | Production security locks (secrets, mock auth, Graph webhook) | **Done** | [`WAVE-4-PROD-SECURITY-LOCKS.md`](WAVE-4-PROD-SECURITY-LOCKS.md) |
 | **6** | Product E2E loop (Graph → meeting → transcript → AI draft → portal) | **Done (code)** | [`GRAPH-SANDBOX-PROD-E2E.md`](GRAPH-SANDBOX-PROD-E2E.md), [`GRAPH-SANDBOX-RUNBOOK.md`](../operations/GRAPH-SANDBOX-RUNBOOK.md) — live Teams burn-in still ops-dependent |
-| **7** | Portal MSAL / BFF composition | **Partial** | [`WAVE-6-PORTAL-MSAL-COMPOSITION.md`](WAVE-6-PORTAL-MSAL-COMPOSITION.md) — BFF notes/transcript composition done; MSAL SPA deferred |
+| **7** | Portal MSAL / BFF composition | **Code done** | [`WAVE-6-PORTAL-MSAL-COMPOSITION.md`](WAVE-6-PORTAL-MSAL-COMPOSITION.md), [`PORTAL-MSAL-RUNBOOK.md`](../operations/PORTAL-MSAL-RUNBOOK.md) — live Entra proof still ops |
 | **8** | Compose prod-like proof + Graph sandbox acceptance | **Done (scripts)** | [`WAVE-7-COMPOSE-PROOF.md`](WAVE-7-COMPOSE-PROOF.md), `scripts/acceptance-compose.sh`, `scripts/acceptance-graph-sandbox.sh` |
 | **9** | Kubernetes HA + CD pipeline skeleton | **Partial** | [`WAVE-8-K8S-HA-CD.md`](WAVE-8-K8S-HA-CD.md) — push disabled; secrets not committed |
 | **10** | SLO / DR / load documentation | **Partial** | [`WAVE-9-SLO-DR-LOAD.md`](WAVE-9-SLO-DR-LOAD.md), [`SLO-ALERTS.md`](../operations/SLO-ALERTS.md) — no prod burn-in |
@@ -36,6 +48,8 @@ Compose acceptance (`prod-fixture`), K8s HA manifests, and SLO/DR documentation 
 
 ## Related runbooks
 
+- [`PORTAL-MSAL-RUNBOOK.md`](../operations/PORTAL-MSAL-RUNBOOK.md)
+- [`PROD-SECRETS-CHECKLIST.md`](../operations/PROD-SECRETS-CHECKLIST.md)
 - [`ROLLBACK-RUNBOOK.md`](../operations/ROLLBACK-RUNBOOK.md)
 - [`BACKUP-RESTORE-RUNBOOK.md`](../operations/BACKUP-RESTORE-RUNBOOK.md)
 - [`DISASTER-RECOVERY-RUNBOOK.md`](../operations/DISASTER-RECOVERY-RUNBOOK.md)

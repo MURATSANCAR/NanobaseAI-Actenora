@@ -173,6 +173,14 @@ public final class JdbcAiJobRepository implements AiJobRepository {
         return jdbc.query(sql, ROW_MAPPER);
     }
 
+    @Override
+    public List<AiJob> listByTenant(UUID tenantId) {
+        String sql = "SELECT " + COLUMNS + """
+                 FROM aiprocessing.ai_jobs WHERE tenant_id = ? ORDER BY queued_at DESC
+                """;
+        return jdbc.query(sql, ROW_MAPPER, tenantId);
+    }
+
     private void insert(AiJob job) {
         String sql = """
                 INSERT INTO aiprocessing.ai_jobs (

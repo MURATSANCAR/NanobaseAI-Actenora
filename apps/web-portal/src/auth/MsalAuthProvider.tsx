@@ -14,13 +14,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { isMsalAuthEnabled, buildMsalConfig, msalApiScopes } from "./msalConfig";
+import { buildMsalConfig, isMsalAuthEnabled, msalApiScopes, MsalConfigError } from "./msalConfig";
 import { setMsalAuthHeaderProvider } from "./authHeaders";
 
 type MsalAuthContextValue = {
   enabled: boolean;
   ready: boolean;
   account: AccountInfo | null;
+  configError: string | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -29,18 +30,18 @@ const MsalAuthContext = createContext<MsalAuthContextValue | null>(null);
 
 let pcaSingleton: PublicClientApplication | null = null;
 
-function getMsalInstance(): PublicClientApplication | null {
+function getMsalInstance(): PublicClientApplication {
   if (pcaSingleton) return pcaSingleton;
   const config = buildMsalConfig();
-  if (!config) return null;
+  if (!config) {
+    throw new MsalConfigError("NanobaseAI sign-in is not enabled");
+  }
   pcaSingleton = new PublicClientApplication(config);
   return pcaSingleton;
 }
 
 async function acquireBearerHeaders(instance: PublicClientApplication): Promise<Record<string, string>> {
   const scopes = msalApiScopes();
-  if (!scopes.length) return {};
-
   const account = instance.getActiveAccount() ?? instance.getAllAccounts()[0] ?? null;
   if (!account) return {};
 
@@ -60,33 +61,47 @@ export function MsalAuthProvider({ children }: { children: ReactNode }) {
   const enabled = isMsalAuthEnabled();
   const [ready, setReady] = useState(!enabled);
   const [account, setAccount] = useState<AccountInfo | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enabled) {
       setMsalAuthHeaderProvider(null);
-      return;
-    }
-
-    const instance = getMsalInstance();
-    if (!instance) {
-      setReady(true);
+      setConfigError(null);
       return;
     }
 
     let cancelled = false;
+    let callbackId: string | null = null;
+    let instance: PublicClientApplication;
+
+    try {
+      instance = getMsalInstance();
+      msalApiScopes();
+    } catch (err) {
+      const message =
+        err instanceof MsalConfigError
+          ? err.message
+          : "NanobaseAI sign-in is misconfigured";
+      setConfigError(message);
+      setReady(true);
+      setMsalAuthHeaderProvider(null);
+      return;
+    }
 
     void (async () => {
       await instance.initialize();
       const redirectResult = await instance.handleRedirectPromise();
-      const active = redirectResult?.account ?? instance.getActiveAccount() ?? instance.getAllAccounts()[0] ?? null;
+      const active =
+        redirectResult?.account ?? instance.getActiveAccount() ?? instance.getAllAccounts()[0] ?? null;
       if (active) instance.setActiveAccount(active);
       if (!cancelled) {
         setAccount(active);
+        setConfigError(null);
         setReady(true);
       }
     })();
 
-    const callbackId = instance.addEventCallback((event) => {
+    callbackId = instance.addEventCallback((event) => {
       if (
         event.eventType === EventType.LOGIN_SUCCESS ||
         event.eventType === EventType.ACQUIRE_TOKEN_SUCCESS ||
@@ -114,21 +129,21 @@ export function MsalAuthProvider({ children }: { children: ReactNode }) {
   }, [enabled]);
 
   const login = useCallback(async () => {
+    if (configError) return;
     const instance = getMsalInstance();
     const scopes = msalApiScopes();
-    if (!instance || !scopes.length) return;
     await instance.loginRedirect({ scopes });
-  }, []);
+  }, [configError]);
 
   const logout = useCallback(async () => {
+    if (configError) return;
     const instance = getMsalInstance();
-    if (!instance) return;
     await instance.logoutRedirect();
-  }, []);
+  }, [configError]);
 
   const value = useMemo<MsalAuthContextValue>(
-    () => ({ enabled, ready, account, login, logout }),
-    [enabled, ready, account, login, logout],
+    () => ({ enabled, ready, account, configError, login, logout }),
+    [enabled, ready, account, configError, login, logout],
   );
 
   return <MsalAuthContext.Provider value={value}>{children}</MsalAuthContext.Provider>;

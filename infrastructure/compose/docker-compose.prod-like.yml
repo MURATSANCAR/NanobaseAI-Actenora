@@ -164,8 +164,10 @@ services:
       PLATFORM_BACKEND_PORT: "8080"
       ACTENORA_PERSISTENCE_MODE: jdbc
       ACTENORA_MESSAGING_MODE: jdbc-rabbit
-      ACTENORA_AUTH_MODE: mock
-      ACTENORA_PORTAL_AUTH_MODE: mock
+      # Fixture CI uses mock auth. Staging/prod override:
+      # ACTENORA_AUTH_MODE=entra ACTENORA_PORTAL_AUTH_MODE=msal (+ Entra issuer/audience)
+      ACTENORA_AUTH_MODE: ${ACTENORA_AUTH_MODE:-mock}
+      ACTENORA_PORTAL_AUTH_MODE: ${ACTENORA_PORTAL_AUTH_MODE:-mock}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB:-actenora}
@@ -265,7 +267,10 @@ services:
       args:
         VITE_API_MODE: http
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
-        VITE_PORTAL_AUTH_MODE: mock
+        VITE_PORTAL_AUTH_MODE: ${VITE_PORTAL_AUTH_MODE:-mock}
+        VITE_ENTRA_CLIENT_ID: ${VITE_ENTRA_CLIENT_ID:-}
+        VITE_ENTRA_TENANT_ID: ${VITE_ENTRA_TENANT_ID:-}
+        VITE_ENTRA_API_SCOPE: ${VITE_ENTRA_API_SCOPE:-}
         VITE_MOCK_ENTRA_OID: ${VITE_MOCK_ENTRA_OID:-}
         VITE_MOCK_ENTRA_TID: ${VITE_MOCK_ENTRA_TID:-}
         VITE_MOCK_EMAIL: ${VITE_MOCK_EMAIL:-}
