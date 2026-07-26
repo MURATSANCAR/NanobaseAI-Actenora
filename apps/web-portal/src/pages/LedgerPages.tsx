@@ -1,13 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Download } from "lucide-react";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
 import type { ArtifactStatus } from "@/api/types";
 import { PageShell } from "@/components/qa/PageShell";
 import { StatusBadge } from "@/components/qa/StatusBadge";
+import { DueDateBadge } from "@/components/ui/DueDateBadge";
 import { AsyncState, DataTable, FilterCard, PaginationBar } from "@/components/ui/AsyncState";
+import { useAuth } from "@/auth/AuthProvider";
 import { useI18n } from "@/i18n";
+import { isOverdue } from "@/lib/dueDates";
+import { exportTableCsv } from "@/lib/export";
 
 const DECISION_STATUSES: ArtifactStatus[] = ["PENDING_APPROVAL", "APPROVED", "REJECTED"];
 const ACTION_STATUSES: ArtifactStatus[] = ["OPEN", "COMPLETED", "PENDING_APPROVAL"];
@@ -28,8 +33,29 @@ export function DecisionLedgerPage() {
   const asyncStatus =
     q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
 
+  const exportCsv = () => {
+    if (!q.data?.items.length) return;
+    exportTableCsv(
+      "decisions.csv",
+      [t("table.title"), t("filter.status")],
+      q.data.items.map((d) => [d.title, tb("artifactStatus", d.status)]),
+    );
+  };
+
   return (
-    <PageShell titleKey="decisions.title" subtitleKey="decisions.description" maxWidth="max-w-7xl">
+    <PageShell
+      titleKey="decisions.title"
+      subtitleKey="decisions.description"
+      maxWidth="max-w-7xl"
+      heroTrailing={
+        q.data?.items.length ? (
+          <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={exportCsv}>
+            <Download className="h-4 w-4" />
+            {t("export.csv")}
+          </button>
+        ) : null
+      }
+    >
       <FilterCard>
         <label className="block max-w-xs">
           <span className="label-text">{t("filter.status")}</span>
@@ -52,7 +78,7 @@ export function DecisionLedgerPage() {
       </FilterCard>
       <AsyncState status={asyncStatus} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("decisions.description")}>
         <DataTable
-          headers={["Title", t("filter.status"), ""]}
+          headers={[t("table.title"), t("filter.status"), ""]}
           rows={
             q.data?.items.map((d) => [
               d.title,
@@ -75,8 +101,11 @@ export function DecisionLedgerPage() {
 
 export function ActionCenterPage() {
   const api = useApi();
+  const auth = useAuth();
   const { t, tb } = useI18n();
   const [status, setStatus] = useState<ArtifactStatus | "">("");
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [mineOnly, setMineOnly] = useState(false);
   const [cursor, setCursor] = useState<string | undefined>();
   const params = useMemo(
     () => ({ status: status || undefined, cursor, limit: 25 }),
@@ -86,43 +115,98 @@ export function ActionCenterPage() {
     queryKey: queryKeys.actions(params),
     queryFn: () => api.listActions(params),
   });
+
+  const items = useMemo(() => {
+    let rows = q.data?.items ?? [];
+    if (overdueOnly) rows = rows.filter((a) => isOverdue(a.dueAt));
+    if (mineOnly && auth.user) {
+      rows = rows.filter((a) => a.ownerDisplayName === auth.user!.displayName);
+    }
+    return rows;
+  }, [q.data?.items, overdueOnly, mineOnly, auth.user]);
+
   const asyncStatus =
-    q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
+    q.isLoading ? "loading" : q.isError ? "error" : !items.length ? "empty" : "ready";
+
+  const exportCsv = () => {
+    if (!items.length) return;
+    exportTableCsv(
+      "actions.csv",
+      [t("table.title"), t("filter.status"), t("table.owner"), t("table.dueDate")],
+      items.map((a) => [
+        a.title,
+        tb("artifactStatus", a.status),
+        a.ownerDisplayName,
+        a.dueAt ?? "",
+      ]),
+    );
+  };
 
   return (
-    <PageShell titleKey="actions.title" subtitleKey="actions.description" maxWidth="max-w-7xl">
+    <PageShell
+      titleKey="actions.title"
+      subtitleKey="actions.description"
+      maxWidth="max-w-7xl"
+      heroTrailing={
+        items.length ? (
+          <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={exportCsv}>
+            <Download className="h-4 w-4" />
+            {t("export.csv")}
+          </button>
+        ) : null
+      }
+    >
       <FilterCard>
-        <label className="block max-w-xs">
-          <span className="label-text">{t("filter.status")}</span>
-          <select
-            className="input-field"
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value as ArtifactStatus | "");
-              setCursor(undefined);
-            }}
-          >
-            <option value="">{t("filter.all")}</option>
-            {ACTION_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {tb("artifactStatus", s)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="block max-w-xs">
+            <span className="label-text">{t("filter.status")}</span>
+            <select
+              className="input-field"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value as ArtifactStatus | "");
+                setCursor(undefined);
+              }}
+            >
+              <option value="">{t("filter.all")}</option>
+              {ACTION_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {tb("artifactStatus", s)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={overdueOnly}
+              onChange={(e) => setOverdueOnly(e.target.checked)}
+            />
+            {t("filter.overdueOnly")}
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={mineOnly}
+              onChange={(e) => setMineOnly(e.target.checked)}
+            />
+            {t("filter.mineOnly")}
+          </label>
+        </div>
       </FilterCard>
       <AsyncState status={asyncStatus} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("actions.description")}>
         <DataTable
-          headers={["Title", t("filter.status"), "Owner", ""]}
+          headers={[t("table.title"), t("filter.status"), t("table.owner"), t("table.dueDate"), ""]}
           rows={
-            q.data?.items.map((a) => [
+            items.map((a) => [
               a.title,
               <StatusBadge key={`${a.id}-s`} label={tb("artifactStatus", a.status)} status={a.status} />,
               <span key={`${a.id}-o`} className="text-slate-500">{a.ownerDisplayName}</span>,
+              <DueDateBadge key={`${a.id}-d`} dueAt={a.dueAt} />,
               <Link key={`${a.id}-m`} to={`/meetings/${a.meetingId}`} className="btn-secondary px-3 py-1.5 text-xs">
                 {t("common.openMeeting")}
               </Link>,
-            ]) ?? []
+            ])
           }
         />
         <PaginationBar
@@ -137,30 +221,90 @@ export function ActionCenterPage() {
 
 export function CommitmentTrackerPage() {
   const api = useApi();
+  const auth = useAuth();
   const { t, tb } = useI18n();
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [mineOnly, setMineOnly] = useState(false);
   const [cursor, setCursor] = useState<string | undefined>();
   const params = useMemo(() => ({ cursor, limit: 25 }), [cursor]);
   const q = useQuery({
     queryKey: queryKeys.commitments(params),
     queryFn: () => api.listCommitments(params),
   });
+
+  const items = useMemo(() => {
+    let rows = q.data?.items ?? [];
+    if (overdueOnly) rows = rows.filter((c) => isOverdue(c.dueAt) || c.status === "AT_RISK");
+    if (mineOnly && auth.user) {
+      rows = rows.filter((c) => c.ownerDisplayName === auth.user!.displayName);
+    }
+    return rows;
+  }, [q.data?.items, overdueOnly, mineOnly, auth.user]);
+
   const asyncStatus =
-    q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
+    q.isLoading ? "loading" : q.isError ? "error" : !items.length ? "empty" : "ready";
+
+  const exportCsv = () => {
+    if (!items.length) return;
+    exportTableCsv(
+      "commitments.csv",
+      [t("table.statement"), t("filter.status"), t("table.owner"), t("table.dueDate")],
+      items.map((c) => [
+        c.statement,
+        tb("artifactStatus", c.status),
+        c.ownerDisplayName,
+        c.dueAt ?? "",
+      ]),
+    );
+  };
 
   return (
-    <PageShell titleKey="commitments.title" subtitleKey="commitments.description" maxWidth="max-w-7xl">
+    <PageShell
+      titleKey="commitments.title"
+      subtitleKey="commitments.description"
+      maxWidth="max-w-7xl"
+      heroTrailing={
+        items.length ? (
+          <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={exportCsv}>
+            <Download className="h-4 w-4" />
+            {t("export.csv")}
+          </button>
+        ) : null
+      }
+    >
+      <FilterCard>
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={overdueOnly}
+              onChange={(e) => setOverdueOnly(e.target.checked)}
+            />
+            {t("filter.overdueOnly")}
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={mineOnly}
+              onChange={(e) => setMineOnly(e.target.checked)}
+            />
+            {t("filter.mineOnly")}
+          </label>
+        </div>
+      </FilterCard>
       <AsyncState status={asyncStatus} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("commitments.description")}>
         <DataTable
-          headers={["Statement", t("filter.status"), "Owner", ""]}
+          headers={[t("table.statement"), t("filter.status"), t("table.owner"), t("table.dueDate"), ""]}
           rows={
-            q.data?.items.map((c) => [
+            items.map((c) => [
               c.statement,
               <StatusBadge key={`${c.id}-s`} label={tb("artifactStatus", c.status)} status={c.status} />,
               <span key={`${c.id}-o`} className="text-slate-500">{c.ownerDisplayName}</span>,
+              <DueDateBadge key={`${c.id}-d`} dueAt={c.dueAt} />,
               <Link key={`${c.id}-m`} to={`/meetings/${c.meetingId}`} className="btn-secondary px-3 py-1.5 text-xs">
                 {t("common.openMeeting")}
               </Link>,
-            ]) ?? []
+            ])
           }
         />
         <PaginationBar
