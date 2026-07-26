@@ -293,7 +293,7 @@ class MeetingIntelligenceAuthBindingTest {
 
         UUID transcriptId = UUID.randomUUID();
         // Owner "Ghost" is grounded in transcript text (AI pipeline OK) but is not a speaker/participant
-        // (quality gate → MANUAL_REVIEW_REQUIRED → no meeting note).
+        // (quality gate → MANUAL_REVIEW_REQUIRED). Draft note is still persisted for portal visibility.
         segmentSource.put(tenantId, transcriptId, List.of(
                 new SegmentInput("seg-1", 0, "Alice", 0, 1000,
                         "Ghost will prepare the release. We decided to ship Friday.", true)
@@ -334,7 +334,7 @@ class MeetingIntelligenceAuthBindingTest {
         var execution = aiController.executeNext().getBody();
         assertNotNull(execution);
         assertTrue(execution.succeeded());
-        assertNull(execution.meetingNoteId());
+        assertNotNull(execution.meetingNoteId());
         assertEquals(
                 QualityGateOutcome.MANUAL_REVIEW_REQUIRED,
                 evidenceValidationApi.history(tenantId.value(), submitted.job().id()).getFirst().computedOutcome());
