@@ -23,6 +23,7 @@ import com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.TenantFairnessTracker;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -116,6 +117,7 @@ public class OperationsConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(LegalHoldRepository.class)
     LegalHoldRepository legalHoldRepository() {
         return new InMemoryLegalHoldRepository();

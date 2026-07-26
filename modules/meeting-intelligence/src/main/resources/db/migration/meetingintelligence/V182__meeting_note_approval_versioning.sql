@@ -1,33 +1,6 @@
--- FAZ 18: approval lifecycle status on meeting note versions.
-CREATE TABLE IF NOT EXISTS meetingintelligence.meeting_notes (
-    id                      UUID PRIMARY KEY,
-    tenant_id               UUID NOT NULL,
-    meeting_occurrence_id   UUID NOT NULL,
-    current_version_id      UUID NOT NULL,
-    current_version_number  INT NOT NULL DEFAULT 0,
-    review_status           VARCHAR(32) NOT NULL,
-    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    version                 BIGINT NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS meetingintelligence.meeting_note_versions (
-    id                  UUID PRIMARY KEY,
-    tenant_id           UUID NOT NULL,
-    note_id             UUID NOT NULL REFERENCES meetingintelligence.meeting_notes (id),
-    version_number      INT NOT NULL,
-    executive_summary   TEXT NOT NULL,
-    source              VARCHAR(32) NOT NULL,
-    provenance_json     JSONB,
-    correction_reason   TEXT,
-    created_by_user_id  UUID,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    approval_status     VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
-    UNIQUE (note_id, version_number)
-);
-
-CREATE INDEX IF NOT EXISTS idx_mi_notes_tenant
-    ON meetingintelligence.meeting_notes (tenant_id);
+-- FAZ 18: approval lifecycle status on meeting note versions (additive on V181 schema).
+ALTER TABLE meetingintelligence.meeting_note_versions
+    ADD COLUMN IF NOT EXISTS approval_status VARCHAR(32) NOT NULL DEFAULT 'DRAFT';
 
 CREATE INDEX IF NOT EXISTS idx_mi_note_versions_approval_status
     ON meetingintelligence.meeting_note_versions (approval_status);

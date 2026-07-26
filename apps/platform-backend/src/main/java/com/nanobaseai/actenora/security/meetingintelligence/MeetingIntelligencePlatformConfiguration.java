@@ -48,6 +48,7 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InM
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryValidationRunRepository;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -64,12 +65,14 @@ import java.util.UUID;
 @Configuration
 public class MeetingIntelligencePlatformConfiguration {
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(MeetingNoteRepository.class)
     @Bean
     public MeetingNoteRepository inMemoryMeetingNoteRepository() {
         return new InMemoryMeetingNoteRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(MeetingNoteVersionRepository.class)
     @Bean
     public MeetingNoteVersionRepository inMemoryMeetingNoteVersionRepository() {
@@ -249,12 +252,14 @@ public class MeetingIntelligencePlatformConfiguration {
                 meetingIntelligenceApi, evidenceValidationApi, segmentSource, auditPort);
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(LedgerEventStore.class)
     @Bean
     public LedgerEventStore inMemoryLedgerEventStore() {
         return new InMemoryLedgerEventStore();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(LedgerProjectionRepository.class)
     @Bean
     public LedgerProjectionRepository inMemoryLedgerProjectionRepository() {

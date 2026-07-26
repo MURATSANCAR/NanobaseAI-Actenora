@@ -4,6 +4,8 @@ spring:
   config:
     activate:
       on-profile: prod-fixture
+  main:
+    allow-bean-definition-overriding: true
   mail:
     host: ${MAIL_HOST:mailhog}
     port: ${MAIL_PORT:1025}

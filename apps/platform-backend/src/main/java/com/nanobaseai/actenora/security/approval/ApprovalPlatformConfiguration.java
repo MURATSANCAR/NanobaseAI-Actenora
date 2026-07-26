@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntel
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -30,12 +31,14 @@ import java.util.UUID;
 @Configuration
 public class ApprovalPlatformConfiguration {
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(ApprovalRequestRepository.class)
     @Bean
     public ApprovalRequestRepository inMemoryApprovalRequestRepository() {
         return new InMemoryApprovalRequestRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(ParticipantDisputeRepository.class)
     @Bean
     public ParticipantDisputeRepository inMemoryParticipantDisputeRepository() {

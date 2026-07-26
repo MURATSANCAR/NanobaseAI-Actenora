@@ -214,12 +214,14 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(AiJobRepository.class)
     AiJobRepository inMemoryAiJobRepository() {
         return new InMemoryAiJobRepository();
     }
 
     @Bean
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(AiAttemptRepository.class)
     AiAttemptRepository inMemoryAiAttemptRepository() {
         return new InMemoryAiAttemptRepository();
