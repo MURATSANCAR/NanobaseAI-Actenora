@@ -1,6 +1,6 @@
 # Portal Entra MSAL Runbook
 
-End-to-end NanobaseAI portal sign-in: SPA MSAL Bearer → platform API with `ACTENORA_AUTH_MODE=entra`. **No `X-Mock-*` headers in staging/prod.**
+End-to-end NanobaseAI portal sign-in: SPA MSAL Bearer → platform API with `ACTENORA_AUTH_MODE=entra`. **No `X-Actenora-*` headers in staging/prod.**
 
 Portal sign-in and Teams/Graph meeting ingest are independent: Graph uses app-only credentials (`ACTENORA_MICROSOFT_GRAPH_*`), so transcript ingest works while the portal still runs local header auth. Prod requires both.
 
@@ -39,9 +39,9 @@ ACTENORA_CORS_ALLOWED_ORIGINS=https://portal.example.com
 
 Guards:
 
-- `PlatformSecurityConfiguration` refuses `auth.mode=mock` on strict prod
+- `PlatformSecurityConfiguration` refuses `auth.mode=headers` on strict prod
 - `PortalAuthModeGuard` refuses `portal.auth.mode=msal` without `security.auth.mode=entra`, and requires both on strict prod
-- CORS allowlists `X-Mock-*` **only** when `auth.mode=mock`
+- CORS allowlists `X-Actenora-*` **only** when `auth.mode=headers`
 
 ## Portal build args
 
@@ -63,12 +63,12 @@ For local Vite, put the same `VITE_*` values in `apps/web-portal/.env.local` (gi
 3. **API permissions** → add that scope to the SPA (same app) → admin consent if required
 4. Backend: `ACTENORA_ENTRA_AUDIENCE=api://<client-id>` must match token `aud`
 
-Dockerfile fails the build if `msal` is set without client ID / API scope. Do not bake `VITE_MOCK_*` into staging/prod images.
+Dockerfile fails the build if `msal` is set without client ID / API scope. Do not bake `VITE_IDENTITY_*` into staging/prod images.
 
 ## Smoke checklist
 
 1. Open portal → misconfig screen if Entra vars missing; otherwise Microsoft login
-2. After login, Network tab: `Authorization: Bearer …` on `/api/v1/portal/me` — **no** `X-Mock-*`
+2. After login, Network tab: `Authorization: Bearer …` on `/api/v1/portal/me` — **no** `X-Actenora-*`
 3. Backend `/api/v1/me` returns mapped Actenora user (tenant bound via Entra `tid`)
 4. Cross-tenant meeting access → 403
 

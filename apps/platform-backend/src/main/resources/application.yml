@@ -127,7 +127,7 @@ actenora:
       graph-sender: ${ACTENORA_DELIVERY_GRAPH_SENDER:}
   portal:
     auth:
-      # mock = X-Mock-* headers (local); msal = Entra Bearer via SPA (prod)
+      # headers = X-Actenora-* operator identity (local); msal = Entra Bearer via SPA (prod)
       mode: ${ACTENORA_PORTAL_AUTH_MODE:headers}
     recording-base-url: ${ACTENORA_PORTAL_RECORDING_BASE_URL:}
   microsoft-graph:

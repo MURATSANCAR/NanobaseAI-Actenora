@@ -40,7 +40,7 @@ Returns 501 `NOTE_UPDATE_UNAVAILABLE` when intelligence module bean is missing.
 actenora:
   portal:
     auth:
-      mode: mock   # local: X-Mock-* headers
+      mode: headers  # local: X-Actenora-* identity headers
       # mode: msal  # prod: Entra Bearer from SPA
   security:
     auth:
@@ -60,7 +60,7 @@ Implemented in `apps/web-portal`:
 
 - `MsalAuthProvider` + `AuthGate` (misconfig screen when Entra vars missing)
 - `buildMsalConfig` / `msalApiScopes` fail-closed (`MsalConfigError`)
-- `resolveAuthHeaders()` sends Bearer only in msal mode — never `X-Mock-*`
+- `resolveAuthHeaders()` sends Bearer only in msal mode — never `X-Actenora-*`
 - Dockerfile refuses msal builds without `VITE_ENTRA_CLIENT_ID` + `VITE_ENTRA_API_SCOPE`
 
 Operator steps: [`docs/operations/PORTAL-MSAL-RUNBOOK.md`](../operations/PORTAL-MSAL-RUNBOOK.md).

@@ -39,9 +39,6 @@ export function identityAuthHeaders(env?: Partial<ImportMetaEnv>): Record<string
   };
 }
 
-/** @deprecated Use {@link identityAuthHeaders} */
-export const mockAuthHeaders = identityAuthHeaders;
-
 async function httpJson<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await resolveAuthHeaders();
   const res = await fetch(`${baseUrl}${path}`, {

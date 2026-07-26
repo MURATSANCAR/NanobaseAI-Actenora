@@ -35,7 +35,7 @@ Tenant bootstrap: provision via Tenant API with the real Entra directory id — 
 |------|--------|
 | Portal BFF | `security/portal/PortalApiController`, `PortalPermissionMapper` |
 | FE HTTP | `apps/web-portal/src/api/client.ts` (`mockAuthHeaders`, `/portal` paths) |
-| Env / run | `.env.example`, `scripts/run-local` (requires real `VITE_MOCK_*`), `vite-env.d.ts` |
+| Env / run | `.env.example`, `scripts/run-local` (requires real `VITE_IDENTITY_*`), `vite-env.d.ts` |
 | Contract | `platform-api.yaml` portal paths |
 | Test | `PortalApiBindingTest` |
 | Removed | `PortalLocalSeedRunner`, canned ops `seededDemo`, script persona fallbacks |

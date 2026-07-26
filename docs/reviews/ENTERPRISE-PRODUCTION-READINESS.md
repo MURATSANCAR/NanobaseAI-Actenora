@@ -41,7 +41,7 @@ Compose acceptance (`prod-fixture`), K8s HA manifests, and SLO/DR documentation 
 
 1. Green `./scripts/test-all` on release tag (see [`PRODUCTION-READINESS-REPORT.md`](PRODUCTION-READINESS-REPORT.md) baseline).
 2. `./scripts/acceptance-compose.sh` green in CI with `prod-fixture`.
-3. Entra MSAL end-to-end (no `X-Mock-*` in prod).
+3. Entra MSAL end-to-end (no `X-Actenora-*` in prod).
 4. CD push enabled with digest promotion + [`ROLLBACK-RUNBOOK.md`](../operations/ROLLBACK-RUNBOOK.md) drill.
 5. Quarterly backup restore drill per [`BACKUP-RESTORE-DRILL.md`](../operations/BACKUP-RESTORE-DRILL.md).
 6. SLO burn-rate alerts wired in observability backend.

@@ -88,7 +88,7 @@ Ops-only; code path exists. Complete before Gate 11 sign-off:
 4. Actenora tenant mapped to Entra `tid`; business context created
 5. Schedule/run **one** real Teams meeting with transcript enabled
 6. Confirm chain: webhook → calendar upsert → transcript ingest → AI draft → portal approve
-7. Portal login via MSAL Bearer (see [`PORTAL-MSAL-RUNBOOK.md`](PORTAL-MSAL-RUNBOOK.md)) — no `X-Mock-*`
+7. Portal login via MSAL Bearer (see [`PORTAL-MSAL-RUNBOOK.md`](PORTAL-MSAL-RUNBOOK.md)) — no `X-Actenora-*`
 
 ## Troubleshooting
 

@@ -12,7 +12,7 @@ Fail-closed production boot and runtime guards for secrets, mock providers, Grap
 | `MicrosoftGraphWebhookController` | Constant-time `clientState` compare (`MessageDigest.isEqual`); blank expected state denies all notifications on prod |
 | `DeliveryModuleConfiguration` | MailHog only when `actenora.delivery.mail.provider=mailhog`; Graph mail port when `microsoft-graph` |
 | `LocalProviderFactory` | Already refuses `mock` provider on prod (unchanged) |
-| `PlatformSecurityConfiguration` | Already refuses `actenora.security.auth.mode=mock` on prod (unchanged) |
+| `PlatformSecurityConfiguration` | Already refuses `actenora.security.auth.mode=headers` on prod (unchanged) |
 | `TenantSecurityContextFilter` | Mock headers extracted only when `AuthMode.MOCK` (unchanged) |
 
 ## Forbidden production values
@@ -49,7 +49,7 @@ spring:
 ## Frontend / docs note
 
 - `apps/web-portal/src/api/client.ts` — `mockAuthHeaders()` are for **non-prod only**; production SPA must use MSAL Bearer tokens (`actenora.portal.auth.mode=msal`).
-- Do not send `X-Mock-*` headers against production backends.
+- Do not send `X-Actenora-*` headers against production backends.
 
 ## Tests
 

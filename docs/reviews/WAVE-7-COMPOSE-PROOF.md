@@ -38,12 +38,12 @@ docker compose -f infrastructure/compose/docker-compose.prod-like.yml \
 
 | Profile combo | Auth | Persistence | Messaging | Mail | Use |
 |---------------|------|-------------|-----------|------|-----|
-| `prod,prod-fixture,it` | mock (`X-Mock-*`) | jdbc | jdbc-rabbit | mailhog | CI / acceptance (default env file) |
+| `prod,prod-fixture,it` | headers (`X-Actenora-*`) | jdbc | jdbc-rabbit | mailhog | CI / acceptance (default env file) |
 | `prod` + Entra env | entra JWT | jdbc | jdbc-rabbit | microsoft-graph | Real prod-like (manual secrets; no mock) |
 
 `prod-fixture` is **never** enabled in real production clusters. It relaxes only:
 
-- `actenora.security.auth.mode=mock` (via `ActenoraProfiles.isStrictProduction`)
+- `actenora.security.auth.mode=headers` (via `ActenoraProfiles.isStrictProduction`)
 - MailHog host check in `ProductionSecretGuard`
 - Mock LLM provider kind
 
