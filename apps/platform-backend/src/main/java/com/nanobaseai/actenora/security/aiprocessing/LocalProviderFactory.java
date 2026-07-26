@@ -66,11 +66,17 @@ public final class LocalProviderFactory {
         boolean local = LOCAL_HOSTS.contains(normalized)
                 || normalized.endsWith(".local")
                 || normalized.endsWith(".internal")
-                || isPrivateIpv4(normalized);
+                || isPrivateIpv4(normalized)
+                || isDockerServiceHost(normalized);
         if (!local) {
             throw new IllegalStateException(
                     "NanobaseAI Intelligence only accepts local or private network endpoints");
         }
+    }
+
+    private static boolean isDockerServiceHost(String host) {
+        // Single-label names are Docker/Kubernetes service names on private networks.
+        return !host.contains(".") && !host.contains(":");
     }
 
     private static boolean isPrivateIpv4(String host) {

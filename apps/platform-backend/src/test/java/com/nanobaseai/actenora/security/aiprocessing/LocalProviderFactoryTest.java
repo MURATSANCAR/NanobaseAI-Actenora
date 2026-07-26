@@ -47,6 +47,13 @@ class LocalProviderFactoryTest {
     }
 
     @Test
+    void openAiCompatibleProviderAcceptsDockerServiceHostname() {
+        LocalModelProvider provider =
+                LocalProviderFactory.create(properties("openai", URI.create("http://ai-gateway:8082")), true);
+        assertInstanceOf(com.nanobaseai.actenora.aiprocessing.infrastructure.llm.OpenAiCompatibleLocalProvider.class, provider);
+    }
+
+    @Test
     void cloudEndpointIsRefused() {
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,

@@ -223,36 +223,39 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
     @Override
     public ProviderHealth health() {
         long started = System.nanoTime();
-        try {
-            HttpRequest request = HttpRequest.newBuilder(modelsUri())
-                    .timeout(config.connectTimeout().plus(Duration.ofSeconds(2)))
-                    .header("Accept", "application/json")
-                    .GET()
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            long latency = elapsedMs(started);
-            ProviderHealth health;
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                if (latency >= config.degradedProbeThresholdMs()) {
-                    health = ProviderHealth.degraded("probe slow latencyMs=" + latency, latency);
-                } else {
-                    health = ProviderHealth.up("models endpoint ok", latency);
+        List<String> probeErrors = new ArrayList<>();
+        for (URI probeUri : healthProbeUris()) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder(probeUri)
+                        .timeout(config.connectTimeout().plus(Duration.ofSeconds(2)))
+                        .header("Accept", "application/json")
+                        .GET()
+                        .build();
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                long latency = elapsedMs(started);
+                ProviderHealth health;
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    if (latency >= config.degradedProbeThresholdMs()) {
+                        health = ProviderHealth.degraded("probe slow latencyMs=" + latency, latency);
+                    } else {
+                        health = ProviderHealth.up("health probe ok", latency);
+                    }
+                    lastHealth.set(health);
+                    SafeInferenceLog.health(config.providerKind(), health);
+                    return health;
                 }
-            } else {
-                health = ProviderHealth.down("models HTTP status=" + response.statusCode(), latency);
+                probeErrors.add(probeUri.getPath() + " HTTP status=" + response.statusCode());
+            } catch (Exception ex) {
+                probeErrors.add(probeUri.getPath() + " failed: " + ex.getClass().getSimpleName());
             }
-            lastHealth.set(health);
-            SafeInferenceLog.health(config.providerKind(), health);
-            return health;
-        } catch (Exception ex) {
-            ProviderHealth health = ProviderHealth.down(
-                    "probe failed: " + ex.getClass().getSimpleName(),
-                    elapsedMs(started)
-            );
-            lastHealth.set(health);
-            SafeInferenceLog.health(config.providerKind(), health);
-            return health;
         }
+        ProviderHealth health = ProviderHealth.down(
+                probeErrors.isEmpty() ? "health probe failed" : String.join("; ", probeErrors),
+                elapsedMs(started)
+        );
+        lastHealth.set(health);
+        SafeInferenceLog.health(config.providerKind(), health);
+        return health;
     }
 
     @Override
@@ -551,6 +554,14 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
 
     private URI modelsUri() {
         return config.baseUrl().resolve("/v1/models");
+    }
+
+    private List<URI> healthProbeUris() {
+        return List.of(
+                modelsUri(),
+                config.baseUrl().resolve("/health"),
+                config.baseUrl().resolve("/v1/llm/health")
+        );
     }
 
     private static long elapsedMs(long startedNanos) {
