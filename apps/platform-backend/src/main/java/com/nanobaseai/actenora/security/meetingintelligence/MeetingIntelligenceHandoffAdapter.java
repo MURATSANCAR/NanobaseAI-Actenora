@@ -25,8 +25,8 @@ import java.util.UUID;
 /**
  * Platform adapter: quality-gate FinalNoteDraft, then map into Meeting Intelligence when allowed.
  *
- * <p>PASSED / PASSED_WITH_WARNINGS → {@code mapAiCandidates}.
- * MANUAL_REVIEW_REQUIRED / REJECTED → no note; ManualReviewCase already opened by the validation service.
+ * <p>PASSED / PASSED_WITH_WARNINGS / MANUAL_REVIEW_REQUIRED → {@code mapAiCandidates} as DRAFT.
+ * REJECTED → no note.
  */
 public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHandoffPort {
 
@@ -69,7 +69,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         ValidationExecutionResult validation = runValidation(command);
         QualityGateOutcome outcome = validation.decision().outcome();
         auditGate(command, validation);
-        if (outcome != QualityGateOutcome.PASSED && outcome != QualityGateOutcome.PASSED_WITH_WARNINGS) {
+        // Plan: LLM draft is visible before human approval. Persist unless hard-rejected.
+        if (outcome == QualityGateOutcome.REJECTED) {
             return Optional.empty();
         }
 
