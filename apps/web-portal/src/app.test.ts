@@ -24,15 +24,15 @@ test("App export is defined", () => {
   assert.equal(typeof assertDefined(App), "function");
 });
 
-test("family product bar includes QA, BI, and Actenora links", () => {
+test("family product bar lists Actenora first, then QA and BI", () => {
   const products = familyProducts();
   assert.equal(products.length, 3);
   assert.deepEqual(
     products.map((p) => p.key),
-    ["qa", "bi", "actenora"],
+    ["actenora", "qa", "bi"],
   );
-  assert.match(products[0]!.href, /^https:\/\//);
-  assert.match(products[2]!.href, /portal\.nanobasea\.ai$/);
+  assert.match(products[0]!.href, /portal\.nanobase\.ai$/);
+  assert.match(products[1]!.href, /^https:\/\//);
 });
 
 test("role visibility gates nav and model routing", () => {

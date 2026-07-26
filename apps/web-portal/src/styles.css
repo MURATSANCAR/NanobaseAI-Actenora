@@ -88,6 +88,7 @@ a {
   flex-wrap: wrap;
 }
 
+.family-product-btn,
 .family-product-link {
   text-decoration: none;
   color: inherit;
@@ -96,8 +97,15 @@ a {
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, white 18%, transparent);
   background: color-mix(in srgb, white 6%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
+.family-product-btn:hover,
+.family-product-btn:focus-visible,
 .family-product-link:hover,
 .family-product-link:focus-visible {
   background: color-mix(in srgb, var(--moss) 28%, transparent);
@@ -105,6 +113,7 @@ a {
   outline: none;
 }
 
+.family-product-btn.current,
 .family-product-link.current {
   background: color-mix(in srgb, var(--moss) 72%, black);
   border-color: color-mix(in srgb, var(--mist) 55%, transparent);

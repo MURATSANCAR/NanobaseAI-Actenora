@@ -1,4 +1,5 @@
 import { currentFamilyProductKey, familyProducts } from "../../config/familyProducts";
+import { FamilyProductButton } from "./FamilyProductButton";
 
 export function FamilyTopBar() {
   const activeKey = currentFamilyProductKey();
@@ -11,28 +12,13 @@ export function FamilyTopBar() {
           <span className="family-top-bar-sub">Product family</span>
         </p>
         <nav className="family-top-bar-nav" aria-label="Switch product">
-          {familyProducts().map((product) => {
-            const isCurrent = product.key === activeKey;
-            return isCurrent ? (
-              <span
-                key={product.key}
-                className="family-product-link current"
-                aria-current="page"
-                title={product.description}
-              >
-                {product.label}
-              </span>
-            ) : (
-              <a
-                key={product.key}
-                className="family-product-link"
-                href={product.href}
-                title={product.description}
-              >
-                {product.label}
-              </a>
-            );
-          })}
+          {familyProducts().map((product) => (
+            <FamilyProductButton
+              key={product.key}
+              product={product}
+              isCurrent={product.key === activeKey}
+            />
+          ))}
         </nav>
       </div>
     </header>
