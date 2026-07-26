@@ -1,5 +1,6 @@
 import type { ApprovalRecord, MeetingDetailResponse, MeetingNote } from "@/api/types";
 import { useAuth } from "@/auth/AuthProvider";
+import { ParticipantAttendanceRow } from "@/components/meeting/ParticipantAttendanceRow";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { useI18n } from "@/i18n";
 import { formatMeetingVersionLabel } from "@/lib/brandSanitize";
@@ -35,13 +36,7 @@ export function MeetingLeftPanel({ detail }: { detail: MeetingDetailResponse }) 
         <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-violet-700">{t("meeting.participants")}</h3>
         <ul className="space-y-2 text-sm">
           {detail.participants.map((p) => (
-            <li key={p.id} className="rounded-xl bg-white/50 px-3 py-2">
-              <div className="font-medium text-slate-800">{p.displayName}</div>
-              <div className="text-xs text-slate-500">
-                {tb("participantType", p.participantType)}
-                {p.external ? ` · ${t("meeting.external")}` : ""}
-              </div>
-            </li>
+            <ParticipantAttendanceRow key={p.id} participant={p} meetingStatus={m.status} />
           ))}
         </ul>
       </div>

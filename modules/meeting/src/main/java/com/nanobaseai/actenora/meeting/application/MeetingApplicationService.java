@@ -269,7 +269,7 @@ public final class MeetingApplicationService {
                 promoteIfOrganizerRole(match, record.role());
                 participantRepository.save(match);
                 matchedIds.add(match.id());
-            } else if (normalizeEmail(record.email()) != null || normalizeId(record.entraUserId()) != null) {
+            } else if (normalizeEmail(record.email()) != null) {
                 MeetingParticipant created = createFromAttendance(tenantId, meetingId, record);
                 participantRepository.save(created);
                 existing.add(created);

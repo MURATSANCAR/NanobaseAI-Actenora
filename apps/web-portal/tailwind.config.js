@@ -40,6 +40,7 @@ export default {
       },
       fontFamily: {
         sans: ['"DM Sans"', "system-ui", "sans-serif"],
+        display: ['"Sora"', '"DM Sans"', "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
       },
       boxShadow: {

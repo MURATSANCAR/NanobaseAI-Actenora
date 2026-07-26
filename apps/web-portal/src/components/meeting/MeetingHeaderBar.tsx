@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Calendar, ChevronDown, Users } from "lucide-react";
 import type { ApprovalRecord, MeetingDetailResponse } from "@/api/types";
+import { ParticipantAttendanceRow } from "@/components/meeting/ParticipantAttendanceRow";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { useI18n } from "@/i18n";
 import { formatMeetingVersionLabel } from "@/lib/brandSanitize";
@@ -57,13 +58,7 @@ export function MeetingHeaderBar({ detail }: { detail: MeetingDetailResponse }) 
             <DetailBlock title={t("meeting.participants")}>
               <ul className="space-y-1.5 text-sm">
                 {detail.participants.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between gap-2 rounded-lg bg-white/50 px-2.5 py-1.5">
-                    <span className="font-medium text-slate-800">{p.displayName}</span>
-                    <span className="text-xs text-slate-500">
-                      {tb("participantType", p.participantType)}
-                      {p.external ? ` · ${t("meeting.external")}` : ""}
-                    </span>
-                  </li>
+                  <ParticipantAttendanceRow key={p.id} participant={p} meetingStatus={m.status} />
                 ))}
               </ul>
             </DetailBlock>

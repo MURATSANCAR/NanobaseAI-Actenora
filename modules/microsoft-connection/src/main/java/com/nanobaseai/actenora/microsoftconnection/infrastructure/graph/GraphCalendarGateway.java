@@ -97,10 +97,9 @@ public final class GraphCalendarGateway implements CalendarGateway {
         JsonNode organizerEmail = item.path("organizer").path("emailAddress");
         String organizerAddress = text(organizerEmail, "address");
         String organizerName = text(organizerEmail, "name");
-        if (organizerAddress != null || organizerName != null) {
-            String organizerId = organizerAddress != null ? organizerAddress : UUID.randomUUID().toString();
+        if (organizerAddress != null) {
             attendees.add(new ParticipantMetadata(
-                    organizerId,
+                    organizerAddress,
                     organizerName != null ? organizerName : organizerAddress,
                     organizerAddress,
                     "organizer",
