@@ -30,7 +30,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 
 import java.net.URI;
 
@@ -101,7 +100,7 @@ public class TranscriptModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(TranscriptEventPublisher.class)
-    TranscriptEventPublisher transcriptEventPublisher(@Lazy EventBackbone backbone, InstantClock clock) {
+    TranscriptEventPublisher transcriptEventPublisher(EventBackbone backbone, InstantClock clock) {
         return new OutboxTranscriptEventPublisher(backbone.outboxPublisher(), clock, "transcript");
     }
 
