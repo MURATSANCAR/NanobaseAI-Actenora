@@ -4,8 +4,11 @@ import { ApiProvider } from "./api/ApiProvider";
 import { LocaleProvider } from "./i18n";
 import type { ApiClient } from "./api/types";
 import { AuthProvider } from "./auth/AuthProvider";
+import { MsalAuthProvider } from "./auth/MsalAuthProvider";
+import { AuthGate } from "./components/auth/AuthGate";
 import { Layout } from "./components/layout/Layout";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ApprovalsInboxPage } from "./pages/ApprovalsInboxPage";
 import {
   ActionCenterPage,
   CommitmentTrackerPage,
@@ -37,11 +40,14 @@ export function App({ apiClient }: { apiClient?: ApiClient }) {
     <QueryClientProvider client={queryClient}>
       <LocaleProvider>
         <ApiProvider client={apiClient}>
-          <AuthProvider>
-            <BrowserRouter>
+          <MsalAuthProvider>
+            <AuthGate>
+              <AuthProvider>
+                <BrowserRouter>
             <Routes>
               <Route element={<Layout />}>
                 <Route index element={<DashboardPage />} />
+                <Route path="approvals" element={<ApprovalsInboxPage />} />
                 <Route path="meetings" element={<MeetingListPage />} />
                 <Route path="meetings/:meetingId" element={<MeetingDetailPage />} />
                 <Route path="decisions" element={<DecisionLedgerPage />} />
@@ -56,8 +62,10 @@ export function App({ apiClient }: { apiClient?: ApiClient }) {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
-            </BrowserRouter>
-          </AuthProvider>
+                </BrowserRouter>
+              </AuthProvider>
+            </AuthGate>
+          </MsalAuthProvider>
         </ApiProvider>
       </LocaleProvider>
     </QueryClientProvider>

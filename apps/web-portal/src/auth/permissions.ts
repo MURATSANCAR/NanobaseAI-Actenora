@@ -81,9 +81,11 @@ export function canDecideApprovals(permissions: readonly Permission[]): boolean 
 
 export function navVisible(
   permissions: readonly Permission[],
-  item: "models" | "operations" | "audit" | "teams" | "templates",
+  item: "models" | "operations" | "audit" | "teams" | "templates" | "approvals",
 ): boolean {
   switch (item) {
+    case "approvals":
+      return canDecideApprovals(permissions);
     case "models":
       return hasPermission(permissions, "models:view");
     case "operations":

@@ -5,8 +5,10 @@ import { familyProducts } from "./config/familyProducts.ts";
 import { translateBackend } from "./i18n/translateBackend.ts";
 import { assertDefined } from "@actenora/test-support";
 import { App } from "./App.tsx";
+import { resolvePortalAuthMode } from "./auth/portalAuthMode.ts";
 import {
   canAccessPrivateNote,
+  canDecideApprovals,
   canManageModels,
   canViewModelRouting,
   navVisible,
@@ -19,6 +21,7 @@ import {
   filterSegments,
   findEvidenceIndex,
 } from "./lib/filters.ts";
+import { meetingNeedsProcessingPoll } from "./lib/meetingProcessing.ts";
 
 test("App export is defined", () => {
   assert.equal(typeof assertDefined(App), "function");
@@ -68,7 +71,9 @@ test("role visibility gates nav and model routing", () => {
   assert.equal(navVisible(viewer, "operations"), false);
   assert.equal(navVisible(viewer, "audit"), false);
   assert.equal(navVisible(viewer, "teams"), false);
+  assert.equal(navVisible(viewer, "approvals"), false);
   assert.equal(navVisible(member, "templates"), true);
+  assert.equal(navVisible(permissionsForRole("APPROVER"), "approvals"), true);
   assert.equal(navVisible(admin, "operations"), true);
   assert.equal(navVisible(ops, "audit"), true);
 
@@ -159,4 +164,42 @@ test("backend enum values translate via locale catalogs", () => {
 test("portal mutations enabled only for HTTP with mock or msal auth", () => {
   assert.equal(portalMutationsEnabled("http", "mock"), true);
   assert.equal(portalMutationsEnabled("http", "msal"), true);
+});
+
+test("portal auth mode resolves from env", () => {
+  assert.equal(resolvePortalAuthMode({ VITE_PORTAL_AUTH_MODE: "msal" }), "msal");
+  assert.equal(resolvePortalAuthMode({}), "mock");
+});
+
+test("meeting processing poll when partial or in-flight status", () => {
+  const base = {
+    meeting: { id: "m1", title: "T", status: "READY" as const, scheduledStartAt: "", participantCount: 0 },
+    participants: [],
+    seriesTitle: null,
+    businessContext: null,
+    versions: [],
+    approvalHistory: [],
+    notes: [],
+    decisions: [],
+    actions: [],
+    risks: [],
+    commitments: [],
+    qualityFlags: [],
+    partial: false,
+  };
+  assert.equal(meetingNeedsProcessingPoll(undefined), false);
+  assert.equal(meetingNeedsProcessingPoll({ ...base, partial: true }), true);
+  assert.equal(
+    meetingNeedsProcessingPoll({
+      ...base,
+      meeting: { ...base.meeting, status: "PROCESSING" },
+    }),
+    true,
+  );
+  assert.equal(meetingNeedsProcessingPoll(base), false);
+});
+
+test("approver role can decide approvals", () => {
+  assert.equal(canDecideApprovals(permissionsForRole("APPROVER")), true);
+  assert.equal(canDecideApprovals(permissionsForRole("VIEWER")), false);
 });

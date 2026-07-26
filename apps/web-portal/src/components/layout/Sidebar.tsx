@@ -1,8 +1,9 @@
 import { NavLink, useLocation } from "react-router-dom";
 import clsx from "clsx";
-import { Sparkles, X } from "lucide-react";
+import { LogOut, Sparkles, X } from "lucide-react";
 import { AiOrb } from "@/components/qa/AiOrb";
 import { useAuth } from "@/auth/AuthProvider";
+import { useMsalAuth } from "@/auth/MsalAuthProvider";
 import { ACTENORA_NAV_GROUPS, type ActenoraNavLink } from "@/config/actenoraNav";
 import { useI18n, type Locale } from "@/i18n";
 
@@ -51,6 +52,7 @@ function NavItem({
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { locale, setLocale, t, tb } = useI18n();
   const auth = useAuth();
+  const msal = useMsalAuth();
   const { pathname } = useLocation();
 
   const groups = ACTENORA_NAV_GROUPS.map((group) => ({
@@ -159,6 +161,17 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               </button>
             ))}
           </div>
+
+          {msal.enabled ? (
+            <button
+              type="button"
+              className="btn-secondary flex w-full items-center justify-center gap-2 py-2.5 text-sm"
+              onClick={() => void msal.logout()}
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+              {t("auth.signOut")}
+            </button>
+          ) : null}
         </div>
       </aside>
     </>

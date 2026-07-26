@@ -10,6 +10,7 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@azure/msal-browser": "^4.12.0",
     "@actenora/observability": "workspace:*",
     "@tanstack/react-query": "^5.74.0",
     "@tanstack/react-virtual": "^3.13.0",

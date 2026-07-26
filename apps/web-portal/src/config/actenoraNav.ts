@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   CheckSquare,
+  ClipboardCheck,
   ClipboardList,
   FileText,
   Handshake,
@@ -15,7 +16,7 @@ import {
 } from "lucide-react";
 import type { MessageKey } from "@/i18n";
 
-export type NavGate = "models" | "operations" | "audit" | "teams" | "templates";
+export type NavGate = "models" | "operations" | "audit" | "teams" | "templates" | "approvals";
 
 export type ActenoraNavLink = {
   to: string;
@@ -34,6 +35,7 @@ export const ACTENORA_NAV_GROUPS: ActenoraNavGroup[] = [
     titleKey: "actenora.nav.workspace",
     links: [
       { to: "/", icon: LayoutDashboard, labelKey: "nav.dashboard" },
+      { to: "/approvals", icon: ClipboardCheck, labelKey: "nav.approvals", gate: "approvals" },
       { to: "/meetings", icon: Mic, labelKey: "nav.meetings" },
       { to: "/decisions", icon: Scale, labelKey: "nav.decisions" },
       { to: "/actions", icon: CheckSquare, labelKey: "nav.actions" },

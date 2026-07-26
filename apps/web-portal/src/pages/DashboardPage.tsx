@@ -34,7 +34,7 @@ export function DashboardPage() {
                 icon={Clock}
                 tone="text-status-warn"
                 delay={0}
-                to="/decisions"
+                to="/approvals"
               />
               <MetricCard
                 label={t("dashboard.openActions")}

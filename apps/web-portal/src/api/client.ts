@@ -1,4 +1,6 @@
 import type { ApiClient, PortalUser } from "./types";
+import { resolveAuthHeaders } from "../auth/authHeaders";
+import { resolvePortalAuthMode, type PortalAuthMode } from "../auth/portalAuthMode";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -38,12 +40,13 @@ export function mockAuthHeaders(env?: Partial<ImportMetaEnv>): Record<string, st
 }
 
 async function httpJson<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
+  const authHeaders = await resolveAuthHeaders();
   const res = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...mockAuthHeaders(),
+      ...authHeaders,
       ...(init?.headers ?? {}),
     },
   });
@@ -109,21 +112,13 @@ function createHttpApiClient(baseUrl: string): ApiClient {
 
 /** Portal talks only to the real platform BFF — no in-memory demo API. */
 export type ApiMode = "http";
-export type PortalAuthMode = "mock" | "msal";
+export { type PortalAuthMode, resolvePortalAuthMode } from "../auth/portalAuthMode";
 
 export function portalMutationsEnabled(
   mode: ApiMode,
   portalAuthMode: PortalAuthMode = resolvePortalAuthMode(),
 ): boolean {
   return mode === "http" && (portalAuthMode === "mock" || portalAuthMode === "msal");
-}
-
-export function resolvePortalAuthMode(env?: Partial<ImportMetaEnv>): PortalAuthMode {
-  const meta = env ?? ((typeof import.meta !== "undefined" ? import.meta.env : undefined) as
-    | ImportMetaEnv
-    | undefined);
-  const raw = meta?.VITE_PORTAL_AUTH_MODE ?? "mock";
-  return raw === "msal" ? "msal" : "mock";
 }
 
 export function createApiClient(opts?: {

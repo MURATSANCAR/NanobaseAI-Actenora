@@ -96,7 +96,7 @@ public final class SubscriptionLifecycleService {
             return false;
         }
         if (notification.requiresReauthorization() || notification.missed()) {
-            // Force renew path / polling will catch up; still invoke handler for observability.
+            renewExpiring();
         }
         handler.accept(notification);
         return true;

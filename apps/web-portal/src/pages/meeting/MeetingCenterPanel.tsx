@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Children, useState, type ReactNode } from "react";
 import { StatusBadge } from "@/components/qa/StatusBadge";
+import { PendingApprovalsPanel } from "@/components/meeting/PendingApprovalsPanel";
 import { portalMutationsEnabled, resolvePortalAuthMode } from "@/api/client";
 import { useApi, useApiMode } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
@@ -56,20 +57,6 @@ export function MeetingCenterPanel({
     },
   });
 
-  const approveMutation = useMutation({
-    mutationFn: ({
-      approvalId,
-      decision,
-    }: {
-      approvalId: string;
-      decision: "APPROVE" | "REJECT";
-    }) => api.decideApproval(approvalId, decision),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.meetingDetail(meetingId) });
-      void qc.invalidateQueries({ queryKey: ["decisions"] });
-    },
-  });
-
   const completeMutation = useMutation({
     mutationFn: (actionId: string) => api.completeAction(actionId),
     onMutate: async (actionId) => {
@@ -101,10 +88,10 @@ export function MeetingCenterPanel({
       (n.visibility === "PRIVATE" && auth.canSeePrivateNote(n.authorId)),
   );
 
-  const pending = detail.approvalHistory.find((a) => a.status === "PENDING");
   const canEditNotes = auth.can("meetings:edit") && mutationsEnabled;
   const canCompleteActions = auth.can("meetings:edit") && mutationsEnabled;
   const canDecideApproval = auth.canApprove && mutationsEnabled;
+  const hasPendingApprovals = detail.approvalHistory.some((a) => a.status === "PENDING");
 
   return (
     <section className="card-static flex max-h-[calc(100dvh-12rem)] flex-col gap-4 overflow-y-auto p-4 sm:p-5" aria-label={t("meeting.intelligence")}>
@@ -184,35 +171,12 @@ export function MeetingCenterPanel({
         ))}
       </ArtifactBlock>
 
-      {pending && canDecideApproval ? (
-        <div className="approve-bar rounded-xl border border-violet-200/70 bg-violet-50/40 p-3" role="group" aria-label={t("meeting.approve")}>
-          <p className="text-sm font-medium text-slate-700">{t("meeting.pendingApproval", { type: pending.artifactType })}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() =>
-              approveMutation.mutate({ approvalId: pending.id, decision: "APPROVE" })
-            }
-            disabled={approveMutation.isPending}
-          >
-            {t("meeting.approve")}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() =>
-              approveMutation.mutate({ approvalId: pending.id, decision: "REJECT" })
-            }
-            disabled={approveMutation.isPending}
-          >
-            {t("meeting.reject")}
-          </button>
-          {approveMutation.isError ? (
-            <span role="alert" className="text-sm text-red-600">{(approveMutation.error as Error).message}</span>
-          ) : null}
-          </div>
-        </div>
+      {hasPendingApprovals ? (
+        <PendingApprovalsPanel
+          meetingId={meetingId}
+          items={detail.approvalHistory}
+          canDecide={canDecideApproval}
+        />
       ) : null}
     </section>
   );

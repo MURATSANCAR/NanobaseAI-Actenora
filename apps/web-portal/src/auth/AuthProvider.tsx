@@ -22,7 +22,7 @@ interface AuthContextValue {
   canApprove: boolean;
   canAdminModels: boolean;
   canSeeRouting: boolean;
-  nav: (item: "models" | "operations" | "audit" | "teams" | "templates") => boolean;
+  nav: (item: "models" | "operations" | "audit" | "teams" | "templates" | "approvals") => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);

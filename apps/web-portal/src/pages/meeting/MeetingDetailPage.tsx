@@ -1,13 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
 import type { EvidenceRef } from "@/api/types";
+import { MeetingProcessingStrip } from "@/components/meeting/MeetingProcessingStrip";
 import { PageShell } from "@/components/qa/PageShell";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { useI18n } from "@/i18n";
+import {
+  MEETING_PROCESSING_POLL_MS,
+  meetingNeedsProcessingPoll,
+} from "@/lib/meetingProcessing";
 import { MeetingCenterPanel } from "./MeetingCenterPanel";
 import { MeetingLeftPanel } from "./MeetingLeftPanel";
 import { TranscriptPanel } from "./TranscriptPanel";
@@ -17,12 +22,21 @@ export function MeetingDetailPage() {
   const api = useApi();
   const { t } = useI18n();
   const [highlight, setHighlight] = useState<EvidenceRef | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | undefined>();
 
   const detailQ = useQuery({
     queryKey: queryKeys.meetingDetail(meetingId),
     queryFn: () => api.getMeetingDetail(meetingId),
     enabled: Boolean(meetingId),
+    refetchInterval: (query) =>
+      meetingNeedsProcessingPoll(query.state.data) ? MEETING_PROCESSING_POLL_MS : false,
   });
+
+  useEffect(() => {
+    if (detailQ.dataUpdatedAt && meetingNeedsProcessingPoll(detailQ.data)) {
+      setLastUpdated(new Date(detailQ.dataUpdatedAt));
+    }
+  }, [detailQ.dataUpdatedAt, detailQ.data]);
 
   const transcriptParams = useMemo(() => ({}), []);
   const transcriptQ = useQuery({
@@ -60,7 +74,11 @@ export function MeetingDetailPage() {
         partialMessage={t("meeting.processingPartial")}
       >
         {detailQ.data ? (
-          <div className="grid min-h-[70vh] gap-3 xl:grid-cols-[18rem_minmax(0,1fr)_minmax(0,1.1fr)]">
+          <div className="space-y-3">
+            {meetingNeedsProcessingPoll(detailQ.data) ? (
+              <MeetingProcessingStrip lastUpdated={lastUpdated} />
+            ) : null}
+            <div className="grid min-h-[70vh] gap-3 xl:grid-cols-[18rem_minmax(0,1fr)_minmax(0,1.1fr)]">
             <MeetingLeftPanel detail={detailQ.data} />
             <MeetingCenterPanel detail={detailQ.data} onEvidence={setHighlight} />
             {transcriptQ.isLoading ? (
@@ -80,6 +98,7 @@ export function MeetingDetailPage() {
                 onClearHighlight={() => setHighlight(null)}
               />
             ) : null}
+            </div>
           </div>
         ) : null}
       </AsyncState>
