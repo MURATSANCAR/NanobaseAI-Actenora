@@ -46,7 +46,7 @@ test("family product bar lists Actenora first, then QA and BI", () => {
     products.map((p) => p.key),
     ["actenora", "qa", "bi"],
   );
-  assert.match(products[0]!.href, /portal\.nanobase\.ai$/);
+  assert.match(products[0]!.href, /portal\.nanobase\.ai\/actenora/);
   assert.match(products[1]!.href, /^https:\/\//);
 });
 

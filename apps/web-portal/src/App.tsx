@@ -4,7 +4,7 @@ import { ApiProvider } from "./api/ApiProvider";
 import { LocaleProvider } from "./i18n";
 import type { ApiClient } from "./api/types";
 import { AuthProvider } from "./auth/AuthProvider";
-import { AppShell } from "./components/layout/AppShell";
+import { Layout } from "./components/layout/Layout";
 import { DashboardPage } from "./pages/DashboardPage";
 import {
   ActionCenterPage,
@@ -40,7 +40,7 @@ export function App({ apiClient }: { apiClient?: ApiClient }) {
           <AuthProvider>
             <BrowserRouter>
             <Routes>
-              <Route element={<AppShell />}>
+              <Route element={<Layout />}>
                 <Route index element={<DashboardPage />} />
                 <Route path="meetings" element={<MeetingListPage />} />
                 <Route path="meetings/:meetingId" element={<MeetingDetailPage />} />

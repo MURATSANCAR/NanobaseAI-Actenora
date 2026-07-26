@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useApi } from "../api/ApiProvider";
-import { queryKeys } from "../api/client";
-import { useAuth } from "../auth/AuthProvider";
-import { AsyncState, PageHeader, PaginationBar } from "../components/ui/AsyncState";
-import { useI18n } from "../i18n";
+import { useApi } from "@/api/ApiProvider";
+import { queryKeys } from "@/api/client";
+import { useAuth } from "@/auth/AuthProvider";
+import { MetricCard } from "@/components/qa/MetricCard";
+import { PageShell } from "@/components/qa/PageShell";
+import { StatusBadge } from "@/components/qa/StatusBadge";
+import { AsyncState, DataTable, PaginationBar } from "@/components/ui/AsyncState";
+import { useI18n } from "@/i18n";
+import { AlertTriangle, Layers } from "lucide-react";
 
 export function TemplateStudioPage() {
   const api = useApi();
@@ -15,23 +19,25 @@ export function TemplateStudioPage() {
     q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
 
   return (
-    <section className="page">
-      <PageHeader title={t("templates.title")} description={t("templates.description")} />
-      <AsyncState status={status} error={q.error}>
-        <ul className="data-table">
-          {q.data?.items.map((item) => (
-            <li key={item.id} className="data-row">
-              <span>{item.name}</span>
-              <span>{item.locale}</span>
-              <span>
-                v{item.version} · {tb("artifactStatus", item.status)}
-              </span>
-            </li>
-          ))}
-        </ul>
+    <PageShell titleKey="templates.title" subtitleKey="templates.description" maxWidth="max-w-7xl">
+      <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("templates.description")}>
+        <DataTable
+          headers={["Name", "Locale", t("filter.status")]}
+          rows={
+            q.data?.items.map((item) => [
+              item.name,
+              item.locale,
+              <StatusBadge key={item.id} label={tb("artifactStatus", item.status)} status={item.status} />,
+            ]) ?? []
+          }
+        />
       </AsyncState>
-    </section>
+    </PageShell>
   );
+}
+
+function asyncStatusFromQuery(loading: boolean, error: boolean, empty: boolean) {
+  return loading ? "loading" : error ? "error" : empty ? "empty" : "ready";
 }
 
 export function TeamsSettingsPage() {
@@ -51,31 +57,34 @@ export function TeamsSettingsPage() {
   const status = q.isLoading ? "loading" : q.isError ? "error" : !q.data ? "empty" : "ready";
 
   return (
-    <section className="page">
-      <PageHeader title={t("teams.title")} description={t("teams.description")} />
+    <PageShell titleKey="teams.title" subtitleKey="teams.description" maxWidth="max-w-4xl">
       <AsyncState status={status} error={q.error}>
         {q.data ? (
-          <dl className="meta-list">
+          <div className="card-static grid gap-4 p-5 sm:grid-cols-2">
             <div>
-              <dt>{t("teams.tenantConnected")}</dt>
-              <dd>{q.data.tenantConnected ? t("common.yes") : t("common.no")}</dd>
+              <p className="label-text">{t("teams.tenantConnected")}</p>
+              <p className="text-sm font-semibold text-slate-800">
+                {q.data.tenantConnected ? t("common.yes") : t("common.no")}
+              </p>
             </div>
             <div>
-              <dt>{t("teams.graphApp")}</dt>
-              <dd>{q.data.graphAppId}</dd>
+              <p className="label-text">{t("teams.graphApp")}</p>
+              <p className="break-all text-sm font-semibold text-slate-800">{q.data.graphAppId}</p>
             </div>
             <div>
-              <dt>{t("teams.webhook")}</dt>
-              <dd>{tb("webhookStatus", q.data.webhookStatus)}</dd>
+              <p className="label-text">{t("teams.webhook")}</p>
+              <StatusBadge label={tb("webhookStatus", q.data.webhookStatus)} status={q.data.webhookStatus} />
             </div>
             <div>
-              <dt>{t("teams.autoJoin")}</dt>
-              <dd>{q.data.autoJoinEnabled ? t("common.enabled") : t("common.disabled")}</dd>
+              <p className="label-text">{t("teams.autoJoin")}</p>
+              <p className="text-sm font-semibold text-slate-800">
+                {q.data.autoJoinEnabled ? t("common.enabled") : t("common.disabled")}
+              </p>
             </div>
-          </dl>
+          </div>
         ) : null}
       </AsyncState>
-    </section>
+    </PageShell>
   );
 }
 
@@ -96,61 +105,60 @@ export function ModelManagementPage() {
   const status = q.isLoading ? "loading" : q.isError ? "error" : !q.data ? "empty" : "ready";
 
   return (
-    <section className="page">
-      <PageHeader title={t("models.title")} description={t("models.description")} />
+    <PageShell titleKey="models.title" subtitleKey="models.description" maxWidth="max-w-7xl">
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>
-            <h2 className="section-title">{t("models.sectionModels")}</h2>
-            <ul className="data-table">
-              {q.data.models.map((m) => (
-                <li key={m.modelKey} className="data-row">
-                  <span>{m.displayName}</span>
-                  <span>{m.modelKey}</span>
-                  <span>
-                    {m.enabled ? t("models.enabled") : t("models.disabled")} ·{" "}
-                    {tb("artifactStatus", m.status)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <h2 className="section-title">{t("models.sectionDeployments")}</h2>
-            <ul className="data-table">
-              {q.data.deployments.map((d) => (
-                <li key={d.deploymentKey} className="data-row">
-                  <span>{d.deploymentKey}</span>
-                  <span>{d.nodeName}</span>
-                  <span>{d.healthy ? t("common.healthy") : t("common.unhealthy")}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-3">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("models.sectionModels")}</h2>
+              <DataTable
+                headers={["Name", "Key", t("filter.status")]}
+                rows={q.data.models.map((m) => [
+                  m.displayName,
+                  <span key={m.modelKey} className="font-mono text-xs text-slate-500">{m.modelKey}</span>,
+                  <StatusBadge
+                    key={`${m.modelKey}-s`}
+                    label={`${m.enabled ? t("models.enabled") : t("models.disabled")} · ${tb("artifactStatus", m.status)}`}
+                    status={m.status}
+                  />,
+                ])}
+              />
+            </div>
+            <div className="space-y-3">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("models.sectionDeployments")}</h2>
+              <DataTable
+                headers={["Deployment", "Node", "Health"]}
+                rows={q.data.deployments.map((d) => [
+                  d.deploymentKey,
+                  d.nodeName,
+                  <StatusBadge
+                    key={d.deploymentKey}
+                    label={d.healthy ? t("common.healthy") : t("common.unhealthy")}
+                    status={d.healthy ? "healthy" : "failed"}
+                  />,
+                ])}
+              />
+            </div>
             {auth.canSeeRouting ? (
-              <div data-testid="routing-detail">
-                <h2 className="section-title">{t("models.sectionRouting")}</h2>
-                <p className="muted">
-                  {t("models.strategy")}: {q.data.routing.strategy}
+              <div className="card-static space-y-3 p-5" data-testid="routing-detail">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("models.sectionRouting")}</h2>
+                <p className="text-sm text-slate-600">
+                  {t("models.strategy")}: <strong>{q.data.routing.strategy}</strong>
                 </p>
-                <ul className="data-table">
-                  {q.data.routing.roles.map((r) => (
-                    <li key={r.role} className="data-row">
-                      <span>{r.role}</span>
-                      <span>{r.primaryModel}</span>
-                      <span className="muted">
-                        {t("models.fallback")} {r.fallbackModel}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <DataTable
+                  headers={["Role", "Primary", t("models.fallback")]}
+                  rows={q.data.routing.roles.map((r) => [r.role, r.primaryModel, r.fallbackModel])}
+                />
               </div>
             ) : (
-              <p className="muted" data-testid="routing-hidden">
+              <p className="card-static p-4 text-sm text-slate-500" data-testid="routing-hidden">
                 {t("models.routingHidden")}
               </p>
             )}
           </>
         ) : null}
       </AsyncState>
-    </section>
+    </PageShell>
   );
 }
 
@@ -163,31 +171,29 @@ export function AiJobTimelinePage() {
     queryKey: queryKeys.jobs(params),
     queryFn: () => api.listAiJobs(params),
   });
-  const status =
-    q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
+  const status = asyncStatusFromQuery(q.isLoading, q.isError, !q.data?.items.length);
 
   return (
-    <section className="page">
-      <PageHeader title={t("jobs.title")} description={t("jobs.description")} />
-      <AsyncState status={status} error={q.error}>
-        <ol className="timeline">
+    <PageShell titleKey="jobs.title" subtitleKey="jobs.description" maxWidth="max-w-7xl">
+      <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("jobs.description")}>
+        <div className="card-static divide-y divide-white/60">
           {q.data?.items.map((j) => (
-            <li key={j.id}>
-              <strong>{j.stage}</strong> · {tb("artifactStatus", j.status)}
-              <span className="muted">
-                {" "}
-                · {t("jobs.started")} {new Date(j.startedAt).toLocaleString()}
+            <div key={j.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
+              <strong className="text-slate-800">{j.stage}</strong>
+              <StatusBadge label={tb("artifactStatus", j.status)} status={j.status} />
+              <span className="text-slate-500">
+                {t("jobs.started")} {new Date(j.startedAt).toLocaleString()}
               </span>
-            </li>
+            </div>
           ))}
-        </ol>
+        </div>
         <PaginationBar
           nextCursor={q.data?.nextCursor}
           onNext={() => setCursor(q.data?.nextCursor ?? undefined)}
           onReset={() => setCursor(undefined)}
         />
       </AsyncState>
-    </section>
+    </PageShell>
   );
 }
 
@@ -208,41 +214,47 @@ export function OperationsCenterPage() {
   const status = q.isLoading ? "loading" : q.isError ? "error" : !q.data ? "empty" : "ready";
 
   return (
-    <section className="page">
-      <PageHeader title={t("operations.title")} description={t("operations.description")} />
+    <PageShell titleKey="operations.title" subtitleKey="operations.description" maxWidth="max-w-7xl">
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>
-            <div className="metric-row">
-              <div className="metric">
-                <span className="metric-value">{q.data.queueDepth}</span>
-                <span className="metric-label">{t("operations.queueDepth")}</span>
-              </div>
-              <div className="metric">
-                <span className="metric-value">{q.data.failedJobs}</span>
-                <span className="metric-label">{t("operations.failedJobs")}</span>
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <MetricCard label={t("operations.queueDepth")} value={q.data.queueDepth} icon={Layers} />
+              <MetricCard
+                label={t("operations.failedJobs")}
+                value={q.data.failedJobs}
+                icon={AlertTriangle}
+                tone="text-status-fail"
+              />
             </div>
-            <h2 className="section-title">{t("operations.circuitBreakers")}</h2>
-            <ul className="plain-list">
-              {q.data.circuitBreakers.map((c) => (
-                <li key={c.name}>
-                  {c.name}: {c.state}
-                </li>
-              ))}
-            </ul>
-            <h2 className="section-title">{t("operations.workers")}</h2>
-            <ul className="plain-list">
-              {q.data.workers.map((w) => (
-                <li key={w.name}>
-                  {w.name}: {w.status}
-                </li>
-              ))}
-            </ul>
+            <div className="card-static p-5">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                {t("operations.circuitBreakers")}
+              </h2>
+              <ul className="space-y-2 text-sm">
+                {q.data.circuitBreakers.map((c) => (
+                  <li key={c.name} className="rounded-xl bg-white/50 px-3 py-2">
+                    {c.name}: <span className="font-medium">{c.state}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="card-static p-5">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                {t("operations.workers")}
+              </h2>
+              <ul className="space-y-2 text-sm">
+                {q.data.workers.map((w) => (
+                  <li key={w.name} className="rounded-xl bg-white/50 px-3 py-2">
+                    {w.name}: <span className="font-medium">{w.status}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </>
         ) : null}
       </AsyncState>
-    </section>
+    </PageShell>
   );
 }
 
@@ -262,31 +274,32 @@ export function AuditViewerPage() {
     return <Navigate to="/" replace />;
   }
 
-  const status =
-    q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
+  const status = asyncStatusFromQuery(q.isLoading, q.isError, !q.data?.items.length);
 
   return (
-    <section className="page">
-      <PageHeader title={t("audit.title")} description={t("audit.description")} />
-      <AsyncState status={status} error={q.error}>
-        <ul className="data-table">
-          {q.data?.items.map((e) => (
-            <li key={e.id} className="data-row">
-              <span>{e.action}</span>
-              <span>{e.actor}</span>
-              <span className="muted">
+    <PageShell titleKey="audit.title" subtitleKey="audit.description" maxWidth="max-w-7xl">
+      <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("audit.description")}>
+        <DataTable
+          headers={["Action", "Actor", "Resource", "At"]}
+          rows={
+            q.data?.items.map((e) => [
+              e.action,
+              e.actor,
+              <span key={`${e.id}-r`} className="font-mono text-xs text-slate-500">
                 {e.resourceType}/{e.resourceId}
-              </span>
-              <span className="muted">{new Date(e.at).toLocaleString()}</span>
-            </li>
-          ))}
-        </ul>
+              </span>,
+              <span key={`${e.id}-a`} className="text-slate-500">
+                {new Date(e.at).toLocaleString()}
+              </span>,
+            ]) ?? []
+          }
+        />
         <PaginationBar
           nextCursor={q.data?.nextCursor}
           onNext={() => setCursor(q.data?.nextCursor ?? undefined)}
           onReset={() => setCursor(undefined)}
         />
       </AsyncState>
-    </section>
+    </PageShell>
   );
 }

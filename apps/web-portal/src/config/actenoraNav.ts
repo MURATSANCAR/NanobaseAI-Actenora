@@ -1,0 +1,45 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Activity,
+  CheckSquare,
+  ClipboardList,
+  FileText,
+  Handshake,
+  LayoutDashboard,
+  Mic,
+  Scale,
+  Server,
+  Settings,
+  Shield,
+  Users,
+} from "lucide-react";
+import type { MessageKey } from "@/i18n";
+
+export type NavGate = "models" | "operations" | "audit" | "teams" | "templates";
+
+export type ActenoraNavLink = {
+  to: string;
+  icon: LucideIcon;
+  labelKey: MessageKey;
+  gate?: NavGate;
+};
+
+export const ACTENORA_NAV_LINKS: ActenoraNavLink[] = [
+  { to: "/", icon: LayoutDashboard, labelKey: "nav.dashboard" },
+  { to: "/meetings", icon: Mic, labelKey: "nav.meetings" },
+  { to: "/decisions", icon: Scale, labelKey: "nav.decisions" },
+  { to: "/actions", icon: CheckSquare, labelKey: "nav.actions" },
+  { to: "/commitments", icon: Handshake, labelKey: "nav.commitments" },
+  { to: "/templates", icon: FileText, labelKey: "nav.templates", gate: "templates" },
+  { to: "/teams", icon: Users, labelKey: "nav.teams", gate: "teams" },
+  { to: "/models", icon: Server, labelKey: "nav.models", gate: "models" },
+  { to: "/jobs", icon: Activity, labelKey: "nav.jobs" },
+  { to: "/operations", icon: Settings, labelKey: "nav.operations", gate: "operations" },
+  { to: "/audit", icon: Shield, labelKey: "nav.audit", gate: "audit" },
+];
+
+export const ACTENORA_LEDGER_LINKS: ActenoraNavLink[] = [
+  { to: "/decisions", icon: Scale, labelKey: "nav.decisions" },
+  { to: "/actions", icon: CheckSquare, labelKey: "nav.actions" },
+  { to: "/commitments", icon: ClipboardList, labelKey: "nav.commitments" },
+];

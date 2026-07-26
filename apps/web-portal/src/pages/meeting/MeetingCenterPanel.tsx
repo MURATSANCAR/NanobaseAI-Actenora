@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Children, useState, type ReactNode } from "react";
-import { portalMutationsEnabled } from "../../api/client";
-import { useApi, useApiMode } from "../../api/ApiProvider";
-import { queryKeys } from "../../api/client";
+import { StatusBadge } from "@/components/qa/StatusBadge";
+import { portalMutationsEnabled } from "@/api/client";
+import { useApi, useApiMode } from "@/api/ApiProvider";
+import { queryKeys } from "@/api/client";
 import type {
   ActionItem,
   CommitmentItem,
@@ -11,10 +12,10 @@ import type {
   MeetingDetailResponse,
   MeetingNote,
   RiskItem,
-} from "../../api/types";
-import { useAuth } from "../../auth/AuthProvider";
-import { useI18n } from "../../i18n";
-import { isOptimisticSafe } from "../../lib/approval";
+} from "@/api/types";
+import { useAuth } from "@/auth/AuthProvider";
+import { useI18n } from "@/i18n";
+import { isOptimisticSafe } from "@/lib/approval";
 
 export function MeetingCenterPanel({
   detail,
@@ -106,14 +107,12 @@ export function MeetingCenterPanel({
   const canDecideApproval = auth.canApprove && mutationsEnabled;
 
   return (
-    <section className="panel center-panel" aria-label={t("meeting.intelligence")}>
-      <header className="panel-head">
-        <h2>{detail.meeting.title}</h2>
-        {auth.can("meetings:edit") ? (
-          <span className="muted">{t("meeting.editEnabled")}</span>
-        ) : (
-          <span className="muted">{t("meeting.readOnly")}</span>
-        )}
+    <section className="card-static flex max-h-[calc(100dvh-12rem)] flex-col gap-4 overflow-y-auto p-4 sm:p-5" aria-label={t("meeting.intelligence")}>
+      <header className="flex flex-wrap items-start justify-between gap-2 border-b border-white/60 pb-3">
+        <h2 className="text-lg font-bold text-slate-900">{detail.meeting.title}</h2>
+        <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+          {auth.can("meetings:edit") ? t("meeting.editEnabled") : t("meeting.readOnly")}
+        </span>
       </header>
 
       <ArtifactBlock title={t("meeting.notes")} emptyMessage={t("meeting.noNotesEditable")}>
@@ -186,11 +185,12 @@ export function MeetingCenterPanel({
       </ArtifactBlock>
 
       {pending && canDecideApproval ? (
-        <div className="approve-bar" role="group" aria-label={t("meeting.approve")}>
-          <p>{t("meeting.pendingApproval", { type: pending.artifactType })}</p>
+        <div className="approve-bar rounded-xl border border-violet-200/70 bg-violet-50/40 p-3" role="group" aria-label={t("meeting.approve")}>
+          <p className="text-sm font-medium text-slate-700">{t("meeting.pendingApproval", { type: pending.artifactType })}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
-            className="btn"
+            className="btn-primary"
             onClick={() =>
               approveMutation.mutate({ approvalId: pending.id, decision: "APPROVE" })
             }
@@ -200,7 +200,7 @@ export function MeetingCenterPanel({
           </button>
           <button
             type="button"
-            className="btn ghost"
+            className="btn-secondary"
             onClick={() =>
               approveMutation.mutate({ approvalId: pending.id, decision: "REJECT" })
             }
@@ -209,8 +209,9 @@ export function MeetingCenterPanel({
             {t("meeting.reject")}
           </button>
           {approveMutation.isError ? (
-            <span role="alert">{(approveMutation.error as Error).message}</span>
+            <span role="alert" className="text-sm text-red-600">{(approveMutation.error as Error).message}</span>
           ) : null}
+          </div>
         </div>
       ) : null}
     </section>
@@ -229,12 +230,12 @@ function ArtifactBlock({
   const hasItems = Children.count(children) > 0;
 
   return (
-    <div className="artifact-block">
-      <h3 className="panel-sub">{title}</h3>
+    <div className="artifact-block space-y-2">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-violet-700">{title}</h3>
       {hasItems ? (
-        <div className="artifact-stack">{children}</div>
+        <div className="space-y-2">{children}</div>
       ) : (
-        <p className="muted">{emptyMessage}</p>
+        <p className="text-sm text-slate-500">{emptyMessage}</p>
       )}
     </div>
   );
@@ -260,11 +261,12 @@ function NoteEditor({
   saving: boolean;
 }) {
   return (
-    <div className="artifact-card">
-      <div className="artifact-head">
-        <span className="marker">{visibilityLabel}</span>
+    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
+      <div className="mb-2">
+        <StatusBadge label={visibilityLabel} status={note.visibility} />
       </div>
       <textarea
+        className="input-field min-h-[5rem]"
         value={draft}
         onChange={(e) => onChange(e.target.value)}
         disabled={!canEdit}
@@ -272,7 +274,7 @@ function NoteEditor({
         rows={3}
       />
       {canEdit ? (
-        <button type="button" className="btn" onClick={onSave} disabled={saving}>
+        <button type="button" className="btn-primary mt-2" onClick={onSave} disabled={saving}>
           {saveLabel}
         </button>
       ) : null}
@@ -296,7 +298,7 @@ function EvidenceButtons({
         <button
           key={`${e.segmentId}-${e.startMs}`}
           type="button"
-          className="btn ghost"
+          className="btn-secondary px-3 py-1.5 text-xs"
           onClick={() => onEvidence(e)}
         >
           {jumpLabel}
@@ -318,9 +320,9 @@ function DecisionRow({
   jumpLabel: string;
 }) {
   return (
-    <div className="artifact-card">
-      <strong>{item.title}</strong>
-      <span className="muted">{statusLabel}</span>
+    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
+      <strong className="block text-slate-900">{item.title}</strong>
+      <div className="mt-1"><StatusBadge label={statusLabel} status={item.status} /></div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
     </div>
   );
@@ -344,14 +346,15 @@ function ActionRow({
   onComplete: () => void;
 }) {
   return (
-    <div className="artifact-card">
-      <strong>{item.title}</strong>
-      <span className="muted">
-        {statusLabel} · {item.ownerDisplayName}
-      </span>
+    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
+      <strong className="block text-slate-900">{item.title}</strong>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+        <StatusBadge label={statusLabel} status={item.status} />
+        <span>{item.ownerDisplayName}</span>
+      </div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
       {canComplete && item.status !== "COMPLETED" ? (
-        <button type="button" className="btn" onClick={onComplete}>
+        <button type="button" className="btn-primary mt-2" onClick={onComplete}>
           {completeLabel}
         </button>
       ) : null}
@@ -371,9 +374,9 @@ function RiskRow({
   jumpLabel: string;
 }) {
   return (
-    <div className="artifact-card">
-      <strong>{item.title}</strong>
-      <span className="muted">{severityLabel}</span>
+    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
+      <strong className="block text-slate-900">{item.title}</strong>
+      <div className="mt-1"><StatusBadge label={severityLabel} status={item.severity} /></div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
     </div>
   );
@@ -391,11 +394,12 @@ function CommitmentRow({
   jumpLabel: string;
 }) {
   return (
-    <div className="artifact-card">
-      <strong>{item.statement}</strong>
-      <span className="muted">
-        {statusLabel} · {item.ownerDisplayName}
-      </span>
+    <div className="rounded-xl border border-white/70 bg-white/50 p-3">
+      <strong className="block text-slate-900">{item.statement}</strong>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+        <StatusBadge label={statusLabel} status={item.status} />
+        <span>{item.ownerDisplayName}</span>
+      </div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
     </div>
   );

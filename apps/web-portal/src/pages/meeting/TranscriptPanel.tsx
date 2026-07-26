@@ -1,11 +1,10 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EvidenceRef, MarkerKind, TranscriptSegment } from "../../api/types";
-import { useI18n } from "../../i18n";
-import { evidenceScrollOffset, filterSegments, findEvidenceIndex } from "../../lib/filters";
+import type { EvidenceRef, MarkerKind, TranscriptSegment } from "@/api/types";
+import { useI18n } from "@/i18n";
+import { evidenceScrollOffset, filterSegments, findEvidenceIndex } from "@/lib/filters";
 
 const ROW_HEIGHT = 72;
-
 const MARKERS: MarkerKind[] = ["DECISION", "ACTION", "RISK", "QUESTION", "IMPORTANT"];
 
 export function TranscriptPanel({
@@ -48,32 +47,29 @@ export function TranscriptPanel({
   }, [highlightEvidence, filtered]);
 
   return (
-    <section className="panel transcript-panel" aria-label={t("meeting.transcript")}>
-      <header className="panel-head">
-        <h2>{t("meeting.transcript")}</h2>
+    <section className="card-static flex max-h-[calc(100dvh-12rem)] min-h-[22rem] flex-col gap-3 p-4 sm:p-5" aria-label={t("meeting.transcript")}>
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-white/60 pb-3">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("meeting.transcript")}</h2>
         {highlightEvidence ? (
-          <button type="button" className="btn ghost" onClick={onClearHighlight}>
+          <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={onClearHighlight}>
             {t("meeting.clearHighlight")}
           </button>
         ) : null}
       </header>
-      <div className="filter-bar compact" role="search">
-        <label>
-          {t("filter.search")}
+
+      <div className="mobile-toolbar" role="search">
+        <label className="min-w-[10rem] flex-1">
+          <span className="label-text">{t("filter.search")}</span>
           <input
+            className="input-field"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("filter.transcriptPlaceholder")}
-            aria-label={t("filter.transcriptPlaceholder")}
           />
         </label>
-        <label>
-          {t("filter.speaker")}
-          <select
-            value={speaker}
-            onChange={(e) => setSpeaker(e.target.value)}
-            aria-label={t("filter.speaker")}
-          >
+        <label className="min-w-[10rem]">
+          <span className="label-text">{t("filter.speaker")}</span>
+          <select className="input-field" value={speaker} onChange={(e) => setSpeaker(e.target.value)}>
             <option value="">{t("filter.allSpeakers")}</option>
             {speakers.map((s) => (
               <option key={s} value={s}>
@@ -82,12 +78,12 @@ export function TranscriptPanel({
             ))}
           </select>
         </label>
-        <label>
-          {t("filter.marker")}
+        <label className="min-w-[10rem]">
+          <span className="label-text">{t("filter.marker")}</span>
           <select
+            className="input-field"
             value={marker}
             onChange={(e) => setMarker(e.target.value as MarkerKind | "")}
-            aria-label={t("filter.marker")}
           >
             <option value="">{t("filter.allMarkers")}</option>
             {MARKERS.map((m) => (
@@ -98,22 +94,19 @@ export function TranscriptPanel({
           </select>
         </label>
       </div>
+
       {qualityFlags.length ? (
-        <ul className="flag-list" aria-label="Quality flags">
+        <ul className="space-y-1 text-xs">
           {qualityFlags.map((f) => (
-            <li key={f}>{f}</li>
+            <li key={f} className="rounded-lg border-l-4 border-violet-500 bg-violet-50/50 px-3 py-1.5 text-violet-900">
+              {f}
+            </li>
           ))}
         </ul>
       ) : null}
-      <div
-        ref={parentRef}
-        className="transcript-viewport"
-        role="list"
-        aria-label={t("meeting.transcript")}
-      >
-        <div
-          style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}
-        >
+
+      <div ref={parentRef} className="min-h-0 flex-1 overflow-auto rounded-xl border border-white/70 bg-white/60" role="list">
+        <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
           {virtualizer.getVirtualItems().map((row) => {
             const seg = filtered[row.index]!;
             const active = highlightEvidence?.segmentId === seg.id;
@@ -121,8 +114,10 @@ export function TranscriptPanel({
               <article
                 key={seg.id}
                 role="listitem"
-                className={active ? "transcript-row active" : "transcript-row"}
-                data-segment-id={seg.id}
+                className={[
+                  "border-b border-white/60 px-3 py-2 text-sm",
+                  active ? "bg-violet-100/70" : "hover:bg-violet-50/40",
+                ].join(" ")}
                 style={{
                   position: "absolute",
                   top: 0,
@@ -132,16 +127,16 @@ export function TranscriptPanel({
                   transform: `translateY(${row.start}px)`,
                 }}
               >
-                <div className="transcript-meta">
-                  <strong>{seg.speaker}</strong>
-                  <span className="muted">{formatMs(seg.startMs)}</span>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <strong className="text-slate-800">{seg.speaker}</strong>
+                  <span className="font-mono text-slate-500">{formatMs(seg.startMs)}</span>
                   {(seg.markers ?? []).map((m) => (
-                    <span key={m} className="marker">
+                    <span key={m} className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
                       {m}
                     </span>
                   ))}
                 </div>
-                <p>{seg.text}</p>
+                <p className="mt-1 text-slate-700">{seg.text}</p>
               </article>
             );
           })}

@@ -1,9 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { useApi } from "../api/ApiProvider";
-import { queryKeys } from "../api/client";
-import { AsyncState, PageHeader } from "../components/ui/AsyncState";
-import { useI18n } from "../i18n";
+import { Activity, CheckSquare, Clock, Handshake } from "lucide-react";
+import { useApi } from "@/api/ApiProvider";
+import { queryKeys } from "@/api/client";
+import { MetricCard } from "@/components/qa/MetricCard";
+import { PageShell } from "@/components/qa/PageShell";
+import { StatusBadge } from "@/components/qa/StatusBadge";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { useI18n } from "@/i18n";
 
 export function DashboardPage() {
   const api = useApi();
@@ -14,60 +18,70 @@ export function DashboardPage() {
     q.isLoading ? "loading" : q.isError ? "error" : !q.data ? "empty" : "ready";
 
   return (
-    <section className="page">
-      <PageHeader title={t("dashboard.title")} description={t("dashboard.description")} />
+    <PageShell
+      titleKey="dashboard.title"
+      subtitleKey="dashboard.description"
+      heroSize="dashboard"
+      maxWidth="max-w-7xl"
+    >
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>
-            <div className="metric-row" role="list">
-              <Metric
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
                 label={t("dashboard.pendingApprovals")}
                 value={q.data.pendingApprovals}
+                icon={Clock}
+                tone="text-status-warn"
+                delay={0}
                 to="/decisions"
               />
-              <Metric label={t("dashboard.openActions")} value={q.data.openActions} to="/actions" />
-              <Metric
+              <MetricCard
+                label={t("dashboard.openActions")}
+                value={q.data.openActions}
+                icon={CheckSquare}
+                delay={60}
+                to="/actions"
+              />
+              <MetricCard
                 label={t("dashboard.openCommitments")}
                 value={q.data.overdueCommitments}
+                icon={Handshake}
+                tone="text-teal-600"
+                delay={120}
                 to="/commitments"
               />
-              <Metric label={t("dashboard.runningJobs")} value={q.data.runningJobs} to="/jobs" />
+              <MetricCard
+                label={t("dashboard.runningJobs")}
+                value={q.data.runningJobs}
+                icon={Activity}
+                tone="text-status-run"
+                delay={180}
+                to="/jobs"
+              />
             </div>
-            <h2 className="section-title">{t("dashboard.recentMeetings")}</h2>
-            <ul className="plain-list">
-              {q.data.recentMeetings.map((m) => (
-                <li key={m.id}>
-                  <Link to={`/meetings/${m.id}`}>{m.title}</Link>
-                  <span className="muted"> · {tb("meetingStatus", m.status)}</span>
-                </li>
-              ))}
-            </ul>
+
+            <div className="card-static p-4 sm:p-5">
+              <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">
+                {t("dashboard.recentMeetings")}
+              </h2>
+              <ul className="space-y-2">
+                {q.data.recentMeetings.map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/70 bg-white/50 px-3 py-2.5 transition hover:border-violet-200 hover:bg-violet-50/40"
+                  >
+                    <Link to={`/meetings/${m.id}`} className="font-medium text-violet-800 hover:underline">
+                      {m.title}
+                    </Link>
+                    <StatusBadge label={tb("meetingStatus", m.status)} status={m.status} />
+                  </li>
+                ))}
+              </ul>
+            </div>
           </>
         ) : null}
       </AsyncState>
-    </section>
-  );
-}
-
-function Metric({ label, value, to }: { label: string; value: number; to: string }) {
-  const inner = (
-    <>
-      <span className="metric-value">{value}</span>
-      <span className="metric-label">{label}</span>
-    </>
-  );
-
-  if (to) {
-    return (
-      <Link to={to} className="metric metric-link" role="listitem">
-        {inner}
-      </Link>
-    );
-  }
-
-  return (
-    <div className="metric" role="listitem">
-      {inner}
-    </div>
+    </PageShell>
   );
 }

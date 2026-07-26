@@ -1,6 +1,7 @@
-import type { ApprovalRecord, MeetingDetailResponse, MeetingNote } from "../../api/types";
-import { useAuth } from "../../auth/AuthProvider";
-import { useI18n } from "../../i18n";
+import type { ApprovalRecord, MeetingDetailResponse, MeetingNote } from "@/api/types";
+import { useAuth } from "@/auth/AuthProvider";
+import { StatusBadge } from "@/components/qa/StatusBadge";
+import { useI18n } from "@/i18n";
 
 export function MeetingLeftPanel({ detail }: { detail: MeetingDetailResponse }) {
   const auth = useAuth();
@@ -8,71 +9,76 @@ export function MeetingLeftPanel({ detail }: { detail: MeetingDetailResponse }) 
   const m = detail.meeting;
 
   return (
-    <section className="panel left-panel" aria-label={t("meeting.metadata")}>
-      <header className="panel-head">
-        <h2>{t("meeting.metadata")}</h2>
-      </header>
-      <dl className="meta-list">
+    <section className="card-static flex max-h-[calc(100dvh-12rem)] flex-col gap-4 overflow-y-auto p-4 sm:p-5" aria-label={t("meeting.metadata")}>
+      <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("meeting.metadata")}</h2>
+      <dl className="grid gap-3 text-sm">
         <div>
-          <dt>{t("meeting.status")}</dt>
-          <dd>{tb("meetingStatus", m.status)}</dd>
+          <dt className="label-text">{t("meeting.status")}</dt>
+          <dd><StatusBadge label={tb("meetingStatus", m.status)} status={m.status} /></dd>
         </div>
         <div>
-          <dt>{t("meeting.scheduled")}</dt>
-          <dd>{new Date(m.scheduledStartAt).toLocaleString()}</dd>
+          <dt className="label-text">{t("meeting.scheduled")}</dt>
+          <dd className="font-medium text-slate-800">{new Date(m.scheduledStartAt).toLocaleString()}</dd>
         </div>
         <div>
-          <dt>{t("meeting.series")}</dt>
-          <dd>{detail.seriesTitle ?? "—"}</dd>
+          <dt className="label-text">{t("meeting.series")}</dt>
+          <dd className="text-slate-700">{detail.seriesTitle ?? "—"}</dd>
         </div>
         <div>
-          <dt>{t("meeting.businessContext")}</dt>
-          <dd>{detail.businessContext ?? "—"}</dd>
+          <dt className="label-text">{t("meeting.businessContext")}</dt>
+          <dd className="text-slate-700">{detail.businessContext ?? "—"}</dd>
         </div>
       </dl>
 
-      <h3 className="panel-sub">{t("meeting.participants")}</h3>
-      <ul className="plain-list">
-        {detail.participants.map((p) => (
-          <li key={p.id}>
-            {p.displayName}
-            <span className="muted">
-              {" "}
-              · {tb("participantType", p.participantType)}
-              {p.external ? ` · ${t("meeting.external")}` : ""}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-violet-700">{t("meeting.participants")}</h3>
+        <ul className="space-y-2 text-sm">
+          {detail.participants.map((p) => (
+            <li key={p.id} className="rounded-xl bg-white/50 px-3 py-2">
+              <div className="font-medium text-slate-800">{p.displayName}</div>
+              <div className="text-xs text-slate-500">
+                {tb("participantType", p.participantType)}
+                {p.external ? ` · ${t("meeting.external")}` : ""}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <h3 className="panel-sub">{t("meeting.versions")}</h3>
-      <ul className="plain-list">
-        {detail.versions.map((v) => (
-          <li key={v.version}>
-            v{v.version} — {v.label}
-            <span className="muted"> · {new Date(v.createdAt).toLocaleString()}</span>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-violet-700">{t("meeting.versions")}</h3>
+        <ul className="space-y-2 text-sm">
+          {detail.versions.map((v) => (
+            <li key={v.version} className="rounded-xl bg-white/50 px-3 py-2 text-slate-700">
+              v{v.version} — {v.label}
+              <span className="block text-xs text-slate-500">{new Date(v.createdAt).toLocaleString()}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <h3 className="panel-sub">{t("meeting.approvalHistory")}</h3>
-      <ApprovalList items={detail.approvalHistory} />
+      <div>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-violet-700">{t("meeting.approvalHistory")}</h3>
+        <ApprovalList items={detail.approvalHistory} />
+      </div>
 
-      <h3 className="panel-sub">{t("meeting.visibleNotes")}</h3>
-      <NoteList notes={detail.notes} canSeePrivate={auth.canSeePrivateNote} />
+      <div>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-violet-700">{t("meeting.visibleNotes")}</h3>
+        <NoteList notes={detail.notes} canSeePrivate={auth.canSeePrivateNote} />
+      </div>
     </section>
   );
 }
 
 function ApprovalList({ items }: { items: ApprovalRecord[] }) {
   const { t, tb } = useI18n();
-  if (!items.length) return <p className="muted">{t("meeting.noApprovals")}</p>;
+  if (!items.length) return <p className="text-sm text-slate-500">{t("meeting.noApprovals")}</p>;
   return (
-    <ul className="plain-list">
+    <ul className="space-y-2 text-sm">
       {items.map((a) => (
-        <li key={a.id}>
+        <li key={a.id} className="rounded-xl bg-white/50 px-3 py-2">
           {a.artifactType} · {tb("approvalStatus", a.status)}
-          {a.decidedBy ? <span className="muted"> · {a.decidedBy}</span> : null}
+          {a.decidedBy ? <span className="text-slate-500"> · {a.decidedBy}</span> : null}
         </li>
       ))}
     </ul>
@@ -90,12 +96,13 @@ function NoteList({
   const visible = notes.filter(
     (n) => n.visibility === "SHARED" || canSeePrivate(n.authorId),
   );
-  if (!visible.length) return <p className="muted">{t("meeting.noAccessibleNotes")}</p>;
+  if (!visible.length) return <p className="text-sm text-slate-500">{t("meeting.noAccessibleNotes")}</p>;
   return (
-    <ul className="plain-list">
+    <ul className="space-y-2 text-sm">
       {visible.map((n) => (
-        <li key={n.id}>
-          <span className="marker">{tb("noteVisibility", n.visibility)}</span> {n.body}
+        <li key={n.id} className="rounded-xl bg-white/50 px-3 py-2">
+          <StatusBadge label={tb("noteVisibility", n.visibility)} status={n.visibility} />
+          <p className="mt-1 text-slate-700">{n.body}</p>
         </li>
       ))}
     </ul>
