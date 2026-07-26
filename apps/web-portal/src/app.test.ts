@@ -107,7 +107,7 @@ test("private note access is role and author scoped", () => {
   assert.equal(canAccessPrivateNote(viewerPerms, author, author), false);
 });
 
-test("meeting and transcript filters", () => {
+test("meeting and conversation filters", () => {
   const meetings = [
     { title: "alpha sync", status: "READY" },
     { title: "beta review", status: "PROCESSING" },

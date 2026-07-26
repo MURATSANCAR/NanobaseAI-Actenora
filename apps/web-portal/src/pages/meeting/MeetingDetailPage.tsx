@@ -16,8 +16,8 @@ import {
   MEETING_PROCESSING_POLL_MS,
   meetingNeedsProcessingPoll,
 } from "@/lib/meetingProcessing";
+import { ConversationPanel } from "./ConversationPanel";
 import { MeetingCenterPanel } from "./MeetingCenterPanel";
-import { TranscriptPanel } from "./TranscriptPanel";
 
 export function MeetingDetailPage() {
   const { meetingId = "" } = useParams();
@@ -50,14 +50,14 @@ export function MeetingDetailPage() {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedSegmentId, detailQ.data]);
 
-  const transcriptParams = useMemo(() => ({}), []);
-  const transcriptQ = useQuery({
-    queryKey: queryKeys.transcript(meetingId, transcriptParams),
-    queryFn: () => api.getMeetingTranscript(meetingId, transcriptParams),
+  const conversationParams = useMemo(() => ({}), []);
+  const conversationQ = useQuery({
+    queryKey: queryKeys.transcript(meetingId, conversationParams),
+    queryFn: () => api.getMeetingTranscript(meetingId, conversationParams),
     enabled: Boolean(meetingId),
   });
 
-  const hasTranscript = Boolean(transcriptQ.data?.segments.length);
+  const hasConversation = Boolean(conversationQ.data?.segments.length);
 
   const handleEvidence = (ref: EvidenceRef) => {
     setHighlight(ref);
@@ -131,7 +131,7 @@ export function MeetingDetailPage() {
 
             <MeetingProgressPipeline
               detail={detailQ.data}
-              hasTranscript={hasTranscript}
+              hasConversation={hasConversation}
               lastUpdated={lastUpdated}
             />
 
@@ -139,21 +139,21 @@ export function MeetingDetailPage() {
               detail={detailQ.data}
               onEvidence={handleEvidence}
               selectedSegmentId={selectedSegmentId}
-              hasTranscript={hasTranscript}
+              hasConversation={hasConversation}
             />
 
-            {transcriptQ.isLoading ? (
+            {conversationQ.isLoading ? (
               <div className="card-static flex items-center justify-center p-10" role="status">
-                {t("meeting.transcriptLoading")}
+                {t("meeting.conversationLoading")}
               </div>
-            ) : transcriptQ.isError ? (
+            ) : conversationQ.isError ? (
               <div className="card-static border-red-200/80 bg-red-50/40 p-6 text-red-700" role="alert">
-                {t("meeting.transcriptUnavailable")}
+                {t("meeting.conversationUnavailable")}
               </div>
-            ) : transcriptQ.data ? (
-              <TranscriptPanel
-                segments={transcriptQ.data.segments}
-                speakers={transcriptQ.data.speakers}
+            ) : conversationQ.data ? (
+              <ConversationPanel
+                segments={conversationQ.data.segments}
+                speakers={conversationQ.data.speakers}
                 qualityFlags={detailQ.data.qualityFlags}
                 highlightEvidence={highlight}
                 selectedSegmentId={selectedSegmentId}

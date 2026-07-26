@@ -12,7 +12,7 @@ import {
 import { meetingNeedsProcessingPoll } from "@/lib/meetingProcessing";
 
 const STAGE_ICONS: Record<MeetingPipelineStageId, typeof Sparkles> = {
-  TRANSCRIPT: Circle,
+  CONVERSATION: Circle,
   AI_ANALYSIS: Sparkles,
   NOTES: Sparkles,
   REVIEW: Check,
@@ -20,15 +20,15 @@ const STAGE_ICONS: Record<MeetingPipelineStageId, typeof Sparkles> = {
 
 export function MeetingProgressPipeline({
   detail,
-  hasTranscript,
+  hasConversation,
   lastUpdated,
 }: {
   detail: MeetingDetailResponse;
-  hasTranscript: boolean;
+  hasConversation: boolean;
   lastUpdated?: Date;
 }) {
   const { t, tb } = useI18n();
-  const stages = deriveMeetingPipelineStages(detail, hasTranscript);
+  const stages = deriveMeetingPipelineStages(detail, hasConversation);
   const polling = meetingNeedsProcessingPoll(detail);
   const allDone = stages.every((s) => s.state === "done");
   const failed = detail.meeting.status === "FAILED";

@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.meeting.api;
 
+import com.nanobaseai.actenora.meeting.api.dto.ApplyAttendanceRequest;
 import com.nanobaseai.actenora.meeting.api.dto.BusinessContextResponse;
 import com.nanobaseai.actenora.meeting.api.dto.CreateBusinessContextRequest;
 import com.nanobaseai.actenora.meeting.api.dto.CreateMeetingRequest;
@@ -40,6 +41,11 @@ public interface MeetingApi {
     MeetingResponse transitionMeetingStatus(UUID meetingId, MeetingStatusTransitionRequest request);
 
     List<ParticipantResponse> listParticipants(UUID meetingId);
+
+    /**
+     * Applies Teams attendance-report rows onto stored invitees (katıldı / katılmadı).
+     */
+    List<ParticipantResponse> applyAttendance(UUID meetingId, ApplyAttendanceRequest request);
 
     BusinessContextResponse createBusinessContext(CreateBusinessContextRequest request);
 

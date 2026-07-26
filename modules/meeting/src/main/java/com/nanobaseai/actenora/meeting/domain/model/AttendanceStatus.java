@@ -6,5 +6,7 @@ public enum AttendanceStatus {
     DECLINED,
     TENTATIVE,
     JOINED,
-    LEFT
+    LEFT,
+    /** Present on the invite list but not found in the Teams attendance report. */
+    ABSENT
 }

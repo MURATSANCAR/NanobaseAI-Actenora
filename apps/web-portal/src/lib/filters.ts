@@ -1,4 +1,4 @@
-/** Pure helpers for transcript evidence navigation and filters (FAZ 24). */
+/** Pure helpers for meeting conversation evidence navigation and filters (FAZ 24). */
 
 export interface SegmentLike {
   id: string;

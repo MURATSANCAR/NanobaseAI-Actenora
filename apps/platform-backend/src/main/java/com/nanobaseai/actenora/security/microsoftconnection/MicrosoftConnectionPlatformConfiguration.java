@@ -68,13 +68,22 @@ public class MicrosoftConnectionPlatformConfiguration {
     }
 
     @Bean
+    MeetingAttendanceSyncService meetingAttendanceSyncService(
+            MicrosoftConnectionApi microsoftConnectionApi,
+            MeetingApi meetingApi
+    ) {
+        return new MeetingAttendanceSyncService(microsoftConnectionApi, meetingApi);
+    }
+
+    @Bean
     TeamsTranscriptIngestService teamsTranscriptIngestService(
             MicrosoftConnectionApi microsoftConnectionApi,
             @Lazy TranscriptApi transcriptApi,
             MeetingApi meetingApi,
             FixedTenantContext fixedTenantContext,
             SubscriptionStore subscriptionStore,
-            MicrosoftGraphSpringProperties graphProperties
+            MicrosoftGraphSpringProperties graphProperties,
+            MeetingAttendanceSyncService meetingAttendanceSyncService
     ) {
         return new TeamsTranscriptIngestService(
                 microsoftConnectionApi,
@@ -82,7 +91,8 @@ public class MicrosoftConnectionPlatformConfiguration {
                 meetingApi,
                 fixedTenantContext,
                 subscriptionStore,
-                graphProperties.getDefaultMailboxUserId()
+                graphProperties.getDefaultMailboxUserId(),
+                meetingAttendanceSyncService
         );
     }
 

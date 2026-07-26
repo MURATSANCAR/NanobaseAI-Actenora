@@ -36,6 +36,7 @@ public final class TeamsTranscriptIngestService {
     private final FixedTenantContext tenantContext;
     private final String defaultMailboxUserId;
     private final SubscriptionStore subscriptionStore;
+    private final MeetingAttendanceSyncService attendanceSyncService;
 
     public TeamsTranscriptIngestService(
             MicrosoftConnectionApi microsoftConnectionApi,
@@ -43,7 +44,8 @@ public final class TeamsTranscriptIngestService {
             MeetingApi meetingApi,
             FixedTenantContext tenantContext,
             SubscriptionStore subscriptionStore,
-            String defaultMailboxUserId
+            String defaultMailboxUserId,
+            MeetingAttendanceSyncService attendanceSyncService
     ) {
         this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi);
         this.transcriptApi = Objects.requireNonNull(transcriptApi);
@@ -51,6 +53,7 @@ public final class TeamsTranscriptIngestService {
         this.tenantContext = Objects.requireNonNull(tenantContext);
         this.subscriptionStore = Objects.requireNonNull(subscriptionStore);
         this.defaultMailboxUserId = defaultMailboxUserId;
+        this.attendanceSyncService = Objects.requireNonNull(attendanceSyncService);
     }
 
     public PollResult pollMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
@@ -67,6 +70,11 @@ public final class TeamsTranscriptIngestService {
             log.warn("Unable to resolve Graph onlineMeetingId meetingId={} tenantId={}",
                     meetingOccurrenceId, tenantId.value());
             return PollResult.NOT_AVAILABLE;
+        }
+        try {
+            attendanceSyncService.syncAttendance(tenantId, meeting, graphUserId, teamsMeetingId);
+        } catch (RuntimeException ex) {
+            log.debug("Attendance sync skipped meetingId={}: {}", meetingOccurrenceId, ex.getMessage());
         }
         TranscriptAvailability availability = microsoftConnectionApi.checkTranscript(
                 tenantId.value(), graphUserId, teamsMeetingId);

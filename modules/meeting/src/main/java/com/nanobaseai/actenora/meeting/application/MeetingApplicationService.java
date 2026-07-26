@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.meeting.application;
 
+import com.nanobaseai.actenora.meeting.api.dto.ApplyAttendanceRequest;
 import com.nanobaseai.actenora.meeting.api.dto.CreateMeetingRequest;
 import com.nanobaseai.actenora.meeting.api.dto.CursorPageRequest;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingListResponse;
@@ -32,10 +33,13 @@ import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public final class MeetingApplicationService {
@@ -246,6 +250,120 @@ public final class MeetingApplicationService {
                 .toList();
     }
 
+    public List<ParticipantResponse> applyAttendance(UUID meetingId, ApplyAttendanceRequest request) {
+        TenantId tenantId = tenantContext.requireTenantId();
+        UUID actor = tenantContext.requireActorUserId();
+        requireOccurrence(meetingId, tenantId);
+        Objects.requireNonNull(request, "request");
+        List<ApplyAttendanceRequest.AttendanceRecord> attended =
+                request.attended() == null ? List.of() : request.attended();
+
+        List<MeetingParticipant> existing =
+                new ArrayList<>(participantRepository.findByMeetingOccurrenceIdAndTenantId(meetingId, tenantId));
+        Set<UUID> matchedIds = new HashSet<>();
+
+        for (ApplyAttendanceRequest.AttendanceRecord record : attended) {
+            MeetingParticipant match = findMatchingParticipant(existing, record);
+            if (match != null) {
+                match.markJoined(record.joinedAt(), record.leftAt());
+                promoteIfOrganizerRole(match, record.role());
+                participantRepository.save(match);
+                matchedIds.add(match.id());
+            } else if (normalizeEmail(record.email()) != null || normalizeId(record.entraUserId()) != null) {
+                MeetingParticipant created = createFromAttendance(tenantId, meetingId, record);
+                participantRepository.save(created);
+                existing.add(created);
+                matchedIds.add(created.id());
+            }
+        }
+
+        if (request.markMissingAsAbsent()) {
+            for (MeetingParticipant participant : existing) {
+                if (!matchedIds.contains(participant.id())) {
+                    participant.markAbsent();
+                    participantRepository.save(participant);
+                }
+            }
+        }
+
+        auditPort.record(tenantId, actor, "MEETING_ATTENDANCE_SYNCED", "MeetingOccurrence", meetingId,
+                Map.of("attended", attended.size(), "markMissingAsAbsent", request.markMissingAsAbsent()));
+        return participantRepository.findByMeetingOccurrenceIdAndTenantId(meetingId, tenantId).stream()
+                .map(MeetingMapper::toResponse)
+                .toList();
+    }
+
+    private static MeetingParticipant findMatchingParticipant(
+            List<MeetingParticipant> existing,
+            ApplyAttendanceRequest.AttendanceRecord record
+    ) {
+        String email = normalizeEmail(record.email());
+        String entra = normalizeId(record.entraUserId());
+        for (MeetingParticipant participant : existing) {
+            if (email != null && email.equals(normalizeEmail(participant.email()))) {
+                return participant;
+            }
+            if (entra != null && entra.equalsIgnoreCase(normalizeId(participant.entraUserId()))) {
+                return participant;
+            }
+        }
+        return null;
+    }
+
+    private static MeetingParticipant createFromAttendance(
+            TenantId tenantId,
+            UUID meetingId,
+            ApplyAttendanceRequest.AttendanceRecord record
+    ) {
+        String email = normalizeEmail(record.email());
+        String entra = normalizeId(record.entraUserId());
+        boolean external = entra == null || entra.isBlank();
+        if (email == null) {
+            throw new IllegalArgumentException("attendance record requires email when creating a participant");
+        }
+        String display = record.displayName() == null || record.displayName().isBlank()
+                ? email
+                : record.displayName().trim();
+        ParticipantType type = isOrganizerRole(record.role())
+                ? ParticipantType.ORGANIZER
+                : ParticipantType.REQUIRED;
+        MeetingParticipant created = MeetingParticipant.create(
+                tenantId,
+                meetingId,
+                external ? null : entra,
+                display,
+                email,
+                type,
+                external
+        );
+        created.markJoined(record.joinedAt(), record.leftAt());
+        return created;
+    }
+
+    private static void promoteIfOrganizerRole(MeetingParticipant participant, String role) {
+        if (isOrganizerRole(role)) {
+            participant.promoteToOrganizer();
+        }
+    }
+
+    private static boolean isOrganizerRole(String role) {
+        return role != null && "organizer".equalsIgnoreCase(role.trim());
+    }
+
+    private static String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizeId(String id) {
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+        return id.trim();
+    }
+
     private MeetingOccurrence requireOccurrence(UUID id, TenantId tenantId) {
         Optional<MeetingOccurrence> owned = occurrenceRepository.findByIdAndTenantId(id, tenantId);
         if (owned.isPresent()) {
@@ -280,6 +398,14 @@ public final class MeetingApplicationService {
         if (value == null || value.isBlank()) {
             return ParticipantType.REQUIRED;
         }
-        return ParticipantType.valueOf(value.trim().toUpperCase());
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        if ("ATTENDEE".equals(normalized)) {
+            return ParticipantType.REQUIRED;
+        }
+        try {
+            return ParticipantType.valueOf(normalized);
+        } catch (IllegalArgumentException ex) {
+            return ParticipantType.REQUIRED;
+        }
     }
 }

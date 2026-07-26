@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.meeting.application;
 
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
+import com.nanobaseai.actenora.meeting.api.dto.ApplyAttendanceRequest;
 import com.nanobaseai.actenora.meeting.api.dto.BusinessContextResponse;
 import com.nanobaseai.actenora.meeting.api.dto.CreateBusinessContextRequest;
 import com.nanobaseai.actenora.meeting.api.dto.CreateMeetingRequest;
@@ -63,6 +64,11 @@ public final class MeetingApiFacade implements MeetingApi {
     @Override
     public List<ParticipantResponse> listParticipants(UUID meetingId) {
         return meetingService.listParticipants(meetingId);
+    }
+
+    @Override
+    public List<ParticipantResponse> applyAttendance(UUID meetingId, ApplyAttendanceRequest request) {
+        return meetingService.applyAttendance(meetingId, request);
     }
 
     @Override

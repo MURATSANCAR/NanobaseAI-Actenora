@@ -93,23 +93,43 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
             if (reportId == null) {
                 return List.of();
             }
-            String recordsPath = "v1.0/users/" + userId + "/onlineMeetings/" + meetingId
+            String recordsPath = "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId
                     + "/attendanceReports/" + reportId + "/attendanceRecords";
             var records = http.send(token -> http.authorizedGet(recordsPath, token));
             for (JsonNode record : objectMapper.readTree(records.body()).path("value")) {
                 String email = text(record, "emailAddress");
-                String id = email != null ? email : text(record, "id");
+                JsonNode identity = record.path("identity");
+                String identityId = text(identity, "id");
+                String displayName = text(identity, "displayName");
+                if (displayName == null) {
+                    displayName = email;
+                }
+                String id = identityId != null ? identityId : (email != null ? email : text(record, "id"));
                 if (id == null) {
                     continue;
                 }
+                Instant joinedAt = null;
+                Instant leftAt = null;
+                JsonNode intervals = record.path("attendanceIntervals");
+                if (intervals.isArray() && !intervals.isEmpty()) {
+                    joinedAt = parseInstant(text(intervals.get(0), "joinDateTime"));
+                    JsonNode last = intervals.get(intervals.size() - 1);
+                    leftAt = parseInstant(text(last, "leaveDateTime"));
+                }
+                int seconds = record.path("totalAttendanceInSeconds").asInt(0);
+                String role = text(record, "role");
+                if (role == null) {
+                    role = "attendee";
+                }
                 participants.add(new ParticipantMetadata(
                         id,
-                        text(record, "identity.displayName") != null
-                                ? text(record.path("identity"), "displayName")
-                                : text(record, "emailAddress"),
+                        displayName,
                         email,
-                        "attendee",
-                        email
+                        role,
+                        email,
+                        joinedAt,
+                        leftAt,
+                        seconds > 0 ? seconds : null
                 ));
             }
             return List.copyOf(participants);

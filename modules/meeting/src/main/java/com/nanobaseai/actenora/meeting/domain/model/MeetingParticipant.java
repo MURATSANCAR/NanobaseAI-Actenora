@@ -119,6 +119,30 @@ public final class MeetingParticipant {
         return normalized;
     }
 
+    public void markJoined(Instant joinedAt, Instant leftAt) {
+        this.attendanceStatus = AttendanceStatus.JOINED;
+        this.joinedAt = joinedAt;
+        this.leftAt = leftAt;
+    }
+
+    public void markLeft(Instant leftAt) {
+        this.attendanceStatus = AttendanceStatus.LEFT;
+        this.leftAt = leftAt;
+    }
+
+    public void markAbsent() {
+        if (attendanceStatus == AttendanceStatus.JOINED || attendanceStatus == AttendanceStatus.LEFT) {
+            return;
+        }
+        this.attendanceStatus = AttendanceStatus.ABSENT;
+        this.joinedAt = null;
+        this.leftAt = null;
+    }
+
+    public void promoteToOrganizer() {
+        this.participantType = ParticipantType.ORGANIZER;
+    }
+
     public UUID id() { return id; }
     public TenantId tenantId() { return tenantId; }
     public UUID meetingOccurrenceId() { return meetingOccurrenceId; }

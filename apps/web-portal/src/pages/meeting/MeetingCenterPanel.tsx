@@ -27,12 +27,12 @@ export function MeetingCenterPanel({
   detail,
   onEvidence,
   selectedSegmentId,
-  hasTranscript,
+  hasConversation,
 }: {
   detail: MeetingDetailResponse;
   onEvidence: (ref: EvidenceRef) => void;
   selectedSegmentId: string | null;
-  hasTranscript: boolean;
+  hasConversation: boolean;
 }) {
   const auth = useAuth();
   const api = useApi();
@@ -44,7 +44,7 @@ export function MeetingCenterPanel({
   const [activeTab, setActiveTab] = useState<InsightTab>("decisions");
   const mutationsEnabled = portalMutationsEnabled(apiMode, resolvePortalAuthMode());
 
-  const stages = deriveMeetingPipelineStages(detail, hasTranscript);
+  const stages = deriveMeetingPipelineStages(detail, hasConversation);
   const notesStageReady = stages.find((s) => s.id === "NOTES")?.state === "done" || detail.notes.length > 0;
   const showNotes = notesStageReady || detail.notes.length > 0;
 
@@ -126,7 +126,7 @@ export function MeetingCenterPanel({
 
       {selectedSegmentId ? (
         <p className="rounded-xl border border-violet-200/70 bg-violet-50/50 px-4 py-2.5 text-sm text-violet-900">
-          {t("evidence.linkedFromTranscript")}
+          {t("evidence.linkedFromConversation")}
         </p>
       ) : null}
 

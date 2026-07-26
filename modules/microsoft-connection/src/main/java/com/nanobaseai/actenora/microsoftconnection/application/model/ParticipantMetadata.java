@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.microsoftconnection.application.model;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -11,7 +12,10 @@ public record ParticipantMetadata(
         String displayName,
         String email,
         String role,
-        String upn
+        String upn,
+        Instant joinedAt,
+        Instant leftAt,
+        Integer totalAttendanceInSeconds
 ) {
 
     public ParticipantMetadata {
@@ -21,11 +25,22 @@ public record ParticipantMetadata(
         }
     }
 
+    public ParticipantMetadata(String id, String displayName, String email, String role, String upn) {
+        this(id, displayName, email, role, upn, null, null, null);
+    }
+
     public Optional<String> emailOptional() {
         return Optional.ofNullable(email).filter(s -> !s.isBlank());
     }
 
     public Optional<String> upnOptional() {
         return Optional.ofNullable(upn).filter(s -> !s.isBlank());
+    }
+
+    public boolean attended() {
+        if (totalAttendanceInSeconds != null && totalAttendanceInSeconds > 0) {
+            return true;
+        }
+        return joinedAt != null;
     }
 }

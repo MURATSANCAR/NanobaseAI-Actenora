@@ -94,11 +94,27 @@ public final class GraphCalendarGateway implements CalendarGateway {
                 id, iCalUId, seriesMasterId, type, startAt, originalStart, joinUrl
         );
         List<ParticipantMetadata> attendees = new ArrayList<>();
+        JsonNode organizerEmail = item.path("organizer").path("emailAddress");
+        String organizerAddress = text(organizerEmail, "address");
+        String organizerName = text(organizerEmail, "name");
+        if (organizerAddress != null || organizerName != null) {
+            String organizerId = organizerAddress != null ? organizerAddress : UUID.randomUUID().toString();
+            attendees.add(new ParticipantMetadata(
+                    organizerId,
+                    organizerName != null ? organizerName : organizerAddress,
+                    organizerAddress,
+                    "organizer",
+                    organizerAddress
+            ));
+        }
         for (JsonNode attendee : item.path("attendees")) {
             JsonNode email = attendee.path("emailAddress");
             String address = text(email, "address");
             String name = text(email, "name");
             String attendeeId = address != null ? address : UUID.randomUUID().toString();
+            if (organizerAddress != null && organizerAddress.equalsIgnoreCase(address)) {
+                continue;
+            }
             attendees.add(new ParticipantMetadata(
                     attendeeId,
                     name,

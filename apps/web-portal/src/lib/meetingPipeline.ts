@@ -1,7 +1,7 @@
 import type { MeetingDetailResponse, MeetingOccurrenceStatus } from "@/api/types";
 
 export type MeetingPipelineStageId =
-  | "TRANSCRIPT"
+  | "CONVERSATION"
   | "AI_ANALYSIS"
   | "NOTES"
   | "REVIEW";
@@ -50,15 +50,15 @@ export function draftNotesNeedingSubmit(detail: MeetingDetailResponse) {
   );
 }
 
-/** Derives post-meeting pipeline stages from meeting detail and transcript availability. */
+/** Derives post-meeting pipeline stages from meeting detail and conversation availability. */
 export function deriveMeetingPipelineStages(
   detail: MeetingDetailResponse,
-  hasTranscript: boolean,
+  hasConversation: boolean,
 ): MeetingPipelineStage[] {
   const status = detail.meeting.status;
   const failed = status === "FAILED";
 
-  const transcriptDone = hasTranscript;
+  const conversationDone = hasConversation;
   const analysisDone = hasArtifacts(detail) || noteHasContent(detail);
   const notesDone = noteHasContent(detail);
   const pendingApprovals = hasPendingNoteApprovals(detail);
@@ -84,12 +84,12 @@ export function deriveMeetingPipelineStages(
   }
 
   const postMeetingStarted =
-    POST_MEETING.includes(status) || status === "IN_PROGRESS" || hasTranscript;
+    POST_MEETING.includes(status) || status === "IN_PROGRESS" || hasConversation;
 
   return [
-    stage("TRANSCRIPT", transcriptDone, postMeetingStarted),
-    stage("AI_ANALYSIS", analysisDone, transcriptDone),
-    stage("NOTES", notesDone, analysisDone || transcriptDone),
+    stage("CONVERSATION", conversationDone, postMeetingStarted),
+    stage("AI_ANALYSIS", analysisDone, conversationDone),
+    stage("NOTES", notesDone, analysisDone || conversationDone),
     stage("REVIEW", reviewDone, notesDone),
   ];
 }

@@ -26,7 +26,7 @@ const MARKER_TONE: Record<MarkerKind, string> = {
   IMPORTANT: "bg-violet-100 text-violet-800 ring-violet-200",
 };
 
-export function TranscriptPanel({
+export function ConversationPanel({
   segments,
   speakers,
   qualityFlags,
@@ -91,7 +91,7 @@ export function TranscriptPanel({
     <section
       id="meeting-conversation"
       className="card-static flex min-h-[28rem] flex-col gap-4 p-4 sm:p-5 scroll-mt-20"
-      aria-label={t("meeting.transcript")}
+      aria-label={t("meeting.conversation")}
     >
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/60 pb-3">
         <div className="flex items-center gap-2">
@@ -99,8 +99,8 @@ export function TranscriptPanel({
             <MessageSquare className="h-4 w-4" aria-hidden />
           </span>
           <div>
-            <h2 className="text-sm font-bold text-slate-900">{t("meeting.transcriptLive")}</h2>
-            <p className="text-xs text-slate-500">{t("meeting.transcriptLiveHint")}</p>
+            <h2 className="text-sm font-bold text-slate-900">{t("meeting.conversationLive")}</h2>
+            <p className="text-xs text-slate-500">{t("meeting.conversationLiveHint")}</p>
           </div>
         </div>
         {highlightEvidence ? (
@@ -117,7 +117,7 @@ export function TranscriptPanel({
             className="input-field"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={t("filter.transcriptPlaceholder")}
+            placeholder={t("filter.conversationPlaceholder")}
           />
         </label>
         <label className="min-w-[10rem]">
