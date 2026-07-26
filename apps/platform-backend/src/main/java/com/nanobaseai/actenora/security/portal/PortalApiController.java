@@ -823,8 +823,11 @@ public class PortalApiController {
             return page(List.of(), cursor, limit);
         }
         UUID tenantId = TenantSecurityContext.require().tenantId().value();
+        PortalAuditEventPresenter presenter = new PortalAuditEventPresenter(identityApi, meetingApi);
+        Map<UUID, String> actorNames = PortalAuditEventPresenter.preloadActorNames(tenantId, identityApi);
         List<AuditEventView> items = auditApi.get().listForTenant(tenantId).stream()
-                .map(PortalApiController::toAuditEventView)
+                .sorted((a, b) -> b.occurredAt().compareTo(a.occurredAt()))
+                .map(entry -> presenter.present(entry, tenantId, actorNames))
                 .toList();
         return page(items, cursor, limit);
     }
@@ -903,17 +906,6 @@ public class PortalApiController {
                 job.taskType(),
                 job.startedAt().map(Instant::toString).orElse(job.queuedAt().toString()),
                 job.completedAt().map(Instant::toString).orElse(null)
-        );
-    }
-
-    private static AuditEventView toAuditEventView(AuditApi.AuditTimelineEntry entry) {
-        return new AuditEventView(
-                entry.id(),
-                entry.action(),
-                entry.actorId(),
-                entry.resourceType(),
-                entry.resourceId().toString(),
-                entry.occurredAt().toString()
         );
     }
 
@@ -1550,7 +1542,8 @@ public class PortalApiController {
     public record AuditEventView(
             UUID id,
             String action,
-            String actor,
+            String actorName,
+            String resourceLabel,
             String resourceType,
             String resourceId,
             String at

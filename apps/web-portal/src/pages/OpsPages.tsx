@@ -487,7 +487,7 @@ export function OperationsCenterPage() {
 export function AuditViewerPage() {
   const auth = useAuth();
   const api = useApi();
-  const { t } = useI18n();
+  const { t, tb } = useI18n();
   const [cursor, setCursor] = useState<string | undefined>();
   const params = useMemo(() => ({ cursor, limit: 25 }), [cursor]);
   const q = useQuery({
@@ -507,14 +507,12 @@ export function AuditViewerPage() {
       {!q.isLoading && !q.data?.items.length ? <StubBanner featureKey="audit" /> : null}
       <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("audit.description")}>
         <DataTable
-          headers={[t("table.action"), t("table.actor"), t("table.resource"), t("table.at")]}
+          headers={[t("table.action"), t("table.actor"), t("table.subject"), t("table.at")]}
           rows={
             q.data?.items.map((e) => [
-              e.action,
-              e.actor,
-              <span key={`${e.id}-r`} className="font-mono text-xs text-slate-500">
-                {e.resourceType}/{e.resourceId}
-              </span>,
+              tb("auditAction", e.action),
+              e.actorName,
+              e.resourceLabel,
               <span key={`${e.id}-a`} className="text-slate-500">
                 {new Date(e.at).toLocaleString()}
               </span>,

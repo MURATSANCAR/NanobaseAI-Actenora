@@ -304,7 +304,8 @@ export interface OperationsOverview {
 export interface AuditEvent {
   id: string;
   action: string;
-  actor: string;
+  actorName: string;
+  resourceLabel: string;
   resourceType: string;
   resourceId: string;
   at: string;
