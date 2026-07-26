@@ -15,7 +15,7 @@ export function LoginPage() {
           <Mic className="h-7 w-7" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-violet-900">Actenora</h1>
+          <h1 className="text-2xl font-bold text-violet-900">{t("brand.name")}</h1>
           <p className="mt-2 text-sm text-slate-600">{t("auth.signInDescription")}</p>
         </div>
         <button type="button" className="btn-primary w-full" onClick={() => void login()}>

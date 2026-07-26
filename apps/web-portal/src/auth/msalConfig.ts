@@ -1,5 +1,6 @@
 import type { Configuration } from "@azure/msal-browser";
 import { resolvePortalAuthMode } from "@/auth/portalAuthMode";
+import { PRODUCT_BRAND } from "@/config/brand";
 
 function portalBasePath(env?: Partial<ImportMetaEnv>): string {
   const meta = env ?? ((typeof import.meta !== "undefined" ? import.meta.env : {}) as ImportMetaEnv);
@@ -36,7 +37,7 @@ export function buildMsalConfig(env?: Partial<ImportMetaEnv>): Configuration | n
   const tenantId = meta.VITE_ENTRA_TENANT_ID?.trim() || "common";
   if (!clientId) {
     throw new MsalConfigError(
-      "NanobaseAI sign-in is misconfigured: VITE_ENTRA_CLIENT_ID is required when VITE_PORTAL_AUTH_MODE=msal",
+      `${PRODUCT_BRAND} sign-in is misconfigured: VITE_ENTRA_CLIENT_ID is required when VITE_PORTAL_AUTH_MODE=msal`,
     );
   }
 
@@ -62,7 +63,7 @@ export function msalApiScopes(env?: Partial<ImportMetaEnv>): string[] {
   const scope = meta.VITE_ENTRA_API_SCOPE?.trim();
   if (!scope) {
     throw new MsalConfigError(
-      "NanobaseAI sign-in is misconfigured: VITE_ENTRA_API_SCOPE is required when VITE_PORTAL_AUTH_MODE=msal",
+      `${PRODUCT_BRAND} sign-in is misconfigured: VITE_ENTRA_API_SCOPE is required when VITE_PORTAL_AUTH_MODE=msal`,
     );
   }
   return [scope];

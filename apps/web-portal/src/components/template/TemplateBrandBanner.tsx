@@ -1,12 +1,11 @@
-import { Globe, Sparkles } from "lucide-react";
+import { Sparkles, Globe } from "lucide-react";
 import { useI18n } from "@/i18n";
+import { PRODUCT_WEBSITE_LABEL, PRODUCT_WEBSITE_URL } from "@/config/brand";
 
-export const NANOBASE_WEBSITE_URL = "https://nanobase.ai";
-export const NANOBASE_WEBSITE_LABEL = "nanobase.ai";
+export { PRODUCT_WEBSITE_URL, PRODUCT_WEBSITE_LABEL };
 
 /**
- * Branded document header: NanobaseAI mark + wordmark + AI-generated slogan.
- * Colorful but professional — mirrors the portal AI gradient identity.
+ * Branded document header: EasyMeeting mark + wordmark + AI-generated slogan.
  */
 export function TemplateBrandHeader({ compact = false }: { compact?: boolean }) {
   const { t } = useI18n();
@@ -33,7 +32,7 @@ export function TemplateBrandHeader({ compact = false }: { compact?: boolean }) 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className={compact ? "text-sm font-bold tracking-tight" : "text-base font-bold tracking-tight"}>
-              NanobaseAI
+              {t("brand.name")}
             </span>
             <span className="rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ring-1 ring-white/30">
               {t("templates.brand.aiBadge")}
@@ -49,7 +48,7 @@ export function TemplateBrandHeader({ compact = false }: { compact?: boolean }) 
 }
 
 /**
- * Branded document footer: NanobaseAI mark + website link + AI note.
+ * Branded document footer: EasyMeeting mark + website link + AI note.
  */
 export function TemplateBrandFooter({ pageLabel }: { pageLabel?: string }) {
   const { t } = useI18n();
@@ -60,17 +59,17 @@ export function TemplateBrandFooter({ pageLabel }: { pageLabel?: string }) {
         <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-sky-500" aria-hidden>
           <Sparkles className="h-3 w-3" />
         </span>
-        <span className="text-[10px] font-semibold">NanobaseAI</span>
+        <span className="text-[10px] font-semibold">{t("brand.name")}</span>
         <span className="text-[9px] text-white/60">{t("templates.brand.footerNote")}</span>
       </div>
       <a
-        href={NANOBASE_WEBSITE_URL}
+        href={PRODUCT_WEBSITE_URL}
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center gap-1 text-[10px] font-medium text-sky-300 hover:text-sky-200"
       >
         <Globe className="h-3 w-3" aria-hidden />
-        {NANOBASE_WEBSITE_LABEL}
+        {PRODUCT_WEBSITE_LABEL}
       </a>
       {pageLabel ? <span className="text-[9px] text-white/50">{pageLabel}</span> : null}
     </div>

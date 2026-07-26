@@ -41,6 +41,7 @@ import com.nanobaseai.actenora.aiprocessing.application.scheduling.FairJobSchedu
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.MultiModelRouter;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.LocalProviderModelRuntimeAdapter;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.Qwen27BModelAdapter;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.DefaultModelCatalogBootstrap;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.InMemoryAiAttemptRepository;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.InMemoryAiJobRepository;
@@ -177,16 +178,32 @@ public class AiProcessingPlatformConfiguration {
             SwappableLocalModelProvider provider,
             ModelDefinitionRepository modelDefinitions
     ) {
-        UUID modelDefinitionId = modelDefinitions.findAll().stream()
-                .filter(definition -> definition.acceptsNewWork())
+        var selected = modelDefinitions.findAll().stream()
+                .filter(ModelDefinition::acceptsNewWork)
                 .filter(definition -> definition.supportsCapability(
                         com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType.TRANSCRIPT_EXTRACTION)
                         || definition.supportsCapability(
                         com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType.FINAL_NOTE))
+                .findFirst();
+        UUID modelDefinitionId = selected
                 .map(ModelDefinition::id)
-                .findFirst()
                 .orElse(DefaultModelRoleBootstrap.QWEN27_FINAL_MODEL_ID);
-        return LocalProviderModelRuntimeAdapter.qwen27B(provider, modelDefinitionId);
+        String servedModelId = selected
+                .map(ModelDefinition::servedModelId)
+                .filter(id -> id != null && !id.isBlank())
+                .orElse(Qwen27BModelAdapter.SERVED_MODEL_ID);
+        String modelVersion = servedModelId + "@local-v1";
+        return new LocalProviderModelRuntimeAdapter(
+                provider,
+                new com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelDescriptor(
+                        selected.map(ModelDefinition::modelKey).orElse(Qwen27BModelAdapter.CATALOG_ID),
+                        servedModelId,
+                        modelVersion,
+                        selected.map(ModelDefinition::contextWindow).orElse(Qwen27BModelAdapter.CONTEXT_WINDOW),
+                        Qwen27BModelAdapter.MAX_OUTPUT
+                ),
+                modelDefinitionId
+        );
     }
 
     @Bean

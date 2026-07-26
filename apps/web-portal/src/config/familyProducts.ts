@@ -1,3 +1,5 @@
+import { PRODUCT_BRAND } from "@/config/brand";
+
 export interface FamilyProduct {
   key: "qa" | "bi" | "actenora";
   label: string;
@@ -17,13 +19,13 @@ function env(): Partial<ImportMetaEnv> | undefined {
   }
 }
 
-/** NanobaseAI product family links shown in the global top bar (Actenora first). */
+/** EasyMeeting product family links shown in the global top bar. */
 export function familyProducts(): FamilyProduct[] {
   const meta = env();
   return [
     {
       key: "actenora",
-      label: "Actenora",
+      label: PRODUCT_BRAND,
       href: meta?.VITE_NANOBI_ACTENORA_URL ?? DEFAULT_ACTENORA_URL,
       description: "Teams meeting intelligence",
     },

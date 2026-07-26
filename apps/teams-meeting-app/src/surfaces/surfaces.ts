@@ -29,7 +29,7 @@ export function renderSurfaceHtml(view: SurfaceViewModel): string {
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>${view.title} · Actenora</title>
+  <title>${view.title} · EasyMeeting</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
 </head>
 <body data-surface="${view.surface}" data-meeting-id="${view.meetingId}">

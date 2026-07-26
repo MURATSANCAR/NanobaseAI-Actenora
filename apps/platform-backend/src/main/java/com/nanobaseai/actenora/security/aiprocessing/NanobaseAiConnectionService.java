@@ -194,16 +194,13 @@ public final class NanobaseAiConnectionService {
             if (id == null || id.isBlank()) {
                 continue;
             }
-            String cleaned = NanobaseAiBrandSanitizer.sanitize(id.trim())
-                    .replaceAll("\\s+", "-")
-                    .toLowerCase(Locale.ROOT);
-            if (cleaned.isBlank() || "nanobaseai".equals(cleaned)) {
-                out.add("nanobaseai-primary");
-            } else if (!cleaned.startsWith("nanobaseai")) {
-                out.add("nanobaseai-" + cleaned.replaceAll("[^a-z0-9._-]", ""));
-            } else {
-                out.add(cleaned);
+            // Served model ids are opaque gateway identifiers (e.g. nanobase-qwen36-35b-a3b-mtp).
+            // Do not brand-sanitize them — that rewrites vendor substrings and breaks provider routing.
+            String cleaned = id.trim().replaceAll("\\s+", "-");
+            if (cleaned.isBlank()) {
+                continue;
             }
+            out.add(cleaned);
         }
         if (out.isEmpty()) {
             out.add("nanobaseai-primary");

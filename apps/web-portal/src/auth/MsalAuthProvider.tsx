@@ -16,6 +16,7 @@ import {
 } from "react";
 import { buildMsalConfig, isMsalAuthEnabled, msalApiScopes, MsalConfigError } from "./msalConfig";
 import { setMsalAuthHeaderProvider } from "./authHeaders";
+import { PRODUCT_BRAND } from "@/config/brand";
 
 type MsalAuthContextValue = {
   enabled: boolean;
@@ -34,7 +35,7 @@ function getMsalInstance(): PublicClientApplication {
   if (pcaSingleton) return pcaSingleton;
   const config = buildMsalConfig();
   if (!config) {
-    throw new MsalConfigError("NanobaseAI sign-in is not enabled");
+    throw new MsalConfigError(`${PRODUCT_BRAND} sign-in is not enabled`);
   }
   pcaSingleton = new PublicClientApplication(config);
   return pcaSingleton;
@@ -81,7 +82,7 @@ export function MsalAuthProvider({ children }: { children: ReactNode }) {
       const message =
         err instanceof MsalConfigError
           ? err.message
-          : "NanobaseAI sign-in is misconfigured";
+          : `${PRODUCT_BRAND} sign-in is misconfigured`;
       setConfigError(message);
       setReady(true);
       setMsalAuthHeaderProvider(null);

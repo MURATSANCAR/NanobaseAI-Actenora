@@ -15,8 +15,8 @@ import {
   NANOBASE_WEBSITE_LABEL,
   NANOBASE_WEBSITE_URL,
 } from "@/components/template/TemplateBrandBanner";
-import type { DesignSchema, TemplateComponentType } from "@/types/template";
 import { useI18n } from "@/i18n";
+import type { DesignSchema, TemplateComponentType } from "@/types/template";
 import { ArrowLeft, Globe, Sparkles } from "lucide-react";
 
 type MockScenario =
@@ -134,7 +134,7 @@ export function TemplateMockupsPage() {
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-2xl font-bold tracking-tight">NanobaseAI</h2>
+              <h2 className="text-2xl font-bold tracking-tight">{t("brand.name")}</h2>
               <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ring-white/30">
                 {t("templates.brand.aiBadge")}
               </span>
@@ -230,7 +230,7 @@ export function TemplateMockupsPage() {
               <Sparkles className="h-4 w-4" />
             </span>
             <div>
-              <p className="text-sm font-semibold">NanobaseAI</p>
+              <p className="text-sm font-semibold">{t("brand.name")}</p>
               <p className="text-[11px] text-white/60">{t("templates.brand.footerNote")}</p>
             </div>
           </div>

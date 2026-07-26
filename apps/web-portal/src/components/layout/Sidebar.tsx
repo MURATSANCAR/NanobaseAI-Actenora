@@ -88,7 +88,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <AiOrb size="lg" />
               <div className="min-w-0">
                 <h1 className="flex items-center gap-1.5 truncate text-base font-bold leading-tight text-violet-900">
-                  Actenora
+                  {t("brand.name")}
                   <Sparkles className="h-4 w-4 text-violet-500" />
                 </h1>
                 <p className="truncate text-xs text-slate-500">{t("nav.webPortal")}</p>

@@ -84,7 +84,9 @@ public final class JdbcAiJobRepository implements AiJobRepository {
 
     @Override
     public void save(AiJob job) {
-        if (job.version() == 0L) {
+        // New jobs start at version 0, but applyRoute()/touch() bumps version before the
+        // first persist. Treat missing row as insert (same pattern as JdbcTranscriptRepository).
+        if (findById(job.id()).isEmpty()) {
             insert(job);
             return;
         }
