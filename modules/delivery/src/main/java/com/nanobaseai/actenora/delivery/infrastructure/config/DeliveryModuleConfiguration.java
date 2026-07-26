@@ -19,6 +19,7 @@ import com.nanobaseai.actenora.delivery.infrastructure.approval.InMemoryNoteAppr
 import com.nanobaseai.actenora.delivery.infrastructure.audit.RecordingDeliveryAuditPort;
 import com.nanobaseai.actenora.delivery.infrastructure.mail.MailHogMailProvider;
 import com.nanobaseai.actenora.delivery.infrastructure.mail.MicrosoftGraphMailProvider;
+import com.nanobaseai.actenora.delivery.infrastructure.mail.SmtpMailProvider;
 import com.nanobaseai.actenora.delivery.infrastructure.pdf.InMemoryPdfAttachmentPort;
 import com.nanobaseai.actenora.delivery.infrastructure.persistence.InMemoryDeliveryOrderRepository;
 import com.nanobaseai.actenora.delivery.infrastructure.persistence.InMemoryDeliveryRequestRepository;
@@ -31,6 +32,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.mail.javamail.JavaMailSender;
 
 import java.time.Clock;
 
@@ -75,6 +77,18 @@ public class DeliveryModuleConfiguration {
             @Value("${actenora.delivery.mail.from:noreply@actenora.local}") String fromAddress
     ) {
         return new MailHogMailProvider(host, port, fromAddress, clock::now);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(name = "actenora.delivery.mail.provider", havingValue = "smtp")
+    DeliveryMailProvider smtpMailProvider(
+            JavaMailSender mailSender,
+            InstantClock clock,
+            @Value("${actenora.delivery.mail.from:hello@nanobase.ai}") String fromAddress,
+            @Value("${actenora.delivery.mail.from-display-name:Nanobase Actenora}") String fromDisplayName
+    ) {
+        return new SmtpMailProvider(mailSender, fromAddress, fromDisplayName, clock::now);
     }
 
     @Bean

@@ -25,6 +25,16 @@ spring:
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          ssl:
+            enable: ${MAIL_SMTP_SSL_ENABLE:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
   servlet:
     multipart:
       max-file-size: ${ACTENORA_UPLOAD_MAX_FILE_SIZE:25MB}
@@ -121,9 +131,10 @@ actenora:
       secret: ${ACTENORA_PORTAL_LINK_SECRET:actenora-local-portal-secret}
       base-url: ${ACTENORA_PORTAL_LINK_BASE_URL:https://portal.nanobase.ai/actenora}
     mail:
-      # mailhog (local) | microsoft-graph (prod CERTIFICATE path)
+      # mailhog (local) | smtp (Hostinger/production) | microsoft-graph
       provider: ${ACTENORA_DELIVERY_MAIL_PROVIDER:mailhog}
       from: ${ACTENORA_DELIVERY_MAIL_FROM:noreply@actenora.local}
+      from-display-name: ${ACTENORA_DELIVERY_MAIL_FROM_DISPLAY_NAME:Nanobase Actenora}
       graph-sender: ${ACTENORA_DELIVERY_GRAPH_SENDER:}
   portal:
     auth:

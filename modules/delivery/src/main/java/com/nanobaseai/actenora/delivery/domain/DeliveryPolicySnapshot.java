@@ -20,6 +20,7 @@ public record DeliveryPolicySnapshot(
 
     public static final String PROVIDER_MAILHOG = "MAILHOG";
     public static final String PROVIDER_MICROSOFT_GRAPH = "MICROSOFT_GRAPH";
+    public static final String PROVIDER_SMTP = "SMTP";
 
     public DeliveryPolicySnapshot {
         Objects.requireNonNull(signedLinkTtl, "signedLinkTtl");
