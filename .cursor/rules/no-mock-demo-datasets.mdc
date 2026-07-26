@@ -1,0 +1,28 @@
+---
+description: Forbid mock/demo/dummy business datasets in product and runtime code
+alwaysApply: true
+---
+
+# No mock / demo / dummy datasets
+
+## Rule
+
+Actenora must **never** ship or regenerate fake business datasets for product, local runtime, Compose, or portal UX.
+
+Forbidden in `src/main`, portal runtime, and ops configs:
+
+- Seed runners that create demo tenants, meetings, notes, users, or transcripts
+- In-memory portal/API stores with canned meetings (“Q3 roadmap”, “Ada Admin”, etc.)
+- Hardcoded demo personas, sample meeting lists, or fixture tenants as product defaults
+- `VITE_API_MODE=mock` or any client that invents domain data instead of calling the backend
+- `*LocalSeed*`, `*DemoData*`, `*Dummy*`, `sampleMeeting`, canned `resetMockStore` product paths
+
+## Allowed (not datasets)
+
+- Unit/integration **test** fixtures under `src/test` / `*.test.*` (minimal, scoped to the assertion)
+- Auth/LLM **adapters** named Mock* that talk to real empty stores (e.g. MockIdentityProvider) — still no canned meetings/notes
+- Empty lists / 404 / stub HTTP composition headers when data does not exist yet
+
+## If asked to add demo data
+
+Refuse. Use real Graph/Teams ingest, admin provisioning APIs, or explicit operator-supplied env credentials. Never recreate deleted seed runners or `api/mock/data` stores.

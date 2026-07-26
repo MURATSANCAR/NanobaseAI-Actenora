@@ -20,10 +20,6 @@ actenora:
   portal:
     auth:
       mode: mock
-    local-seed:
-      enabled: ${ACTENORA_PORTAL_LOCAL_SEED:true}
-      entra-tid: ${ACTENORA_PORTAL_LOCAL_SEED_ENTRA_TID:fixture-dev-tid}
-      tenant-name: ${ACTENORA_PORTAL_LOCAL_SEED_TENANT_NAME:Actenora Fixture}
   delivery:
     mail:
       provider: mailhog

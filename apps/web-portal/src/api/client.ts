@@ -1,5 +1,4 @@
 import type { ApiClient, PortalUser } from "./types";
-import { createMockApiClient } from "./mock/client";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -8,27 +7,33 @@ export class ApiError extends Error {
   constructor(status: number, code: string, message: string) {
     super(message);
     this.name = "ApiError";
-    this.status = status;
     this.code = code;
+    this.status = status;
   }
 }
 
-/** Local mock-auth headers — non-prod only; backend rejects mock auth mode on prod (Wave 4). */
+/**
+ * Dev-only mock IdP headers when backend auth mode is mock.
+ * Values must come from environment — no built-in demo identity defaults.
+ */
 export function mockAuthHeaders(env?: Partial<ImportMetaEnv>): Record<string, string> {
   const meta = env ?? ((typeof import.meta !== "undefined" ? import.meta.env : undefined) as
     | ImportMetaEnv
     | undefined);
-  const oid = meta?.VITE_MOCK_ENTRA_OID ?? "local-oid-admin";
-  const tid = meta?.VITE_MOCK_ENTRA_TID ?? "local-dev-tid";
-  const email = meta?.VITE_MOCK_EMAIL ?? "ada@actenora.local";
-  const name = meta?.VITE_MOCK_DISPLAY_NAME ?? "Ada Admin";
-  const globalAdmin = meta?.VITE_MOCK_GLOBAL_ADMIN ?? "true";
+  const oid = meta?.VITE_MOCK_ENTRA_OID;
+  const tid = meta?.VITE_MOCK_ENTRA_TID;
+  const email = meta?.VITE_MOCK_EMAIL;
+  const name = meta?.VITE_MOCK_DISPLAY_NAME;
+  const globalAdmin = meta?.VITE_MOCK_GLOBAL_ADMIN;
+  if (!oid || !tid || !email || !name) {
+    return {};
+  }
   return {
     "X-Mock-Entra-Oid": oid,
     "X-Mock-Entra-Tid": tid,
     "X-Mock-Email": email,
     "X-Mock-Display-Name": name,
-    "X-Mock-Global-Admin": globalAdmin,
+    "X-Mock-Global-Admin": globalAdmin ?? "false",
   };
 }
 
@@ -102,18 +107,14 @@ function createHttpApiClient(baseUrl: string): ApiClient {
   };
 }
 
-export type ApiMode = "mock" | "http";
+/** Portal talks only to the real platform BFF — no in-memory demo API. */
+export type ApiMode = "http";
 export type PortalAuthMode = "mock" | "msal";
 
-/**
- * Portal write actions when HTTP BFF is wired and auth is mock-local or MSAL Bearer.
- * In-memory mock API mode always enables mutations for local UX.
- */
 export function portalMutationsEnabled(
   mode: ApiMode,
   portalAuthMode: PortalAuthMode = resolvePortalAuthMode(),
 ): boolean {
-  if (mode === "mock") return true;
   return mode === "http" && (portalAuthMode === "mock" || portalAuthMode === "msal");
 }
 
@@ -132,12 +133,17 @@ export function createApiClient(opts?: {
   const meta = (typeof import.meta !== "undefined" ? import.meta.env : undefined) as
     | ImportMetaEnv
     | undefined;
-  const mode = opts?.mode ?? ((meta?.VITE_API_MODE as ApiMode | undefined) ?? "mock");
-  if (mode === "http") {
-    const baseUrl = opts?.baseUrl ?? meta?.VITE_API_BASE_URL ?? "";
-    return createHttpApiClient(baseUrl.replace(/\/$/, ""));
+  const mode = opts?.mode ?? ((meta?.VITE_API_MODE as ApiMode | undefined) ?? "http");
+  if (mode !== "http") {
+    throw new Error(
+      `Unsupported VITE_API_MODE=${String(mode)}. Portal requires http against platform-backend (no mock datasets).`,
+    );
   }
-  return createMockApiClient("ADMIN");
+  const baseUrl = opts?.baseUrl ?? meta?.VITE_API_BASE_URL ?? "";
+  if (!baseUrl) {
+    throw new Error("VITE_API_BASE_URL is required — portal has no in-memory demo API.");
+  }
+  return createHttpApiClient(baseUrl.replace(/\/$/, ""));
 }
 
 export const queryKeys = {

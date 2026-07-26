@@ -9,12 +9,16 @@ type ApiContextValue = {
 
 const ApiContext = createContext<ApiContextValue | null>(null);
 
-function resolveMode(client?: ApiClient, explicit?: ApiMode): ApiMode {
+function resolveMode(explicit?: ApiMode): ApiMode {
   if (explicit) return explicit;
   const meta = (typeof import.meta !== "undefined" ? import.meta.env : undefined) as
     | ImportMetaEnv
     | undefined;
-  return (meta?.VITE_API_MODE as ApiMode | undefined) ?? "mock";
+  const raw = meta?.VITE_API_MODE;
+  if (raw && raw !== "http") {
+    throw new Error(`Unsupported VITE_API_MODE=${raw}; only http is allowed`);
+  }
+  return "http";
 }
 
 export function ApiProvider({
@@ -27,7 +31,7 @@ export function ApiProvider({
   children: ReactNode;
 }) {
   const value = useMemo<ApiContextValue>(() => {
-    const resolvedMode = resolveMode(client, mode);
+    const resolvedMode = resolveMode(mode);
     return {
       client: client ?? createApiClient({ mode: resolvedMode }),
       mode: resolvedMode,

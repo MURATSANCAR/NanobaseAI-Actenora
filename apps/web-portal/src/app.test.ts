@@ -19,22 +19,31 @@ import {
   filterSegments,
   findEvidenceIndex,
 } from "./lib/filters.ts";
-import { createMockApiClient } from "./api/mock/client.ts";
-import { IDS, resetMockStore } from "./api/mock/data.ts";
 
 test("App export is defined", () => {
   assert.equal(typeof assertDefined(App), "function");
 });
 
-test("FAZ 33 mock auth headers default to local seed identity", () => {
-  const headers = mockAuthHeaders({});
-  assert.equal(headers["X-Mock-Entra-Oid"], "local-oid-admin");
-  assert.equal(headers["X-Mock-Entra-Tid"], "local-dev-tid");
+test("mock auth headers are empty without env identity", () => {
+  assert.deepEqual(mockAuthHeaders({}), {});
+});
+
+test("mock auth headers pass through env identity only", () => {
+  const headers = mockAuthHeaders({
+    VITE_MOCK_ENTRA_OID: "oid-1",
+    VITE_MOCK_ENTRA_TID: "tid-1",
+    VITE_MOCK_EMAIL: "user@example.com",
+    VITE_MOCK_DISPLAY_NAME: "User",
+    VITE_MOCK_GLOBAL_ADMIN: "true",
+  } as Partial<ImportMetaEnv>);
+  assert.equal(headers["X-Mock-Entra-Oid"], "oid-1");
+  assert.equal(headers["X-Mock-Entra-Tid"], "tid-1");
   assert.equal(headers["X-Mock-Global-Admin"], "true");
 });
 
-test("FAZ 33 createApiClient defaults to mock mode without VITE_API_MODE", () => {
-  const api = createApiClient({ mode: "mock" });
+test("createApiClient requires http base URL", () => {
+  assert.throws(() => createApiClient({ mode: "http", baseUrl: "" }), /VITE_API_BASE_URL/);
+  const api = createApiClient({ mode: "http", baseUrl: "http://localhost:8080" });
   assert.equal(typeof api.getCurrentUser, "function");
   assert.equal(typeof api.listMeetings, "function");
 });
@@ -74,28 +83,28 @@ test("private note access is role and author scoped", () => {
   const memberPerms = permissionsForRole("MEMBER");
   const adminPerms = permissionsForRole("ADMIN");
   const viewerPerms = permissionsForRole("VIEWER");
-  const mia = IDS.USER_IDS.member;
-  const omar = IDS.USER_IDS.approver;
+  const author = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+  const other = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
-  assert.equal(canAccessPrivateNote(memberPerms, mia, mia), true);
-  assert.equal(canAccessPrivateNote(memberPerms, omar, mia), false);
-  assert.equal(canAccessPrivateNote(adminPerms, omar, mia), true);
-  assert.equal(canAccessPrivateNote(viewerPerms, mia, mia), false);
+  assert.equal(canAccessPrivateNote(memberPerms, author, author), true);
+  assert.equal(canAccessPrivateNote(memberPerms, other, author), false);
+  assert.equal(canAccessPrivateNote(adminPerms, other, author), true);
+  assert.equal(canAccessPrivateNote(viewerPerms, author, author), false);
 });
 
 test("meeting and transcript filters", () => {
   const meetings = [
-    { title: "Q3 roadmap sync", status: "READY" },
-    { title: "Customer escalation review", status: "PROCESSING" },
+    { title: "alpha sync", status: "READY" },
+    { title: "beta review", status: "PROCESSING" },
   ];
-  assert.equal(applyMeetingListFilter(meetings, { q: "roadmap" }).length, 1);
+  assert.equal(applyMeetingListFilter(meetings, { q: "alpha" }).length, 1);
   assert.equal(applyMeetingListFilter(meetings, { status: "PROCESSING" }).length, 1);
 
   const segments = [
-    { id: "1", speaker: "Ada", text: "decision language", startMs: 0, endMs: 1, markers: ["DECISION"] },
-    { id: "2", speaker: "Omar", text: "action language", startMs: 2, endMs: 3, markers: ["ACTION"] },
+    { id: "1", speaker: "A", text: "decision language", startMs: 0, endMs: 1, markers: ["DECISION"] },
+    { id: "2", speaker: "B", text: "action language", startMs: 2, endMs: 3, markers: ["ACTION"] },
   ];
-  assert.equal(filterSegments(segments, { speaker: "Omar" }).length, 1);
+  assert.equal(filterSegments(segments, { speaker: "B" }).length, 1);
   assert.equal(filterSegments(segments, { marker: "DECISION" }).length, 1);
   assert.equal(filterSegments(segments, { q: "action" }).length, 1);
 });
@@ -112,59 +121,33 @@ test("evidence navigation index and scroll offset", () => {
   assert.ok(evidenceScrollOffset(10, 72, 300) > 0);
 });
 
-test("approval is applied only when pending; optimistic only for safe ops", async () => {
-  resetMockStore();
+test("approval is applied only when pending; optimistic only for safe ops", () => {
   const pending = {
-    id: IDS.APPROVAL_1,
+    id: "p1",
     artifactType: "DECISION" as const,
-    artifactId: IDS.DECISION_1,
+    artifactId: "d1",
     status: "PENDING" as const,
     decidedBy: null,
     decidedAt: null,
     comment: null,
   };
-  const approved = applyApprovalDecision(pending, "APPROVE", "Omar Approver", "2026-07-25T00:00:00Z");
+  const approved = applyApprovalDecision(pending, "APPROVE", "approver", "2026-07-25T00:00:00Z");
   assert.equal(approved.status, "APPROVED");
-  assert.equal(approved.decidedBy, "Omar Approver");
+  assert.equal(approved.decidedBy, "approver");
   assert.throws(() => applyApprovalDecision(approved, "REJECT", "x", "t"));
 
   assert.equal(isOptimisticSafe("completeAction"), true);
   assert.equal(isOptimisticSafe("updateMeetingNote"), true);
   assert.equal(isOptimisticSafe("decideApproval"), false);
-
-  const api = createMockApiClient("APPROVER");
-  const result = await api.decideApproval(IDS.APPROVAL_1, "APPROVE", "looks good");
-  assert.equal(result.status, "APPROVED");
-  const decisions = await api.listDecisions();
-  assert.equal(decisions.items[0]?.status, "APPROVED");
 });
 
-test("model admin permissions expose routing only for admin/ops users", async () => {
-  resetMockStore();
-  const memberApi = createMockApiClient("MEMBER");
-  const member = await memberApi.getCurrentUser();
-  assert.equal(canViewModelRouting(member.permissions), false);
-  assert.equal(canManageModels(member.permissions), false);
-
-  const adminApi = createMockApiClient("ADMIN");
-  const admin = await adminApi.getCurrentUser();
-  assert.equal(canViewModelRouting(admin.permissions), true);
-  assert.equal(canManageModels(admin.permissions), true);
-
-  const health = await adminApi.getModelHealth();
-  assert.ok(health.routing.roles.length > 0);
-});
-
-test("mock meeting detail includes three-panel payload and private notes", async () => {
-  resetMockStore();
-  const api = createMockApiClient("MEMBER");
-  const detail = await api.getMeetingDetail(IDS.MEETING_A);
-  assert.ok(detail.participants.length);
-  assert.ok(detail.decisions.length);
-  assert.ok(detail.notes.some((n) => n.visibility === "PRIVATE"));
-  const transcript = await api.getMeetingTranscript(IDS.MEETING_A);
-  const decisionsOnly = filterSegments(transcript.segments, { marker: "DECISION" });
-  assert.equal(findEvidenceIndex(decisionsOnly, IDS.SEG_1) >= 0, true);
+test("model admin permissions expose routing only for admin/ops users", () => {
+  const member = permissionsForRole("MEMBER");
+  const admin = permissionsForRole("ADMIN");
+  assert.equal(canViewModelRouting(member), false);
+  assert.equal(canManageModels(member), false);
+  assert.equal(canViewModelRouting(admin), true);
+  assert.equal(canManageModels(admin), true);
 });
 
 test("backend enum values translate via locale catalogs", () => {
@@ -173,8 +156,7 @@ test("backend enum values translate via locale catalogs", () => {
   assert.equal(translateBackend("tr", "meetingStatus", "UNKNOWN"), "UNKNOWN");
 });
 
-test("portal mutations enabled for mock API and HTTP+MSAL/mock auth", () => {
-  assert.equal(portalMutationsEnabled("mock"), true);
+test("portal mutations enabled only for HTTP with mock or msal auth", () => {
   assert.equal(portalMutationsEnabled("http", "mock"), true);
   assert.equal(portalMutationsEnabled("http", "msal"), true);
 });

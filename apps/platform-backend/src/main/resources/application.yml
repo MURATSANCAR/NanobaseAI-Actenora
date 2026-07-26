@@ -126,11 +126,6 @@ actenora:
     auth:
       # mock = X-Mock-* headers (local); msal = Entra Bearer via SPA (prod)
       mode: ${ACTENORA_PORTAL_AUTH_MODE:mock}
-    local-seed:
-      # Only enable on local profile (see application-local.yml)
-      enabled: ${ACTENORA_PORTAL_LOCAL_SEED:false}
-      entra-tid: ${ACTENORA_PORTAL_LOCAL_SEED_ENTRA_TID:local-dev-tid}
-      tenant-name: ${ACTENORA_PORTAL_LOCAL_SEED_TENANT_NAME:Actenora Local}
   microsoft-graph:
     # Bounded context + its Graph notification webhook are disabled locally by default (FAZ 32)
     enabled: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:false}
