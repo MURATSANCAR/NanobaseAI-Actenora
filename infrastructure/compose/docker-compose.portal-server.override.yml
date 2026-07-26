@@ -25,6 +25,7 @@ services:
     ports: !override []
 
   platform-backend:
+    image: actenora-platform-backend:graph-fix
     build:
       context: .
       dockerfile: Dockerfile.runtime

@@ -4,7 +4,6 @@ import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeWorkConsumer;
-import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventMessagingConfig;
@@ -41,7 +40,6 @@ public class EventBackbonePlatformConfiguration {
     EventBackbone platformEventBackbone(
             MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
             NoteApprovedForLedgerHandler noteApprovedForLedgerHandler,
-            ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
             ObjectProvider<TranscriptReadyAiAdmissionHandler> transcriptReadyHandler,
             ObjectProvider<GraphChangeWorkConsumer> graphChangeWorkConsumer
     ) {
@@ -56,10 +54,7 @@ public class EventBackbonePlatformConfiguration {
 
         IdempotentEventConsumer transcriptConsumer = backbone.consumer("transcript");
         transport.subscribe(envelope -> dispatchOccurrenceUpserted(
-                envelope,
-                transcriptConsumer,
-                meetingOccurrenceUpsertedHandler,
-                transcriptPollScheduler.getIfAvailable()));
+                envelope, transcriptConsumer, meetingOccurrenceUpsertedHandler));
 
         IdempotentEventConsumer aiConsumer = backbone.consumer("ai-processing");
         transport.subscribe(envelope -> {
@@ -130,10 +125,8 @@ public class EventBackbonePlatformConfiguration {
     private static void dispatchOccurrenceUpserted(
             EventEnvelope envelope,
             IdempotentEventConsumer consumer,
-            MeetingOccurrenceUpsertedHandler handler,
-            TeamsTranscriptPollScheduler pollScheduler) {
-        EventBackboneConsumerDispatch.dispatchOccurrenceUpserted(
-                envelope, consumer, handler, pollScheduler);
+            MeetingOccurrenceUpsertedHandler handler) {
+        EventBackboneConsumerDispatch.dispatchOccurrenceUpserted(envelope, consumer, handler);
     }
 
     private static void dispatchTranscriptReady(
