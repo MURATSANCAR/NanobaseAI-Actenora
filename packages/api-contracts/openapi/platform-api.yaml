@@ -22,6 +22,9 @@ paths:
     get:
       operationId: getCurrentUser
       summary: Authenticated portal principal
+      description: >-
+        Domain identity surface returns UserView. Prefer GET /api/v1/portal/me for web-portal
+        PortalUser shapes (FAZ 33).
       responses:
         "200":
           description: Current user
@@ -29,6 +32,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PortalUser"
+
+  /api/v1/portal/me:
+    get:
+      operationId: getPortalCurrentUser
+      summary: Authenticated portal principal (portal BFF)
+      responses:
+        "200":
+          description: Current user in portal shape
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalUser"
+
+  /api/v1/portal/dashboard:
+    get:
+      operationId: getPortalDashboard
+      summary: Portal dashboard aggregates (BFF)
+      responses:
+        "200":
+          description: Dashboard snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardResponse"
+
+  /api/v1/portal/meetings:
+    get:
+      operationId: listPortalMeetings
+      summary: Cursor-paginated meeting list (portal BFF)
+      parameters:
+        - $ref: "#/components/parameters/StatusFilter"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Meeting page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingListResponse"
+
+  /api/v1/portal/meetings/{meetingId}:
+    get:
+      operationId: getPortalMeetingDetail
+      summary: Full meeting detail for three-panel view (portal BFF)
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      responses:
+        "200":
+          description: Meeting detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingDetailResponse"
 
   /api/v1/dashboard:
     get:

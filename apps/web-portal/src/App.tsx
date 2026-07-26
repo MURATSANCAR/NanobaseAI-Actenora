@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ApiProvider } from "./api/ApiProvider";
+import { LocaleProvider } from "./i18n";
 import type { ApiClient } from "./api/types";
 import { AuthProvider } from "./auth/AuthProvider";
 import { AppShell } from "./components/layout/AppShell";
@@ -34,9 +35,10 @@ const queryClient = new QueryClient({
 export function App({ apiClient }: { apiClient?: ApiClient }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ApiProvider client={apiClient}>
-        <AuthProvider>
-          <BrowserRouter>
+      <LocaleProvider>
+        <ApiProvider client={apiClient}>
+          <AuthProvider>
+            <BrowserRouter>
             <Routes>
               <Route element={<AppShell />}>
                 <Route index element={<DashboardPage />} />
@@ -54,9 +56,10 @@ export function App({ apiClient }: { apiClient?: ApiClient }) {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
-          </BrowserRouter>
-        </AuthProvider>
-      </ApiProvider>
+            </BrowserRouter>
+          </AuthProvider>
+        </ApiProvider>
+      </LocaleProvider>
     </QueryClientProvider>
   );
 }

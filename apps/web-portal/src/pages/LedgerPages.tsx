@@ -5,9 +5,14 @@ import { useApi } from "../api/ApiProvider";
 import { queryKeys } from "../api/client";
 import type { ArtifactStatus } from "../api/types";
 import { AsyncState, PageHeader, PaginationBar } from "../components/ui/AsyncState";
+import { useI18n } from "../i18n";
+
+const DECISION_STATUSES: ArtifactStatus[] = ["PENDING_APPROVAL", "APPROVED", "REJECTED"];
+const ACTION_STATUSES: ArtifactStatus[] = ["OPEN", "COMPLETED", "PENDING_APPROVAL"];
 
 export function DecisionLedgerPage() {
   const api = useApi();
+  const { t, tb } = useI18n();
   const [status, setStatus] = useState<ArtifactStatus | "">("");
   const [cursor, setCursor] = useState<string | undefined>();
   const params = useMemo(
@@ -23,9 +28,9 @@ export function DecisionLedgerPage() {
 
   return (
     <section className="page">
-      <PageHeader title="Decision Ledger" description="Approved and pending decisions across meetings." />
+      <PageHeader title={t("decisions.title")} description={t("decisions.description")} />
       <label className="filter-bar">
-        Status
+        {t("filter.status")}
         <select
           value={status}
           onChange={(e) => {
@@ -33,10 +38,12 @@ export function DecisionLedgerPage() {
             setCursor(undefined);
           }}
         >
-          <option value="">All</option>
-          <option value="PENDING_APPROVAL">PENDING_APPROVAL</option>
-          <option value="APPROVED">APPROVED</option>
-          <option value="REJECTED">REJECTED</option>
+          <option value="">{t("filter.all")}</option>
+          {DECISION_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {tb("artifactStatus", s)}
+            </option>
+          ))}
         </select>
       </label>
       <AsyncState status={asyncStatus} error={q.error}>
@@ -44,8 +51,8 @@ export function DecisionLedgerPage() {
           {q.data?.items.map((d) => (
             <li key={d.id} className="data-row">
               <span>{d.title}</span>
-              <span>{d.status}</span>
-              <Link to={`/meetings/${d.meetingId}`}>Open meeting</Link>
+              <span>{tb("artifactStatus", d.status)}</span>
+              <Link to={`/meetings/${d.meetingId}`}>{t("common.openMeeting")}</Link>
             </li>
           ))}
         </ul>
@@ -61,6 +68,7 @@ export function DecisionLedgerPage() {
 
 export function ActionCenterPage() {
   const api = useApi();
+  const { t, tb } = useI18n();
   const [status, setStatus] = useState<ArtifactStatus | "">("");
   const [cursor, setCursor] = useState<string | undefined>();
   const params = useMemo(
@@ -76,9 +84,9 @@ export function ActionCenterPage() {
 
   return (
     <section className="page">
-      <PageHeader title="Action Center" description="Track open and completed actions." />
+      <PageHeader title={t("actions.title")} description={t("actions.description")} />
       <label className="filter-bar">
-        Status
+        {t("filter.status")}
         <select
           value={status}
           onChange={(e) => {
@@ -86,10 +94,12 @@ export function ActionCenterPage() {
             setCursor(undefined);
           }}
         >
-          <option value="">All</option>
-          <option value="OPEN">OPEN</option>
-          <option value="COMPLETED">COMPLETED</option>
-          <option value="PENDING_APPROVAL">PENDING_APPROVAL</option>
+          <option value="">{t("filter.all")}</option>
+          {ACTION_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {tb("artifactStatus", s)}
+            </option>
+          ))}
         </select>
       </label>
       <AsyncState status={asyncStatus} error={q.error}>
@@ -97,9 +107,9 @@ export function ActionCenterPage() {
           {q.data?.items.map((a) => (
             <li key={a.id} className="data-row">
               <span>{a.title}</span>
-              <span>{a.status}</span>
+              <span>{tb("artifactStatus", a.status)}</span>
               <span className="muted">{a.ownerDisplayName}</span>
-              <Link to={`/meetings/${a.meetingId}`}>Open meeting</Link>
+              <Link to={`/meetings/${a.meetingId}`}>{t("common.openMeeting")}</Link>
             </li>
           ))}
         </ul>
@@ -115,6 +125,7 @@ export function ActionCenterPage() {
 
 export function CommitmentTrackerPage() {
   const api = useApi();
+  const { t, tb } = useI18n();
   const [cursor, setCursor] = useState<string | undefined>();
   const params = useMemo(() => ({ cursor, limit: 25 }), [cursor]);
   const q = useQuery({
@@ -126,15 +137,15 @@ export function CommitmentTrackerPage() {
 
   return (
     <section className="page">
-      <PageHeader title="Commitment Tracker" description="Promises made in meetings." />
+      <PageHeader title={t("commitments.title")} description={t("commitments.description")} />
       <AsyncState status={asyncStatus} error={q.error}>
         <ul className="data-table">
           {q.data?.items.map((c) => (
             <li key={c.id} className="data-row">
               <span>{c.statement}</span>
-              <span>{c.status}</span>
+              <span>{tb("artifactStatus", c.status)}</span>
               <span className="muted">{c.ownerDisplayName}</span>
-              <Link to={`/meetings/${c.meetingId}`}>Open meeting</Link>
+              <Link to={`/meetings/${c.meetingId}`}>{t("common.openMeeting")}</Link>
             </li>
           ))}
         </ul>

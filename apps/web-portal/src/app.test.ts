@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createApiClient, mockAuthHeaders, portalMutationsEnabled } from "./api/client.ts";
 import { familyProducts } from "./config/familyProducts.ts";
+import { translateBackend } from "./i18n/translateBackend.ts";
 import { assertDefined } from "@actenora/test-support";
 import { App } from "./App.tsx";
 import {
@@ -22,6 +24,19 @@ import { IDS, resetMockStore } from "./api/mock/data.ts";
 
 test("App export is defined", () => {
   assert.equal(typeof assertDefined(App), "function");
+});
+
+test("FAZ 33 mock auth headers default to local seed identity", () => {
+  const headers = mockAuthHeaders({});
+  assert.equal(headers["X-Mock-Entra-Oid"], "local-oid-admin");
+  assert.equal(headers["X-Mock-Entra-Tid"], "local-dev-tid");
+  assert.equal(headers["X-Mock-Global-Admin"], "true");
+});
+
+test("FAZ 33 createApiClient defaults to mock mode without VITE_API_MODE", () => {
+  const api = createApiClient({ mode: "mock" });
+  assert.equal(typeof api.getCurrentUser, "function");
+  assert.equal(typeof api.listMeetings, "function");
 });
 
 test("family product bar lists Actenora first, then QA and BI", () => {
@@ -150,4 +165,15 @@ test("mock meeting detail includes three-panel payload and private notes", async
   const transcript = await api.getMeetingTranscript(IDS.MEETING_A);
   const decisionsOnly = filterSegments(transcript.segments, { marker: "DECISION" });
   assert.equal(findEvidenceIndex(decisionsOnly, IDS.SEG_1) >= 0, true);
+});
+
+test("backend enum values translate via locale catalogs", () => {
+  assert.equal(translateBackend("en", "meetingStatus", "READY"), "Ready");
+  assert.equal(translateBackend("tr", "meetingStatus", "READY"), "Hazır");
+  assert.equal(translateBackend("tr", "meetingStatus", "UNKNOWN"), "UNKNOWN");
+});
+
+test("portal mutations are enabled only in mock API mode", () => {
+  assert.equal(portalMutationsEnabled("mock"), true);
+  assert.equal(portalMutationsEnabled("http"), false);
 });

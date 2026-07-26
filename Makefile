@@ -1,4 +1,4 @@
-.PHONY: bootstrap build test lint run stop sbom ci-build ci-test verify verify-faz27 faz28 secret-scan dep-scan help
+.PHONY: bootstrap build test lint run stop sbom ci-build ci-test verify verify-faz27 faz28 secret-scan dep-scan deploy-portal deploy-portal-full help
 
 bootstrap:
 	./scripts/bootstrap
@@ -33,6 +33,12 @@ ci-build:
 ci-test:
 	./scripts/ci-test
 
+deploy-portal:
+	./scripts/deploy-actenora-portal.sh
+
+deploy-portal-full:
+	./scripts/deploy-portal-production.sh
+
 help:
 	@echo "Actenora monorepo targets:"
 	@echo "  make bootstrap      - install toolchains & deps"
@@ -49,6 +55,8 @@ help:
 	@echo "  make sbom           - generate CycloneDX SBOMs"
 	@echo "  make ci-build       - CI bootstrap+build+sbom"
 	@echo "  make ci-test        - CI lint+test"
+	@echo "  make deploy-portal  - build + deploy Actenora SPA to portal.nanobase.ai/actenora/"
+	@echo "  make deploy-portal-full - QA hub + Actenora (full production portal deploy)"
 
 verify:
 	./scripts/verify-faz2

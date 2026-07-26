@@ -5,9 +5,19 @@ import { useApi } from "../api/ApiProvider";
 import { queryKeys } from "../api/client";
 import type { MeetingOccurrenceStatus } from "../api/types";
 import { AsyncState, PageHeader, PaginationBar } from "../components/ui/AsyncState";
+import { useI18n } from "../i18n";
+
+const MEETING_STATUSES: MeetingOccurrenceStatus[] = [
+  "READY",
+  "PROCESSING",
+  "ENDED",
+  "SCHEDULED",
+  "FAILED",
+];
 
 export function MeetingListPage() {
   const api = useApi();
+  const { t, tb } = useI18n();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<MeetingOccurrenceStatus | "">("");
   const [cursor, setCursor] = useState<string | undefined>();
@@ -38,10 +48,7 @@ export function MeetingListPage() {
 
   return (
     <section className="page">
-      <PageHeader
-        title="Meetings"
-        description="Filter and open meeting intelligence workspaces."
-      />
+      <PageHeader title={t("meetings.title")} description={t("meetings.description")} />
       <form
         className="filter-bar"
         role="search"
@@ -51,18 +58,18 @@ export function MeetingListPage() {
         }}
       >
         <label>
-          Search
+          {t("filter.search")}
           <input
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
               setCursor(undefined);
             }}
-            placeholder="Title"
+            placeholder={t("filter.titlePlaceholder")}
           />
         </label>
         <label>
-          Status
+          {t("filter.status")}
           <select
             value={status}
             onChange={(e) => {
@@ -70,23 +77,25 @@ export function MeetingListPage() {
               setCursor(undefined);
             }}
           >
-            <option value="">All</option>
-            <option value="READY">READY</option>
-            <option value="PROCESSING">PROCESSING</option>
-            <option value="ENDED">ENDED</option>
-            <option value="SCHEDULED">SCHEDULED</option>
-            <option value="FAILED">FAILED</option>
+            <option value="">{t("filter.all")}</option>
+            {MEETING_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {tb("meetingStatus", s)}
+              </option>
+            ))}
           </select>
         </label>
       </form>
-      <AsyncState status={asyncStatus} error={query.error} emptyMessage="No meetings match.">
+      <AsyncState status={asyncStatus} error={query.error} emptyMessage={t("meetings.empty")}>
         <ul className="data-table" aria-label="Meeting list">
           {query.data?.items.map((m) => (
             <li key={m.id} className="data-row">
               <Link to={`/meetings/${m.id}`}>{m.title}</Link>
-              <span>{m.status}</span>
+              <span>{tb("meetingStatus", m.status)}</span>
               <span className="muted">{new Date(m.scheduledStartAt).toLocaleString()}</span>
-              <span className="muted">{m.participantCount} people</span>
+              <span className="muted">
+                {m.participantCount} {t("common.people")}
+              </span>
             </li>
           ))}
         </ul>

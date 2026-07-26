@@ -1,9 +1,12 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvidenceRef, MarkerKind, TranscriptSegment } from "../../api/types";
+import { useI18n } from "../../i18n";
 import { evidenceScrollOffset, filterSegments, findEvidenceIndex } from "../../lib/filters";
 
 const ROW_HEIGHT = 72;
+
+const MARKERS: MarkerKind[] = ["DECISION", "ACTION", "RISK", "QUESTION", "IMPORTANT"];
 
 export function TranscriptPanel({
   segments,
@@ -18,6 +21,7 @@ export function TranscriptPanel({
   highlightEvidence: EvidenceRef | null;
   onClearHighlight: () => void;
 }) {
+  const { t } = useI18n();
   const [speaker, setSpeaker] = useState("");
   const [q, setQ] = useState("");
   const [marker, setMarker] = useState<MarkerKind | "">("");
@@ -44,33 +48,33 @@ export function TranscriptPanel({
   }, [highlightEvidence, filtered]);
 
   return (
-    <section className="panel transcript-panel" aria-label="Transcript">
+    <section className="panel transcript-panel" aria-label={t("meeting.transcript")}>
       <header className="panel-head">
-        <h2>Transcript</h2>
+        <h2>{t("meeting.transcript")}</h2>
         {highlightEvidence ? (
           <button type="button" className="btn ghost" onClick={onClearHighlight}>
-            Clear highlight
+            {t("meeting.clearHighlight")}
           </button>
         ) : null}
       </header>
       <div className="filter-bar compact" role="search">
         <label>
-          Search
+          {t("filter.search")}
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Find in transcript"
-            aria-label="Search transcript"
+            placeholder={t("filter.transcriptPlaceholder")}
+            aria-label={t("filter.transcriptPlaceholder")}
           />
         </label>
         <label>
-          Speaker
+          {t("filter.speaker")}
           <select
             value={speaker}
             onChange={(e) => setSpeaker(e.target.value)}
-            aria-label="Filter by speaker"
+            aria-label={t("filter.speaker")}
           >
-            <option value="">All speakers</option>
+            <option value="">{t("filter.allSpeakers")}</option>
             {speakers.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -79,18 +83,18 @@ export function TranscriptPanel({
           </select>
         </label>
         <label>
-          Marker
+          {t("filter.marker")}
           <select
             value={marker}
             onChange={(e) => setMarker(e.target.value as MarkerKind | "")}
-            aria-label="Filter by marker"
+            aria-label={t("filter.marker")}
           >
-            <option value="">All markers</option>
-            <option value="DECISION">Decision</option>
-            <option value="ACTION">Action</option>
-            <option value="RISK">Risk</option>
-            <option value="QUESTION">Question</option>
-            <option value="IMPORTANT">Important</option>
+            <option value="">{t("filter.allMarkers")}</option>
+            {MARKERS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -105,7 +109,7 @@ export function TranscriptPanel({
         ref={parentRef}
         className="transcript-viewport"
         role="list"
-        aria-label="Virtualized transcript"
+        aria-label={t("meeting.transcript")}
       >
         <div
           style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}

@@ -5,6 +5,7 @@ import { useApi } from "../../api/ApiProvider";
 import { queryKeys } from "../../api/client";
 import type { EvidenceRef } from "../../api/types";
 import { AsyncState, PageHeader } from "../../components/ui/AsyncState";
+import { useI18n } from "../../i18n";
 import { MeetingCenterPanel } from "./MeetingCenterPanel";
 import { MeetingLeftPanel } from "./MeetingLeftPanel";
 import { TranscriptPanel } from "./TranscriptPanel";
@@ -12,6 +13,7 @@ import { TranscriptPanel } from "./TranscriptPanel";
 export function MeetingDetailPage() {
   const { meetingId = "" } = useParams();
   const api = useApi();
+  const { t } = useI18n();
   const [highlight, setHighlight] = useState<EvidenceRef | null>(null);
 
   const detailQ = useQuery({
@@ -41,30 +43,30 @@ export function MeetingDetailPage() {
   return (
     <section className="page meeting-detail-page">
       <PageHeader
-        title="Meeting detail"
-        description="Metadata, intelligence, and evidence-linked transcript."
+        title={t("meeting.detailTitle")}
+        description={t("meeting.detailDescription")}
         actions={
           <Link className="btn ghost" to="/meetings">
-            Back to list
+            {t("meeting.backToList")}
           </Link>
         }
       />
       <AsyncState
         status={status}
         error={detailQ.error}
-        partialMessage="Meeting is still processing — some panels may be incomplete."
+        partialMessage={t("meeting.processingPartial")}
       >
         {detailQ.data ? (
-          <div className="three-panel" role="region" aria-label="Meeting workspace">
+          <div className="three-panel" role="region" aria-label={t("meeting.intelligence")}>
             <MeetingLeftPanel detail={detailQ.data} />
             <MeetingCenterPanel detail={detailQ.data} onEvidence={setHighlight} />
             {transcriptQ.isLoading ? (
               <div className="panel" role="status">
-                Loading transcript…
+                {t("meeting.transcriptLoading")}
               </div>
             ) : transcriptQ.isError ? (
               <div className="panel async-error" role="alert">
-                Transcript unavailable
+                {t("meeting.transcriptUnavailable")}
               </div>
             ) : transcriptQ.data ? (
               <TranscriptPanel

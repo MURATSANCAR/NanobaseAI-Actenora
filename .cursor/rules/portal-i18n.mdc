@@ -1,0 +1,31 @@
+---
+description: Portal i18n — English backend values, localized UI (TR/EN)
+globs:
+  - apps/web-portal/**
+alwaysApply: false
+---
+
+# Actenora Portal i18n
+
+## Rule
+
+1. **Backend contract language is English.** API responses (status enums, roles, webhook states, artifact types) arrive in English identifiers.
+2. **Frontend stores all user-visible English strings in locale files:**
+   - `apps/web-portal/src/i18n/en.json` — canonical English UI + backend value catalog (`backend.*` keys)
+   - `apps/web-portal/src/i18n/tr.json` — Turkish translations
+3. **Never show raw backend enum strings in the UI.** Use `tb(category, value)` from `useI18n()` (maps `backend.{category}.{VALUE}`).
+4. **Static UI copy** uses `t("key")` from the same JSON files — no hardcoded user-facing strings in components.
+5. **Adding a new backend enum/status:** add `backend.{category}.{VALUE}` to both `en.json` and `tr.json` before rendering it.
+6. **New locales:** add `{locale}.json`, register in `LocaleProvider.tsx`, extend `Locale` type.
+
+## Examples
+
+```tsx
+const { t, tb } = useI18n();
+<span>{tb("meetingStatus", meeting.status)}</span>
+<h1>{t("dashboard.title")}</h1>
+```
+
+## Mutations
+
+Write actions (note save, approve, complete action) are gated by `portalMutationsEnabled()` until HTTP BFF endpoints are live. Do not expose buttons that call unimplemented backend routes.

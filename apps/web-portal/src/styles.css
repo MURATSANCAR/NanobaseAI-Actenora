@@ -1,17 +1,21 @@
 :root {
-  --ink: #13231c;
-  --foam: #e7f1ea;
-  --moss: #2f6b4f;
-  --mist: #b7d2c4;
-  --sand: #f3ebe0;
-  --line: color-mix(in srgb, var(--ink) 14%, transparent);
-  --panel: color-mix(in srgb, white 72%, var(--foam));
-  --danger: #8b2e2e;
-  font-family: "Source Sans 3", "Segoe UI", sans-serif;
+  --ink: #1e1b4b;
+  --accent: #7c3aed;
+  --accent-soft: #a78bfa;
+  --sky: #e0f2fe;
+  --violet-bg: #ede9fe;
+  --foam: #f5f3ff;
+  --mist: #ddd6fe;
+  --sand: #ffffff;
+  --line: color-mix(in srgb, var(--ink) 12%, transparent);
+  --panel: color-mix(in srgb, white 78%, var(--foam));
+  --danger: #be123c;
+  font-family: "DM Sans", "Segoe UI", sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(1200px 600px at 10% -10%, var(--mist), transparent 60%),
-    linear-gradient(160deg, var(--foam), var(--sand));
+    radial-gradient(900px 500px at 8% -5%, var(--violet-bg), transparent 55%),
+    radial-gradient(700px 400px at 95% 0%, var(--sky), transparent 50%),
+    linear-gradient(165deg, var(--violet-bg) 0%, var(--sand) 45%, var(--sky) 100%);
   min-height: 100%;
   line-height: 1.45;
 }
@@ -25,7 +29,19 @@ body {
 }
 
 a {
-  color: var(--moss);
+  color: var(--accent);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .skip-link {
@@ -49,9 +65,10 @@ a {
 }
 
 .family-top-bar {
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--ink) 92%, black);
-  color: color-mix(in srgb, white 88%, var(--foam));
+  border-bottom: 1px solid color-mix(in srgb, white 12%, transparent);
+  background: linear-gradient(90deg, #312e81, #4c1d95 55%, #5b21b6);
+  color: color-mix(in srgb, white 92%, var(--foam));
+  backdrop-filter: blur(8px);
 }
 
 .family-top-bar-inner {
@@ -71,14 +88,15 @@ a {
 }
 
 .family-top-bar-mark {
-  font-family: Fraunces, Georgia, serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 0.95rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .family-top-bar-sub {
   font-size: 0.78rem;
-  color: color-mix(in srgb, white 62%, var(--mist));
+  color: color-mix(in srgb, white 68%, var(--mist));
 }
 
 .family-top-bar-nav {
@@ -95,28 +113,29 @@ a {
   font-size: 0.82rem;
   padding: 0.28rem 0.65rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, white 18%, transparent);
-  background: color-mix(in srgb, white 6%, transparent);
+  border: 1px solid color-mix(in srgb, white 22%, transparent);
+  background: color-mix(in srgb, white 8%, transparent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1.2;
   white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .family-product-btn:hover,
 .family-product-btn:focus-visible,
 .family-product-link:hover,
 .family-product-link:focus-visible {
-  background: color-mix(in srgb, var(--moss) 28%, transparent);
-  border-color: color-mix(in srgb, var(--mist) 45%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 35%, transparent);
+  border-color: color-mix(in srgb, white 45%, transparent);
   outline: none;
 }
 
 .family-product-btn.current,
 .family-product-link.current {
-  background: color-mix(in srgb, var(--moss) 72%, black);
-  border-color: color-mix(in srgb, var(--mist) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 85%, #312e81);
+  border-color: color-mix(in srgb, white 50%, transparent);
   font-weight: 600;
 }
 
@@ -129,7 +148,8 @@ a {
 
 .sidebar {
   border-right: 1px solid var(--line);
-  background: color-mix(in srgb, white 55%, var(--foam));
+  background: color-mix(in srgb, white 70%, var(--foam));
+  backdrop-filter: blur(10px);
   padding: 1.25rem 1rem 1.5rem;
   display: flex;
   flex-direction: column;
@@ -138,9 +158,10 @@ a {
 
 .sidebar-brand .brand-mark {
   margin: 0;
-  font-family: Fraunces, Georgia, serif;
-  font-size: 1.75rem;
-  color: var(--moss);
+  font-family: "DM Sans", sans-serif;
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--accent);
   letter-spacing: -0.03em;
 }
 
@@ -160,18 +181,30 @@ a {
   text-decoration: none;
   color: var(--ink);
   padding: 0.45rem 0.6rem;
-  border-radius: 0.35rem;
+  border-radius: 0.45rem;
+  transition: background 0.12s ease;
 }
 
 .nav-link:hover,
 .nav-link:focus-visible {
-  background: color-mix(in srgb, var(--moss) 12%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   outline: none;
 }
 
 .nav-link.active {
-  background: color-mix(in srgb, var(--moss) 18%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
   font-weight: 600;
+  color: color-mix(in srgb, var(--accent) 85%, var(--ink));
+}
+
+.sidebar-footer {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.locale-switcher select {
+  width: 100%;
+  min-width: 0;
 }
 
 .sidebar-user {
@@ -203,13 +236,14 @@ a {
 .section-title,
 .panel-head h2,
 .panel-sub {
-  font-family: Fraunces, Georgia, serif;
-  font-weight: 600;
+  font-family: "DM Sans", sans-serif;
+  font-weight: 700;
   margin: 0;
 }
 
 .page-header h1 {
   font-size: clamp(1.5rem, 2.4vw, 2rem);
+  letter-spacing: -0.02em;
 }
 
 .page-lede {
@@ -229,11 +263,28 @@ a {
   padding: 0.9rem 1rem;
   display: grid;
   gap: 0.25rem;
+  border-radius: 0.65rem;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.metric-link {
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+
+.metric-link:hover,
+.metric-link:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  transform: translateY(-1px);
+  outline: none;
 }
 
 .metric-value {
-  font-family: Fraunces, Georgia, serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent);
 }
 
 .metric-label {
@@ -270,9 +321,9 @@ input,
 select,
 textarea {
   border: 1px solid var(--line);
-  background: white;
+  background: color-mix(in srgb, white 92%, var(--foam));
   padding: 0.4rem 0.55rem;
-  border-radius: 0.3rem;
+  border-radius: 0.45rem;
   min-width: 10rem;
 }
 
@@ -282,12 +333,17 @@ textarea {
 }
 
 .btn {
-  border: 1px solid var(--moss);
-  background: var(--moss);
+  border: 1px solid var(--accent);
+  background: var(--accent);
   color: white;
   padding: 0.4rem 0.75rem;
-  border-radius: 0.3rem;
+  border-radius: 0.45rem;
   cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, black);
 }
 
 .btn:disabled {
@@ -305,7 +361,7 @@ textarea {
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--moss);
+  outline: 2px solid var(--accent-soft);
   outline-offset: 2px;
 }
 
@@ -328,6 +384,7 @@ textarea:focus-visible {
   padding: 0.65rem 0.75rem;
   background: var(--panel);
   border: 1px solid var(--line);
+  border-radius: 0.55rem;
 }
 
 .pagination {
@@ -340,6 +397,7 @@ textarea:focus-visible {
   padding: 0.75rem 0.9rem;
   background: var(--panel);
   border: 1px solid var(--line);
+  border-radius: 0.55rem;
 }
 
 .async-error {
@@ -363,6 +421,9 @@ textarea:focus-visible {
   flex-direction: column;
   gap: 0.65rem;
   min-height: 0;
+  border-radius: 0.65rem;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 5%, transparent);
+  backdrop-filter: blur(6px);
 }
 
 .panel-head {
@@ -409,7 +470,8 @@ textarea:focus-visible {
   gap: 0.35rem;
   padding: 0.55rem 0.6rem;
   border: 1px solid var(--line);
-  background: color-mix(in srgb, white 70%, var(--panel));
+  background: color-mix(in srgb, white 75%, var(--panel));
+  border-radius: 0.45rem;
 }
 
 .marker {
@@ -418,7 +480,8 @@ textarea:focus-visible {
   letter-spacing: 0.03em;
   padding: 0.1rem 0.35rem;
   border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--mist) 35%, white);
+  background: color-mix(in srgb, var(--mist) 40%, white);
+  border-radius: 0.25rem;
 }
 
 .evidence-actions,
@@ -433,8 +496,9 @@ textarea:focus-visible {
   flex: 1;
   overflow: auto;
   border: 1px solid var(--line);
-  background: color-mix(in srgb, white 80%, var(--panel));
+  background: color-mix(in srgb, white 85%, var(--panel));
   min-height: 22rem;
+  border-radius: 0.45rem;
 }
 
 .transcript-row {
@@ -443,7 +507,7 @@ textarea:focus-visible {
 }
 
 .transcript-row.active {
-  background: color-mix(in srgb, var(--moss) 16%, white);
+  background: color-mix(in srgb, var(--accent) 12%, white);
 }
 
 .transcript-row p {
@@ -464,8 +528,9 @@ textarea:focus-visible {
 
 .flag-list li {
   padding: 0.25rem 0.4rem;
-  border-left: 3px solid var(--moss);
+  border-left: 3px solid var(--accent);
   background: color-mix(in srgb, var(--mist) 25%, transparent);
+  border-radius: 0.25rem;
 }
 
 @media (max-width: 960px) {

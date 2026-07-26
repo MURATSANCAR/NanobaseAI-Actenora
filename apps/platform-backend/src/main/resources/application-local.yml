@@ -73,3 +73,9 @@ actenora:
       default-ttl-seconds: 300
     retention:
       audit-retention-days: 2555
+  portal:
+    local-seed:
+      # FAZ 33 — provision local tenant + demo meetings for web-portal HTTP mode
+      enabled: ${ACTENORA_PORTAL_LOCAL_SEED:true}
+      entra-tid: ${ACTENORA_PORTAL_LOCAL_SEED_ENTRA_TID:local-dev-tid}
+      tenant-name: ${ACTENORA_PORTAL_LOCAL_SEED_TENANT_NAME:Actenora Local}

@@ -5,24 +5,26 @@ import { useApi } from "../api/ApiProvider";
 import { queryKeys } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { AsyncState, PageHeader, PaginationBar } from "../components/ui/AsyncState";
+import { useI18n } from "../i18n";
 
 export function TemplateStudioPage() {
   const api = useApi();
+  const { t, tb } = useI18n();
   const q = useQuery({ queryKey: queryKeys.templates, queryFn: () => api.listTemplates() });
   const status =
     q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
 
   return (
     <section className="page">
-      <PageHeader title="Template Studio" description="Delivery and note templates." />
+      <PageHeader title={t("templates.title")} description={t("templates.description")} />
       <AsyncState status={status} error={q.error}>
         <ul className="data-table">
-          {q.data?.items.map((t) => (
-            <li key={t.id} className="data-row">
-              <span>{t.name}</span>
-              <span>{t.locale}</span>
+          {q.data?.items.map((item) => (
+            <li key={item.id} className="data-row">
+              <span>{item.name}</span>
+              <span>{item.locale}</span>
               <span>
-                v{t.version} · {t.status}
+                v{item.version} · {tb("artifactStatus", item.status)}
               </span>
             </li>
           ))}
@@ -35,6 +37,7 @@ export function TemplateStudioPage() {
 export function TeamsSettingsPage() {
   const auth = useAuth();
   const api = useApi();
+  const { t, tb } = useI18n();
   const q = useQuery({
     queryKey: queryKeys.teams,
     queryFn: () => api.getTeamsSettings(),
@@ -49,25 +52,25 @@ export function TeamsSettingsPage() {
 
   return (
     <section className="page">
-      <PageHeader title="Teams Settings" description="Graph connection and webhook health." />
+      <PageHeader title={t("teams.title")} description={t("teams.description")} />
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <dl className="meta-list">
             <div>
-              <dt>Tenant connected</dt>
-              <dd>{q.data.tenantConnected ? "Yes" : "No"}</dd>
+              <dt>{t("teams.tenantConnected")}</dt>
+              <dd>{q.data.tenantConnected ? t("common.yes") : t("common.no")}</dd>
             </div>
             <div>
-              <dt>Graph app</dt>
+              <dt>{t("teams.graphApp")}</dt>
               <dd>{q.data.graphAppId}</dd>
             </div>
             <div>
-              <dt>Webhook</dt>
-              <dd>{q.data.webhookStatus}</dd>
+              <dt>{t("teams.webhook")}</dt>
+              <dd>{tb("webhookStatus", q.data.webhookStatus)}</dd>
             </div>
             <div>
-              <dt>Auto-join</dt>
-              <dd>{q.data.autoJoinEnabled ? "Enabled" : "Disabled"}</dd>
+              <dt>{t("teams.autoJoin")}</dt>
+              <dd>{q.data.autoJoinEnabled ? t("common.enabled") : t("common.disabled")}</dd>
             </div>
           </dl>
         ) : null}
@@ -79,6 +82,7 @@ export function TeamsSettingsPage() {
 export function ModelManagementPage() {
   const auth = useAuth();
   const api = useApi();
+  const { t, tb } = useI18n();
   const q = useQuery({
     queryKey: queryKeys.models,
     queryFn: () => api.getModelHealth(),
@@ -93,55 +97,54 @@ export function ModelManagementPage() {
 
   return (
     <section className="page">
-      <PageHeader
-        title="Model Management"
-        description="Registry health. Routing strategy is admin-only."
-      />
+      <PageHeader title={t("models.title")} description={t("models.description")} />
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>
-            <h2 className="section-title">Models</h2>
+            <h2 className="section-title">{t("models.sectionModels")}</h2>
             <ul className="data-table">
               {q.data.models.map((m) => (
                 <li key={m.modelKey} className="data-row">
                   <span>{m.displayName}</span>
                   <span>{m.modelKey}</span>
                   <span>
-                    {m.enabled ? "enabled" : "disabled"} · {m.status}
+                    {m.enabled ? t("models.enabled") : t("models.disabled")} ·{" "}
+                    {tb("artifactStatus", m.status)}
                   </span>
                 </li>
               ))}
             </ul>
-            <h2 className="section-title">Deployments</h2>
+            <h2 className="section-title">{t("models.sectionDeployments")}</h2>
             <ul className="data-table">
               {q.data.deployments.map((d) => (
                 <li key={d.deploymentKey} className="data-row">
                   <span>{d.deploymentKey}</span>
                   <span>{d.nodeName}</span>
-                  <span>{d.healthy ? "healthy" : "unhealthy"}</span>
+                  <span>{d.healthy ? t("common.healthy") : t("common.unhealthy")}</span>
                 </li>
               ))}
             </ul>
             {auth.canSeeRouting ? (
               <div data-testid="routing-detail">
-                <h2 className="section-title">Routing detail</h2>
-                <p className="muted">Strategy: {q.data.routing.strategy}</p>
+                <h2 className="section-title">{t("models.sectionRouting")}</h2>
+                <p className="muted">
+                  {t("models.strategy")}: {q.data.routing.strategy}
+                </p>
                 <ul className="data-table">
                   {q.data.routing.roles.map((r) => (
                     <li key={r.role} className="data-row">
                       <span>{r.role}</span>
                       <span>{r.primaryModel}</span>
-                      <span className="muted">fallback {r.fallbackModel}</span>
+                      <span className="muted">
+                        {t("models.fallback")} {r.fallbackModel}
+                      </span>
                     </li>
                   ))}
                 </ul>
-                {auth.canAdminModels ? (
-                  <p className="muted">Admin controls available for enable / drain / register.</p>
-                ) : null}
               </div>
             ) : (
               <p className="muted" data-testid="routing-hidden">
-                Model routing detail is restricted to admin / operations.
+                {t("models.routingHidden")}
               </p>
             )}
           </>
@@ -153,6 +156,7 @@ export function ModelManagementPage() {
 
 export function AiJobTimelinePage() {
   const api = useApi();
+  const { t, tb } = useI18n();
   const [cursor, setCursor] = useState<string | undefined>();
   const params = useMemo(() => ({ cursor, limit: 25 }), [cursor]);
   const q = useQuery({
@@ -164,15 +168,15 @@ export function AiJobTimelinePage() {
 
   return (
     <section className="page">
-      <PageHeader title="AI Job Timeline" description="Pipeline stages for meeting intelligence jobs." />
+      <PageHeader title={t("jobs.title")} description={t("jobs.description")} />
       <AsyncState status={status} error={q.error}>
         <ol className="timeline">
           {q.data?.items.map((j) => (
             <li key={j.id}>
-              <strong>{j.stage}</strong> · {j.status}
+              <strong>{j.stage}</strong> · {tb("artifactStatus", j.status)}
               <span className="muted">
                 {" "}
-                · started {new Date(j.startedAt).toLocaleString()}
+                · {t("jobs.started")} {new Date(j.startedAt).toLocaleString()}
               </span>
             </li>
           ))}
@@ -190,6 +194,7 @@ export function AiJobTimelinePage() {
 export function OperationsCenterPage() {
   const auth = useAuth();
   const api = useApi();
+  const { t } = useI18n();
   const q = useQuery({
     queryKey: queryKeys.operations,
     queryFn: () => api.getOperationsOverview(),
@@ -204,21 +209,21 @@ export function OperationsCenterPage() {
 
   return (
     <section className="page">
-      <PageHeader title="Operations Center" description="Queues, breakers, and workers." />
+      <PageHeader title={t("operations.title")} description={t("operations.description")} />
       <AsyncState status={status} error={q.error}>
         {q.data ? (
           <>
             <div className="metric-row">
               <div className="metric">
                 <span className="metric-value">{q.data.queueDepth}</span>
-                <span className="metric-label">Queue depth</span>
+                <span className="metric-label">{t("operations.queueDepth")}</span>
               </div>
               <div className="metric">
                 <span className="metric-value">{q.data.failedJobs}</span>
-                <span className="metric-label">Failed jobs</span>
+                <span className="metric-label">{t("operations.failedJobs")}</span>
               </div>
             </div>
-            <h2 className="section-title">Circuit breakers</h2>
+            <h2 className="section-title">{t("operations.circuitBreakers")}</h2>
             <ul className="plain-list">
               {q.data.circuitBreakers.map((c) => (
                 <li key={c.name}>
@@ -226,7 +231,7 @@ export function OperationsCenterPage() {
                 </li>
               ))}
             </ul>
-            <h2 className="section-title">Workers</h2>
+            <h2 className="section-title">{t("operations.workers")}</h2>
             <ul className="plain-list">
               {q.data.workers.map((w) => (
                 <li key={w.name}>
@@ -244,6 +249,7 @@ export function OperationsCenterPage() {
 export function AuditViewerPage() {
   const auth = useAuth();
   const api = useApi();
+  const { t } = useI18n();
   const [cursor, setCursor] = useState<string | undefined>();
   const params = useMemo(() => ({ cursor, limit: 25 }), [cursor]);
   const q = useQuery({
@@ -261,7 +267,7 @@ export function AuditViewerPage() {
 
   return (
     <section className="page">
-      <PageHeader title="Audit Viewer" description="Append-only operational audit trail." />
+      <PageHeader title={t("audit.title")} description={t("audit.description")} />
       <AsyncState status={status} error={q.error}>
         <ul className="data-table">
           {q.data?.items.map((e) => (

@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
+import { useI18n } from "../../i18n";
 
 export type AsyncStatus = "loading" | "error" | "empty" | "partial" | "ready";
 
 export function AsyncState({
   status,
   error,
-  emptyMessage = "Nothing to show yet.",
-  partialMessage = "Some data could not be loaded.",
+  emptyMessage,
+  partialMessage,
   children,
 }: {
   status: AsyncStatus;
@@ -15,24 +16,28 @@ export function AsyncState({
   partialMessage?: string;
   children: ReactNode;
 }) {
+  const { t } = useI18n();
+  const empty = emptyMessage ?? t("async.empty");
+  const partial = partialMessage ?? t("async.partial");
+
   if (status === "loading") {
     return (
       <div className="async-state" role="status" aria-live="polite">
-        Loading…
+        {t("async.loading")}
       </div>
     );
   }
   if (status === "error") {
     return (
       <div className="async-state async-error" role="alert">
-        {error?.message ?? "Something went wrong."}
+        {error?.message ?? t("async.error")}
       </div>
     );
   }
   if (status === "empty") {
     return (
       <div className="async-state" role="status">
-        {emptyMessage}
+        {empty}
       </div>
     );
   }
@@ -40,7 +45,7 @@ export function AsyncState({
     <>
       {status === "partial" ? (
         <div className="async-banner" role="status">
-          {partialMessage}
+          {partial}
         </div>
       ) : null}
       {children}
@@ -79,10 +84,12 @@ export function PaginationBar({
   onReset: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
+
   return (
     <nav className="pagination" aria-label="Pagination">
       <button type="button" className="btn ghost" onClick={onReset} disabled={disabled}>
-        First page
+        {t("pagination.first")}
       </button>
       <button
         type="button"
@@ -90,7 +97,7 @@ export function PaginationBar({
         onClick={onNext}
         disabled={disabled || !nextCursor}
       >
-        Next
+        {t("pagination.next")}
       </button>
     </nav>
   );

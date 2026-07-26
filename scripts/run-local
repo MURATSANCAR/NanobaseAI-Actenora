@@ -57,7 +57,16 @@ main() {
 
   start_process platform-backend ./mvnw -pl apps/platform-backend -am spring-boot:run -Dspring-boot.run.arguments="--server.port=${PLATFORM_BACKEND_PORT}"
   start_process ai-orchestrator uv run --package actenora-orchestrator uvicorn actenora_orchestrator.main:app --host 127.0.0.1 --port "${AI_ORCHESTRATOR_PORT}"
-  start_process web-portal pnpm --filter @actenora/web-portal exec vite --host 127.0.0.1 --port "${WEB_PORTAL_PORT}"
+  # FAZ 33 — default HTTP mode against local platform-backend (override via .env)
+  start_process web-portal env \
+    "VITE_API_MODE=${VITE_API_MODE:-http}" \
+    "VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://127.0.0.1:${PLATFORM_BACKEND_PORT}}" \
+    "VITE_MOCK_ENTRA_OID=${VITE_MOCK_ENTRA_OID:-local-oid-admin}" \
+    "VITE_MOCK_ENTRA_TID=${VITE_MOCK_ENTRA_TID:-local-dev-tid}" \
+    "VITE_MOCK_EMAIL=${VITE_MOCK_EMAIL:-ada@actenora.local}" \
+    "VITE_MOCK_DISPLAY_NAME=${VITE_MOCK_DISPLAY_NAME:-Ada Admin}" \
+    "VITE_MOCK_GLOBAL_ADMIN=${VITE_MOCK_GLOBAL_ADMIN:-true}" \
+    pnpm --filter @actenora/web-portal exec vite --host 127.0.0.1 --port "${WEB_PORTAL_PORT}"
   start_process teams-meeting-app pnpm --filter @actenora/teams-meeting-app exec tsx src/index.ts
 
   log "Local processes started. Logs: ${LOG_DIR}"
