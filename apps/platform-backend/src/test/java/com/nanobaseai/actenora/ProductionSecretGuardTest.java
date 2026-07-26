@@ -58,6 +58,26 @@ class ProductionSecretGuardTest {
     }
 
     @Test
+    void prodFixtureProfileAllowsMailhogHostWithStrongSecrets() {
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles("prod", "prod-fixture");
+
+        ProductionSecretGuard guard = new ProductionSecretGuard(
+                env,
+                false,
+                "prod-db-secret-xyz",
+                "prod-rabbit-secret-xyz",
+                "prod-minio-secret-xyz",
+                "prod-graph-client-state-secret",
+                "prod-delivery-webhook-secret",
+                "prod-portal-link-hmac-secret",
+                "mailhog"
+        );
+
+        assertDoesNotThrow(() -> guard.run(new DefaultApplicationArguments()));
+    }
+
+    @Test
     void localProfileAllowsDefaults() {
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles("local");
