@@ -18,11 +18,11 @@
   "properties": {
     "topics": {
       "type": "array",
-      "items": { "$ref": "#/$defs/evidencedText" }
+      "items": { "$ref": "#/$defs/topic" }
     },
     "decisions": {
       "type": "array",
-      "items": { "$ref": "#/$defs/evidencedText" }
+      "items": { "$ref": "#/$defs/decision" }
     },
     "actionItems": {
       "type": "array",
@@ -30,7 +30,7 @@
     },
     "risks": {
       "type": "array",
-      "items": { "$ref": "#/$defs/evidencedText" }
+      "items": { "$ref": "#/$defs/risk" }
     },
     "openQuestions": {
       "type": "array",
@@ -39,6 +39,22 @@
     "commitments": {
       "type": "array",
       "items": { "$ref": "#/$defs/commitment" }
+    },
+    "issues": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidencedText" }
+    },
+    "proposals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidencedText" }
+    },
+    "importantFacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidencedText" }
+    },
+    "normalizationIssues": {
+      "type": "array",
+      "items": { "type": "string" }
     },
     "qualityFlags": {
       "type": "array",
@@ -60,7 +76,44 @@
       "additionalProperties": false,
       "required": ["text", "evidenceSegmentIds"],
       "properties": {
+        "candidateId": { "type": ["string", "null"] },
         "text": { "type": "string", "minLength": 1 },
+        "evidenceSegmentIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "topic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "evidenceSegmentIds"],
+      "properties": {
+        "candidateId": { "type": ["string", "null"] },
+        "text": { "type": "string", "minLength": 1 },
+        "summary": { "type": ["string", "null"] },
+        "evidenceSegmentIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "evidenceSegmentIds"],
+      "properties": {
+        "candidateId": { "type": ["string", "null"] },
+        "text": { "type": "string", "minLength": 1 },
+        "rationale": { "type": ["string", "null"] },
+        "status": {
+          "type": ["string", "null"],
+          "enum": ["DECIDED", "PROPOSED", "DEFERRED", null]
+        },
         "evidenceSegmentIds": {
           "type": "array",
           "minItems": 1,
@@ -74,9 +127,39 @@
       "additionalProperties": false,
       "required": ["text", "evidenceSegmentIds"],
       "properties": {
+        "candidateId": { "type": ["string", "null"] },
         "text": { "type": "string", "minLength": 1 },
         "owner": { "type": ["string", "null"] },
+        "ownerType": {
+          "type": ["string", "null"],
+          "enum": ["PERSON", "TEAM", "ROLE", "UNKNOWN", null]
+        },
         "dueDate": { "type": ["string", "null"] },
+        "relativeDate": { "type": ["string", "null"] },
+        "priority": {
+          "type": ["string", "null"],
+          "enum": ["HIGH", "MEDIUM", "LOW", null]
+        },
+        "evidenceSegmentIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "evidenceSegmentIds"],
+      "properties": {
+        "candidateId": { "type": ["string", "null"] },
+        "text": { "type": "string", "minLength": 1 },
+        "likelihood": {
+          "type": ["string", "null"],
+          "enum": ["HIGH", "MEDIUM", "LOW", null]
+        },
+        "mitigation": { "type": ["string", "null"] },
         "evidenceSegmentIds": {
           "type": "array",
           "minItems": 1,
@@ -90,6 +173,7 @@
       "additionalProperties": false,
       "required": ["text", "evidenceSegmentIds"],
       "properties": {
+        "candidateId": { "type": ["string", "null"] },
         "text": { "type": "string", "minLength": 1 },
         "owner": { "type": ["string", "null"] },
         "evidenceSegmentIds": {

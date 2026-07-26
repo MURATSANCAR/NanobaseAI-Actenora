@@ -35,24 +35,27 @@ public final class InMemoryPromptRegistry implements PromptRegistryPort {
                 "pv-meeting-candidate-merge-v1",
                 CANDIDATE_MERGE_PROMPT_ID,
                 1,
-                "Merge candidate extractions into one deduplicated set. Keep evidence ids intact.",
-                "candidate-merge.v1",
+                loadTemplate("/aiprocessing/prompts/final-minutes.v1.txt",
+                        "Merge candidate extractions. Keep evidence ids. Return JSON only."),
+                "final-minutes.v1",
                 "SUMMARIZATION"
         ));
         seed(new PublishedPrompt(
                 "pv-meeting-final-note-v1",
                 FINAL_NOTE_PROMPT_ID,
                 1,
-                "Write the final meeting note from merged candidates. Cite evidence ids only.",
-                "final-note.v1",
+                loadTemplate("/aiprocessing/prompts/final-minutes.v1.txt",
+                        "Write the final meeting note from merged candidates. Cite evidence ids only."),
+                "final-minutes.v1",
                 "FINAL_NOTE"
         ));
         seed(new PublishedPrompt(
                 "pv-meeting-validation-v1",
                 VALIDATION_PROMPT_ID,
                 1,
-                "Validate the produced note against evidence. Report unsupported claims.",
-                "validation.v1",
+                loadTemplate("/aiprocessing/prompts/evidence-audit.v1.txt",
+                        "Validate the produced note against evidence. Report unsupported claims."),
+                "evidence-audit.v1",
                 "VALIDATION"
         ));
     }
@@ -154,14 +157,20 @@ public final class InMemoryPromptRegistry implements PromptRegistryPort {
     }
 
     private static String loadTemplate() {
-        try (InputStream in = InMemoryPromptRegistry.class.getResourceAsStream(
-                "/aiprocessing/prompts/chunk-extraction.v1.txt")) {
+        return loadTemplate(
+                "/aiprocessing/prompts/chunk-extraction.v1.txt",
+                "Extract structured facts from the transcript chunk. Allowed evidence ids: {{evidenceSegmentIds}}\n\n{{chunk}}"
+        );
+    }
+
+    private static String loadTemplate(String classpath, String fallback) {
+        try (InputStream in = InMemoryPromptRegistry.class.getResourceAsStream(classpath)) {
             if (in == null) {
-                return "Extract structured facts from the transcript chunk. Allowed evidence ids: {{evidenceSegmentIds}}\n\n{{chunk}}";
+                return fallback;
             }
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException ex) {
-            throw new IllegalStateException("Failed to load prompt template", ex);
+            throw new IllegalStateException("Failed to load prompt template " + classpath, ex);
         }
     }
 }

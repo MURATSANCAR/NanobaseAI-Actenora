@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { TemplateNoteSectionEditor } from "@/components/template/TemplateNoteSectionEditor";
+import { TemplateBrandFooter, TemplateBrandHeader } from "@/components/template/TemplateBrandBanner";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { queryKeys } from "@/api/client";
 import { useApi } from "@/api/ApiProvider";
@@ -23,6 +24,8 @@ export function MeetingNoteEditor({
   saving,
   onChange,
   onSave,
+  meetingTitle,
+  variant = "document",
 }: {
   meetingId: string;
   note: MeetingNote;
@@ -32,6 +35,8 @@ export function MeetingNoteEditor({
   saving: boolean;
   onChange: (body: string) => void;
   onSave: () => void;
+  meetingTitle?: string;
+  variant?: "form" | "document";
 }) {
   const api = useApi();
   const { t, tb } = useI18n();
@@ -162,6 +167,8 @@ export function MeetingNoteEditor({
     );
   }
 
+  const draftBadge = Boolean(note.draft || note.approvalStatus === "DRAFT");
+
   if (usesTemplate && effective) {
     return (
       <TemplateNoteSectionEditor
@@ -175,7 +182,70 @@ export function MeetingNoteEditor({
         onSave={handleSave}
         saving={saving || pinning}
         validationError={validationError}
+        variant={variant}
+        meetingTitle={meetingTitle}
+        draftBadge={draftBadge}
       />
+    );
+  }
+
+  if (variant === "document") {
+    return (
+      <article className="meeting-note-document overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xl shadow-violet-100/30">
+        <TemplateBrandHeader compact />
+        <div className="border-b border-slate-100 px-5 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {meetingTitle ? <h2 className="text-lg font-bold text-slate-900">{meetingTitle}</h2> : null}
+            <StatusBadge label={tb("noteVisibility", note.visibility)} status={note.visibility} />
+            {draftBadge ? (
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                {t("meeting.noteDraftBadge")}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="px-5 py-4">
+          {canEdit && publishedTemplates.length ? (
+            <label className="mb-3 block">
+              <span className="label-text">{t("templates.note.applyTemplate")}</span>
+              <select
+                className="input-field"
+                defaultValue=""
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value) void applyTemplate(value);
+                  e.currentTarget.value = "";
+                }}
+              >
+                <option value="">{t("templates.note.chooseTemplate")}</option>
+                {publishedTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <textarea
+            className="min-h-[12rem] w-full resize-y rounded-xl border-0 bg-violet-50/30 p-4 text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-300/50"
+            value={draft}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={!canEdit}
+            aria-label={tb("noteVisibility", note.visibility)}
+            rows={8}
+          />
+        </div>
+        <div className="border-t border-slate-100 px-5 py-3">
+          <TemplateBrandFooter />
+        </div>
+        {canEdit ? (
+          <div className="flex justify-end border-t border-slate-100 bg-slate-50/80 px-5 py-3">
+            <button type="button" className="btn-primary" onClick={onSave} disabled={saving}>
+              {t("meeting.saveNote")}
+            </button>
+          </div>
+        ) : null}
+      </article>
     );
   }
 

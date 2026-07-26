@@ -232,12 +232,116 @@ public class PortalApiController {
 
         List<DecisionItemView> decisions = new ArrayList<>();
         List<CommitmentItemView> commitments = new ArrayList<>();
-        for (LedgerEvent event : ledgerApi.listEvents(
-                TenantSecurityContext.require().tenantId())) {
+        List<ActionItemView> actions = new ArrayList<>();
+        List<RiskItemView> risks = new ArrayList<>();
+        List<MeetingNoteView> notes = new ArrayList<>();
+        List<MeetingVersionView> versions = new ArrayList<>();
+        List<String> qualityFlags = new ArrayList<>();
+        List<ApprovalRecordView> approvalHistory = new ArrayList<>();
+        java.util.Set<UUID> seenDecisionIds = new java.util.LinkedHashSet<>();
+        java.util.Set<UUID> seenCommitmentIds = new java.util.LinkedHashSet<>();
+        java.util.Set<UUID> seenActionIds = new java.util.LinkedHashSet<>();
+
+        if (meetingIntelligenceApi.isPresent()) {
+            for (MeetingNoteDetailResponse note : meetingIntelligenceApi.get().listNotesForMeeting(meetingId)) {
+                String approvalStatus = note.currentVersion() == null || note.currentVersion().approvalStatus() == null
+                        ? "DRAFT"
+                        : note.currentVersion().approvalStatus().name();
+                String body = renderDraftMinutesBody(note, meeting.title());
+                notes.add(new MeetingNoteView(
+                        note.id(),
+                        "SHARED",
+                        body,
+                        note.updatedAt() == null ? null : note.updatedAt().toString(),
+                        note.currentVersion() == null ? null : note.currentVersion().createdByUserId(),
+                        approvalStatus,
+                        "DRAFT".equals(approvalStatus)
+                ));
+                if (note.currentVersion() != null) {
+                    versions.add(new MeetingVersionView(
+                            note.currentVersion().versionNumber(),
+                            "DRAFT".equals(approvalStatus) ? "Taslak (LLM)" : "v" + note.currentVersion().versionNumber(),
+                            note.currentVersion().createdAt() == null
+                                    ? null
+                                    : note.currentVersion().createdAt().toString()
+                    ));
+                    approvalApi.findBySubject(
+                            principal.tenantId().value(),
+                            note.currentVersion().id()
+                    ).ifPresent(approvalId ->
+                            approvalApi.get(principal.tenantId().value(), approvalId).ifPresent(view ->
+                                    approvalHistory.add(toApprovalRecord(view, note.id(), null))));
+                }
+                if (note.qualityFlags() != null) {
+                    for (var flag : note.qualityFlags()) {
+                        if (flag != null && flag.code() != null) {
+                            qualityFlags.add(flag.code().name());
+                        }
+                    }
+                }
+                Map<UUID, List<PortalEvidenceView>> evidenceBySubject = indexEvidence(note);
+                for (var decision : note.decisions()) {
+                    if (decision == null || !seenDecisionIds.add(decision.id())) {
+                        continue;
+                    }
+                    decisions.add(new DecisionItemView(
+                            decision.id(),
+                            meetingId,
+                            decision.text(),
+                            decisionStatus(decision),
+                            evidenceBySubject.getOrDefault(decision.id(), List.of()),
+                            decision.updatedAt() == null ? null : decision.updatedAt().toString()
+                    ));
+                }
+                for (var action : note.actionItems()) {
+                    if (action == null || !seenActionIds.add(action.id())) {
+                        continue;
+                    }
+                    actions.add(new ActionItemView(
+                            action.id(),
+                            meetingId,
+                            action.text(),
+                            action.status() == null ? "OPEN" : action.status().name(),
+                            action.owner() == null || action.owner().isBlank() ? "—" : action.owner(),
+                            action.dueDate() == null ? null : action.dueDate().toString(),
+                            evidenceBySubject.getOrDefault(action.id(), List.of())
+                    ));
+                }
+                for (var risk : note.risks()) {
+                    if (risk == null) {
+                        continue;
+                    }
+                    risks.add(new RiskItemView(
+                            risk.id(),
+                            risk.text(),
+                            riskSeverity(risk.aiConfidence()),
+                            evidenceBySubject.getOrDefault(risk.id(), List.of())
+                    ));
+                }
+                for (var commitment : note.commitments()) {
+                    if (commitment == null || !seenCommitmentIds.add(commitment.id())) {
+                        continue;
+                    }
+                    commitments.add(new CommitmentItemView(
+                            commitment.id(),
+                            meetingId,
+                            commitment.text(),
+                            commitment.owner() == null || commitment.owner().isBlank() ? "—" : commitment.owner(),
+                            null,
+                            commitment.confirmationStatus() == null
+                                    ? "OPEN"
+                                    : commitment.confirmationStatus().name(),
+                            evidenceBySubject.getOrDefault(commitment.id(), List.of())
+                    ));
+                }
+            }
+        }
+
+        for (LedgerEvent event : ledgerApi.listEvents(principal.tenantId())) {
             if (!meetingId.equals(event.meetingOccurrenceId())) {
                 continue;
             }
-            if (event.type() == LedgerEventType.DECISION_RECORDED) {
+            if (event.type() == LedgerEventType.DECISION_RECORDED && seenDecisionIds.add(event.aggregateId())) {
                 decisions.add(new DecisionItemView(
                         event.aggregateId(),
                         meetingId,
@@ -246,7 +350,8 @@ public class PortalApiController {
                         List.of(),
                         event.occurredAt().toString()
                 ));
-            } else if (event.type() == LedgerEventType.COMMITMENT_RECORDED) {
+            } else if (event.type() == LedgerEventType.COMMITMENT_RECORDED
+                    && seenCommitmentIds.add(event.aggregateId())) {
                 commitments.add(new CommitmentItemView(
                         event.aggregateId(),
                         meetingId,
@@ -259,45 +364,27 @@ public class PortalApiController {
             }
         }
 
-        List<MeetingNoteView> notes = new ArrayList<>();
-        List<ApprovalRecordView> approvalHistory = new ArrayList<>();
-        if (meetingIntelligenceApi.isPresent()) {
-            for (MeetingNoteDetailResponse note : meetingIntelligenceApi.get().listNotesForMeeting(meetingId)) {
-                notes.add(new MeetingNoteView(
-                        note.id(),
-                        "SHARED",
-                        note.currentVersion() == null ? "" : note.currentVersion().executiveSummary(),
-                        note.updatedAt() == null ? null : note.updatedAt().toString(),
-                        note.currentVersion() == null ? null : note.currentVersion().createdByUserId()
-                ));
-                if (note.currentVersion() != null) {
-                    approvalApi.findBySubject(
-                            principal.tenantId().value(),
-                            note.currentVersion().id()
-                    ).ifPresent(approvalId ->
-                            approvalApi.get(principal.tenantId().value(), approvalId).ifPresent(view ->
-                                    approvalHistory.add(toApprovalRecord(view, note.id(), null))));
-                }
+        for (ActionItemView ledgerAction : ledgerApi.listOpenTasks(principal.tenantId(), meetingId).stream()
+                .map(PortalApiController::toActionItemView)
+                .toList()) {
+            if (seenActionIds.add(ledgerAction.id())) {
+                actions.add(ledgerAction);
             }
         }
-
-        List<ActionItemView> actions = ledgerApi.listOpenTasks(principal.tenantId(), meetingId).stream()
-                .map(PortalApiController::toActionItemView)
-                .toList();
 
         return new MeetingDetailView(
                 summary,
                 portalParticipants,
                 null,
                 resolveBusinessContextName(meeting.businessContextId()),
-                List.of(),
+                versions,
                 approvalHistory,
                 notes,
                 decisions,
                 actions,
-                List.of(),
+                risks,
                 commitments,
-                List.of(),
+                List.copyOf(qualityFlags),
                 false,
                 resolveRecording(meeting)
         );
@@ -388,7 +475,13 @@ public class PortalApiController {
                 "SHARED",
                 body.body(),
                 updated.updatedAt().toString(),
-                TenantSecurityContext.require().userId()
+                TenantSecurityContext.require().userId(),
+                updated.currentVersion() == null || updated.currentVersion().approvalStatus() == null
+                        ? "DRAFT"
+                        : updated.currentVersion().approvalStatus().name(),
+                updated.currentVersion() == null
+                        || updated.currentVersion().approvalStatus() == null
+                        || "DRAFT".equals(updated.currentVersion().approvalStatus().name())
         );
     }
 
@@ -906,6 +999,101 @@ public class PortalApiController {
         );
     }
 
+    private static Map<UUID, List<PortalEvidenceView>> indexEvidence(MeetingNoteDetailResponse note) {
+        Map<UUID, List<PortalEvidenceView>> bySubject = new LinkedHashMap<>();
+        if (note.evidenceLinks() == null) {
+            return bySubject;
+        }
+        for (var link : note.evidenceLinks()) {
+            if (link == null || link.subjectId() == null || link.evidenceSegmentId() == null) {
+                continue;
+            }
+            bySubject.computeIfAbsent(link.subjectId(), ignored -> new ArrayList<>())
+                    .add(new PortalEvidenceView(link.evidenceSegmentId(), 0L, 0L, ""));
+        }
+        return bySubject;
+    }
+
+    private static String decisionStatus(com.nanobaseai.actenora.meetingintelligence.api.dto.DecisionResponse decision) {
+        if (decision.requiresManualReview()) {
+            return "PENDING";
+        }
+        if (decision.humanApprovalStatus() != null) {
+            return switch (decision.humanApprovalStatus().name()) {
+                case "APPROVED" -> "APPROVED";
+                case "REJECTED" -> "REJECTED";
+                default -> "DRAFT";
+            };
+        }
+        return "DRAFT";
+    }
+
+    private static String riskSeverity(Double confidence) {
+        if (confidence == null) {
+            return "MEDIUM";
+        }
+        if (confidence >= 0.85d) {
+            return "HIGH";
+        }
+        if (confidence >= 0.6d) {
+            return "MEDIUM";
+        }
+        return "LOW";
+    }
+
+    private static String renderDraftMinutesBody(MeetingNoteDetailResponse note, String meetingTitle) {
+        String summary = note.currentVersion() == null || note.currentVersion().executiveSummary() == null
+                ? ""
+                : note.currentVersion().executiveSummary().trim();
+        StringBuilder sb = new StringBuilder();
+        sb.append("TOPLANTI TUTANAĞI").append('\n');
+        if (meetingTitle != null && !meetingTitle.isBlank()) {
+            sb.append("Toplantı Başlığı: ").append(meetingTitle.trim()).append('\n');
+        }
+        String approval = note.currentVersion() == null || note.currentVersion().approvalStatus() == null
+                ? "DRAFT"
+                : note.currentVersion().approvalStatus().name();
+        if ("DRAFT".equals(approval)) {
+            sb.append("Durum: Taslak (LLM)").append('\n');
+        }
+        sb.append('\n').append("1. YÖNETİCİ ÖZETİ").append('\n');
+        sb.append(summary.isBlank() ? "—" : summary).append('\n');
+
+        appendMinutesSection(sb, "2. ALINAN KARARLAR", note.decisions() == null ? List.of()
+                : note.decisions().stream().map(d -> d.text()).filter(Objects::nonNull).toList());
+        appendMinutesSection(sb, "3. AKSİYON MADDELERİ", note.actionItems() == null ? List.of()
+                : note.actionItems().stream().map(a -> {
+                    String owner = a.owner() == null || a.owner().isBlank() ? "—" : a.owner();
+                    String due = a.dueDate() == null ? "—" : a.dueDate().toString();
+                    return a.text() + " (Sorumlu: " + owner + ", Son tarih: " + due + ")";
+                }).toList());
+        appendMinutesSection(sb, "4. RİSKLER", note.risks() == null ? List.of()
+                : note.risks().stream().map(r -> r.text()).filter(Objects::nonNull).toList());
+        appendMinutesSection(sb, "5. TAAHHÜTLER", note.commitments() == null ? List.of()
+                : note.commitments().stream().map(c -> c.text()).filter(Objects::nonNull).toList());
+        appendMinutesSection(sb, "6. AÇIK SORULAR", note.openQuestions() == null ? List.of()
+                : note.openQuestions().stream().map(q -> q.text()).filter(Objects::nonNull).toList());
+        return sb.toString().trim();
+    }
+
+    private static void appendMinutesSection(StringBuilder sb, String title, List<String> items) {
+        sb.append('\n').append(title).append('\n');
+        if (items == null || items.isEmpty()) {
+            sb.append("—").append('\n');
+            return;
+        }
+        int i = 1;
+        for (String item : items) {
+            if (item == null || item.isBlank()) {
+                continue;
+            }
+            sb.append(i++).append(". ").append(item.trim()).append('\n');
+        }
+        if (i == 1) {
+            sb.append("—").append('\n');
+        }
+    }
+
     private static AiJobView toAiJobView(AiJob job) {
         return new AiJobView(
                 job.id(),
@@ -1340,17 +1528,20 @@ public class PortalApiController {
             List<PortalParticipantView> participants,
             String seriesTitle,
             String businessContext,
-            List<Object> versions,
+            List<MeetingVersionView> versions,
             List<ApprovalRecordView> approvalHistory,
             List<MeetingNoteView> notes,
             List<DecisionItemView> decisions,
             List<ActionItemView> actions,
-            List<Object> risks,
+            List<RiskItemView> risks,
             List<CommitmentItemView> commitments,
             List<String> qualityFlags,
             boolean partial,
             RecordingView recording
     ) {
+    }
+
+    public record MeetingVersionView(int version, String label, String createdAt) {
     }
 
     public record RecordingView(String url, String contentType, Long durationMs) {
@@ -1364,7 +1555,9 @@ public class PortalApiController {
             String visibility,
             String body,
             String updatedAt,
-            UUID authorId
+            UUID authorId,
+            String approvalStatus,
+            boolean draft
     ) {
     }
 
@@ -1373,7 +1566,7 @@ public class PortalApiController {
             UUID meetingId,
             String title,
             String status,
-            List<Object> evidence,
+            List<PortalEvidenceView> evidence,
             String createdAt
     ) {
     }
@@ -1385,7 +1578,15 @@ public class PortalApiController {
             String status,
             String ownerDisplayName,
             String dueAt,
-            List<Object> evidence
+            List<PortalEvidenceView> evidence
+    ) {
+    }
+
+    public record RiskItemView(
+            UUID id,
+            String title,
+            String severity,
+            List<PortalEvidenceView> evidence
     ) {
     }
 
@@ -1396,7 +1597,15 @@ public class PortalApiController {
             String ownerDisplayName,
             String dueAt,
             String status,
-            List<Object> evidence
+            List<PortalEvidenceView> evidence
+    ) {
+    }
+
+    public record PortalEvidenceView(
+            String segmentId,
+            long startMs,
+            long endMs,
+            String quote
     ) {
     }
 

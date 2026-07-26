@@ -82,8 +82,17 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
                 .servedModelId(servedModelId)
                 .promptVersion(request.promptVersionId())
                 .schemaVersion(request.schemaVersion())
-                .timeoutSeconds(120)
+                .timeoutSeconds(600)
                 .inputReference(Map.of("evidenceCount", request.allowedEvidenceSegmentIds().size()))
+                .generationParameters(com.nanobaseai.actenora.aiprocessing.application.modelworker.GenerationParameters.builder()
+                        .temperature(0.15)
+                        .topP(0.85)
+                        .topK(40)
+                        .maxTokens(Math.max(request.maxOutputTokens(), 6000))
+                        .stream(false)
+                        .extra("repeat_penalty", 1.05)
+                        .extra("response_format", java.util.Map.of("type", "json_object"))
+                        .build())
                 .build();
         try {
             InferenceResult result = provider.submitInference(

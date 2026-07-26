@@ -1,0 +1,18 @@
+Her karar ve aksiyon maddesini kanıt segment kimlikleriyle karşılaştır.
+
+CANDIDATES_JSON:
+{{candidatesJson}}
+ALLOWED_EVIDENCE_IDS: {{evidenceSegmentIds}}
+
+Her öğe için verdict döndür:
+SUPPORTED | PARTIALLY_SUPPORTED | UNSUPPORTED | CONTRADICTED
+
+UNSUPPORTED veya CONTRADICTED kayıtlar çıkarılacak.
+PARTIALLY_SUPPORTED insan onayına gidecek.
+
+Yalnızca JSON:
+{
+  "audits": [
+    {"type":"DECISION|ACTION_ITEM|RISK|COMMITMENT|OPEN_QUESTION","text":"","verdict":"SUPPORTED","reason":""}
+  ]
+}

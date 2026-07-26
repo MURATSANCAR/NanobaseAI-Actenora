@@ -315,6 +315,10 @@ class MicrosoftGraphWebhookBindingTest {
         @Override
         public void save(CalendarSyncCursor cursor) {
         }
+
+        @Override
+        public void delete(UUID tenantId, String userId) {
+        }
     }
 
     private static final class StubOnlineMeetingGateway implements OnlineMeetingGateway {

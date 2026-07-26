@@ -1,0 +1,37 @@
+Aşağıdaki parça analizlerini birleştirerek profesyonel bir toplantı tutanağı veri modeli oluştur.
+Yalnızca verilen aday bilgiler ve kanıt segment kimlikleri üzerinden çalış. Ham varsayım üretme.
+
+MEETING_TITLE: {{meetingTitle}}
+CANDIDATE_JSON:
+{{candidatesJson}}
+ALLOWED_EVIDENCE_IDS: {{evidenceSegmentIds}}
+
+GÖREVLER
+1. Tekrarları birleştir; candidateId çakışmalarını çöz.
+2. Öneri/karar ayrımını koru (proposals ≠ decisions).
+3. confidence < 0.75 olan kritik öğeleri qualityFlags içine NEEDS_REVIEW olarak işaretle.
+4. purpose ve executiveSummary Türkçe yaz; özet en fazla 150 kelime; kabul edilmemiş öneriyi karar gibi sunma.
+5. agendaTopics / nextSteps üret; kanıtsız öğeleri çıkar.
+6. reviewRequired=true yalnızca belirsiz/eksik kritik alan varsa.
+
+Yalnızca şu JSON'u döndür:
+{
+  "meetingTitle": "",
+  "purpose": "",
+  "executiveSummary": "",
+  "agendaTopics": [],
+  "topics": [{"candidateId":null,"text":"","summary":null,"evidenceSegmentIds":[],"confidence":0.0}],
+  "decisions": [{"candidateId":null,"text":"","rationale":null,"status":"DECIDED","evidenceSegmentIds":[],"confidence":0.0}],
+  "actionItems": [{"candidateId":null,"text":"","owner":null,"ownerType":null,"dueDate":null,"relativeDate":null,"priority":null,"evidenceSegmentIds":[],"confidence":0.0}],
+  "risks": [{"candidateId":null,"text":"","likelihood":null,"mitigation":null,"evidenceSegmentIds":[],"confidence":0.0}],
+  "openQuestions": [{"candidateId":null,"text":"","evidenceSegmentIds":[],"confidence":0.0}],
+  "commitments": [{"candidateId":null,"text":"","owner":null,"evidenceSegmentIds":[],"confidence":0.0}],
+  "issues": [],
+  "proposals": [],
+  "importantFacts": [],
+  "nextSteps": [],
+  "reviewRequired": false,
+  "qualityFlags": [],
+  "evidenceSegmentIds": [],
+  "confidence": 0.0
+}

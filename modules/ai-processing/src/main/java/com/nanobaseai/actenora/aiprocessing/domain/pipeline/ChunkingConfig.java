@@ -27,13 +27,13 @@ public record ChunkingConfig(
 
     public static ChunkingConfig productionDefaults(int modelContextWindowTokens) {
         return new ChunkingConfig(
-                3_500,
-                4_500,
-                150,
-                250,
+                8_000,
+                12_000,
+                300,
+                500,
                 modelContextWindowTokens,
-                800,
-                1_024,
+                1_200,
+                6_000,
                 256
         );
     }

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actenora.nanobase.ai/schemas/final-minutes.v1.json",
+  "title": "FinalMeetingMinutes",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "executiveSummary",
+    "topics",
+    "decisions",
+    "actionItems",
+    "risks",
+    "openQuestions",
+    "commitments",
+    "qualityFlags",
+    "evidenceSegmentIds",
+    "confidence"
+  ],
+  "properties": {
+    "meetingTitle": { "type": ["string", "null"] },
+    "purpose": { "type": ["string", "null"] },
+    "executiveSummary": { "type": "string", "minLength": 1 },
+    "agendaTopics": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "topics": { "type": "array", "items": { "type": "object" } },
+    "decisions": { "type": "array", "items": { "type": "object" } },
+    "actionItems": { "type": "array", "items": { "type": "object" } },
+    "risks": { "type": "array", "items": { "type": "object" } },
+    "openQuestions": { "type": "array", "items": { "type": "object" } },
+    "commitments": { "type": "array", "items": { "type": "object" } },
+    "issues": { "type": "array", "items": { "type": "object" } },
+    "proposals": { "type": "array", "items": { "type": "object" } },
+    "importantFacts": { "type": "array", "items": { "type": "object" } },
+    "nextSteps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "reviewRequired": { "type": "boolean" },
+    "qualityFlags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evidenceSegmentIds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

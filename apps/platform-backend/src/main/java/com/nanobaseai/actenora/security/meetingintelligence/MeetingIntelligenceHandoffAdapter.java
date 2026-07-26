@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.security.meetingintelligence;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
+import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.api.RunValidationCommand;
@@ -33,6 +34,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final EvidenceValidationApi evidenceValidationApi;
     private final TranscriptSegmentSourcePort segmentSource;
     private final MeetingIntelligenceAuditPort auditPort;
+    private final Optional<DraftMinutesMailNotifier> draftMailNotifier;
+    private final Optional<MeetingApi> meetingApi;
 
     public MeetingIntelligenceHandoffAdapter(
             MeetingIntelligenceApi meetingIntelligenceApi,
@@ -40,10 +43,23 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             TranscriptSegmentSourcePort segmentSource,
             MeetingIntelligenceAuditPort auditPort
     ) {
+        this(meetingIntelligenceApi, evidenceValidationApi, segmentSource, auditPort, Optional.empty(), Optional.empty());
+    }
+
+    public MeetingIntelligenceHandoffAdapter(
+            MeetingIntelligenceApi meetingIntelligenceApi,
+            EvidenceValidationApi evidenceValidationApi,
+            TranscriptSegmentSourcePort segmentSource,
+            MeetingIntelligenceAuditPort auditPort,
+            Optional<DraftMinutesMailNotifier> draftMailNotifier,
+            Optional<MeetingApi> meetingApi
+    ) {
         this.meetingIntelligenceApi = Objects.requireNonNull(meetingIntelligenceApi, "meetingIntelligenceApi");
         this.evidenceValidationApi = Objects.requireNonNull(evidenceValidationApi, "evidenceValidationApi");
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
         this.auditPort = Objects.requireNonNull(auditPort, "auditPort");
+        this.draftMailNotifier = draftMailNotifier == null ? Optional.empty() : draftMailNotifier;
+        this.meetingApi = meetingApi == null ? Optional.empty() : meetingApi;
     }
 
     @Override
@@ -83,7 +99,45 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 ),
                 Instant.now()
         );
+        notifyDraftMail(command, note);
         return Optional.of(note.id());
+    }
+
+    private void notifyDraftMail(HandoffCommand command, MeetingNoteDetailResponse note) {
+        if (draftMailNotifier.isEmpty() || meetingApi.isEmpty()) {
+            return;
+        }
+        try {
+            var meeting = meetingApi.get().getMeeting(command.meetingOccurrenceId());
+            var participants = meetingApi.get().listParticipants(command.meetingOccurrenceId());
+            String organizerEmail = participants.stream()
+                    .filter(p -> p.participantType() != null && "ORGANIZER".equalsIgnoreCase(p.participantType().name()))
+                    .map(p -> p.email())
+                    .filter(email -> email != null && !email.isBlank())
+                    .findFirst()
+                    .orElseGet(() -> participants.stream()
+                            .filter(p -> meeting.organizerUserId() != null
+                                    && p.entraUserId() != null
+                                    && meeting.organizerUserId().toString().equalsIgnoreCase(p.entraUserId()))
+                            .map(p -> p.email())
+                            .filter(email -> email != null && !email.isBlank())
+                            .findFirst()
+                            .orElseGet(() -> participants.stream()
+                                    .map(p -> p.email())
+                                    .filter(email -> email != null && !email.isBlank())
+                                    .findFirst()
+                                    .orElse(null)));
+            String summary = note.currentVersion() == null ? "" : note.currentVersion().executiveSummary();
+            draftMailNotifier.get().notifyOrganizer(
+                    organizerEmail,
+                    meeting.title(),
+                    command.meetingOccurrenceId(),
+                    note.id(),
+                    summary
+            );
+        } catch (RuntimeException ex) {
+            // Mail must not fail handoff.
+        }
     }
 
     private ValidationExecutionResult runValidation(HandoffCommand command) {

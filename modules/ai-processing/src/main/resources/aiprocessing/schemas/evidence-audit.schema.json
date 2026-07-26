@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actenora.nanobase.ai/schemas/evidence-audit.v1.json",
+  "title": "EvidenceAudit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["audits"],
+  "properties": {
+    "audits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "text", "verdict"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["DECISION", "ACTION_ITEM", "RISK", "COMMITMENT", "OPEN_QUESTION", "TOPIC"]
+          },
+          "text": { "type": "string", "minLength": 1 },
+          "verdict": {
+            "type": "string",
+            "enum": ["SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "CONTRADICTED"]
+          },
+          "reason": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

@@ -121,19 +121,25 @@ export function MeetingCenterPanel({
 
       <ArtifactBlock title={t("meeting.notes")} emptyMessage={t("meeting.noNotesEditable")}>
         {editableNotes.map((n) => (
-          <MeetingNoteEditor
-            key={n.id}
-            meetingId={meetingId}
-            note={n}
-            draft={noteDrafts[n.id] ?? n.body}
-            canEdit={canEditNotes}
-            publishedTemplates={publishedTemplates}
-            onChange={(body) => setNoteDrafts((d) => ({ ...d, [n.id]: body }))}
-            onSave={() =>
-              noteMutation.mutate({ noteId: n.id, body: noteDrafts[n.id] ?? n.body })
-            }
-            saving={noteMutation.isPending}
-          />
+          <div key={n.id} className="space-y-2">
+            {n.draft || n.approvalStatus === "DRAFT" ? (
+              <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                Taslak (LLM)
+              </span>
+            ) : null}
+            <MeetingNoteEditor
+              meetingId={meetingId}
+              note={n}
+              draft={noteDrafts[n.id] ?? n.body}
+              canEdit={canEditNotes}
+              publishedTemplates={publishedTemplates}
+              onChange={(body) => setNoteDrafts((d) => ({ ...d, [n.id]: body }))}
+              onSave={() =>
+                noteMutation.mutate({ noteId: n.id, body: noteDrafts[n.id] ?? n.body })
+              }
+              saving={noteMutation.isPending}
+            />
+          </div>
         ))}
       </ArtifactBlock>
 

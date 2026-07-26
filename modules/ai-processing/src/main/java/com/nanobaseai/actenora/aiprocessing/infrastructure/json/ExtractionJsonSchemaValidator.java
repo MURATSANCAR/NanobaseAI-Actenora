@@ -40,6 +40,13 @@ public final class ExtractionJsonSchemaValidator {
             "commitments"
     );
 
+    /** Optional extended arrays — coerced when present, never required. */
+    private static final Set<String> OPTIONAL_RECORD_ARRAYS = Set.of(
+            "issues",
+            "proposals",
+            "importantFacts"
+    );
+
     private final ObjectMapper objectMapper;
     private final JsonNode schemaRoot;
 
@@ -84,46 +91,68 @@ public final class ExtractionJsonSchemaValidator {
                 node.putArray(arrayField);
             }
         }
+        for (String arrayField : OPTIONAL_RECORD_ARRAYS) {
+            if (node.has(arrayField) && node.get(arrayField).isNull()) {
+                node.putArray(arrayField);
+            }
+        }
         if (!node.has("qualityFlags") || node.get("qualityFlags").isNull()) {
             node.putArray("qualityFlags");
         }
         if (!node.has("evidenceSegmentIds") || node.get("evidenceSegmentIds").isNull()) {
             node.putArray("evidenceSegmentIds");
         }
+        if (!node.has("normalizationIssues") || node.get("normalizationIssues").isNull()) {
+            node.putArray("normalizationIssues");
+        }
         ArrayNode qualityFlags = (ArrayNode) node.get("qualityFlags");
         ArrayNode rootEvidence = (ArrayNode) node.get("evidenceSegmentIds");
 
         for (String arrayField : RECORD_ARRAYS) {
-            JsonNode arrayNode = node.get(arrayField);
-            if (!(arrayNode instanceof ArrayNode array)) {
-                continue;
-            }
-            ArrayNode normalized = objectMapper.createArrayNode();
-            boolean coerced = false;
-            boolean dropped = false;
-            for (JsonNode item : array) {
-                ObjectNode record = coerceRecordItem(item, rootEvidence);
-                if (record == null) {
-                    dropped = true;
-                    continue;
-                }
-                if (item.isTextual() || !item.isObject()) {
-                    coerced = true;
-                }
-                normalized.add(record);
-            }
-            node.set(arrayField, normalized);
-            if (coerced) {
-                qualityFlags.add(arrayField + "_items_coerced");
-            }
-            if (dropped) {
-                qualityFlags.add(arrayField + "_items_dropped");
+            normalizeRecordArray(node, arrayField, rootEvidence, qualityFlags);
+        }
+        for (String arrayField : OPTIONAL_RECORD_ARRAYS) {
+            if (node.has(arrayField)) {
+                normalizeRecordArray(node, arrayField, rootEvidence, qualityFlags);
             }
         }
 
         if (!node.has("confidence") || node.get("confidence").isNull()) {
             node.put("confidence", 0.5d);
             qualityFlags.add("confidence_defaulted");
+        }
+    }
+
+    private void normalizeRecordArray(
+            ObjectNode node,
+            String arrayField,
+            ArrayNode rootEvidence,
+            ArrayNode qualityFlags
+    ) {
+        JsonNode arrayNode = node.get(arrayField);
+        if (!(arrayNode instanceof ArrayNode array)) {
+            return;
+        }
+        ArrayNode normalized = objectMapper.createArrayNode();
+        boolean coerced = false;
+        boolean dropped = false;
+        for (JsonNode item : array) {
+            ObjectNode record = coerceRecordItem(item, rootEvidence);
+            if (record == null) {
+                dropped = true;
+                continue;
+            }
+            if (item.isTextual() || !item.isObject()) {
+                coerced = true;
+            }
+            normalized.add(record);
+        }
+        node.set(arrayField, normalized);
+        if (coerced) {
+            qualityFlags.add(arrayField + "_items_coerced");
+        }
+        if (dropped) {
+            qualityFlags.add(arrayField + "_items_dropped");
         }
     }
 
@@ -159,10 +188,12 @@ public final class ExtractionJsonSchemaValidator {
                     }
                 }
             }
-            if (evidence.isEmpty()) {
-                return null;
+            if (!evidence.isEmpty()) {
+                record.set("evidenceSegmentIds", evidence);
+            } else if (!record.has("evidenceSegmentIds") || !record.get("evidenceSegmentIds").isArray()) {
+                // Keep empty array so deterministic validation can fail closed.
+                record.putArray("evidenceSegmentIds");
             }
-            record.set("evidenceSegmentIds", evidence);
         }
         if (!record.has("confidence") || record.get("confidence").isNull()) {
             record.put("confidence", 0.7d);
@@ -187,6 +218,21 @@ public final class ExtractionJsonSchemaValidator {
             for (JsonNode item : array) {
                 validateRecord(arrayField, item);
             }
+        }
+        for (String arrayField : OPTIONAL_RECORD_ARRAYS) {
+            if (!node.has(arrayField)) {
+                continue;
+            }
+            JsonNode array = node.get(arrayField);
+            if (!array.isArray()) {
+                throw schemaViolation(arrayField + " must be an array");
+            }
+            for (JsonNode item : array) {
+                validateRecord(arrayField, item);
+            }
+        }
+        if (node.has("normalizationIssues") && !node.get("normalizationIssues").isArray()) {
+            throw schemaViolation("normalizationIssues must be an array");
         }
         if (!node.get("qualityFlags").isArray()) {
             throw schemaViolation("qualityFlags must be an array");
@@ -217,9 +263,24 @@ public final class ExtractionJsonSchemaValidator {
         if (item.has("confidence") && !item.get("confidence").isNumber()) {
             throw schemaViolation(field + " item confidence must be a number");
         }
+        assertNullOrText(item, "candidateId");
+        if ("topics".equals(field)) {
+            assertNullOrText(item, "summary");
+        }
+        if ("decisions".equals(field)) {
+            assertNullOrText(item, "rationale");
+            assertNullOrText(item, "status");
+        }
         if ("actionItems".equals(field)) {
             assertNullOrText(item, "owner");
+            assertNullOrText(item, "ownerType");
             assertNullOrText(item, "dueDate");
+            assertNullOrText(item, "relativeDate");
+            assertNullOrText(item, "priority");
+        }
+        if ("risks".equals(field)) {
+            assertNullOrText(item, "likelihood");
+            assertNullOrText(item, "mitigation");
         }
         if ("commitments".equals(field)) {
             assertNullOrText(item, "owner");

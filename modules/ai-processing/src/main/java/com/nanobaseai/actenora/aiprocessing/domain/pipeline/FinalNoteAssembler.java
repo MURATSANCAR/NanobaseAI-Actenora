@@ -45,10 +45,10 @@ public final class FinalNoteAssembler {
     private static String buildSummary(ExtractionBundle bundle) {
         StringBuilder sb = new StringBuilder();
         if (!bundle.topics().isEmpty()) {
-            sb.append("Topics: ");
+            sb.append("Konular: ");
             sb.append(bundle.topics().getFirst().text());
             if (bundle.topics().size() > 1) {
-                sb.append(" (+").append(bundle.topics().size() - 1).append(" more)");
+                sb.append(" (+").append(bundle.topics().size() - 1).append(" daha)");
             }
             sb.append('.');
         }
@@ -56,16 +56,22 @@ public final class FinalNoteAssembler {
             if (!sb.isEmpty()) {
                 sb.append(' ');
             }
-            sb.append(bundle.decisions().size()).append(" decision(s) recorded.");
+            sb.append(bundle.decisions().size()).append(" karar kaydedildi.");
         }
         if (!bundle.actionItems().isEmpty()) {
             if (!sb.isEmpty()) {
                 sb.append(' ');
             }
-            sb.append(bundle.actionItems().size()).append(" action item(s).");
+            sb.append(bundle.actionItems().size()).append(" aksiyon maddesi.");
+        }
+        if (!bundle.risks().isEmpty()) {
+            if (!sb.isEmpty()) {
+                sb.append(' ');
+            }
+            sb.append(bundle.risks().size()).append(" risk.");
         }
         if (sb.isEmpty()) {
-            return "Meeting extraction completed with no primary topics.";
+            return "Çıkarım tamamlandı; birincil konu/karar bulunamadı. Manuel inceleme önerilir.";
         }
         return sb.toString();
     }

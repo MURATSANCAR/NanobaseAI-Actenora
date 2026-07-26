@@ -84,6 +84,8 @@ export interface MeetingNote {
   body: string;
   updatedAt: string;
   authorId: string;
+  approvalStatus?: string | null;
+  draft?: boolean;
 }
 
 export interface DecisionItem {

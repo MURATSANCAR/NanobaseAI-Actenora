@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.security.meetingintelligence;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.audit.api.AuditApi;
+import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.application.MeetingIntelligenceApiFacade;
@@ -47,14 +48,18 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InM
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryQualityGatePolicyPort;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryValidationRunRepository;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.mail.javamail.JavaMailSender;
 
 import java.time.Clock;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -240,16 +245,33 @@ public class MeetingIntelligencePlatformConfiguration {
         return new DefaultEvidenceValidationApi(service);
     }
 
+    @Bean
+    public DraftMinutesMailNotifier draftMinutesMailNotifier(
+            ObjectProvider<JavaMailSender> mailSender,
+            @Value("${actenora.delivery.mail.from:noreply@actenora.local}") String fromAddress,
+            @Value("${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai}") String portalBaseUrl
+    ) {
+        return new DraftMinutesMailNotifier(mailSender, fromAddress, portalBaseUrl);
+    }
+
     @ConditionalOnMissingBean(MeetingNoteHandoffPort.class)
     @Bean
     public MeetingNoteHandoffPort meetingNoteHandoffPort(
             MeetingIntelligenceApi meetingIntelligenceApi,
             EvidenceValidationApi evidenceValidationApi,
             TranscriptSegmentSourcePort segmentSource,
-            MeetingIntelligenceAuditPort auditPort
+            MeetingIntelligenceAuditPort auditPort,
+            DraftMinutesMailNotifier draftMinutesMailNotifier,
+            MeetingApi meetingApi
     ) {
         return new MeetingIntelligenceHandoffAdapter(
-                meetingIntelligenceApi, evidenceValidationApi, segmentSource, auditPort);
+                meetingIntelligenceApi,
+                evidenceValidationApi,
+                segmentSource,
+                auditPort,
+                Optional.of(draftMinutesMailNotifier),
+                Optional.of(meetingApi)
+        );
     }
 
     @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
