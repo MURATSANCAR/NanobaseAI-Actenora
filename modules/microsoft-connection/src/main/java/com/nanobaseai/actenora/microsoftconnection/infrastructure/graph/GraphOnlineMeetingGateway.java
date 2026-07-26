@@ -123,6 +123,7 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
     @Override
     public void enableTranscription(UUID tenantId, String userId, String meetingId) {
         Objects.requireNonNull(meetingId, "meetingId");
+        String organizer = organizerFromMeetingId(meetingId).orElse(userId);
         var body = objectMapper.createObjectNode();
         // allowTranscription only permits it; recordAutomatically makes Teams auto-start
         // recording + transcription when the meeting begins, so operators never have to
@@ -130,11 +131,41 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
         body.put("allowTranscription", true);
         body.put("recordAutomatically", true);
         http.send(token -> http.authorizedJson(
-                "v1.0/users/" + userId + "/onlineMeetings/" + meetingId,
+                "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId,
                 "PATCH",
                 body.toString(),
                 token
         ));
+    }
+
+    /** Extracts the organizer object id embedded in a Teams joinWebUrl "context" ({@code "Oid":"<guid>"}). */
+    static Optional<String> organizerFromJoinWebUrl(String joinWebUrl) {
+        if (joinWebUrl == null) {
+            return Optional.empty();
+        }
+        String decoded = java.net.URLDecoder.decode(joinWebUrl, StandardCharsets.UTF_8);
+        Matcher matcher = JOIN_URL_OID.matcher(decoded);
+        if (matcher.find() && GUID.matcher(matcher.group(1)).matches()) {
+            return Optional.of(matcher.group(1));
+        }
+        return Optional.empty();
+    }
+
+    /** Extracts the organizer object id from a base64 online meeting id ({@code "1*<guid>*0*..."}). */
+    static Optional<String> organizerFromMeetingId(String meetingId) {
+        if (meetingId == null) {
+            return Optional.empty();
+        }
+        try {
+            String decoded = new String(Base64.getDecoder().decode(meetingId), StandardCharsets.UTF_8);
+            String[] parts = decoded.split("\\*");
+            if (parts.length >= 2 && GUID.matcher(parts[1]).matches()) {
+                return Optional.of(parts[1]);
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Not a base64 meeting id (e.g. already a plain id) — fall through.
+        }
+        return Optional.empty();
     }
 
     private OnlineMeetingMetadata parseMeeting(JsonNode node) {
