@@ -112,23 +112,27 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
     }
 
     /**
-     * Prefer the descriptor id when the live provider still serves it; otherwise pick a
-     * concrete runtime id from the provider allowlist (skip generic placeholders).
+     * Prefer a concrete served model id. Placeholder aliases ({@code nanobaseai-local}) must never
+     * win over a real registry/runtime id — llama.cpp echoes the concrete model name and FAZ 13
+     * fails closed on mismatch.
      */
     private String resolveServedModelId() {
         String configured = descriptor.servedModelId();
+        java.util.function.Predicate<String> concrete = id -> id != null
+                && !id.isBlank()
+                && !id.equals("nanobaseai-primary")
+                && !id.equals("nanobaseai-local");
+        if (concrete.test(configured)) {
+            return configured;
+        }
         var known = provider.capabilities() == null
                 ? java.util.Set.<String>of()
                 : provider.capabilities().servedModelIds();
         if (known == null || known.isEmpty()) {
             return configured;
         }
-        if (known.contains(configured)) {
-            return configured;
-        }
         return known.stream()
-                .filter(id -> id != null && !id.isBlank())
-                .filter(id -> !id.equals("nanobaseai-primary") && !id.equals("nanobaseai-local"))
+                .filter(concrete)
                 .findFirst()
                 .or(() -> known.stream().filter(id -> id != null && !id.isBlank()).findFirst())
                 .orElse(configured);

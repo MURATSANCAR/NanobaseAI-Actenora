@@ -12,8 +12,8 @@ import {
   validateDesignSchema,
 } from "@/lib/templateStandards";
 import {
-  NANOBASE_WEBSITE_LABEL,
-  NANOBASE_WEBSITE_URL,
+  PRODUCT_WEBSITE_LABEL,
+  PRODUCT_WEBSITE_URL,
 } from "@/components/template/TemplateBrandBanner";
 import { useI18n } from "@/i18n";
 import type { DesignSchema, TemplateComponentType } from "@/types/template";
@@ -142,13 +142,13 @@ export function TemplateMockupsPage() {
             <p className="mt-1 text-sm text-white/90">{t("templates.brand.slogan")}</p>
           </div>
           <a
-            href={NANOBASE_WEBSITE_URL}
+            href={PRODUCT_WEBSITE_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-3 py-2 text-sm font-medium text-white ring-1 ring-white/30 transition hover:bg-white/25"
           >
             <Globe className="h-4 w-4" aria-hidden />
-            {NANOBASE_WEBSITE_LABEL}
+            {PRODUCT_WEBSITE_LABEL}
           </a>
         </div>
       </div>
@@ -235,13 +235,13 @@ export function TemplateMockupsPage() {
             </div>
           </div>
           <a
-            href={NANOBASE_WEBSITE_URL}
+            href={PRODUCT_WEBSITE_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-sm font-medium text-sky-300 hover:text-sky-200"
           >
             <Globe className="h-4 w-4" aria-hidden />
-            {NANOBASE_WEBSITE_LABEL}
+            {PRODUCT_WEBSITE_LABEL}
           </a>
         </footer>
       ) : null}

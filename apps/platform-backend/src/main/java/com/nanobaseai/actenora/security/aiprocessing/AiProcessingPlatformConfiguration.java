@@ -188,6 +188,10 @@ public class AiProcessingPlatformConfiguration {
         var known = provider.capabilities() == null
                 ? Set.<String>of()
                 : provider.capabilities().servedModelIds();
+        java.util.function.Predicate<String> concreteServed = id -> id != null
+                && !id.isBlank()
+                && !id.equals("nanobaseai-primary")
+                && !id.equals("nanobaseai-local");
         var selected = modelDefinitions.findAll().stream()
                 .filter(ModelDefinition::acceptsNewWork)
                 .filter(definition -> definition.supportsCapability(
@@ -195,7 +199,8 @@ public class AiProcessingPlatformConfiguration {
                         || definition.supportsCapability(
                         com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType.FINAL_NOTE))
                 .sorted(java.util.Comparator
-                        .comparing((ModelDefinition definition) ->
+                        .comparing((ModelDefinition definition) -> !concreteServed.test(definition.servedModelId()))
+                        .thenComparing((ModelDefinition definition) ->
                                 known == null || known.isEmpty() || !known.contains(definition.servedModelId()))
                         .thenComparingInt(ModelDefinition::priority)
                         .thenComparing(ModelDefinition::modelKey))
@@ -205,7 +210,8 @@ public class AiProcessingPlatformConfiguration {
                 .orElse(DefaultModelRoleBootstrap.QWEN27_FINAL_MODEL_ID);
         String servedModelId = selected
                 .map(ModelDefinition::servedModelId)
-                .filter(id -> id != null && !id.isBlank())
+                .filter(concreteServed)
+                .or(() -> known == null ? java.util.Optional.empty() : known.stream().filter(concreteServed).findFirst())
                 .orElse(Qwen27BModelAdapter.SERVED_MODEL_ID);
         String modelVersion = servedModelId + "@local-v1";
         return new LocalProviderModelRuntimeAdapter(
@@ -215,7 +221,7 @@ public class AiProcessingPlatformConfiguration {
                         servedModelId,
                         modelVersion,
                         selected.map(ModelDefinition::contextWindow).orElse(Qwen27BModelAdapter.CONTEXT_WINDOW),
-                        Qwen27BModelAdapter.MAX_OUTPUT
+                        Math.max(Qwen27BModelAdapter.MAX_OUTPUT, 6000)
                 ),
                 modelDefinitionId
         );

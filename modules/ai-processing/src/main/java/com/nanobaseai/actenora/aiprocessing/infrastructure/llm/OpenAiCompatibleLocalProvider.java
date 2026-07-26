@@ -322,14 +322,22 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
     }
 
     private void ensureServedModelAllowed(String servedModelId) {
-        if (!config.knownServedModelIds().isEmpty()
-                && !config.knownServedModelIds().contains(servedModelId)) {
-            throw LocalModelProviderException.of(
-                    ProviderFailureCategory.INVALID_SERVED_MODEL,
-                    "served model not configured on provider: " + servedModelId,
-                    false
-            );
+        Set<String> known = config.knownServedModelIds();
+        if (known.isEmpty() || known.contains(servedModelId)) {
+            return;
         }
+        // Connection defaults ship placeholder aliases; live llama.cpp returns concrete ids.
+        // Do not fail closed on that mismatch — registry/runtime already selected the served id.
+        boolean onlyPlaceholders = known.stream().allMatch(id ->
+                "nanobaseai-primary".equals(id) || "nanobaseai-local".equals(id));
+        if (onlyPlaceholders) {
+            return;
+        }
+        throw LocalModelProviderException.of(
+                ProviderFailureCategory.INVALID_SERVED_MODEL,
+                "served model not configured on provider: " + servedModelId,
+                false
+        );
     }
 
     private void detectModelMismatch(WorkerRequestEnvelope envelope, String responseModel, long started) {
