@@ -2,7 +2,7 @@ package com.nanobaseai.actenora.identity.application;
 
 import com.nanobaseai.actenora.identity.domain.DuplicateEntraMappingException;
 import com.nanobaseai.actenora.identity.domain.OptimisticLockException;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.identity.domain.SystemRole;
 import com.nanobaseai.actenora.identity.infrastructure.persistence.InMemoryUserRepository;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;

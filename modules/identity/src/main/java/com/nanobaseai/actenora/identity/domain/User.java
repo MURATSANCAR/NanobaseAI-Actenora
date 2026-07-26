@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.identity.domain;
 
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.Instant;

@@ -60,6 +60,7 @@ import com.nanobaseai.actenora.modelmanagement.domain.ModelDeployment;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelStatus;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -102,6 +103,7 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(PromptRegistryPort.class)
     PromptRegistryPort inMemoryPromptRegistry() {
         return new InMemoryPromptRegistry();
     }
@@ -190,17 +192,20 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(AiJobRepository.class)
     AiJobRepository inMemoryAiJobRepository() {
         return new InMemoryAiJobRepository();
     }
 
     @Bean
+    @ConditionalOnMissingBean(AiAttemptRepository.class)
     AiAttemptRepository inMemoryAiAttemptRepository() {
         return new InMemoryAiAttemptRepository();
     }
 
     @Bean
     @Primary
+    @ConditionalOnMissingBean(ModelCatalogPort.class)
     ModelCatalogPort preferRegistryModelCatalog(
             ModelDefinitionRepository modelDefinitions,
             ModelDeploymentRepository deployments,
@@ -254,26 +259,31 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(RoutingDecisionStorePort.class)
     RoutingDecisionStorePort inMemoryRoutingDecisionStore() {
         return new InMemoryRoutingDecisionStore();
     }
 
     @Bean
+    @ConditionalOnMissingBean(AttemptHistoryPort.class)
     AttemptHistoryPort inMemoryAttemptHistoryStore() {
         return new InMemoryAttemptHistoryStore();
     }
 
     @Bean
+    @ConditionalOnMissingBean(ShadowExecutionStorePort.class)
     ShadowExecutionStorePort inMemoryShadowExecutionStore() {
         return new InMemoryShadowExecutionStore();
     }
 
     @Bean
+    @ConditionalOnMissingBean(ModelQualityMetricsPort.class)
     ModelQualityMetricsPort inMemoryModelQualityMetricsStore() {
         return new InMemoryModelQualityMetricsStore();
     }
 
     @Bean
+    @ConditionalOnMissingBean(RetryQueuePort.class)
     RetryQueuePort inMemoryRetryQueue() {
         return new InMemoryRetryQueue();
     }

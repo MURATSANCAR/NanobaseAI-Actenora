@@ -1,4 +1,5 @@
-# Test profile — in-memory H2; brokers/mail off (unit + ArchUnit / MockMvc).
+# Test profile — H2 for unit/ArchUnit/MockMvc. Flyway stays off here.
+# Integration profile `it` enables Flyway against Testcontainers Postgres.
 spring:
   config:
     activate:

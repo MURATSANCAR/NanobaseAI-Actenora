@@ -1,5 +1,7 @@
 package com.nanobaseai.actenora.identity.domain;
 
+import com.nanobaseai.actenora.identity.api.Permission;
+
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;

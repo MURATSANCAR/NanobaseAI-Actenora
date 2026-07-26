@@ -14,6 +14,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNote
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -29,11 +30,13 @@ import java.util.UUID;
 @Configuration
 public class ApprovalPlatformConfiguration {
 
+    @ConditionalOnMissingBean(ApprovalRequestRepository.class)
     @Bean
     public ApprovalRequestRepository inMemoryApprovalRequestRepository() {
         return new InMemoryApprovalRequestRepository();
     }
 
+    @ConditionalOnMissingBean(ParticipantDisputeRepository.class)
     @Bean
     public ParticipantDisputeRepository inMemoryParticipantDisputeRepository() {
         return new InMemoryParticipantDisputeRepository();

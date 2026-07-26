@@ -2,7 +2,7 @@ package com.nanobaseai.actenora.security.meetingintelligence;
 
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.domain.AuthorizationDeniedException;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerApi;
 import com.nanobaseai.actenora.meetingintelligence.application.ledger.ContinuityLedgerService;
 import com.nanobaseai.actenora.meetingintelligence.domain.ledger.ContinuitySuggestionStatus;

@@ -21,7 +21,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.routing.ModelRole;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.routing.InMemoryLocalDeploymentCatalog;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.domain.AuthorizationDeniedException;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.modelmanagement.application.ActorPrincipal;
 import com.nanobaseai.actenora.modelmanagement.application.ConfigureCapabilityCommand;
 import com.nanobaseai.actenora.modelmanagement.application.DeploymentHealthSettings;

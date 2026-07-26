@@ -17,7 +17,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.ValidationModelPreference;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.RequiresPermission;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
 import org.springframework.http.HttpStatus;

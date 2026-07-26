@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  react-router: 7.18.1
+
 importers:
 
   .: {}
@@ -51,7 +54,7 @@ importers:
         specifier: ^19.1.0
         version: 19.2.8(react@19.2.8)
       react-router-dom:
-        specifier: ^7.6.0
+        specifier: 7.18.1
         version: 7.18.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
       '@actenora/test-support':

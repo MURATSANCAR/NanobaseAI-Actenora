@@ -21,6 +21,7 @@ import com.nanobaseai.actenora.sharedkernel.messaging.replay.EventReplayer;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.TenantFairnessTracker;
 import com.nanobaseai.actenora.transcript.api.contract.MeetingOccurrenceContracts;
 import com.nanobaseai.actenora.transcript.infrastructure.messaging.MeetingOccurrenceUpsertedHandler;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -29,13 +30,14 @@ import org.springframework.context.annotation.Primary;
  * FAZ 10 — shared InMemory event backbone for local modular-monolith boot.
  * Meeting outbox + transcript inbox share the same stores (ops DLQ/replay visibility).
  * FAZ 29 — note-approved → continuity ledger consumer on the same fan-out transport.
- * Rabbit/JDBC adapters deferred.
+ * Wave 0 — InMemory beans yield to JDBC/Rabbit when those adapters register the same types.
  */
 @Configuration
 public class EventBackbonePlatformConfiguration {
 
     @Bean(destroyMethod = "close")
     @Primary
+    @ConditionalOnMissingBean(EventBackbone.class)
     EventBackbone platformEventBackbone(
             MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
             NoteApprovedForLedgerHandler noteApprovedForLedgerHandler
@@ -63,36 +65,42 @@ public class EventBackbonePlatformConfiguration {
 
     @Bean
     @Primary
+    @ConditionalOnMissingBean(OutboxStore.class)
     OutboxStore platformOutboxStore(EventBackbone platformEventBackbone) {
         return platformEventBackbone.outboxStore();
     }
 
     @Bean
     @Primary
+    @ConditionalOnMissingBean(InboxStore.class)
     InboxStore platformInboxStore(EventBackbone platformEventBackbone) {
         return platformEventBackbone.inboxStore();
     }
 
     @Bean
     @Primary
+    @ConditionalOnMissingBean(DeadLetterStore.class)
     DeadLetterStore platformDeadLetterStore(EventBackbone platformEventBackbone) {
         return platformEventBackbone.deadLetterStore();
     }
 
     @Bean
     @Primary
+    @ConditionalOnMissingBean(EventReplayer.class)
     EventReplayer platformEventReplayer(EventBackbone platformEventBackbone) {
         return platformEventBackbone.replay();
     }
 
     @Bean
     @Primary
+    @ConditionalOnMissingBean(OutboxPublisher.class)
     OutboxPublisher platformOutboxPublisher(EventBackbone platformEventBackbone) {
         return platformEventBackbone.outboxPublisher();
     }
 
     @Bean
     @Primary
+    @ConditionalOnMissingBean(MeetingEventPublisher.class)
     MeetingEventPublisher outboxMeetingEventPublisher(OutboxPublisher platformOutboxPublisher) {
         return new OutboxMeetingEventPublisher(platformOutboxPublisher, "meeting");
     }

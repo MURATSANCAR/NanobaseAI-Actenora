@@ -7,6 +7,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
@@ -151,6 +152,9 @@ class ModularMonolithArchUnitTest {
             ArchRule rule = noClasses()
                     .that().resideInAPackage(BASE + "..")
                     .and().resideOutsideOfPackage(BASE + "." + module + "..")
+                    // Composition root may wire ports/adapters across BCs.
+                    .and().resideOutsideOfPackage(BASE + ".security..")
+                    .and().resideOutsideOfPackage(BASE + ".platform..")
                     .should().dependOnClassesThat().resideInAnyPackage(
                             BASE + "." + module + ".domain..",
                             BASE + "." + module + ".application..",
@@ -160,6 +164,30 @@ class ModularMonolithArchUnitTest {
                     .allowEmptyShould(true);
             rule.check(classes);
         }
+    }
+
+    @Test
+    void permissionEnumLivesInIdentityPublicApi() {
+        classes()
+                .that().haveSimpleName("Permission")
+                .and().resideInAPackage(BASE + ".identity..")
+                .should().resideInAPackage(BASE + ".identity.api..")
+                .because("Permission must live in identity.api for cross-module use")
+                .check(classes);
+
+        noClasses()
+                .that().resideOutsideOfPackage(BASE + ".identity..")
+                .and().resideInAPackage(BASE + "..")
+                .should().dependOnClassesThat(
+                        com.tngtech.archunit.base.DescribedPredicate.describe(
+                                "identity.domain.Permission",
+                                javaClass -> javaClass.getPackageName().equals(BASE + ".identity.domain")
+                                        && javaClass.getSimpleName().equals("Permission")
+                        )
+                )
+                .allowEmptyShould(true)
+                .because("Permission must not leak from identity.domain")
+                .check(classes);
     }
 
     @Test

@@ -3,7 +3,7 @@ package com.nanobaseai.actenora.security.policy;
 import com.nanobaseai.actenora.audit.api.AuditApi;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.RequiresPermission;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
 import org.springframework.web.bind.annotation.GetMapping;

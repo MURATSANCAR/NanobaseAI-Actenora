@@ -100,6 +100,10 @@ public final class TenantSecurityContextFilter extends OncePerRequestFilter {
         if (path == null) {
             return false;
         }
+        // Liveness/readiness-style app health must stay anonymous for probes.
+        if ("/api/health".equals(path)) {
+            return false;
+        }
         // Provider webhooks authenticate via shared secret / clientState, not user JWT / mock headers.
         if (path.startsWith("/api/v1/delivery/webhooks/")
                 || path.startsWith("/api/v1/microsoft/webhooks/")) {

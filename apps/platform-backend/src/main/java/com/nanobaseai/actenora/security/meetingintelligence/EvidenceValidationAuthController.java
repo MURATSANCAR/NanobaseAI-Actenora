@@ -2,7 +2,7 @@ package com.nanobaseai.actenora.security.meetingintelligence;
 
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.RequiresPermission;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.api.OverrideQualityGateCommand;
 import com.nanobaseai.actenora.meetingintelligence.api.RunValidationCommand;

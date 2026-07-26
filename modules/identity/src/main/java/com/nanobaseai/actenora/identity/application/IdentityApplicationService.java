@@ -5,7 +5,7 @@ import com.nanobaseai.actenora.identity.api.UserView;
 import com.nanobaseai.actenora.identity.application.port.UserRepositoryPort;
 import com.nanobaseai.actenora.identity.domain.AuthorizationDeniedException;
 import com.nanobaseai.actenora.identity.domain.DuplicateEntraMappingException;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.identity.domain.SystemRole;
 import com.nanobaseai.actenora.identity.domain.User;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;

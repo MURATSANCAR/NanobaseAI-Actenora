@@ -1,6 +1,5 @@
 package com.nanobaseai.actenora.identity.api;
 
-import com.nanobaseai.actenora.identity.domain.Permission;
 import com.nanobaseai.actenora.identity.domain.SystemRole;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;

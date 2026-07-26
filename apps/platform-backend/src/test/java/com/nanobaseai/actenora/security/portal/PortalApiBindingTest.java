@@ -8,7 +8,7 @@ import com.nanobaseai.actenora.approval.infrastructure.InMemoryParticipantDisput
 import com.nanobaseai.actenora.approval.infrastructure.RecordingApprovalAuditPort;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.UserView;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.identity.domain.SystemRole;
 import com.nanobaseai.actenora.identity.domain.UserStatus;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;

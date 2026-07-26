@@ -17,7 +17,7 @@ import com.nanobaseai.actenora.aiprocessing.infrastructure.llm.MockLocalProvider
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.InMemoryTranscriptSegmentSource;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.domain.AuthorizationDeniedException;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;

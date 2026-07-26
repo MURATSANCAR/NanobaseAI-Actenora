@@ -8,7 +8,7 @@ import com.nanobaseai.actenora.approval.api.ApprovalRequestView;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.RequiresPermission;
 import com.nanobaseai.actenora.identity.api.UserView;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meeting.api.dto.CursorPageRequest;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingListResponse;

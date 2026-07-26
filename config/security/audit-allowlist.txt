@@ -1,0 +1,5 @@
+# Dependency audit allowlist (Wave 0)
+# Format: GHSA-id<TAB>reason
+# Only entries listed here may be ignored by scripts/scan-dependencies.
+
+GHSA-qwww-vcr4-c8h2	RSC-only CSRF path; web-portal uses BrowserRouter SPA (no unstable RSC APIs). No react-router-dom@8 yet; react-router@8.3.0 has no matching react-router-dom release.

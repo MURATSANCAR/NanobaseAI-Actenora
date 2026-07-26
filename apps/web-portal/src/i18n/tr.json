@@ -17,6 +17,8 @@
   "nav.closeMenu": "Menüyü kapat",
   "nav.menu": "Ana menü",
   "actenora.nav.section": "Toplantı zekası",
+  "actenora.nav.workspace": "Çalışma alanı",
+  "actenora.nav.administration": "Yönetim",
   "actenora.hero.live": "Canlı çalışma alanı",
   "nav.signingIn": "Oturum açılıyor…",
   "nav.authUnavailable": "Kimlik doğrulama kullanılamıyor",

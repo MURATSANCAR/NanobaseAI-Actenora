@@ -17,6 +17,8 @@
   "nav.closeMenu": "Close menu",
   "nav.menu": "Main menu",
   "actenora.nav.section": "Meeting intelligence",
+  "actenora.nav.workspace": "Workspace",
+  "actenora.nav.administration": "Administration",
   "actenora.hero.live": "Live workspace",
   "nav.signingIn": "Signing in…",
   "nav.authUnavailable": "Auth unavailable",

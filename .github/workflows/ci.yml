@@ -12,11 +12,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Bootstrap + build + SBOM
         run: ./scripts/ci-build
+      - name: Install gitleaks
+        run: |
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
       - name: Secret scan
         run: ./scripts/scan-secrets
       - name: Dependency vulnerability scan
         run: ./scripts/scan-dependencies
-        continue-on-error: true
       - name: Lint + test
         run: ./scripts/ci-test
       - name: Upload timings & SBOM & security
@@ -28,3 +32,18 @@ jobs:
             artifacts/local/timings.tsv
             artifacts/sbom/
             artifacts/security/
+
+  architecture-flyway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Clean + ArchUnit + Flyway uniqueness
+        run: |
+          ./mvnw -pl apps/platform-backend -am clean test \
+            -Dtest=ModularMonolithArchUnitTest,ModulithArchitectureTest,FlywayMigrationUniquenessTest \
+            -Dsurefire.failIfNoSpecifiedTests=false

@@ -1,7 +1,8 @@
-package com.nanobaseai.actenora.identity.domain;
+package com.nanobaseai.actenora.identity.api;
 
 /**
- * Fine-grained permissions. Roles map to permission sets via {@link RolePermissionCatalog}.
+ * Fine-grained permissions (public Identity contract).
+ * Roles map to permission sets via {@code RolePermissionCatalog} in the Identity domain.
  */
 public enum Permission {
     TENANT_READ,

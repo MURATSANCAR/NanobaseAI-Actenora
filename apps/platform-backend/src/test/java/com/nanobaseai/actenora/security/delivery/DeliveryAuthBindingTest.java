@@ -28,7 +28,7 @@ import com.nanobaseai.actenora.delivery.infrastructure.portal.HmacSignedPortalLi
 import com.nanobaseai.actenora.delivery.infrastructure.ratelimit.FixedWindowDeliveryRateLimiter;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.domain.AuthorizationDeniedException;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNote;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.ModelPromptSchemaProvenance;

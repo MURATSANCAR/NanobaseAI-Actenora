@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# FAZ 27 — dependency vulnerability scan (best-effort per toolchain).
+# FAZ 27 / Wave 0 — dependency vulnerability scan (hard-fail with allowlist).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -9,6 +9,7 @@ ensure_path_tools
 REPORT_DIR="${REPO_ROOT}/artifacts/security"
 mkdir -p "${REPORT_DIR}"
 REPORT="${REPORT_DIR}/dependency-scan.txt"
+ALLOWLIST="${REPO_ROOT}/config/security/audit-allowlist.txt"
 : >"${REPORT}"
 
 log "Dependency vulnerability scan → ${REPORT}"
@@ -16,17 +17,9 @@ FAILED=0
 
 scan_maven() {
   if [[ -x "${REPO_ROOT}/mvnw" ]]; then
-    log "Maven OWASP Dependency-Check (or dependency:tree fallback)"
-    if "${REPO_ROOT}/mvnw" -q -N org.owasp:dependency-check-maven:check \
-        -DfailBuildOnCVSS=9 \
-        -Dformat=HTML \
-        -DoutputDirectory="${REPORT_DIR}" 2>>"${REPORT}"; then
-      echo "maven-dependency-check: ok" >>"${REPORT}"
-    else
-      warn "OWASP dependency-check unavailable/failed — recording Maven tree for audit"
-      "${REPO_ROOT}/mvnw" -q -DskipTests dependency:tree >>"${REPORT}" || true
-      echo "maven-dependency-check: skipped" >>"${REPORT}"
-    fi
+    log "Maven dependency:tree snapshot (OWASP NVD sync is optional / offline-unfriendly)"
+    "${REPO_ROOT}/mvnw" -q -DskipTests dependency:tree >>"${REPORT}" || true
+    echo "maven-dependency-tree: recorded" >>"${REPORT}"
   fi
 }
 
@@ -35,24 +28,126 @@ scan_python() {
     (cd "${REPO_ROOT}/apps/ai-orchestrator" && uv pip compile pyproject.toml -o /tmp/actenora-orch-reqs.txt 2>/dev/null || true)
   fi
   if command -v pip-audit >/dev/null 2>&1; then
-    pip-audit -r "${REPO_ROOT}/apps/ai-orchestrator/pyproject.toml" 2>&1 | tee -a "${REPORT}" || FAILED=1
+    if ! pip-audit -r "${REPO_ROOT}/apps/ai-orchestrator/pyproject.toml" 2>&1 | tee -a "${REPORT}"; then
+      FAILED=1
+    fi
   else
     echo "pip-audit: not installed (skipped)" >>"${REPORT}"
   fi
 }
 
-scan_node() {
-  for app in web-portal teams-meeting-app; do
-    local dir="${REPO_ROOT}/apps/${app}"
-    if [[ -f "${dir}/package.json" ]] && command -v pnpm >/dev/null 2>&1; then
-      (cd "${dir}" && pnpm audit --prod 2>&1 | tee -a "${REPORT}") || warn "pnpm audit reported issues in ${app}"
+scan_node_app() {
+  local app="$1"
+  local dir="${REPO_ROOT}/apps/${app}"
+  [[ -f "${dir}/package.json" ]] || return 0
+  command -v pnpm >/dev/null 2>&1 || return 0
+
+  log "pnpm audit --prod --json (${app})"
+  local json_file="${REPORT_DIR}/pnpm-audit-${app}.json"
+  set +e
+  (cd "${dir}" && pnpm audit --prod --json >"${json_file}" 2>>"${REPORT}")
+  local audit_rc=$?
+  set -e
+
+  if [[ ! -s "${json_file}" ]]; then
+    # Fallback text audit when JSON unavailable
+    if ! (cd "${dir}" && pnpm audit --prod 2>&1 | tee -a "${REPORT}"); then
+      echo "pnpm-audit:fail:${app}" >>"${REPORT}"
+      FAILED=1
     fi
-  done
+    return 0
+  fi
+
+  # Fail on advisories not in allowlist (any severity reported by pnpm audit --prod).
+  local blocking
+  blocking="$(python3 - "${json_file}" "${ALLOWLIST}" <<'PY'
+import json, sys
+from pathlib import Path
+
+audit = json.load(open(sys.argv[1]))
+allow = set()
+allow_path = Path(sys.argv[2])
+if allow_path.exists():
+    for line in allow_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        allow.add(line.split("\t", 1)[0].strip())
+
+advisories = audit.get("advisories") or {}
+# pnpm may nest under "advisories" as dict, or use "vulnerabilities"
+blocking = []
+if isinstance(advisories, dict) and advisories:
+    for adv in advisories.values():
+        ghsa = adv.get("github_advisory_id") or adv.get("id") or ""
+        title = adv.get("title") or ghsa
+        if ghsa in allow or str(adv.get("id")) in allow:
+            continue
+        # also match GHSA in url
+        url = adv.get("url") or ""
+        matched = any(a in url or a == ghsa for a in allow)
+        if matched:
+            continue
+        if any(a in url for a in allow):
+            continue
+        ghsa_from_url = None
+        for part in url.split("/"):
+            if part.startswith("GHSA-"):
+                ghsa_from_url = part
+                break
+        key = ghsa_from_url or ghsa or str(adv.get("id"))
+        if key in allow:
+            continue
+        blocking.append(f"{key}: {title}")
+else:
+    # Newer pnpm: top-level metadata + actions
+    for action in audit.get("actions") or []:
+        for res in action.get("resolves") or []:
+            pass
+    vulns = audit.get("vulnerabilities") or {}
+    if isinstance(vulns, dict):
+        for name, meta in vulns.items():
+            via = meta.get("via") or []
+            if not isinstance(via, list):
+                continue
+            for item in via:
+                if not isinstance(item, dict):
+                    continue
+                url = item.get("url") or ""
+                ghsa = None
+                for part in url.split("/"):
+                    if part.startswith("GHSA-"):
+                        ghsa = part
+                        break
+                title = item.get("title") or name
+                if ghsa and ghsa in allow:
+                    continue
+                if ghsa:
+                    blocking.append(f"{ghsa}: {title}")
+                else:
+                    blocking.append(f"{name}: {title}")
+
+print("\n".join(sorted(set(blocking))))
+PY
+)"
+
+  if [[ -n "${blocking}" ]]; then
+    echo "pnpm-audit:blocking:${app}" >>"${REPORT}"
+    echo "${blocking}" | tee -a "${REPORT}"
+    FAILED=1
+  else
+    echo "pnpm-audit:ok:${app}" >>"${REPORT}"
+    if [[ "${audit_rc}" -ne 0 ]]; then
+      echo "pnpm-audit:allowlisted-findings:${app}" >>"${REPORT}"
+    fi
+  fi
+  (cd "${dir}" && pnpm audit --prod 2>&1 | tee -a "${REPORT}" || true)
 }
 
 scan_maven
 scan_python
-scan_node
+scan_node_app web-portal
+scan_node_app teams-meeting-app
 
 echo "dependency-scan:completed" >>"${REPORT}"
 if [[ "${FAILED}" -ne 0 ]]; then

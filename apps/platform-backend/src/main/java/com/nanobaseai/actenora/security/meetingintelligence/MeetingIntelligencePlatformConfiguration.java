@@ -47,6 +47,7 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InM
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryQualityGatePolicyPort;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryValidationRunRepository;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -63,46 +64,55 @@ import java.util.UUID;
 @Configuration
 public class MeetingIntelligencePlatformConfiguration {
 
+    @ConditionalOnMissingBean(MeetingNoteRepository.class)
     @Bean
     public MeetingNoteRepository inMemoryMeetingNoteRepository() {
         return new InMemoryMeetingNoteRepository();
     }
 
+    @ConditionalOnMissingBean(MeetingNoteVersionRepository.class)
     @Bean
     public MeetingNoteVersionRepository inMemoryMeetingNoteVersionRepository() {
         return new InMemoryMeetingNoteVersionRepository();
     }
 
+    @ConditionalOnMissingBean(DecisionRepository.class)
     @Bean
     public DecisionRepository inMemoryDecisionRepository() {
         return new InMemoryDecisionRepository();
     }
 
+    @ConditionalOnMissingBean(ActionItemRepository.class)
     @Bean
     public ActionItemRepository inMemoryActionItemRepository() {
         return new InMemoryActionItemRepository();
     }
 
+    @ConditionalOnMissingBean(RiskRepository.class)
     @Bean
     public RiskRepository inMemoryRiskRepository() {
         return new InMemoryRiskRepository();
     }
 
+    @ConditionalOnMissingBean(CommitmentRepository.class)
     @Bean
     public CommitmentRepository inMemoryCommitmentRepository() {
         return new InMemoryCommitmentRepository();
     }
 
+    @ConditionalOnMissingBean(OpenQuestionRepository.class)
     @Bean
     public OpenQuestionRepository inMemoryOpenQuestionRepository() {
         return new InMemoryOpenQuestionRepository();
     }
 
+    @ConditionalOnMissingBean(EvidenceLinkRepository.class)
     @Bean
     public EvidenceLinkRepository inMemoryEvidenceLinkRepository() {
         return new InMemoryEvidenceLinkRepository();
     }
 
+    @ConditionalOnMissingBean(QualityFlagRepository.class)
     @Bean
     public QualityFlagRepository inMemoryQualityFlagRepository() {
         return new InMemoryQualityFlagRepository();
@@ -173,21 +183,25 @@ public class MeetingIntelligencePlatformConfiguration {
         );
     }
 
+    @ConditionalOnMissingBean(MeetingIntelligenceApi.class)
     @Bean
     public MeetingIntelligenceApi meetingIntelligenceApi(MeetingIntelligenceApplicationService service) {
         return new MeetingIntelligenceApiFacade(service);
     }
 
+    @ConditionalOnMissingBean(ValidationRunRepository.class)
     @Bean
     public ValidationRunRepository inMemoryValidationRunRepository() {
         return new InMemoryValidationRunRepository();
     }
 
+    @ConditionalOnMissingBean(ManualReviewCaseRepository.class)
     @Bean
     public ManualReviewCaseRepository inMemoryManualReviewCaseRepository() {
         return new InMemoryManualReviewCaseRepository();
     }
 
+    @ConditionalOnMissingBean(QualityGatePolicyPort.class)
     @Bean
     public QualityGatePolicyPort inMemoryQualityGatePolicyPort() {
         return new InMemoryQualityGatePolicyPort();
@@ -223,6 +237,7 @@ public class MeetingIntelligencePlatformConfiguration {
         return new DefaultEvidenceValidationApi(service);
     }
 
+    @ConditionalOnMissingBean(MeetingNoteHandoffPort.class)
     @Bean
     public MeetingNoteHandoffPort meetingNoteHandoffPort(
             MeetingIntelligenceApi meetingIntelligenceApi,
@@ -234,11 +249,13 @@ public class MeetingIntelligencePlatformConfiguration {
                 meetingIntelligenceApi, evidenceValidationApi, segmentSource, auditPort);
     }
 
+    @ConditionalOnMissingBean(LedgerEventStore.class)
     @Bean
     public LedgerEventStore inMemoryLedgerEventStore() {
         return new InMemoryLedgerEventStore();
     }
 
+    @ConditionalOnMissingBean(LedgerProjectionRepository.class)
     @Bean
     public LedgerProjectionRepository inMemoryLedgerProjectionRepository() {
         return new InMemoryLedgerProjectionRepository();

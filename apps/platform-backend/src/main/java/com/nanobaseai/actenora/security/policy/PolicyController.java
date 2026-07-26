@@ -4,7 +4,7 @@ import com.nanobaseai.actenora.audit.api.AuditApi;
 import com.nanobaseai.actenora.audit.domain.SettingChangeAuditor;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.RequiresPermission;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.policy.api.PolicyApi;
 import com.nanobaseai.actenora.policy.api.TenantPolicyOverrideRequest;
 import com.nanobaseai.actenora.policy.api.TenantPolicyView;

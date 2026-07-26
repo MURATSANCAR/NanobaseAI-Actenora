@@ -31,7 +31,15 @@ spring:
       max-request-size: ${ACTENORA_UPLOAD_MAX_REQUEST_SIZE:26MB}
   flyway:
     enabled: true
-    baselines-on-migrate: true
+    # Correct Spring property (was misspelled baselines-on-migrate — silent no-op).
+    # Needed when public already has extensions from postgres init scripts.
+    baseline-on-migrate: true
+    baseline-version: 0
+    # Schema-per-context layout; history lives in public so extension objects do not
+    # collide with module schemas. create-schemas lets Flyway prepare empty schemas.
+    create-schemas: true
+    schemas: public,identity,tenant,policy,microsoftconnection,meeting,transcript,modelmanagement,aiprocessing,meetingintelligence,approval,template,delivery,audit,operations
+    default-schema: public
 
 management:
   endpoints:

@@ -1,0 +1,17 @@
+# Integration profile — Flyway on; JDBC URL supplied by Testcontainers / CI.
+spring:
+  config:
+    activate:
+      on-profile: it
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    create-schemas: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+actenora:
+  env: it

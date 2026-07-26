@@ -19,7 +19,7 @@ import com.nanobaseai.actenora.delivery.domain.RecipientKind;
 import com.nanobaseai.actenora.delivery.domain.exception.ExternalDeliveryBlockedException;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.RequiresPermission;
-import com.nanobaseai.actenora.identity.domain.Permission;
+import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;

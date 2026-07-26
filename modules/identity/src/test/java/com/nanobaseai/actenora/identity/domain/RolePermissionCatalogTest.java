@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.identity.domain;
 
+import com.nanobaseai.actenora.identity.api.Permission;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;

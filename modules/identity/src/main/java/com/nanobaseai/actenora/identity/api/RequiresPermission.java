@@ -1,7 +1,5 @@
 package com.nanobaseai.actenora.identity.api;
 
-import com.nanobaseai.actenora.identity.domain.Permission;
-
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
