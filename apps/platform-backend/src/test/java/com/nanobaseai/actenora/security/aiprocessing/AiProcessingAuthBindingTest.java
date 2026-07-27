@@ -39,6 +39,7 @@ import com.nanobaseai.actenora.policy.domain.TenantPolicyOverride;
 import com.nanobaseai.actenora.policy.infrastructure.cache.InMemoryPolicyCache;
 import com.nanobaseai.actenora.policy.infrastructure.persistence.InMemoryQuotaUsageStore;
 import com.nanobaseai.actenora.policy.infrastructure.persistence.InMemoryTenantPolicyRepository;
+import com.nanobaseai.actenora.security.aiprocessing.LocalProviderProperties;
 import com.nanobaseai.actenora.security.model.ModelManagementPlatformConfiguration;
 import com.nanobaseai.actenora.security.policy.PolicyPlatformConfiguration;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
@@ -128,7 +129,7 @@ class AiProcessingAuthBindingTest {
         var jobs = config.inMemoryAiJobRepository();
         var attempts = config.inMemoryAiAttemptRepository();
         var router = config.capabilityModelRouter(modelCatalog, tenantAiPolicy);
-        var scheduler = config.fairJobScheduler(jobs, attempts, tenantAiPolicy, router);
+        var scheduler = config.fairJobScheduler(jobs, attempts, tenantAiPolicy, router, new LocalProviderProperties());
         var admission = config.defaultAdmissionController(jobs, tenantAiPolicy, router, scheduler);
         var jobService = config.aiJobService(admission, jobs, attempts, scheduler);
         aiProcessingApi = config.aiProcessingApi(jobService);

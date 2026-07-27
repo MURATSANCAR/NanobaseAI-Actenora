@@ -163,7 +163,7 @@ class MeetingIntelligenceAuthBindingTest {
         var jobs = aiConfig.inMemoryAiJobRepository();
         var attempts = aiConfig.inMemoryAiAttemptRepository();
         var router = aiConfig.capabilityModelRouter(modelCatalog, tenantAiPolicy);
-        var scheduler = aiConfig.fairJobScheduler(jobs, attempts, tenantAiPolicy, router);
+        var scheduler = aiConfig.fairJobScheduler(jobs, attempts, tenantAiPolicy, router, new LocalProviderProperties());
         var admission = aiConfig.defaultAdmissionController(jobs, tenantAiPolicy, router, scheduler);
         var jobService = aiConfig.aiJobService(admission, jobs, attempts, scheduler);
         AiProcessingApi aiProcessingApi = aiConfig.aiProcessingApi(jobService);

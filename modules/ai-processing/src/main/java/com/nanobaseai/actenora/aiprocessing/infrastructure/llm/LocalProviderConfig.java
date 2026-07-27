@@ -47,7 +47,7 @@ public record LocalProviderConfig(
         private final String providerKind;
         private final URI baseUrl;
         private Duration connectTimeout = Duration.ofSeconds(2);
-        private Duration readTimeout = Duration.ofSeconds(600);
+        private Duration readTimeout = Duration.ofSeconds(1800);
         private int maxConcurrency = 4;
         private boolean streamingEnabled = true;
         private long degradedProbeThresholdMs = 2_000L;

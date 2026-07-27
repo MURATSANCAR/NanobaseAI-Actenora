@@ -11,6 +11,7 @@ import com.nanobaseai.actenora.aiprocessing.application.routing.CapabilityModelR
 import com.nanobaseai.actenora.aiprocessing.application.scheduling.FairJobScheduler;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiAttemptStatus;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
 import com.nanobaseai.actenora.aiprocessing.domain.job.JobPriority;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.llm.MockLocalProvider;
@@ -139,8 +140,10 @@ class AiJobInferenceExecutorTest {
         provider.forceFailure(ProviderFailureCategory.READ_TIMEOUT);
         UUID jobId = submit().job().id();
 
+        Instant cursor = now;
         for (int i = 0; i < AiJobInferenceExecutor.DEFAULT_MAX_ATTEMPTS; i++) {
-            executor.executeNext(now).orElseThrow();
+            executor.executeNext(cursor).orElseThrow();
+            cursor = cursor.plus(AiJob.RETRY_BACKOFF_CAP).plusSeconds(1);
         }
 
         assertEquals(AiJobStatus.DEAD, jobs.findById(jobId).orElseThrow().status());
