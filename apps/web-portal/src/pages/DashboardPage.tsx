@@ -3,12 +3,10 @@ import { Link } from "react-router-dom";
 import {
   Activity,
   ArrowRight,
-  Calendar,
   CheckSquare,
   Clock,
   Handshake,
   Sparkles,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import clsx from "clsx";
@@ -16,16 +14,15 @@ import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
 import type { DashboardResponse, MeetingSummary } from "@/api/types";
 import { useAuth } from "@/auth/AuthProvider";
-import { StatusBadge } from "@/components/qa/StatusBadge";
+import { MeetingSummaryList } from "@/components/meeting/MeetingSummaryList";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { PRODUCT_BRAND } from "@/config/brand";
 import { useI18n } from "@/i18n";
-import type { Locale } from "@/i18n";
 import { OnboardingBanner } from "@/pages/OnboardingPage";
 
 export function DashboardPage() {
   const api = useApi();
-  const { t, tb } = useI18n();
+  const { t } = useI18n();
   const auth = useAuth();
   const q = useQuery({ queryKey: queryKeys.dashboard, queryFn: () => api.getDashboard() });
 
@@ -84,7 +81,6 @@ export function DashboardPage() {
               title={t("dashboard.recentMeetings")}
               empty={t("dashboard.recentEmpty")}
               viewAll={t("dashboard.viewAllMeetings")}
-              statusLabel={(s) => tb("meetingStatus", s)}
             />
           </>
         ) : null}
