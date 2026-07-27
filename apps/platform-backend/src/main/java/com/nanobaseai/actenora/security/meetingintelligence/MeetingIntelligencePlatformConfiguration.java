@@ -282,7 +282,8 @@ public class MeetingIntelligencePlatformConfiguration {
             TranscriptSegmentSourcePort segmentSource,
             MeetingIntelligenceAuditPort auditPort,
             DraftMinutesMailNotifier draftMinutesMailNotifier,
-            MeetingApi meetingApi
+            MeetingApi meetingApi,
+            NoteArtifactStoragePort noteArtifactStorage
     ) {
         return new MeetingIntelligenceHandoffAdapter(
                 meetingIntelligenceApi,
@@ -290,7 +291,8 @@ public class MeetingIntelligencePlatformConfiguration {
                 segmentSource,
                 auditPort,
                 Optional.of(draftMinutesMailNotifier),
-                Optional.of(meetingApi)
+                Optional.of(meetingApi),
+                noteArtifactStorage
         );
     }
 

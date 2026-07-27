@@ -60,6 +60,9 @@ public class ProductionSecretGuard implements ApplicationRunner {
     private final String graphPrivateKeyPath;
     private final String knowledgeEmbeddingMode;
     private final String knowledgeEmbeddingBaseUrl;
+    private final String knowledgeEmbeddingModelId;
+    private final boolean redisCoordinationEnabled;
+    private final String redisPassword;
 
     public ProductionSecretGuard(
             Environment environment,
@@ -78,7 +81,10 @@ public class ProductionSecretGuard implements ApplicationRunner {
             @Value("${actenora.microsoft-graph.certificate-pem-path:}") String graphCertificatePath,
             @Value("${actenora.microsoft-graph.private-key-pem-path:}") String graphPrivateKeyPath,
             @Value("${actenora.knowledge.embedding.mode:hash}") String knowledgeEmbeddingMode,
-            @Value("${actenora.knowledge.embedding.base-url:}") String knowledgeEmbeddingBaseUrl
+            @Value("${actenora.knowledge.embedding.base-url:}") String knowledgeEmbeddingBaseUrl,
+            @Value("${actenora.knowledge.embedding.model-id:}") String knowledgeEmbeddingModelId,
+            @Value("${actenora.redis.coordination.enabled:false}") boolean redisCoordinationEnabled,
+            @Value("${spring.data.redis.password:}") String redisPassword
     ) {
         this.environment = environment;
         this.allowDefaultSecrets = allowDefaultSecrets;
@@ -97,6 +103,9 @@ public class ProductionSecretGuard implements ApplicationRunner {
         this.graphPrivateKeyPath = graphPrivateKeyPath;
         this.knowledgeEmbeddingMode = knowledgeEmbeddingMode;
         this.knowledgeEmbeddingBaseUrl = knowledgeEmbeddingBaseUrl;
+        this.knowledgeEmbeddingModelId = knowledgeEmbeddingModelId;
+        this.redisCoordinationEnabled = redisCoordinationEnabled;
+        this.redisPassword = redisPassword;
     }
 
     @Override
@@ -136,6 +145,13 @@ public class ProductionSecretGuard implements ApplicationRunner {
         if ("openai-compatible".equalsIgnoreCase(knowledgeEmbeddingMode)
                 && (knowledgeEmbeddingBaseUrl == null || knowledgeEmbeddingBaseUrl.isBlank())) {
             offenders.add("actenora.knowledge.embedding.base-url (required when mode=openai-compatible)");
+        }
+        if ("openai-compatible".equalsIgnoreCase(knowledgeEmbeddingMode)
+                && (knowledgeEmbeddingModelId == null || knowledgeEmbeddingModelId.isBlank())) {
+            offenders.add("actenora.knowledge.embedding.model-id (required when mode=openai-compatible)");
+        }
+        if (redisCoordinationEnabled) {
+            check("spring.data.redis.password", redisPassword, offenders);
         }
 
         if (!offenders.isEmpty()) {

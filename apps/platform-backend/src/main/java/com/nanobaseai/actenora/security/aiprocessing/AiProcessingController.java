@@ -20,6 +20,8 @@ import com.nanobaseai.actenora.identity.api.RequiresPermission;
 import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
+import com.nanobaseai.actenora.sharedkernel.coordination.JobProgressCache;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -53,19 +55,22 @@ public class AiProcessingController {
     private final AiJobInferenceExecutor inferenceExecutor;
     private final TenantAiPolicyPort tenantAiPolicy;
     private final IdentityApi identityApi;
+    private final JobProgressCache jobProgressCache;
 
     public AiProcessingController(
             AiProcessingApi aiProcessingApi,
             MultiModelRoutingApi multiModelRoutingApi,
             AiJobInferenceExecutor inferenceExecutor,
             TenantAiPolicyPort tenantAiPolicy,
-            IdentityApi identityApi
+            IdentityApi identityApi,
+            @Autowired(required = false) JobProgressCache jobProgressCache
     ) {
         this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
         this.multiModelRoutingApi = Objects.requireNonNull(multiModelRoutingApi, "multiModelRoutingApi");
         this.inferenceExecutor = Objects.requireNonNull(inferenceExecutor, "inferenceExecutor");
         this.tenantAiPolicy = Objects.requireNonNull(tenantAiPolicy, "tenantAiPolicy");
         this.identityApi = Objects.requireNonNull(identityApi, "identityApi");
+        this.jobProgressCache = jobProgressCache;
     }
 
     @PostMapping("/ai-jobs")
@@ -105,6 +110,20 @@ public class AiProcessingController {
                 .orElseThrow(() -> AiJobException.notFound("Job not found: " + jobId));
         assertSameTenant(principal, job.tenantId());
         return AiJobView.from(job);
+    }
+
+    @GetMapping("/meetings/{meetingOccurrenceId}/ai-progress")
+    @RequiresPermission(Permission.MEETING_READ)
+    public ResponseEntity<JobProgressView> progress(@PathVariable UUID meetingOccurrenceId) {
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
+        identityApi.requirePermission(principal, Permission.MEETING_READ);
+        if (jobProgressCache == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return jobProgressCache.get(meetingOccurrenceId)
+                .map(p -> ResponseEntity.ok(new JobProgressView(
+                        p.jobId(), p.status(), p.stage(), p.attemptCount(), p.updatedAt())))
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @PostMapping("/ai-jobs/{jobId}/cancel")
@@ -316,6 +335,15 @@ public class AiProcessingController {
         static ClaimedJobView from(JobScheduler.ClaimedJob claimed) {
             return new ClaimedJobView(AiJobView.from(claimed.job()), claimed.attempt().id());
         }
+    }
+
+    public record JobProgressView(
+            UUID jobId,
+            String status,
+            String stage,
+            int attemptCount,
+            Instant updatedAt
+    ) {
     }
 
     public record AiJobView(
