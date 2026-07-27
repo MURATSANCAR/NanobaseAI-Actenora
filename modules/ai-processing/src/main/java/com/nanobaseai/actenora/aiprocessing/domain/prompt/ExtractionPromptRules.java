@@ -73,6 +73,14 @@ public final class ExtractionPromptRules {
 
     private static String loadSystemRules() {
         try (InputStream in = ExtractionPromptRules.class.getResourceAsStream(
+                "/aiprocessing/prompts/system-meeting-analyst.v2.txt")) {
+            if (in != null) {
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
+            }
+        } catch (IOException ignored) {
+            // fall through to v1
+        }
+        try (InputStream in = ExtractionPromptRules.class.getResourceAsStream(
                 "/aiprocessing/prompts/system-meeting-analyst.v1.txt")) {
             if (in == null) {
                 return """

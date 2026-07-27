@@ -17,6 +17,7 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.ExtractionPipel
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelRuntimePort;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingContextPort;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PromptRegistryPort;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.PipelineGraphFactory;
 import com.nanobaseai.actenora.aiprocessing.application.port.AdmissionController;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiAttemptRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiJobRepository;
@@ -436,9 +437,12 @@ public class AiProcessingPlatformConfiguration {
     TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler(
             AiProcessingApi aiProcessingApi,
             TenantApi tenantApi,
-            DistributedLock distributedLock
+            DistributedLock distributedLock,
+            PipelineGraphFactory pipelineGraphFactory,
+            AiPipelineProperties pipelineProperties
     ) {
-        return new TranscriptReadyAiAdmissionHandler(aiProcessingApi, tenantApi, distributedLock);
+        return new TranscriptReadyAiAdmissionHandler(
+                aiProcessingApi, tenantApi, distributedLock, pipelineGraphFactory, pipelineProperties);
     }
 
     @Bean

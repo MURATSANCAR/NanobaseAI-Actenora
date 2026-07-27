@@ -327,6 +327,53 @@ services:
       start_period: 90s
     restart: unless-stopped
 
+  # CPU llama.cpp servers (optional — profile `llm`). Host paths for GGUF via env.
+  llm-fast:
+    profiles: ["llm"]
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: actenora-llm-fast
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --parallel
+      - "2"
+      - -c
+      - "8192"
+      - -ngl
+      - "0"
+      - -m
+      - ${LLM_FAST_MODEL_PATH:-/models/fast.gguf}
+    volumes:
+      - ${LLM_MODELS_HOST_PATH:-./models}:/models:ro
+    networks:
+      - ai-network
+    restart: unless-stopped
+
+  llm-final:
+    profiles: ["llm"]
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: actenora-llm-final
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --parallel
+      - "1"
+      - -c
+      - "32768"
+      - -ngl
+      - "0"
+      - -m
+      - ${LLM_FINAL_MODEL_PATH:-/models/final.gguf}
+    volumes:
+      - ${LLM_MODELS_HOST_PATH:-./models}:/models:ro
+    networks:
+      - ai-network
+    restart: unless-stopped
+
   ai-orchestrator:
     build:
       context: ../..
@@ -344,6 +391,10 @@ services:
       # Qwen / local LLM — intentionally unset by default so readiness=DEGRADED
       QWEN_BASE_URL: ${QWEN_BASE_URL:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-}
+      ACTENORA_AI_FAST_BASE_URL: ${ACTENORA_AI_FAST_BASE_URL:-}
+      ACTENORA_AI_FINAL_BASE_URL: ${ACTENORA_AI_FINAL_BASE_URL:-}
+      ACTENORA_AI_PIPELINE_MODE: ${ACTENORA_AI_PIPELINE_MODE:staged}
+      ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_FINAL: "1"
       ACTENORA_AI_EGRESS_DENY_PUBLIC: "true"
       REDIS_HOST: redis
       REDIS_PORT: "6379"

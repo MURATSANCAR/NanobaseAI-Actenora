@@ -440,10 +440,17 @@ public class MeetingIntelligencePlatformConfiguration {
     @Bean
     public NoteApprovedForLedgerHandler noteApprovedForLedgerHandler(
             ApprovedNoteLedgerAdapter approvedNoteLedgerWriter,
-            ApprovedKnowledgeIndexerPort knowledgeIndexer
+            ApprovedKnowledgeIndexerPort knowledgeIndexer,
+            ObjectProvider<com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.PipelineGraphFactory> pipelineGraphFactory,
+            ObjectProvider<com.nanobaseai.actenora.security.aiprocessing.AiPipelineProperties> pipelineProperties
     ) {
         return new NoteApprovedForLedgerHandler(
-                new CompositeApprovedNoteLedgerAdapter(approvedNoteLedgerWriter, knowledgeIndexer)
+                new CompositeApprovedNoteLedgerAdapter(
+                        approvedNoteLedgerWriter,
+                        knowledgeIndexer,
+                        pipelineGraphFactory.getIfAvailable(),
+                        pipelineProperties.getIfAvailable()
+                )
         );
     }
 }

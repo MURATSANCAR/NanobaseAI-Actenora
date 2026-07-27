@@ -54,9 +54,11 @@ public final class TranscriptReadyAiAdmissionHandler {
     private final AiProcessingApi aiProcessingApi;
     private final Function<UUID, Optional<String>> tenantDefaultLanguage;
     private final DistributedLock distributedLock;
+    private final PipelineGraphFactory graphFactory;
+    private final AiPipelineProperties pipelineProperties;
 
     public TranscriptReadyAiAdmissionHandler(AiProcessingApi aiProcessingApi) {
-        this(aiProcessingApi, tenantId -> Optional.empty(), new InMemoryDistributedLock());
+        this(aiProcessingApi, tenantId -> Optional.empty(), new InMemoryDistributedLock(), null, null);
     }
 
     public TranscriptReadyAiAdmissionHandler(AiProcessingApi aiProcessingApi, TenantApi tenantApi) {
@@ -65,7 +67,9 @@ public final class TranscriptReadyAiAdmissionHandler {
                 tenantId -> Objects.requireNonNull(tenantApi, "tenantApi")
                         .findById(TenantId.of(tenantId))
                         .map(TenantView::defaultLanguage),
-                new InMemoryDistributedLock()
+                new InMemoryDistributedLock(),
+                null,
+                null
         );
     }
 
@@ -73,7 +77,7 @@ public final class TranscriptReadyAiAdmissionHandler {
             AiProcessingApi aiProcessingApi,
             Function<UUID, Optional<String>> tenantDefaultLanguage
     ) {
-        this(aiProcessingApi, tenantDefaultLanguage, new InMemoryDistributedLock());
+        this(aiProcessingApi, tenantDefaultLanguage, new InMemoryDistributedLock(), null, null);
     }
 
     public TranscriptReadyAiAdmissionHandler(
@@ -81,9 +85,7 @@ public final class TranscriptReadyAiAdmissionHandler {
             Function<UUID, Optional<String>> tenantDefaultLanguage,
             DistributedLock distributedLock
     ) {
-        this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
-        this.tenantDefaultLanguage = Objects.requireNonNull(tenantDefaultLanguage, "tenantDefaultLanguage");
-        this.distributedLock = Objects.requireNonNull(distributedLock, "distributedLock");
+        this(aiProcessingApi, tenantDefaultLanguage, distributedLock, null, null);
     }
 
     public TranscriptReadyAiAdmissionHandler(
@@ -96,7 +98,41 @@ public final class TranscriptReadyAiAdmissionHandler {
                 tenantId -> Objects.requireNonNull(tenantApi, "tenantApi")
                         .findById(TenantId.of(tenantId))
                         .map(TenantView::defaultLanguage),
-                distributedLock
+                distributedLock,
+                null,
+                null
+        );
+    }
+
+    public TranscriptReadyAiAdmissionHandler(
+            AiProcessingApi aiProcessingApi,
+            Function<UUID, Optional<String>> tenantDefaultLanguage,
+            DistributedLock distributedLock,
+            PipelineGraphFactory graphFactory,
+            AiPipelineProperties pipelineProperties
+    ) {
+        this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
+        this.tenantDefaultLanguage = Objects.requireNonNull(tenantDefaultLanguage, "tenantDefaultLanguage");
+        this.distributedLock = Objects.requireNonNull(distributedLock, "distributedLock");
+        this.graphFactory = graphFactory;
+        this.pipelineProperties = pipelineProperties;
+    }
+
+    public TranscriptReadyAiAdmissionHandler(
+            AiProcessingApi aiProcessingApi,
+            TenantApi tenantApi,
+            DistributedLock distributedLock,
+            PipelineGraphFactory graphFactory,
+            AiPipelineProperties pipelineProperties
+    ) {
+        this(
+                aiProcessingApi,
+                tenantId -> Objects.requireNonNull(tenantApi, "tenantApi")
+                        .findById(TenantId.of(tenantId))
+                        .map(TenantView::defaultLanguage),
+                distributedLock,
+                graphFactory,
+                pipelineProperties
         );
     }
 
@@ -117,6 +153,34 @@ public final class TranscriptReadyAiAdmissionHandler {
         try {
             String language = resolveLanguage(payload);
             JobPriority priority = priorityForSegmentCount(payload.segmentCount());
+            Instant now = payload.occurredAt() == null ? Instant.now() : payload.occurredAt();
+            if (graphFactory != null
+                    && pipelineProperties != null
+                    && pipelineProperties.resolvedMode() == PipelineMode.STAGED) {
+                Duration deadline = priority == JobPriority.BULK ? Duration.ofHours(4) : Duration.ofHours(1);
+                PipelineGraphFactory.GraphAdmission admission = graphFactory.admitFromTranscriptReady(
+                        payload.tenantId(),
+                        payload.meetingOccurrenceId(),
+                        payload.transcriptId(),
+                        payload.transcriptId().toString(),
+                        priority,
+                        language,
+                        Math.max(0, payload.segmentCount()),
+                        payload.eventId(),
+                        now,
+                        deadline
+                );
+                log.info(
+                        "TranscriptReady staged admission tenantId={} meetingOccurrenceId={} transcriptId={} rootJobId={} created={} language={} priority={}",
+                        payload.tenantId(),
+                        payload.meetingOccurrenceId(),
+                        payload.transcriptId(),
+                        admission.root().id(),
+                        admission.created(),
+                        language,
+                        priority);
+                return;
+            }
             AdmissionController.SubmitAiJobCommand command = new AdmissionController.SubmitAiJobCommand(
                     payload.tenantId(),
                     payload.meetingOccurrenceId(),
@@ -130,7 +194,7 @@ public final class TranscriptReadyAiAdmissionHandler {
                     Math.max(0, payload.segmentCount()),
                     null,
                     payload.eventId(),
-                    payload.occurredAt() == null ? Instant.now() : payload.occurredAt()
+                    now
             );
             AdmissionController.AdmissionDecision decision = aiProcessingApi.submitJob(command);
             if (!decision.admitted()) {
