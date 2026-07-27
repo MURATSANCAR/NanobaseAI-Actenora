@@ -243,7 +243,7 @@ function MinutesSectionCard({
       <div className="pl-2">
         {canEdit && onChange ? (
           <textarea
-            className="w-full resize-y rounded-xl border border-white/90 bg-white/80 px-3.5 py-3 text-sm leading-relaxed text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-300/40"
+            className="w-full resize-y rounded-xl border border-white/90 bg-white/80 px-3.5 py-3 text-sm leading-relaxed text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-300/40 whitespace-pre-wrap break-words"
             value={draft}
             onFocus={() => setFocused(true)}
             onBlur={() => {

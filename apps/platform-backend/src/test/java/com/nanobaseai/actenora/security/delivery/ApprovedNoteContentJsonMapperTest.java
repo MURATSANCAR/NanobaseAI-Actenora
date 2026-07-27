@@ -86,4 +86,34 @@ class ApprovedNoteContentJsonMapperTest {
     void parseAgendaItems_emptyWithoutPrefix() {
         assertTrue(ApprovedNoteContentJsonMapper.parseAgendaItems("Just a summary.").isEmpty());
     }
+
+    @Test
+    void parseAgendaItems_numberedMultiline() {
+        String summary = """
+                Gündem:
+                1. Sprint planlama ve kapasite
+                2. Ürün gereksinimleri ve filtre davranışı
+                3. Toplantı yönetimi ve teknik ayarlar
+
+                3 karar kaydedildi.
+                2 aksiyon maddesi.
+                2 risk.
+                """;
+        assertEquals(
+                List.of(
+                        "Sprint planlama ve kapasite",
+                        "Ürün gereksinimleri ve filtre davranışı",
+                        "Toplantı yönetimi ve teknik ayarlar"
+                ),
+                ApprovedNoteContentJsonMapper.parseAgendaItems(summary)
+        );
+    }
+
+    @Test
+    void parseAgendaItems_legacySemicolon() {
+        assertEquals(
+                List.of("Roadmap — Q3", "Budget"),
+                ApprovedNoteContentJsonMapper.parseAgendaItems("Gündem: Roadmap — Q3; Budget. 1 karar kaydedildi.")
+        );
+    }
 }

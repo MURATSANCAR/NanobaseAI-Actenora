@@ -580,8 +580,8 @@ function CommitmentRow({
 }) {
   return (
     <div id={`artifact-commitment-${item.id}`} className={artifactRowClass(linked, "commitment")}>
-      <strong className="block text-slate-900">{item.statement}</strong>
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+      <strong className="block break-words text-slate-900 [overflow-wrap:anywhere]">{item.statement}</strong>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm leading-relaxed text-slate-600">
         <StatusBadge label={statusLabel} status={item.status} />
         <span>{item.ownerDisplayName}</span>
         <DueDateBadge dueAt={item.dueAt} />
