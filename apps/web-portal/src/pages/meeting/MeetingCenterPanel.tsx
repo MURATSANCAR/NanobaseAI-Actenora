@@ -328,6 +328,15 @@ function InsightPanel({
   onCompleteAction: (id: string) => void;
 }) {
   const { t, tb } = useI18n();
+  const personNames = useMemo(
+    () =>
+      collectPersonNames([
+        ...detail.participants.map((p) => p.displayName),
+        ...detail.actions.map((a) => a.ownerDisplayName),
+        ...detail.commitments.map((c) => c.ownerDisplayName),
+      ]),
+    [detail.participants, detail.actions, detail.commitments],
+  );
 
   if (tab === "decisions") {
     return (
@@ -336,6 +345,7 @@ function InsightPanel({
           <DecisionRow
             key={d.id}
             item={d}
+            personNames={personNames}
             linked={isArtifactLinked(d.evidence, selectedSegmentId)}
             onEvidence={onEvidence}
             statusLabel={tb("artifactStatus", d.status)}
@@ -353,6 +363,7 @@ function InsightPanel({
           <ActionRow
             key={a.id}
             item={a}
+            personNames={personNames}
             linked={isArtifactLinked(a.evidence, selectedSegmentId)}
             onEvidence={onEvidence}
             statusLabel={tb("artifactStatus", a.status)}
@@ -373,6 +384,7 @@ function InsightPanel({
           <RiskRow
             key={r.id}
             item={r}
+            personNames={personNames}
             linked={isArtifactLinked(r.evidence, selectedSegmentId)}
             onEvidence={onEvidence}
             severityLabel={tb("riskSeverity", r.severity)}
@@ -389,6 +401,7 @@ function InsightPanel({
         <CommitmentRow
           key={c.id}
           item={c}
+          personNames={personNames}
           linked={isArtifactLinked(c.evidence, selectedSegmentId)}
           onEvidence={onEvidence}
           statusLabel={tb("artifactStatus", c.status)}
