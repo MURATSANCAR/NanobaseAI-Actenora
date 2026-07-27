@@ -135,6 +135,7 @@ public final class ExtractionPipelineService {
             List<ExtractionBundle> perChunk = new ArrayList<>();
             String meetingTitle = request.meetingOccurrenceId().toString();
             String language = request.language();
+            int timeoutSeconds = request.timeoutSeconds();
             for (TranscriptChunk chunk : chunks) {
                 metrics.incrementChunkCount();
                 ExtractionBundle bundle = extractChunkWithRetry(
@@ -144,6 +145,7 @@ public final class ExtractionPipelineService {
                         corpus,
                         meetingTitle,
                         language,
+                        timeoutSeconds,
                         metrics
                 );
                 perChunk.add(bundle);
@@ -156,7 +158,7 @@ public final class ExtractionPipelineService {
             deterministicValidator.validate(merged, allowed, corpus);
 
             FinalNoteDraft deterministic = finalNoteAssembler.assemble(merged, language);
-            FinalNoteDraft note = new MinutesSynthesisAndAudit(modelRuntime)
+            FinalNoteDraft note = new MinutesSynthesisAndAudit(modelRuntime, timeoutSeconds)
                     .synthesizeAndAudit(merged, deterministic, allowed, meetingTitle, language);
             metrics.addDurationMs((System.nanoTime() - pipelineStarted) / 1_000_000L);
             return PipelineRunResult.succeeded(promptVersionId, modelVersion, note, metrics);
@@ -199,13 +201,15 @@ public final class ExtractionPipelineService {
             String fullCorpus,
             String meetingTitle,
             String language,
+            int timeoutSeconds,
             PipelineRunMetrics metrics
     ) {
         String previousFingerprint = null;
         PipelineException last = null;
         for (int attempt = 0; attempt < 2; attempt++) {
             try {
-                return extractOnce(prompt, descriptor, chunk, fullCorpus, meetingTitle, language, metrics);
+                return extractOnce(
+                        prompt, descriptor, chunk, fullCorpus, meetingTitle, language, timeoutSeconds, metrics);
             } catch (PipelineException ex) {
                 last = ex;
                 RetryDecision decision = retryClassifier.classify(ex, previousFingerprint);
@@ -243,6 +247,7 @@ public final class ExtractionPipelineService {
             String fullCorpus,
             String meetingTitle,
             String language,
+            int timeoutSeconds,
             PipelineRunMetrics metrics
     ) {
         List<String> evidenceIds = chunk.segmentIds();
@@ -262,7 +267,8 @@ public final class ExtractionPipelineService {
                 systemPrompt,
                 userPrompt,
                 evidenceIds,
-                descriptor.maxOutputTokens()
+                descriptor.maxOutputTokens(),
+                timeoutSeconds
         );
 
         InferenceResponse response = modelRuntime.infer(inferenceRequest);

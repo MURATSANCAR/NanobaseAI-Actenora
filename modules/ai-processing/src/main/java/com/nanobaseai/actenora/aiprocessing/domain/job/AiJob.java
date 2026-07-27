@@ -31,6 +31,7 @@ public final class AiJob {
     private Instant startedAt;
     private Instant completedAt;
     private final Instant deadlineAt;
+    private Instant nextEligibleAt;
     private final UUID correlationId;
     private final String language;
     private final int contextSize;

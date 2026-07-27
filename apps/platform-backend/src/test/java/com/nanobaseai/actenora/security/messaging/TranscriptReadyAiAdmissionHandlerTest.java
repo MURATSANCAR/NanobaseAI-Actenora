@@ -77,8 +77,59 @@ class TranscriptReadyAiAdmissionHandlerTest {
         assertEquals("CHUNK_EXTRACTION", command.taskType());
         assertEquals(AiCapability.TRANSCRIPT_EXTRACTION, command.requestedCapability());
         assertEquals(JobPriority.NORMAL, command.priority());
+        assertEquals(3, command.contextSize());
+        assertEquals("extraction-output.v1", command.schemaVersion());
         assertEquals(eventId, command.correlationId());
         assertEquals("tr", command.language());
+    }
+
+    @Test
+    void admitsLargeTranscriptAsBulkPriority() {
+        AtomicReference<AdmissionController.SubmitAiJobCommand> captured = new AtomicReference<>();
+        AiProcessingApi api = new StubAiApi(command -> {
+            captured.set(command);
+            AiJob job = org.mockito.Mockito.mock(AiJob.class);
+            org.mockito.Mockito.when(job.id()).thenReturn(UUID.randomUUID());
+            return AdmissionController.AdmissionDecision.accepted(job, Duration.ZERO);
+        });
+        TranscriptReadyAiAdmissionHandler handler = new TranscriptReadyAiAdmissionHandler(api);
+
+        UUID tenantId = UUID.randomUUID();
+        UUID transcriptId = UUID.randomUUID();
+        UUID meetingId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        Instant occurredAt = Instant.parse("2026-07-26T10:00:00Z");
+        String payload = "{"
+                + "\"eventId\":\"" + eventId + "\","
+                + "\"occurredAt\":\"" + occurredAt + "\","
+                + "\"tenantId\":\"" + tenantId + "\","
+                + "\"transcriptId\":\"" + transcriptId + "\","
+                + "\"meetingOccurrenceId\":\"" + meetingId + "\","
+                + "\"segmentCount\":276,"
+                + "\"language\":\"tr\""
+                + "}";
+
+        handler.handle(new EventEnvelope(
+                eventId,
+                TranscriptIntegrationEvents.TRANSCRIPT_READY,
+                1,
+                occurredAt,
+                TenantId.of(tenantId),
+                "Transcript",
+                transcriptId.toString(),
+                eventId,
+                null,
+                null,
+                "transcript",
+                payload
+        ));
+
+        AdmissionController.SubmitAiJobCommand command = captured.get();
+        assertNotNull(command);
+        assertEquals(JobPriority.BULK, command.priority());
+        assertEquals(276, command.contextSize());
+        assertEquals(JobPriority.BULK, TranscriptReadyAiAdmissionHandler.priorityForSegmentCount(100));
+        assertEquals(JobPriority.NORMAL, TranscriptReadyAiAdmissionHandler.priorityForSegmentCount(99));
     }
 
     @Test

@@ -14,7 +14,8 @@ public record PipelineRunRequest(
         UUID meetingOccurrenceId,
         String promptId,
         List<SegmentInput> segments,
-        String language
+        String language,
+        int timeoutSeconds
 ) {
     public PipelineRunRequest(
             TenantId tenantId,
@@ -23,7 +24,18 @@ public record PipelineRunRequest(
             String promptId,
             List<SegmentInput> segments
     ) {
-        this(tenantId, transcriptId, meetingOccurrenceId, promptId, segments, "tr");
+        this(tenantId, transcriptId, meetingOccurrenceId, promptId, segments, "tr", 0);
+    }
+
+    public PipelineRunRequest(
+            TenantId tenantId,
+            UUID transcriptId,
+            UUID meetingOccurrenceId,
+            String promptId,
+            List<SegmentInput> segments,
+            String language
+    ) {
+        this(tenantId, transcriptId, meetingOccurrenceId, promptId, segments, language, 0);
     }
 
     public PipelineRunRequest {
@@ -33,5 +45,8 @@ public record PipelineRunRequest(
         Objects.requireNonNull(promptId, "promptId");
         segments = List.copyOf(Objects.requireNonNull(segments, "segments"));
         language = ExtractionPromptRules.normalizeLanguage(language);
+        if (timeoutSeconds < 0) {
+            throw new IllegalArgumentException("timeoutSeconds must be >= 0");
+        }
     }
 }

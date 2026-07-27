@@ -18,12 +18,12 @@ public class LocalProviderProperties {
     private String kind = "mock";
     private URI baseUrl = URI.create("http://127.0.0.1:8000");
     private Duration connectTimeout = Duration.ofSeconds(2);
-    private Duration readTimeout = Duration.ofSeconds(600);
+    private Duration readTimeout = Duration.ofSeconds(1800);
     private int maxConcurrency = 4;
     private boolean streamingEnabled = true;
     private long degradedProbeThresholdMs = 2_000L;
     private Set<String> servedModelIds = new LinkedHashSet<>(Set.of("nanobaseai-primary", "nanobaseai-local"));
-    private int maxAttempts = 3;
+    private int maxAttempts = 5;
 
     public Kind resolvedKind() {
         return Kind.from(kind);

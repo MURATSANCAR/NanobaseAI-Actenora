@@ -302,7 +302,8 @@ public final class AiJobInferenceExecutor {
                 job.meetingOccurrenceId(),
                 promptId,
                 segments,
-                job.language()
+                job.language(),
+                timeoutSecondsFor(job, now)
         ));
 
         if (result.success()) {

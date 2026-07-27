@@ -43,8 +43,13 @@ public final class MinutesSynthesisAndAudit {
     private final ObjectMapper objectMapper;
     private final String finalMinutesTemplate;
     private final String evidenceAuditTemplate;
+    private final int timeoutSeconds;
 
     public MinutesSynthesisAndAudit(ModelRuntimePort modelRuntime) {
+        this(modelRuntime, 0);
+    }
+
+    public MinutesSynthesisAndAudit(ModelRuntimePort modelRuntime, int timeoutSeconds) {
         this(
                 modelRuntime,
                 new LimitedJsonRepair(),
@@ -52,7 +57,8 @@ public final class MinutesSynthesisAndAudit {
                 new ExtractionBundleMapper(),
                 new ObjectMapper(),
                 loadTemplate("/aiprocessing/prompts/final-minutes.v1.txt"),
-                loadTemplate("/aiprocessing/prompts/evidence-audit.v1.txt")
+                loadTemplate("/aiprocessing/prompts/evidence-audit.v1.txt"),
+                timeoutSeconds
         );
     }
 
@@ -65,6 +71,28 @@ public final class MinutesSynthesisAndAudit {
             String finalMinutesTemplate,
             String evidenceAuditTemplate
     ) {
+        this(
+                modelRuntime,
+                jsonRepair,
+                schemaValidator,
+                bundleMapper,
+                objectMapper,
+                finalMinutesTemplate,
+                evidenceAuditTemplate,
+                0
+        );
+    }
+
+    MinutesSynthesisAndAudit(
+            ModelRuntimePort modelRuntime,
+            LimitedJsonRepair jsonRepair,
+            ExtractionJsonSchemaValidator schemaValidator,
+            ExtractionBundleMapper bundleMapper,
+            ObjectMapper objectMapper,
+            String finalMinutesTemplate,
+            String evidenceAuditTemplate,
+            int timeoutSeconds
+    ) {
         this.modelRuntime = Objects.requireNonNull(modelRuntime, "modelRuntime");
         this.jsonRepair = Objects.requireNonNull(jsonRepair, "jsonRepair");
         this.schemaValidator = Objects.requireNonNull(schemaValidator, "schemaValidator");
@@ -72,6 +100,10 @@ public final class MinutesSynthesisAndAudit {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.finalMinutesTemplate = Objects.requireNonNull(finalMinutesTemplate, "finalMinutesTemplate");
         this.evidenceAuditTemplate = Objects.requireNonNull(evidenceAuditTemplate, "evidenceAuditTemplate");
+        if (timeoutSeconds < 0) {
+            throw new IllegalArgumentException("timeoutSeconds must be >= 0");
+        }
+        this.timeoutSeconds = timeoutSeconds;
     }
 
     public FinalNoteDraft synthesizeAndAudit(
@@ -115,7 +147,8 @@ public final class MinutesSynthesisAndAudit {
                     ExtractionPromptRules.systemRulesFor(language),
                     userPrompt,
                     List.copyOf(allowedEvidenceIds),
-                    Math.max(2048, modelRuntime.descriptor().maxOutputTokens())
+                    Math.max(2048, modelRuntime.descriptor().maxOutputTokens()),
+                    timeoutSeconds
             ));
             String json = response.rawText();
             if (jsonRepair.needsRepair(json)) {
@@ -186,7 +219,8 @@ public final class MinutesSynthesisAndAudit {
                     ExtractionPromptRules.systemRulesFor(language),
                     userPrompt,
                     List.copyOf(allowedEvidenceIds),
-                    Math.max(1024, modelRuntime.descriptor().maxOutputTokens() / 2)
+                    Math.max(1024, modelRuntime.descriptor().maxOutputTokens() / 2),
+                    timeoutSeconds
             ));
             String json = response.rawText();
             if (jsonRepair.needsRepair(json)) {

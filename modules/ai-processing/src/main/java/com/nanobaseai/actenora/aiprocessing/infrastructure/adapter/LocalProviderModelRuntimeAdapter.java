@@ -24,24 +24,48 @@ import java.util.UUID;
  */
 public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort {
 
+    private static final int DEFAULT_TIMEOUT_SECONDS = 1800;
+
     private final LocalModelProvider provider;
     private final ModelDescriptor descriptor;
     private final UUID modelDefinitionId;
+    private final int defaultTimeoutSeconds;
 
     public LocalProviderModelRuntimeAdapter(
             LocalModelProvider provider,
             ModelDescriptor descriptor,
             UUID modelDefinitionId
     ) {
+        this(provider, descriptor, modelDefinitionId, DEFAULT_TIMEOUT_SECONDS);
+    }
+
+    public LocalProviderModelRuntimeAdapter(
+            LocalModelProvider provider,
+            ModelDescriptor descriptor,
+            UUID modelDefinitionId,
+            int defaultTimeoutSeconds
+    ) {
         this.provider = Objects.requireNonNull(provider, "provider");
         this.descriptor = Objects.requireNonNull(descriptor, "descriptor");
         this.modelDefinitionId = Objects.requireNonNull(modelDefinitionId, "modelDefinitionId");
+        if (defaultTimeoutSeconds < 1) {
+            throw new IllegalArgumentException("defaultTimeoutSeconds must be >= 1");
+        }
+        this.defaultTimeoutSeconds = defaultTimeoutSeconds;
     }
 
     /**
      * Production wiring for the first local reasoner (Qwen 27B-class) behind catalog ids.
      */
     public static LocalProviderModelRuntimeAdapter qwen27B(LocalModelProvider provider, UUID modelDefinitionId) {
+        return qwen27B(provider, modelDefinitionId, DEFAULT_TIMEOUT_SECONDS);
+    }
+
+    public static LocalProviderModelRuntimeAdapter qwen27B(
+            LocalModelProvider provider,
+            UUID modelDefinitionId,
+            int defaultTimeoutSeconds
+    ) {
         return new LocalProviderModelRuntimeAdapter(
                 provider,
                 new ModelDescriptor(
@@ -51,7 +75,8 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
                         Qwen27BModelAdapter.CONTEXT_WINDOW,
                         Qwen27BModelAdapter.MAX_OUTPUT
                 ),
-                modelDefinitionId
+                modelDefinitionId,
+                defaultTimeoutSeconds
         );
     }
 
@@ -82,7 +107,7 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
                 .servedModelId(servedModelId)
                 .promptVersion(request.promptVersionId())
                 .schemaVersion(request.schemaVersion())
-                .timeoutSeconds(600)
+                .timeoutSeconds(request.timeoutSeconds() > 0 ? request.timeoutSeconds() : defaultTimeoutSeconds)
                 .inputReference(Map.of("evidenceCount", request.allowedEvidenceSegmentIds().size()))
                 .generationParameters(com.nanobaseai.actenora.aiprocessing.application.modelworker.GenerationParameters.builder()
                         .temperature(0.15)

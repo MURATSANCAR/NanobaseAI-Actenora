@@ -37,7 +37,9 @@ public final class TranscriptReadyAiAdmissionHandler {
 
     private static final String TASK_TYPE = "CHUNK_EXTRACTION";
     private static final String PROMPT_VERSION = "pv-meeting-chunk-extraction-v1";
-    private static final String SCHEMA_VERSION = "sv-meeting-chunk-extraction-v1";
+    private static final String SCHEMA_VERSION = "extraction-output.v1";
+    /** Meetings at/above this segment count use BULK SLA (240m) instead of NORMAL (60m). */
+    static final int BULK_SEGMENT_THRESHOLD = 100;
 
     private final AiProcessingApi aiProcessingApi;
     private final Function<UUID, Optional<String>> tenantDefaultLanguage;
@@ -69,17 +71,18 @@ public final class TranscriptReadyAiAdmissionHandler {
         }
         TranscriptIntegrationEvents.TranscriptReady payload = parse(envelope.payloadJson());
         String language = resolveLanguage(payload);
+        JobPriority priority = priorityForSegmentCount(payload.segmentCount());
         AdmissionController.SubmitAiJobCommand command = new AdmissionController.SubmitAiJobCommand(
                 payload.tenantId(),
                 payload.meetingOccurrenceId(),
                 payload.transcriptId(),
                 TASK_TYPE,
-                JobPriority.NORMAL,
+                priority,
                 AiCapability.TRANSCRIPT_EXTRACTION,
                 PROMPT_VERSION,
                 SCHEMA_VERSION,
                 language,
-                0,
+                Math.max(0, payload.segmentCount()),
                 null,
                 payload.eventId(),
                 payload.occurredAt() == null ? Instant.now() : payload.occurredAt()
@@ -94,12 +97,18 @@ public final class TranscriptReadyAiAdmissionHandler {
             return;
         }
         log.info(
-                "TranscriptReady admitted AI job tenantId={} meetingOccurrenceId={} transcriptId={} jobId={} language={}",
+                "TranscriptReady admitted AI job tenantId={} meetingOccurrenceId={} transcriptId={} jobId={} language={} priority={} segmentCount={}",
                 payload.tenantId(),
                 payload.meetingOccurrenceId(),
                 payload.transcriptId(),
                 decision.job().id(),
-                language);
+                language,
+                priority,
+                payload.segmentCount());
+    }
+
+    static JobPriority priorityForSegmentCount(int segmentCount) {
+        return segmentCount >= BULK_SEGMENT_THRESHOLD ? JobPriority.BULK : JobPriority.NORMAL;
     }
 
     String resolveLanguage(TranscriptIntegrationEvents.TranscriptReady payload) {
