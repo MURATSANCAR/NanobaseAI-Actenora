@@ -24,7 +24,11 @@ public final class InMemoryDeliveryRequestRepository implements DeliveryRequestR
     public DeliveryRequest save(DeliveryRequest request) {
         byId.put(request.id(), request);
         byIdempotency.put(
-                idempotencyKey(request.tenantId(), request.noteVersionId(), request.recipient().email()),
+                idempotencyKey(
+                        request.tenantId(),
+                        request.noteVersionId(),
+                        request.recipient().email(),
+                        request.intent()),
                 request.id()
         );
         for (var attempt : request.attempts()) {
@@ -48,7 +52,21 @@ public final class InMemoryDeliveryRequestRepository implements DeliveryRequestR
             UUID noteVersionId,
             String recipientEmail
     ) {
-        UUID id = byIdempotency.get(idempotencyKey(tenantId, noteVersionId, recipientEmail));
+        return byId.values().stream()
+                .filter(r -> r.tenantId().equals(tenantId))
+                .filter(r -> r.noteVersionId().equals(noteVersionId))
+                .filter(r -> r.recipient().email().equalsIgnoreCase(recipientEmail.trim()))
+                .findFirst();
+    }
+
+    @Override
+    public Optional<DeliveryRequest> findByNoteVersionRecipientAndIntent(
+            TenantId tenantId,
+            UUID noteVersionId,
+            String recipientEmail,
+            String intent
+    ) {
+        UUID id = byIdempotency.get(idempotencyKey(tenantId, noteVersionId, recipientEmail, intent));
         if (id == null) {
             return Optional.empty();
         }
@@ -104,8 +122,8 @@ public final class InMemoryDeliveryRequestRepository implements DeliveryRequestR
                 .toList();
     }
 
-    private static String idempotencyKey(TenantId tenantId, UUID noteVersionId, String email) {
-        return tenantId.value() + "|" + noteVersionId + "|" + email.trim().toLowerCase();
+    private static String idempotencyKey(TenantId tenantId, UUID noteVersionId, String email, String intent) {
+        return tenantId.value() + "|" + noteVersionId + "|" + email.trim().toLowerCase() + "|" + intent;
     }
 
     private static String providerMessageKey(TenantId tenantId, String providerMessageId) {

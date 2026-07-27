@@ -68,10 +68,26 @@ public final class JdbcDeliveryRequestRepository implements DeliveryRequestRepos
             String recipientEmail
     ) {
         return loadRequest(
-                "WHERE r.tenant_id = ? AND r.note_version_id = ? AND lower(r.recipient_email) = lower(?)",
+                "WHERE r.tenant_id = ? AND r.note_version_id = ? AND lower(r.recipient_email) = lower(?) ORDER BY r.created_at ASC LIMIT 1",
                 tenantId.value(),
                 noteVersionId,
                 recipientEmail.trim()
+        );
+    }
+
+    @Override
+    public Optional<DeliveryRequest> findByNoteVersionRecipientAndIntent(
+            TenantId tenantId,
+            UUID noteVersionId,
+            String recipientEmail,
+            String intent
+    ) {
+        return loadRequest(
+                "WHERE r.tenant_id = ? AND r.note_version_id = ? AND lower(r.recipient_email) = lower(?) AND r.intent = ?",
+                tenantId.value(),
+                noteVersionId,
+                recipientEmail.trim(),
+                intent
         );
     }
 
@@ -191,7 +207,8 @@ public final class JdbcDeliveryRequestRepository implements DeliveryRequestRepos
                 SELECT r.id, r.tenant_id, r.note_version_id, r.approval_id, r.recipient_id, r.recipient_email,
                        r.recipient_kind, r.recipient_name, r.status, r.subject, r.body_text, r.policy_snapshot,
                        r.pdf_attach, r.pdf_document_id, r.pdf_object_key, r.signed_portal_url, r.signed_portal_exp,
-                       r.signed_portal_fp, r.next_attempt_at, r.dead_letter_id, r.created_at, r.updated_at
+                       r.signed_portal_fp, r.next_attempt_at, r.dead_letter_id, r.created_at, r.updated_at,
+                       COALESCE(r.intent, 'FINAL_EXTERNAL') AS intent
                 FROM delivery.requests r
                 """ + whereClause;
         List<DeliveryRequest> rows = jdbc.query(sql, (rs, rowNum) -> mapRequestShell(rs), args);
@@ -298,13 +315,14 @@ public final class JdbcDeliveryRequestRepository implements DeliveryRequestRepos
                     id, tenant_id, note_version_id, approval_id, recipient_id, recipient_email,
                     recipient_kind, recipient_name, status, subject, body_text, policy_snapshot,
                     pdf_attach, pdf_document_id, pdf_object_key, signed_portal_url, signed_portal_exp,
-                    signed_portal_fp, next_attempt_at, dead_letter_id, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    signed_portal_fp, next_attempt_at, dead_letter_id, created_at, updated_at, intent
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     status = EXCLUDED.status,
                     next_attempt_at = EXCLUDED.next_attempt_at,
                     dead_letter_id = EXCLUDED.dead_letter_id,
-                    updated_at = EXCLUDED.updated_at
+                    updated_at = EXCLUDED.updated_at,
+                    intent = EXCLUDED.intent
                 """;
         PdfAttachmentDecision pdf = request.pdfAttachment().orElse(null);
         SignedPortalLink link = request.signedPortalLink().orElse(null);
@@ -331,6 +349,7 @@ public final class JdbcDeliveryRequestRepository implements DeliveryRequestRepos
             ps.setObject(20, request.deadLetterId().orElse(null));
             ps.setTimestamp(21, JdbcInstant.toTimestamp(request.createdAt()));
             ps.setTimestamp(22, JdbcInstant.toTimestamp(request.updatedAt()));
+            ps.setString(23, request.intent());
             ps.executeUpdate();
         }
     }

@@ -11,6 +11,7 @@ import com.nanobaseai.actenora.delivery.application.port.SignedPortalLinkPort;
 import com.nanobaseai.actenora.delivery.domain.DeliveryAttempt;
 import com.nanobaseai.actenora.delivery.domain.DeliveryDeadLetter;
 import com.nanobaseai.actenora.delivery.domain.DeliveryDomainException;
+import com.nanobaseai.actenora.delivery.domain.DeliveryIntent;
 import com.nanobaseai.actenora.delivery.domain.DeliveryRequest;
 import com.nanobaseai.actenora.delivery.domain.DeliveryStatus;
 import com.nanobaseai.actenora.delivery.domain.PdfAttachmentDecision;
@@ -119,10 +120,14 @@ public final class DeliveryDispatcherService {
         List<DeliveryRequestId> duplicates = new ArrayList<>();
 
         for (var recipient : command.recipients()) {
-            Optional<DeliveryRequest> existing = repository.findByNoteVersionAndRecipient(
+            String intent = command.policySnapshot().requireApproval()
+                    ? DeliveryIntent.FINAL_EXTERNAL
+                    : DeliveryIntent.DRAFT_ORGANIZER;
+            Optional<DeliveryRequest> existing = repository.findByNoteVersionRecipientAndIntent(
                     command.tenantId(),
                     command.noteVersionId(),
-                    recipient.email()
+                    recipient.email(),
+                    intent
             );
             if (existing.isPresent()) {
                 duplicates.add(DeliveryRequestId.of(existing.get().id()));

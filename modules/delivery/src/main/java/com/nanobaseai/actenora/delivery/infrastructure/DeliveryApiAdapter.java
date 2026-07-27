@@ -124,18 +124,15 @@ public final class DeliveryApiAdapter implements DeliveryApi {
     public List<DeliveryRequestStatusView> listByNoteVersion(UUID tenantId, UUID noteVersionId) {
         TenantId tid = TenantId.of(tenantId);
         return repository.findByNoteVersion(tid, noteVersionId).stream()
-                .map(r -> {
-                    boolean draft = !r.policySnapshot().requireApproval();
-                    return new DeliveryRequestStatusView(
-                            r.id(),
-                            r.noteVersionId(),
-                            draft ? DeliveryIntent.DRAFT_ORGANIZER : DeliveryIntent.FINAL_EXTERNAL,
-                            r.status(),
-                            r.recipient().email(),
-                            r.createdAt(),
-                            r.updatedAt()
-                    );
-                })
+                .map(r -> new DeliveryRequestStatusView(
+                        r.id(),
+                        r.noteVersionId(),
+                        r.intent(),
+                        r.status(),
+                        r.recipient().email(),
+                        r.createdAt(),
+                        r.updatedAt()
+                ))
                 .toList();
     }
 }

@@ -12,8 +12,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * One mail to exactly one recipient for an approved note version.
- * Idempotent on (tenant, noteVersionId, recipient email).
+ * One mail to exactly one recipient for a note version + intent channel.
+ * Idempotent on (tenant, noteVersionId, recipient email, intent).
  */
 public final class DeliveryRequest {
 
@@ -135,7 +135,14 @@ public final class DeliveryRequest {
     }
 
     public String idempotencyKey() {
-        return recipient.idempotencyKey(noteVersionId);
+        return recipient.idempotencyKey(noteVersionId) + "|" + intent();
+    }
+
+    /** DRAFT_ORGANIZER when approval is not required; otherwise FINAL_EXTERNAL. */
+    public String intent() {
+        return policySnapshot.requireApproval()
+                ? DeliveryIntent.FINAL_EXTERNAL
+                : DeliveryIntent.DRAFT_ORGANIZER;
     }
 
     public void applyPdfDecision(PdfAttachmentDecision decision) {

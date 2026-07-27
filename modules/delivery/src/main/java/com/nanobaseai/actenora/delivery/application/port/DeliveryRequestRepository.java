@@ -21,6 +21,13 @@ public interface DeliveryRequestRepository {
             String recipientEmail
     );
 
+    Optional<DeliveryRequest> findByNoteVersionRecipientAndIntent(
+            TenantId tenantId,
+            UUID noteVersionId,
+            String recipientEmail,
+            String intent
+    );
+
     List<DeliveryRequest> findByNoteVersion(TenantId tenantId, UUID noteVersionId);
 
     /**
