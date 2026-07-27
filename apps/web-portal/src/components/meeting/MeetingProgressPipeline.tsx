@@ -124,14 +124,20 @@ function StageStep({
 
   return (
     <li className="relative flex min-w-0 flex-col items-stretch">
-      <div className={["flex flex-1 flex-col items-center rounded-xl border px-2 py-3 text-center transition", tone].join(" ")}>
+      <div
+        className={[
+          "flex flex-1 flex-col items-center rounded-xl border px-2 py-3 text-center transition",
+          tone,
+          stage.state === "active" ? "meeting-detail-pulse-border" : "",
+        ].join(" ")}
+      >
         <span
           className={[
             "mb-2 flex h-8 w-8 items-center justify-center rounded-full",
             stage.state === "done"
               ? "bg-emerald-500 text-white"
               : stage.state === "active"
-                ? "bg-violet-600 text-white"
+                ? "bg-violet-600 text-white meeting-detail-pulse"
                 : stage.state === "failed"
                   ? "bg-red-500 text-white"
                   : "bg-slate-200/80 text-slate-500",

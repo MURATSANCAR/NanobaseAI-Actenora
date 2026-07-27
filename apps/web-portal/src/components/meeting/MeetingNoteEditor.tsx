@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { MeetingMinutesDocument } from "@/components/meeting/MeetingMinutesDocument";
 import { TemplateNoteSectionEditor } from "@/components/template/TemplateNoteSectionEditor";
-import { TemplateBrandFooter, TemplateBrandHeader } from "@/components/template/TemplateBrandBanner";
+import { TemplateBrandFooter } from "@/components/template/TemplateBrandBanner";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { queryKeys } from "@/api/client";
 import { useApi } from "@/api/ApiProvider";
@@ -247,20 +248,31 @@ export function MeetingNoteEditor({
 
   if (variant === "document") {
     return (
-      <article className="meeting-note-document overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-2xl shadow-violet-200/40 ring-1 ring-violet-100/60">
-        <TemplateBrandHeader />
-        <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50/80 to-sky-50/50 px-5 py-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {meetingTitle ? <h2 className="text-lg font-bold text-slate-900">{meetingTitle}</h2> : null}
-            <StatusBadge label={tb("noteVisibility", note.visibility)} status={note.visibility} />
-            {draftBadge ? (
-              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800">
-                {t("meeting.noteDraftBadge")}
+      <article className="meeting-note-document">
+        <div className="meeting-note-aurora" aria-hidden />
+        <div className="meeting-note-orb meeting-note-orb--a" aria-hidden />
+        <header className="meeting-note-hero">
+          <div className="relative z-10 space-y-3">
+            <p className="meeting-note-brand">
+              <span className="meeting-note-brand-mark" aria-hidden>
+                <Sparkles className="h-3.5 w-3.5" />
               </span>
-            ) : null}
+              {t("brand.name")}
+            </p>
+            <h2 className="meeting-note-title">
+              {meetingTitle?.trim() || t("meeting.minutesUntitled")}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge label={tb("noteVisibility", note.visibility)} status={note.visibility} />
+              {draftBadge ? (
+                <span className="rounded-full bg-amber-300/95 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-950 shadow-sm">
+                  {t("meeting.noteDraftBadge")}
+                </span>
+              ) : null}
+            </div>
           </div>
-        </div>
-        <div className="px-5 py-4">
+        </header>
+        <div className="relative z-10 px-5 py-5">
           {canEdit && publishedTemplates.length ? (
             <label className="mb-3 block">
               <span className="label-text">{t("templates.note.applyTemplate")}</span>
@@ -283,7 +295,7 @@ export function MeetingNoteEditor({
             </label>
           ) : null}
           <textarea
-            className="min-h-[12rem] w-full resize-y rounded-xl border-0 bg-violet-50/30 p-4 text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-300/50"
+            className="min-h-[12rem] w-full resize-y rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50/50 via-white to-sky-50/40 p-4 text-sm leading-relaxed text-slate-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-violet-300/50"
             value={draft}
             onChange={(e) => onChange(e.target.value)}
             disabled={!canEdit}
@@ -291,12 +303,12 @@ export function MeetingNoteEditor({
             rows={8}
           />
         </div>
-        <div className="border-t border-slate-100 px-5 py-3">
+        <div className="relative z-10 px-5 py-3">
           <TemplateBrandFooter />
         </div>
         {canEdit ? (
-          <div className="flex justify-end border-t border-slate-100 bg-slate-50/80 px-5 py-3">
-            <button type="button" className="btn-primary" onClick={onSave} disabled={saving}>
+          <div className="relative z-10 flex justify-end border-t border-violet-100/80 bg-gradient-to-r from-violet-50/80 via-white to-sky-50/60 px-5 py-3.5">
+            <button type="button" className="btn-primary shadow-glow" onClick={onSave} disabled={saving}>
               {t("meeting.saveNote")}
             </button>
           </div>

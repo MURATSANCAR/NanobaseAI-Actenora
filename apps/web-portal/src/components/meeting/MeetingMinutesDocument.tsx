@@ -128,7 +128,7 @@ export function MeetingMinutesDocument({
         ))}
       </div>
 
-      <div className="relative z-10 border-t border-white/60 bg-gradient-to-r from-slate-950 via-violet-950 to-slate-900 px-4 py-3 sm:px-6">
+      <div className="relative z-10 px-4 py-3 sm:px-6">
         <TemplateBrandFooter />
       </div>
 

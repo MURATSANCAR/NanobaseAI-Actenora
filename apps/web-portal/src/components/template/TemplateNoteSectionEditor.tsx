@@ -60,7 +60,7 @@ export function TemplateNoteSectionEditor({
           onSave={onSave}
           onSectionChange={onSectionChange}
           footerExtra={
-            <div className="border-t border-slate-100 bg-violet-50/50 px-5 py-2.5 text-xs text-violet-900">
+            <div className="border-t border-violet-100/80 bg-gradient-to-r from-violet-50/70 via-white to-sky-50/50 px-5 py-3 text-xs text-violet-900">
               {t("templates.note.boundTo", { name: templateName, version: templateVersion })}
               {draftBadge ? (
                 <span className="ml-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">

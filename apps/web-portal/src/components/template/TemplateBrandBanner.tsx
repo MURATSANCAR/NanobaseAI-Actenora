@@ -54,19 +54,19 @@ export function TemplateBrandFooter({ pageLabel }: { pageLabel?: string }) {
   const { t } = useI18n();
 
   return (
-    <div className="mt-auto flex shrink-0 items-center justify-between gap-2 rounded-lg bg-slate-900 px-3 py-2 text-white">
-      <div className="flex items-center gap-2">
-        <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-sky-500" aria-hidden>
-          <Sparkles className="h-3 w-3" />
+    <div className="mt-auto flex shrink-0 items-center justify-between gap-2 rounded-xl bg-gradient-to-r from-slate-950 via-violet-950 to-slate-900 px-3.5 py-2.5 text-white shadow-inner ring-1 ring-white/10">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 via-indigo-500 to-sky-500 shadow-sm" aria-hidden>
+          <Sparkles className="h-3.5 w-3.5" />
         </span>
-        <span className="text-[10px] font-semibold">{t("brand.name")}</span>
-        <span className="text-[9px] text-white/60">{t("templates.brand.footerNote")}</span>
+        <span className="text-[11px] font-semibold tracking-tight">{t("brand.name")}</span>
+        <span className="text-[10px] text-white/55">{t("templates.brand.footerNote")}</span>
       </div>
       <a
         href={PRODUCT_WEBSITE_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-1 text-[10px] font-medium text-sky-300 hover:text-sky-200"
+        className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-medium text-sky-200 ring-1 ring-white/15 hover:bg-white/15 hover:text-sky-100"
       >
         <Globe className="h-3 w-3" aria-hidden />
         {PRODUCT_WEBSITE_LABEL}

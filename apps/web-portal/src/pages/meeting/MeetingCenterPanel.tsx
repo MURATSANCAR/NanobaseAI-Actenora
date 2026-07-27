@@ -131,12 +131,12 @@ export function MeetingCenterPanel({
       ) : null}
 
       <section aria-label={t("meeting.notes")}>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-violet-700">
-            <FileText className="h-4 w-4" aria-hidden />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
             {t("meeting.minutesDocumentTitle")}
           </h2>
-          <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/80 bg-gradient-to-r from-violet-50 to-sky-50 px-3 py-1 text-[11px] font-semibold text-violet-800">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
             {auth.can("meetings:edit") ? t("meeting.editEnabled") : t("meeting.readOnly")}
           </span>
         </div>
@@ -173,12 +173,18 @@ export function MeetingCenterPanel({
         )}
       </section>
 
-      <section className="card-static p-4 sm:p-5" aria-label={t("meeting.intelligence")}>
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-violet-700">
-          {t("meeting.insightsTitle")}
-        </h2>
+      <section className="meeting-insight-shell" aria-label={t("meeting.intelligence")}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
+            {t("meeting.insightsTitle")}
+          </h2>
+          <span className="meeting-detail-live-pill">
+            <span className="module-hero-live-dot" aria-hidden />
+            {t("meeting.detailLivePulse")}
+          </span>
+        </div>
 
-        <div className="mb-4 flex flex-wrap gap-1.5 border-b border-white/60 pb-3">
+        <div className="mb-4 flex flex-wrap gap-1.5 border-b border-violet-100/80 pb-3">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -188,18 +194,17 @@ export function MeetingCenterPanel({
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={[
-                  "inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition",
-                  active
-                    ? "bg-violet-600 text-white shadow-md shadow-violet-200"
-                    : "bg-white/60 text-slate-600 hover:bg-white hover:text-violet-800",
+                  "meeting-insight-tab",
+                  active ? "meeting-insight-tab--active" : "meeting-insight-tab--idle",
                 ].join(" ")}
               >
                 <Icon className="h-3.5 w-3.5" aria-hidden />
                 {tab.label}
                 <span
                   className={[
-                    "rounded-full px-1.5 py-0.5 text-[10px]",
+                    "meeting-insight-count",
                     active ? "bg-white/20 text-white" : "bg-violet-100 text-violet-700",
+                    tab.count > 0 ? "meeting-insight-count--pulse" : "",
                   ].join(" ")}
                 >
                   {tab.count}
@@ -328,12 +333,18 @@ function isArtifactLinked(evidence: EvidenceRef[], selectedSegmentId: string | n
   return evidence.some((e) => evidenceMatchesSegment(e, selectedSegmentId));
 }
 
-function artifactRowClass(linked: boolean): string {
+function artifactRowClass(linked: boolean, tone: "decision" | "action" | "risk" | "commitment" = "decision"): string {
+  const tones = {
+    decision: "border-emerald-200/80 bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/40",
+    action: "border-amber-200/80 bg-gradient-to-br from-amber-50/80 via-white to-orange-50/40",
+    risk: "border-rose-200/80 bg-gradient-to-br from-rose-50/80 via-white to-red-50/40",
+    commitment: "border-cyan-200/80 bg-gradient-to-br from-cyan-50/80 via-white to-sky-50/40",
+  };
   return [
-    "rounded-xl border p-3 transition",
+    "rounded-2xl border p-3.5 shadow-sm transition",
     linked
-      ? "border-violet-400 bg-violet-100/60 ring-2 ring-violet-300/70"
-      : "border-white/70 bg-white/50",
+      ? "border-violet-400 bg-violet-100/70 ring-2 ring-violet-300/70 meeting-detail-pulse-border"
+      : tones[tone],
   ].join(" ");
 }
 
@@ -386,7 +397,7 @@ function DecisionRow({
   jumpLabel: string;
 }) {
   return (
-    <div id={`artifact-decision-${item.id}`} className={artifactRowClass(linked)}>
+    <div id={`artifact-decision-${item.id}`} className={artifactRowClass(linked, "decision")}>
       <strong className="block text-slate-900">{item.title}</strong>
       <div className="mt-1"><StatusBadge label={statusLabel} status={item.status} /></div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
@@ -414,7 +425,7 @@ function ActionRow({
   onComplete: () => void;
 }) {
   return (
-    <div id={`artifact-action-${item.id}`} className={artifactRowClass(linked)}>
+    <div id={`artifact-action-${item.id}`} className={artifactRowClass(linked, "action")}>
       <strong className="block text-slate-900">{item.title}</strong>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
         <StatusBadge label={statusLabel} status={item.status} />
@@ -445,7 +456,7 @@ function RiskRow({
   jumpLabel: string;
 }) {
   return (
-    <div id={`artifact-risk-${item.id}`} className={artifactRowClass(linked)}>
+    <div id={`artifact-risk-${item.id}`} className={artifactRowClass(linked, "risk")}>
       <strong className="block text-slate-900">{item.title}</strong>
       <div className="mt-1"><StatusBadge label={severityLabel} status={item.severity} /></div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
@@ -467,7 +478,7 @@ function CommitmentRow({
   jumpLabel: string;
 }) {
   return (
-    <div id={`artifact-commitment-${item.id}`} className={artifactRowClass(linked)}>
+    <div id={`artifact-commitment-${item.id}`} className={artifactRowClass(linked, "commitment")}>
       <strong className="block text-slate-900">{item.statement}</strong>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
         <StatusBadge label={statusLabel} status={item.status} />
