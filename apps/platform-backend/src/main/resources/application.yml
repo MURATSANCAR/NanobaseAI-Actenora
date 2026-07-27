@@ -111,8 +111,10 @@ actenora:
   ai:
     provider:
       # offline (local only) | nanobaseai — public surfaces never expose third-party stack names
+      # offline/mock = MockLocalProvider. nanobaseai = OpenAI-compatible chat/completions at base-url.
+      # Do not point base-url at ai-orchestrator (health-only; no /v1/chat/completions).
       kind: ${ACTENORA_AI_PROVIDER_KIND:offline}
-      base-url: ${ACTENORA_AI_PROVIDER_BASE_URL:http://127.0.0.1:8000}
+      base-url: ${ACTENORA_AI_PROVIDER_BASE_URL:http://127.0.0.1:8010}
       connect-timeout: ${ACTENORA_AI_PROVIDER_CONNECT_TIMEOUT:2s}
       read-timeout: ${ACTENORA_AI_PROVIDER_READ_TIMEOUT:1800s}
       max-concurrency: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY:4}

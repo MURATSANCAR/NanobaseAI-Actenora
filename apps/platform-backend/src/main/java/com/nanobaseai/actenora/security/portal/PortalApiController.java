@@ -1425,6 +1425,19 @@ public class PortalApiController {
         return value.trim();
     }
 
+    /** Pipeline soft-degrade tokens previously stored as OTHER.detail. */
+    private static boolean isPipelineQualityFlagToken(String detail) {
+        if (detail == null || detail.isBlank()) {
+            return false;
+        }
+        String normalized = detail.trim().toUpperCase(java.util.Locale.ROOT);
+        return normalized.equals("SYNTHESIS_FALLBACK")
+                || normalized.equals("AUDIT_FALLBACK")
+                || normalized.equals("PARTIAL_EVIDENCE_NEEDS_REVIEW")
+                || normalized.equals("NEEDS_REVIEW")
+                || normalized.equals("REQUIRES_MANUAL_REVIEW");
+    }
+
     private static void appendMinutesSection(StringBuilder sb, String title, List<String> items) {
         sb.append('\n').append(title).append('\n');
         if (items == null || items.isEmpty()) {

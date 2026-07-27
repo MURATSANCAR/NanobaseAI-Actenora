@@ -278,13 +278,11 @@ function formatMs(ms: number): string {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
-/** Pipeline/ops flags must not appear in the meeting workspace UI. */
+/** Ops/version tokens stay hidden; soft-degrade fallbacks are user-visible. */
 function isInternalQualityFlag(flag: string): boolean {
   const normalized = flag.trim().toUpperCase();
   return (
     normalized.includes("LLM") ||
-    normalized === "SYNTHESIS_FALLBACK" ||
-    normalized === "REQUIRES_MANUAL_REVIEW" ||
     normalized.startsWith("SV-") ||
     normalized.startsWith("PV-")
   );

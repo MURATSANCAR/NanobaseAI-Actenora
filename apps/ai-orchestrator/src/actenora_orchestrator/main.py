@@ -49,23 +49,40 @@ def check_qwen() -> dict[str, Any]:
             "url": base,
         }
 
-    url = base.rstrip("/") + "/models"
+    # Prefer OpenAI-compatible /v1/models (llama-server, Ollama); fall back to bare /models.
+    candidates = (
+        base.rstrip("/") + "/v1/models",
+        base.rstrip("/") + "/models",
+    )
     timeout = float(_env("QWEN_HEALTH_TIMEOUT_SECONDS", "2"))
+    last_url = candidates[0]
+    last_detail = "unreachable"
     try:
         with httpx.Client(timeout=timeout) as client:
-            response = client.get(url)
-        if response.status_code < 500:
-            return {"status": HealthStatus.UP.value, "detail": f"reachable ({response.status_code})", "url": url}
+            for url in candidates:
+                last_url = url
+                try:
+                    response = client.get(url)
+                except Exception as exc:  # noqa: BLE001 — try next probe path
+                    last_detail = f"unreachable: {exc}"
+                    continue
+                if 200 <= response.status_code < 300:
+                    return {
+                        "status": HealthStatus.UP.value,
+                        "detail": f"reachable ({response.status_code})",
+                        "url": url,
+                    }
+                last_detail = f"upstream status {response.status_code}"
         return {
             "status": HealthStatus.DEGRADED.value,
-            "detail": f"upstream status {response.status_code}",
-            "url": url,
+            "detail": last_detail,
+            "url": last_url,
         }
     except Exception as exc:  # noqa: BLE001 — readiness must degrade, not crash
         return {
             "status": HealthStatus.DEGRADED.value,
             "detail": f"unreachable: {exc}",
-            "url": url,
+            "url": last_url,
         }
 
 
