@@ -52,6 +52,23 @@ public final class DefaultAdmissionController implements AdmissionController {
             );
         }
 
+        // Transcript+taskType idempotency for extraction-class jobs (legacy path).
+        if (isExtractionTask(command.taskType())) {
+            Optional<AiJob> latest = jobs.findLatestByTranscriptAndTaskType(
+                    command.tenantId(), command.transcriptId(), command.taskType());
+            if (latest.isPresent()) {
+                AiJob prior = latest.get();
+                if (prior.status().isActive()) {
+                    return AdmissionDecision.rejected(
+                            "already_active: job " + prior.id() + " status=" + prior.status());
+                }
+                if (prior.status() == AiJobStatus.SUCCEEDED && !command.forceReprocess()) {
+                    return AdmissionDecision.rejected(
+                            "already_extracted: job " + prior.id() + " succeeded; pass forceReprocess=true to rerun");
+                }
+            }
+        }
+
         int running = jobs.countByTenantAndStatus(command.tenantId(), AiJobStatus.RUNNING);
         int queued = jobs.countByTenantAndStatus(command.tenantId(), AiJobStatus.QUEUED);
         int max = tenantPolicy.maxConcurrentAiJobs(command.tenantId());
@@ -118,5 +135,14 @@ public final class DefaultAdmissionController implements AdmissionController {
             return policyAllows;
         }
         return true;
+    }
+
+    private static boolean isExtractionTask(String taskType) {
+        if (taskType == null) {
+            return false;
+        }
+        return "CHUNK_EXTRACTION".equals(taskType)
+                || "PIPELINE_ROOT".equals(taskType)
+                || "NORMALIZE".equals(taskType);
     }
 }

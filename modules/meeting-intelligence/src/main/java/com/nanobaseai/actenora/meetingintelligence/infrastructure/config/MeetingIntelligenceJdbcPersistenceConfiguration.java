@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteV
 import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.validation.port.ValidationRunRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.JdbcLedgerEventStore;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.JdbcLedgerProjectionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcActionItemRepository;
@@ -26,6 +27,7 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.Jd
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcOpenQuestionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcQualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcRiskRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcValidationRunRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -100,5 +102,10 @@ public class MeetingIntelligenceJdbcPersistenceConfiguration {
     @Bean
     ArtifactMetadataStorePort artifactMetadataStore(DataSource dataSource) {
         return new JdbcArtifactMetadataStore(new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    ValidationRunRepository validationRunRepository(DataSource dataSource) {
+        return new JdbcValidationRunRepository(new JdbcTemplate(dataSource));
     }
 }

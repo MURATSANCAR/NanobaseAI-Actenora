@@ -175,6 +175,21 @@ public final class JdbcAiJobRepository implements AiJobRepository {
     }
 
     @Override
+    public Optional<AiJob> findLatestByTranscriptAndTaskType(
+            UUID tenantId,
+            UUID transcriptId,
+            String taskType
+    ) {
+        String sql = "SELECT " + COLUMNS + """
+                 FROM aiprocessing.ai_jobs
+                 WHERE tenant_id = ? AND transcript_id = ? AND task_type = ?
+                 ORDER BY queued_at DESC
+                 LIMIT 1
+                """;
+        return jdbc.query(sql, ROW_MAPPER, tenantId, transcriptId, taskType).stream().findFirst();
+    }
+
+    @Override
     public List<AiJob> findByStatus(AiJobStatus status) {
         String sql = "SELECT " + COLUMNS + " FROM aiprocessing.ai_jobs WHERE status = ?";
         return jdbc.query(sql, ROW_MAPPER, status.name());

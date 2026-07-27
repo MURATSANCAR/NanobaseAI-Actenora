@@ -65,6 +65,19 @@ public final class InMemoryAiJobRepository implements AiJobRepository {
     }
 
     @Override
+    public Optional<AiJob> findLatestByTranscriptAndTaskType(
+            UUID tenantId,
+            UUID transcriptId,
+            String taskType
+    ) {
+        return store.values().stream()
+                .filter(job -> job.tenantId().equals(tenantId))
+                .filter(job -> job.transcriptId().equals(transcriptId))
+                .filter(job -> job.taskType().equals(taskType))
+                .max(Comparator.comparing(AiJob::queuedAt));
+    }
+
+    @Override
     public List<AiJob> findByStatus(AiJobStatus status) {
         return store.values().stream()
                 .filter(job -> job.status() == status)

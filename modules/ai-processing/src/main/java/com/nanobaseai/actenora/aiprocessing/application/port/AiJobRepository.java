@@ -25,6 +25,15 @@ public interface AiJobRepository {
             UUID correlationId
     );
 
+    /**
+     * Latest job for transcript+taskType (any status), ordered by queued_at DESC.
+     */
+    Optional<AiJob> findLatestByTranscriptAndTaskType(
+            UUID tenantId,
+            UUID transcriptId,
+            String taskType
+    );
+
     List<AiJob> findByStatus(AiJobStatus status);
 
     List<AiJob> findByParentJobId(UUID parentJobId);

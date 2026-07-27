@@ -29,7 +29,8 @@ public interface AdmissionController {
             int contextSize,
             Boolean fallbackPermittedOverride,
             UUID correlationId,
-            Instant now
+            Instant now,
+            boolean forceReprocess
     ) {
         public SubmitAiJobCommand {
             Objects.requireNonNull(tenantId, "tenantId");
@@ -42,6 +43,29 @@ public interface AdmissionController {
             Objects.requireNonNull(schemaVersion, "schemaVersion");
             Objects.requireNonNull(correlationId, "correlationId");
             Objects.requireNonNull(now, "now");
+        }
+
+        /** Backward-compatible constructor (forceReprocess=false). */
+        public SubmitAiJobCommand(
+                UUID tenantId,
+                UUID meetingOccurrenceId,
+                UUID transcriptId,
+                String taskType,
+                JobPriority priority,
+                AiCapability requestedCapability,
+                String promptVersion,
+                String schemaVersion,
+                String language,
+                int contextSize,
+                Boolean fallbackPermittedOverride,
+                UUID correlationId,
+                Instant now
+        ) {
+            this(
+                    tenantId, meetingOccurrenceId, transcriptId, taskType, priority, requestedCapability,
+                    promptVersion, schemaVersion, language, contextSize, fallbackPermittedOverride,
+                    correlationId, now, false
+            );
         }
     }
 
