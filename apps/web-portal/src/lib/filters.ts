@@ -9,6 +9,12 @@ export interface SegmentLike {
   markers?: string[];
 }
 
+/** Consecutive same-speaker utterances merged into one readable turn/paragraph. */
+export interface SpeakerTurn<T extends SegmentLike = SegmentLike> extends SegmentLike {
+  segmentIds: string[];
+  segments: T[];
+}
+
 export function filterSegments<T extends SegmentLike>(
   segments: readonly T[],
   opts: { speaker?: string; q?: string; marker?: string } = {},
@@ -24,6 +30,38 @@ export function filterSegments<T extends SegmentLike>(
   });
 }
 
+/**
+ * Collapses consecutive ASR fragments from the same speaker into paragraph turns
+ * so the conversation reads as continuous speech rather than one bubble per clause.
+ */
+export function groupConsecutiveSpeakerTurns<T extends SegmentLike>(
+  segments: readonly T[],
+): SpeakerTurn<T>[] {
+  const turns: SpeakerTurn<T>[] = [];
+  for (const seg of segments) {
+    const prev = turns[turns.length - 1];
+    if (prev && sameSpeaker(prev.speaker, seg.speaker)) {
+      prev.segments.push(seg);
+      prev.segmentIds.push(seg.id);
+      prev.text = joinUtteranceText(prev.text, seg.text);
+      prev.endMs = Math.max(prev.endMs, seg.endMs);
+      prev.markers = mergeMarkers(prev.markers, seg.markers);
+      continue;
+    }
+    turns.push({
+      id: seg.id,
+      segmentIds: [seg.id],
+      speaker: seg.speaker,
+      text: seg.text.trim(),
+      startMs: seg.startMs,
+      endMs: seg.endMs,
+      markers: [...(seg.markers ?? [])],
+      segments: [seg],
+    });
+  }
+  return turns;
+}
+
 export function normalizeSegmentId(segmentId: string): string {
   return segmentId.trim().toLowerCase();
 }
@@ -34,6 +72,43 @@ export function findEvidenceIndex(
 ): number {
   const needle = normalizeSegmentId(segmentId);
   return segments.findIndex((s) => normalizeSegmentId(s.id) === needle);
+}
+
+/** Finds the turn that contains a raw transcript segment id (any fragment in the turn). */
+export function findTurnIndexBySegmentId(
+  turns: readonly Pick<SpeakerTurn, "segmentIds">[],
+  segmentId: string,
+): number {
+  const needle = normalizeSegmentId(segmentId);
+  return turns.findIndex((turn) =>
+    turn.segmentIds.some((id) => normalizeSegmentId(id) === needle),
+  );
+}
+
+function sameSpeaker(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+function joinUtteranceText(left: string, right: string): string {
+  const a = left.trim();
+  const b = right.trim();
+  if (!a) return b;
+  if (!b) return a;
+  return `${a} ${b}`;
+}
+
+function mergeMarkers(
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined,
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const m of [...(left ?? []), ...(right ?? [])]) {
+    if (seen.has(m)) continue;
+    seen.add(m);
+    out.push(m);
+  }
+  return out;
 }
 
 /**

@@ -20,6 +20,8 @@ import {
   evidenceScrollOffset,
   filterSegments,
   findEvidenceIndex,
+  findTurnIndexBySegmentId,
+  groupConsecutiveSpeakerTurns,
 } from "./lib/filters.ts";
 import { meetingNeedsProcessingPoll } from "./lib/meetingProcessing.ts";
 import { deriveMeetingPipelineStages } from "./lib/meetingPipeline.ts";
@@ -136,6 +138,40 @@ test("evidence navigation index and scroll offset", () => {
   assert.equal(findEvidenceIndex(segments, "missing"), -1);
   assert.equal(evidenceScrollOffset(0, 72, 300), 0);
   assert.ok(evidenceScrollOffset(10, 72, 300) > 0);
+});
+
+test("consecutive same-speaker fragments merge into paragraph turns", () => {
+  const segments = [
+    { id: "1", speaker: "Murat Sancar", text: "Selam.", startMs: 25000, endMs: 26000, markers: [] },
+    { id: "2", speaker: "Murat Sancar", text: "Ben Murat.", startMs: 27000, endMs: 28000, markers: ["IMPORTANT"] },
+    {
+      id: "3",
+      speaker: "Murat Sancar",
+      text: "Bu hafta hiçbir katılımcı gelmedi.",
+      startMs: 34000,
+      endMs: 40000,
+      markers: ["RISK"],
+    },
+    { id: "4", speaker: "Ayşe Yılmaz", text: "Anladım.", startMs: 41000, endMs: 42000, markers: [] },
+    { id: "5", speaker: "Ayşe Yılmaz", text: "Hemen bakıyorum.", startMs: 43000, endMs: 45000, markers: ["ACTION"] },
+    { id: "6", speaker: "Murat Sancar", text: "Teşekkürler.", startMs: 46000, endMs: 47000, markers: [] },
+  ];
+  const turns = groupConsecutiveSpeakerTurns(segments);
+  assert.equal(turns.length, 3);
+  assert.equal(
+    turns[0]!.text,
+    "Selam. Ben Murat. Bu hafta hiçbir katılımcı gelmedi.",
+  );
+  assert.deepEqual(turns[0]!.segmentIds, ["1", "2", "3"]);
+  assert.equal(turns[0]!.startMs, 25000);
+  assert.equal(turns[0]!.endMs, 40000);
+  assert.deepEqual(turns[0]!.markers, ["IMPORTANT", "RISK"]);
+  assert.equal(turns[1]!.speaker, "Ayşe Yılmaz");
+  assert.equal(turns[1]!.text, "Anladım. Hemen bakıyorum.");
+  assert.equal(turns[2]!.text, "Teşekkürler.");
+  assert.equal(findTurnIndexBySegmentId(turns, "3"), 0);
+  assert.equal(findTurnIndexBySegmentId(turns, "5"), 1);
+  assert.equal(findTurnIndexBySegmentId(turns, "missing"), -1);
 });
 
 test("approval is applied only when pending; optimistic only for safe ops", () => {

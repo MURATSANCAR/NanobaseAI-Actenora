@@ -1,14 +1,19 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Calendar,
+  CheckCircle2,
   ChevronDown,
   GitBranch,
   ShieldCheck,
   Sparkles,
+  UserX,
   Users,
 } from "lucide-react";
-import type { ApprovalRecord, MeetingDetailResponse } from "@/api/types";
-import { ParticipantAttendanceRow } from "@/components/meeting/ParticipantAttendanceRow";
+import type { ApprovalRecord, MeetingDetailResponse, Participant } from "@/api/types";
+import {
+  classifyAttendance,
+  ParticipantAttendanceRow,
+} from "@/components/meeting/ParticipantAttendanceRow";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { PRODUCT_BRAND } from "@/config/brand";
 import { useI18n } from "@/i18n";
@@ -18,9 +23,19 @@ export function MeetingHeaderBar({ detail }: { detail: MeetingDetailResponse }) 
   const { t, tb } = useI18n();
   const [expanded, setExpanded] = useState(true);
   const m = detail.meeting;
-  const attendedCount = detail.participants.filter((p) =>
-    ["JOINED", "LEFT"].includes((p.attendanceStatus || "").toUpperCase()),
-  ).length;
+
+  const attendanceGroups = useMemo(() => {
+    const attended: Participant[] = [];
+    const absent: Participant[] = [];
+    const pending: Participant[] = [];
+    for (const p of detail.participants) {
+      const bucket = classifyAttendance(p.attendanceStatus, m.status);
+      if (bucket === "attended") attended.push(p);
+      else if (bucket === "absent") absent.push(p);
+      else pending.push(p);
+    }
+    return { attended, absent, pending };
+  }, [detail.participants, m.status]);
 
   return (
     <header className="meeting-detail-shell">
@@ -81,7 +96,10 @@ export function MeetingHeaderBar({ detail }: { detail: MeetingDetailResponse }) 
             icon={Users}
             label={t("meeting.participants")}
             value={String(detail.participants.length)}
-            hint={t("meeting.attendedCount", { count: attendedCount })}
+            hint={t("meeting.attendanceSummary", {
+              attended: attendanceGroups.attended.length,
+              absent: attendanceGroups.absent.length,
+            })}
             pulse
           />
           <StatChip
@@ -110,7 +128,7 @@ export function MeetingHeaderBar({ detail }: { detail: MeetingDetailResponse }) 
         </div>
 
         {expanded ? (
-          <div className="meeting-detail-mosaic">
+          <div className="space-y-3">
             <DetailCard
               tone="violet"
               title={t("meeting.participants")}
@@ -119,56 +137,136 @@ export function MeetingHeaderBar({ detail }: { detail: MeetingDetailResponse }) 
               pulse
             >
               {detail.participants.length ? (
-                <ul className="space-y-1.5 text-sm">
-                  {detail.participants.map((p) => (
-                    <ParticipantAttendanceRow key={p.id} participant={p} meetingStatus={m.status} />
-                  ))}
-                </ul>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-900">
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                      {t("meeting.attendedGroup", { count: attendanceGroups.attended.length })}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-900">
+                      <UserX className="h-3.5 w-3.5" aria-hidden />
+                      {t("meeting.absentGroup", { count: attendanceGroups.absent.length })}
+                    </span>
+                    {attendanceGroups.pending.length ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                        {t("meeting.pendingGroup", { count: attendanceGroups.pending.length })}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <AttendanceGroup
+                    title={t("meeting.attendedGroup", { count: attendanceGroups.attended.length })}
+                    empty={t("meeting.attendedEmpty")}
+                    people={attendanceGroups.attended}
+                    meetingStatus={m.status}
+                    tone="attended"
+                  />
+                  <AttendanceGroup
+                    title={t("meeting.absentGroup", { count: attendanceGroups.absent.length })}
+                    empty={t("meeting.absentEmpty")}
+                    people={attendanceGroups.absent}
+                    meetingStatus={m.status}
+                    tone="absent"
+                  />
+                  {attendanceGroups.pending.length ? (
+                    <AttendanceGroup
+                      title={t("meeting.pendingGroup", { count: attendanceGroups.pending.length })}
+                      empty={t("meeting.pendingEmpty")}
+                      people={attendanceGroups.pending}
+                      meetingStatus={m.status}
+                      tone="pending"
+                    />
+                  ) : null}
+                </div>
               ) : (
                 <p className="text-sm text-slate-500">—</p>
               )}
             </DetailCard>
 
-            <DetailCard
-              tone="emerald"
-              title={t("meeting.versions")}
-              icon={GitBranch}
-              count={detail.versions.length}
-            >
-              {detail.versions.length ? (
-                <ul className="space-y-1.5 text-sm text-slate-700">
-                  {detail.versions.map((v) => (
-                    <li
-                      key={v.version}
-                      className="rounded-xl border border-emerald-100/80 bg-white/80 px-3 py-2 shadow-sm"
-                    >
-                      <span className="font-semibold text-emerald-900">
-                        {formatMeetingVersionLabel(v.version, v.label)}
-                      </span>
-                      <span className="mt-0.5 block text-xs text-slate-500">
-                        {new Date(v.createdAt).toLocaleString()}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-slate-500">—</p>
-              )}
-            </DetailCard>
+            <div className="meeting-detail-mosaic">
+              <DetailCard
+                tone="emerald"
+                title={t("meeting.versions")}
+                icon={GitBranch}
+                count={detail.versions.length}
+              >
+                {detail.versions.length ? (
+                  <ul className="space-y-1.5 text-sm text-slate-700">
+                    {detail.versions.map((v) => (
+                      <li
+                        key={v.version}
+                        className="rounded-xl border border-emerald-100/80 bg-white/80 px-3 py-2 shadow-sm"
+                      >
+                        <span className="font-semibold text-emerald-900">
+                          {formatMeetingVersionLabel(v.version, v.label)}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-slate-500">
+                          {new Date(v.createdAt).toLocaleString()}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-500">—</p>
+                )}
+              </DetailCard>
 
-            <DetailCard
-              tone="amber"
-              title={t("meeting.approvalHistory")}
-              icon={ShieldCheck}
-              count={detail.approvalHistory.length}
-              pulse={detail.approvalHistory.some((a) => a.status === "PENDING")}
-            >
-              <ApprovalList items={detail.approvalHistory} />
-            </DetailCard>
+              <DetailCard
+                tone="amber"
+                title={t("meeting.approvalHistory")}
+                icon={ShieldCheck}
+                count={detail.approvalHistory.length}
+                pulse={detail.approvalHistory.some((a) => a.status === "PENDING")}
+              >
+                <ApprovalList items={detail.approvalHistory} />
+              </DetailCard>
+            </div>
           </div>
         ) : null}
       </div>
     </header>
+  );
+}
+
+function AttendanceGroup({
+  title,
+  empty,
+  people,
+  meetingStatus,
+  tone,
+}: {
+  title: string;
+  empty: string;
+  people: Participant[];
+  meetingStatus: string;
+  tone: "attended" | "absent" | "pending";
+}) {
+  return (
+    <div>
+      <h3
+        className={[
+          "mb-2 text-xs font-bold uppercase tracking-[0.14em]",
+          tone === "attended"
+            ? "text-emerald-800"
+            : tone === "absent"
+              ? "text-rose-800"
+              : "text-slate-600",
+        ].join(" ")}
+      >
+        {title}
+      </h3>
+      {people.length ? (
+        <ul className="space-y-1.5 text-sm">
+          {people.map((p) => (
+            <ParticipantAttendanceRow key={p.id} participant={p} meetingStatus={meetingStatus} />
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-xl border border-dashed border-slate-200 bg-white/50 px-3 py-3 text-sm text-slate-500">
+          {empty}
+        </p>
+      )}
+    </div>
   );
 }
 

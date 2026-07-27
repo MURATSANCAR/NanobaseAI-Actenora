@@ -18,7 +18,8 @@ export function MeetingReviewPanel({ detail }: { detail: MeetingDetailResponse }
   const meetingId = detail.meeting.id;
   const mutationsEnabled = portalMutationsEnabled(apiMode, resolvePortalAuthMode());
   const canEdit = auth.can("meetings:edit") && mutationsEnabled;
-  const canDecide = auth.canApprove && mutationsEnabled;
+  // Organizers who submit are the required approver; they may self-approve with edit rights.
+  const canDecide = (auth.canApprove || auth.can("meetings:edit")) && mutationsEnabled;
   const drafts = draftNotesNeedingSubmit(detail);
   const pending = hasPendingNoteApprovals(detail);
 
@@ -51,6 +52,9 @@ export function MeetingReviewPanel({ detail }: { detail: MeetingDetailResponse }
           <p className="mt-1 text-sm text-slate-600">
             {pending ? t("meeting.review.pendingHint") : t("meeting.review.draftHint")}
           </p>
+          {!pending && drafts.length ? (
+            <p className="mt-1 text-xs font-medium text-amber-900">{t("meeting.review.twoStepHint")}</p>
+          ) : null}
         </div>
         {auth.canApprove ? (
           <Link to="/approvals" className="btn-secondary px-3 py-1.5 text-xs">

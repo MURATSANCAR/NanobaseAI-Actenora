@@ -524,13 +524,26 @@ public class PortalApiController {
         return toApprovalRecord(view, noteId, principal.displayName());
     }
 
+    /**
+     * Decide a pending note approval.
+     * <p>
+     * Dedicated approvers use {@link Permission#APPROVAL_DECIDE}. Meeting editors
+     * ({@link Permission#MEETING_WRITE}) may also decide when they are the assigned
+     * required approver — portal submit assigns the submitter, so organizers can
+     * self-approve the Teams meeting note they just sent for review. The Approval BC
+     * still rejects actors who are not the required approver.
+     */
     @PostMapping("/approvals/{approvalId}/decide")
-    @RequiresPermission(Permission.APPROVAL_DECIDE)
     public ApprovalRecordView decideApproval(
             @PathVariable UUID approvalId,
             @RequestBody DecideBody body
     ) {
-        AuthenticatedPrincipal principal = require(Permission.APPROVAL_DECIDE);
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
+        boolean canDecide = principal.hasPermission(Permission.APPROVAL_DECIDE.code());
+        boolean canWrite = principal.hasPermission(Permission.MEETING_WRITE.code());
+        if (!canDecide && !canWrite) {
+            identityApi.requirePermission(principal, Permission.APPROVAL_DECIDE);
+        }
         ApprovalDecisionType decisionType = parseDecision(body.decision());
         MeetingNote note = noteApprovalService.decideByApprovalId(
                 principal.tenantId().value(),

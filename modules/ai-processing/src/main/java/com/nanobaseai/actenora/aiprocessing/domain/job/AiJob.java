@@ -43,6 +43,12 @@ public final class AiJob {
     private UUID adminOverrideDeploymentId;
     private long version;
     private int attemptCount;
+    private final UUID parentJobId;
+    private final ProcessingStage stage;
+    private final String idempotencyKey;
+    private final Integer chunkIndex;
+    private String errorCode;
+    private String errorMessage;
 
     public AiJob(
             UUID id,
@@ -101,7 +107,13 @@ public final class AiJob {
                 adminOverrideModelId,
                 adminOverrideDeploymentId,
                 version,
-                attemptCount
+                attemptCount,
+                null,
+                ProcessingStage.fromTaskType(taskType),
+                defaultIdempotency(tenantId, id, correlationId, taskType),
+                null,
+                null,
+                null
         );
     }
 
@@ -135,6 +147,80 @@ public final class AiJob {
             long version,
             int attemptCount
     ) {
+        this(
+                id,
+                tenantId,
+                meetingOccurrenceId,
+                transcriptId,
+                taskType,
+                priority,
+                status,
+                requestedCapability,
+                selectedModelId,
+                selectedDeploymentId,
+                selectedRoute,
+                promptVersion,
+                schemaVersion,
+                inputTokenCount,
+                outputTokenCount,
+                queuedAt,
+                startedAt,
+                completedAt,
+                deadlineAt,
+                nextEligibleAt,
+                correlationId,
+                language,
+                contextSize,
+                fallbackPermitted,
+                adminOverrideModelId,
+                adminOverrideDeploymentId,
+                version,
+                attemptCount,
+                null,
+                ProcessingStage.fromTaskType(taskType),
+                defaultIdempotency(tenantId, id, correlationId, taskType),
+                null,
+                null,
+                null
+        );
+    }
+
+    public AiJob(
+            UUID id,
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            UUID transcriptId,
+            String taskType,
+            JobPriority priority,
+            AiJobStatus status,
+            AiCapability requestedCapability,
+            UUID selectedModelId,
+            UUID selectedDeploymentId,
+            SelectedRoute selectedRoute,
+            String promptVersion,
+            String schemaVersion,
+            Integer inputTokenCount,
+            Integer outputTokenCount,
+            Instant queuedAt,
+            Instant startedAt,
+            Instant completedAt,
+            Instant deadlineAt,
+            Instant nextEligibleAt,
+            UUID correlationId,
+            String language,
+            int contextSize,
+            boolean fallbackPermitted,
+            UUID adminOverrideModelId,
+            UUID adminOverrideDeploymentId,
+            long version,
+            int attemptCount,
+            UUID parentJobId,
+            ProcessingStage stage,
+            String idempotencyKey,
+            Integer chunkIndex,
+            String errorCode,
+            String errorMessage
+    ) {
         this.id = Objects.requireNonNull(id, "id");
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.meetingOccurrenceId = Objects.requireNonNull(meetingOccurrenceId, "meetingOccurrenceId");
@@ -166,6 +252,17 @@ public final class AiJob {
         this.adminOverrideDeploymentId = adminOverrideDeploymentId;
         this.version = version;
         this.attemptCount = attemptCount;
+        this.parentJobId = parentJobId;
+        this.stage = stage == null ? ProcessingStage.fromTaskType(taskType) : stage;
+        this.idempotencyKey = requireText(
+                idempotencyKey == null || idempotencyKey.isBlank()
+                        ? defaultIdempotency(tenantId, id, correlationId, taskType)
+                        : idempotencyKey,
+                "idempotencyKey"
+        );
+        this.chunkIndex = chunkIndex;
+        this.errorCode = blankToNull(errorCode);
+        this.errorMessage = blankToNull(errorMessage);
     }
 
     public static AiJob enqueue(
@@ -184,8 +281,9 @@ public final class AiJob {
             Instant deadlineAt,
             UUID correlationId
     ) {
+        UUID id = UUID.randomUUID();
         return new AiJob(
-                UUID.randomUUID(),
+                id,
                 tenantId,
                 meetingOccurrenceId,
                 transcriptId,
@@ -204,6 +302,7 @@ public final class AiJob {
                 null,
                 null,
                 deadlineAt,
+                null,
                 correlationId,
                 language,
                 contextSize,
@@ -211,7 +310,72 @@ public final class AiJob {
                 null,
                 null,
                 0L,
-                0
+                0,
+                null,
+                ProcessingStage.fromTaskType(taskType),
+                defaultIdempotency(tenantId, id, correlationId, taskType),
+                null,
+                null,
+                null
+        );
+    }
+
+    public static AiJob enqueueStaged(
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            UUID transcriptId,
+            String taskType,
+            ProcessingStage stage,
+            JobPriority priority,
+            AiCapability requestedCapability,
+            String promptVersion,
+            String schemaVersion,
+            String language,
+            int contextSize,
+            boolean fallbackPermitted,
+            Instant queuedAt,
+            Instant deadlineAt,
+            UUID correlationId,
+            UUID parentJobId,
+            String idempotencyKey,
+            Integer chunkIndex
+    ) {
+        UUID id = UUID.randomUUID();
+        return new AiJob(
+                id,
+                tenantId,
+                meetingOccurrenceId,
+                transcriptId,
+                taskType,
+                priority,
+                AiJobStatus.QUEUED,
+                requestedCapability,
+                null,
+                null,
+                null,
+                promptVersion,
+                schemaVersion,
+                null,
+                null,
+                queuedAt,
+                null,
+                null,
+                deadlineAt,
+                null,
+                correlationId,
+                language,
+                contextSize,
+                fallbackPermitted,
+                null,
+                null,
+                0L,
+                0,
+                parentJobId,
+                stage,
+                idempotencyKey,
+                chunkIndex,
+                null,
+                null
         );
     }
 
@@ -271,10 +435,16 @@ public final class AiJob {
     }
 
     public void markFailed(boolean retryable, Instant now) {
+        markFailed(retryable, now, null, null);
+    }
+
+    public void markFailed(boolean retryable, Instant now, String errorCode, String errorMessage) {
         if (status != AiJobStatus.RUNNING) {
             throw AiJobException.invalidTransition("Only RUNNING jobs can fail, was " + status);
         }
         Objects.requireNonNull(now, "now");
+        this.errorCode = blankToNull(errorCode);
+        this.errorMessage = blankToNull(errorMessage);
         if (retryable) {
             this.status = AiJobStatus.QUEUED;
             this.startedAt = null;
@@ -485,11 +655,46 @@ public final class AiJob {
         return attemptCount;
     }
 
+    public Optional<UUID> parentJobId() {
+        return Optional.ofNullable(parentJobId);
+    }
+
+    public ProcessingStage stage() {
+        return stage;
+    }
+
+    public String idempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public Optional<Integer> chunkIndex() {
+        return Optional.ofNullable(chunkIndex);
+    }
+
+    public Optional<String> errorCode() {
+        return Optional.ofNullable(errorCode);
+    }
+
+    public Optional<String> errorMessage() {
+        return Optional.ofNullable(errorMessage);
+    }
+
     public void bumpPriorityForAging(JobPriority floor) {
         // Effective priority for display; scoring uses age separately.
         if (floor.baseScore() > this.priority.baseScore()) {
             this.priority = floor;
             touch();
         }
+    }
+
+    private static String defaultIdempotency(UUID tenantId, UUID id, UUID correlationId, String taskType) {
+        return "job:" + tenantId + ":" + taskType + ":" + correlationId + ":" + id;
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

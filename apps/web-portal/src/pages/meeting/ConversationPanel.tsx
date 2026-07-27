@@ -4,9 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvidenceRef, MarkerKind, TranscriptSegment } from "@/api/types";
 import { useI18n } from "@/i18n";
 import { segmentEvidenceRef } from "@/lib/evidence";
-import { filterSegments, findEvidenceIndex } from "@/lib/filters";
+import {
+  filterSegments,
+  findEvidenceIndex,
+  findTurnIndexBySegmentId,
+  groupConsecutiveSpeakerTurns,
+} from "@/lib/filters";
 
-const ROW_HEIGHT = 88;
 const MARKERS: MarkerKind[] = ["DECISION", "ACTION", "RISK", "QUESTION", "IMPORTANT"];
 
 const SPEAKER_PALETTE = [
@@ -55,9 +59,11 @@ export function ConversationPanel({
     return map;
   }, [speakers]);
 
+  const turns = useMemo(() => groupConsecutiveSpeakerTurns(segments), [segments]);
+
   const filtered = useMemo(
-    () => filterSegments(segments, { speaker: speaker || undefined, q, marker: marker || undefined }),
-    [segments, speaker, q, marker],
+    () => filterSegments(turns, { speaker: speaker || undefined, q, marker: marker || undefined }),
+    [turns, speaker, q, marker],
   );
 
   const visibleQualityFlags = useMemo(
@@ -68,7 +74,7 @@ export function ConversationPanel({
   const virtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: (index) => estimateTurnHeight(filtered[index]?.text ?? ""),
     overscan: 8,
   });
 
@@ -76,7 +82,7 @@ export function ConversationPanel({
     if (!highlightEvidence) return;
     const inAll = findEvidenceIndex(segments, highlightEvidence.segmentId);
     if (inAll < 0) return;
-    const idx = findEvidenceIndex(filtered, highlightEvidence.segmentId);
+    const idx = findTurnIndexBySegmentId(filtered, highlightEvidence.segmentId);
     if (idx < 0) {
       // Active filters hide the target segment — clear them so jump can land.
       setSpeaker("");
@@ -165,27 +171,33 @@ export function ConversationPanel({
       >
         <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
           {virtualizer.getVirtualItems().map((row) => {
-            const seg = filtered[row.index]!;
+            const turn = filtered[row.index]!;
             const active =
               (highlightEvidence != null &&
-                highlightEvidence.segmentId.trim().toLowerCase() === seg.id.trim().toLowerCase()) ||
-              (selectedSegmentId != null &&
-                selectedSegmentId.trim().toLowerCase() === seg.id.trim().toLowerCase());
-            const palette = speakerColors.get(seg.speaker) ?? SPEAKER_PALETTE[0]!;
-            const initials = speakerInitials(seg.speaker);
+                turnContainsSegment(turn.segmentIds, highlightEvidence.segmentId)) ||
+              (selectedSegmentId != null && turnContainsSegment(turn.segmentIds, selectedSegmentId));
+            const palette = speakerColors.get(turn.speaker) ?? SPEAKER_PALETTE[0]!;
+            const initials = speakerInitials(turn.speaker);
+            const markers = (turn.markers ?? []) as MarkerKind[];
 
             return (
               <article
-                key={seg.id}
+                key={turn.segmentIds.join("|")}
+                ref={virtualizer.measureElement}
+                data-index={row.index}
                 role="listitem"
                 tabIndex={0}
                 onClick={() =>
-                  onSegmentSelect(segmentEvidenceRef(seg.id, seg.startMs, seg.endMs, seg.text))
+                  onSegmentSelect(
+                    segmentEvidenceRef(turn.id, turn.startMs, turn.endMs, turn.text),
+                  )
                 }
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onSegmentSelect(segmentEvidenceRef(seg.id, seg.startMs, seg.endMs, seg.text));
+                    onSegmentSelect(
+                      segmentEvidenceRef(turn.id, turn.startMs, turn.endMs, turn.text),
+                    );
                   }
                 }}
                 className={[
@@ -193,7 +205,6 @@ export function ConversationPanel({
                   active ? "z-10" : "",
                 ].join(" ")}
                 style={{
-                  height: `${row.size}px`,
                   transform: `translateY(${row.start}px)`,
                 }}
               >
@@ -209,9 +220,9 @@ export function ConversationPanel({
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <strong className="text-xs text-slate-800">{seg.speaker}</strong>
-                      <span className="font-mono text-[10px] text-slate-400">{formatMs(seg.startMs)}</span>
-                      {(seg.markers ?? []).map((m) => (
+                      <strong className="text-xs text-slate-800">{turn.speaker}</strong>
+                      <span className="font-mono text-[10px] text-slate-400">{formatMs(turn.startMs)}</span>
+                      {markers.map((m) => (
                         <span
                           key={m}
                           className={[
@@ -225,12 +236,12 @@ export function ConversationPanel({
                     </div>
                     <div
                       className={[
-                        "rounded-2xl rounded-tl-md px-3 py-2 text-sm leading-relaxed shadow-sm",
+                        "rounded-2xl rounded-tl-md px-3 py-2.5 text-sm leading-relaxed shadow-sm",
                         palette.bubble,
                         active ? `ring-2 ${palette.ring}` : "",
                       ].join(" ")}
                     >
-                      {seg.text}
+                      <p className="whitespace-pre-wrap break-words">{turn.text}</p>
                     </div>
                   </div>
                 </div>
@@ -241,6 +252,16 @@ export function ConversationPanel({
       </div>
     </section>
   );
+}
+
+function turnContainsSegment(segmentIds: readonly string[], segmentId: string): boolean {
+  const needle = segmentId.trim().toLowerCase();
+  return segmentIds.some((id) => id.trim().toLowerCase() === needle);
+}
+
+function estimateTurnHeight(text: string): number {
+  const lines = Math.max(1, Math.ceil(text.length / 72));
+  return 64 + lines * 22;
 }
 
 function speakerInitials(name: string): string {
