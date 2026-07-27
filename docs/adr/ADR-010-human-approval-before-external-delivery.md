@@ -13,7 +13,7 @@ AI-proposed actions can email customers, open tickets, or call ERP APIs. Autonom
 
 ### Clarification — organizer draft vs external final
 
-`DeliveryIntent.DRAFT_ORGANIZER` is an **internal** notification to the meeting organizer that a draft minutes note is ready for review. It does **not** constitute external distribution and therefore does **not** require `ApprovalGranted`.
+`DeliveryIntent.DRAFT_ORGANIZER` is an **internal** notification to the meeting organizer that a draft minutes note is ready for review. It does **not** constitute external distribution and therefore does **not** require `ApprovalGranted`. Draft organizer mail is enqueued **only** via Delivery (`DeliveryApi.enqueueDraftOrganizerNotification`); a separate JavaMail / Spring `JavaMailSender` bypass path is forbidden.
 
 `DeliveryIntent.FINAL_EXTERNAL` remains gated: it may only enqueue after `ApprovalGranted` for the approved note version. No production bypass exists for this path.
 

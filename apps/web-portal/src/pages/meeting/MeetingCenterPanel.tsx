@@ -463,6 +463,11 @@ function DecisionRow({
     <div id={`artifact-decision-${item.id}`} className={artifactRowClass(linked, "decision")}>
       <strong className="block text-slate-900">{item.title}</strong>
       <div className="mt-1"><StatusBadge label={statusLabel} status={item.status} /></div>
+      {item.rationale || item.decisionStatus ? (
+        <p className="mt-1 text-sm text-slate-600">
+          {[item.decisionStatus, item.rationale].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
     </div>
   );
@@ -494,6 +499,9 @@ function ActionRow({
         <StatusBadge label={statusLabel} status={item.status} />
         <span>{item.ownerDisplayName}</span>
         <DueDateBadge dueAt={item.dueAt} />
+        {item.ownerType ? <span>{item.ownerType}</span> : null}
+        {item.priority ? <span>{item.priority}</span> : null}
+        {item.relativeDate ? <span>{item.relativeDate}</span> : null}
       </div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
       {canComplete && item.status !== "COMPLETED" ? (
@@ -522,6 +530,13 @@ function RiskRow({
     <div id={`artifact-risk-${item.id}`} className={artifactRowClass(linked, "risk")}>
       <strong className="block text-slate-900">{item.title}</strong>
       <div className="mt-1"><StatusBadge label={severityLabel} status={item.severity} /></div>
+      {item.likelihood || item.mitigation ? (
+        <p className="mt-1 text-sm text-slate-600">
+          {[item.likelihood ? `Olasılık: ${item.likelihood}` : null, item.mitigation ? `Azaltma: ${item.mitigation}` : null]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      ) : null}
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
     </div>
   );

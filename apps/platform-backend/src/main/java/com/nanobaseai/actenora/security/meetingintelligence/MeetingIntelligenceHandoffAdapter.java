@@ -17,6 +17,8 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifact
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.QualityGateOutcome;
 import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -31,14 +33,17 @@ import java.util.UUID;
  *
  * <p>PASSED / PASSED_WITH_WARNINGS / MANUAL_REVIEW_REQUIRED → {@code mapAiCandidates} as DRAFT.
  * REJECTED → no note.
+ *
+ * <p>Draft organizer mail uses {@link DeliveryApi} ({@code DRAFT_ORGANIZER}) only — no JavaMail bypass.
  */
 public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHandoffPort {
+
+    private static final Logger log = LoggerFactory.getLogger(MeetingIntelligenceHandoffAdapter.class);
 
     private final MeetingIntelligenceApi meetingIntelligenceApi;
     private final EvidenceValidationApi evidenceValidationApi;
     private final TranscriptSegmentSourcePort segmentSource;
     private final MeetingIntelligenceAuditPort auditPort;
-    private final Optional<DraftMinutesMailNotifier> draftMailNotifier;
     private final Optional<MeetingApi> meetingApi;
     private final NoteArtifactStoragePort noteArtifactStorage;
     private final Optional<PlatformUserNotificationPublisher> notificationPublisher;
@@ -57,7 +62,6 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 segmentSource,
                 auditPort,
                 Optional.empty(),
-                Optional.empty(),
                 NoteArtifactStoragePort.noop(),
                 Optional.empty(),
                 Optional.empty(),
@@ -70,101 +74,6 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             EvidenceValidationApi evidenceValidationApi,
             TranscriptSegmentSourcePort segmentSource,
             MeetingIntelligenceAuditPort auditPort,
-            Optional<DraftMinutesMailNotifier> draftMailNotifier,
-            Optional<MeetingApi> meetingApi
-    ) {
-        this(
-                meetingIntelligenceApi,
-                evidenceValidationApi,
-                segmentSource,
-                auditPort,
-                draftMailNotifier,
-                meetingApi,
-                NoteArtifactStoragePort.noop(),
-                Optional.empty(),
-                Optional.empty(),
-                Optional.empty()
-        );
-    }
-
-    public MeetingIntelligenceHandoffAdapter(
-            MeetingIntelligenceApi meetingIntelligenceApi,
-            EvidenceValidationApi evidenceValidationApi,
-            TranscriptSegmentSourcePort segmentSource,
-            MeetingIntelligenceAuditPort auditPort,
-            Optional<DraftMinutesMailNotifier> draftMailNotifier,
-            Optional<MeetingApi> meetingApi,
-            NoteArtifactStoragePort noteArtifactStorage
-    ) {
-        this(
-                meetingIntelligenceApi,
-                evidenceValidationApi,
-                segmentSource,
-                auditPort,
-                draftMailNotifier,
-                meetingApi,
-                noteArtifactStorage,
-                Optional.empty(),
-                Optional.empty(),
-                Optional.empty()
-        );
-    }
-
-    public MeetingIntelligenceHandoffAdapter(
-            MeetingIntelligenceApi meetingIntelligenceApi,
-            EvidenceValidationApi evidenceValidationApi,
-            TranscriptSegmentSourcePort segmentSource,
-            MeetingIntelligenceAuditPort auditPort,
-            Optional<DraftMinutesMailNotifier> draftMailNotifier,
-            Optional<MeetingApi> meetingApi,
-            NoteArtifactStoragePort noteArtifactStorage,
-            Optional<PlatformUserNotificationPublisher> notificationPublisher
-    ) {
-        this(
-                meetingIntelligenceApi,
-                evidenceValidationApi,
-                segmentSource,
-                auditPort,
-                draftMailNotifier,
-                meetingApi,
-                noteArtifactStorage,
-                notificationPublisher,
-                Optional.empty(),
-                Optional.empty()
-        );
-    }
-
-    public MeetingIntelligenceHandoffAdapter(
-            MeetingIntelligenceApi meetingIntelligenceApi,
-            EvidenceValidationApi evidenceValidationApi,
-            TranscriptSegmentSourcePort segmentSource,
-            MeetingIntelligenceAuditPort auditPort,
-            Optional<DraftMinutesMailNotifier> draftMailNotifier,
-            Optional<MeetingApi> meetingApi,
-            NoteArtifactStoragePort noteArtifactStorage,
-            Optional<PlatformUserNotificationPublisher> notificationPublisher,
-            Optional<DeliveryApi> deliveryApi
-    ) {
-        this(
-                meetingIntelligenceApi,
-                evidenceValidationApi,
-                segmentSource,
-                auditPort,
-                draftMailNotifier,
-                meetingApi,
-                noteArtifactStorage,
-                notificationPublisher,
-                deliveryApi,
-                Optional.empty()
-        );
-    }
-
-    public MeetingIntelligenceHandoffAdapter(
-            MeetingIntelligenceApi meetingIntelligenceApi,
-            EvidenceValidationApi evidenceValidationApi,
-            TranscriptSegmentSourcePort segmentSource,
-            MeetingIntelligenceAuditPort auditPort,
-            Optional<DraftMinutesMailNotifier> draftMailNotifier,
             Optional<MeetingApi> meetingApi,
             NoteArtifactStoragePort noteArtifactStorage,
             Optional<PlatformUserNotificationPublisher> notificationPublisher,
@@ -175,7 +84,6 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         this.evidenceValidationApi = Objects.requireNonNull(evidenceValidationApi, "evidenceValidationApi");
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
         this.auditPort = Objects.requireNonNull(auditPort, "auditPort");
-        this.draftMailNotifier = draftMailNotifier == null ? Optional.empty() : draftMailNotifier;
         this.meetingApi = meetingApi == null ? Optional.empty() : meetingApi;
         this.noteArtifactStorage = Objects.requireNonNull(noteArtifactStorage, "noteArtifactStorage");
         this.notificationPublisher = notificationPublisher == null ? Optional.empty() : notificationPublisher;
@@ -258,6 +166,14 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         if (meetingApi.isEmpty()) {
             return;
         }
+        if (deliveryApi.isEmpty()) {
+            log.warn(
+                    "Draft organizer mail skipped: DeliveryApi not available meetingId={} noteId={}",
+                    command.meetingOccurrenceId(),
+                    note.id()
+            );
+            return;
+        }
         try {
             var meeting = meetingApi.get().getMeeting(command.meetingOccurrenceId());
             var participants = meetingApi.get().listParticipants(command.meetingOccurrenceId());
@@ -283,39 +199,33 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             }
             String summary = note.currentVersion() == null ? "" : note.currentVersion().executiveSummary();
             UUID noteVersionId = note.currentVersion() == null ? note.id() : note.currentVersion().id();
-            if (deliveryApi.isPresent()) {
-                String subject = "Taslak tutanak hazır: "
-                        + (meeting.title() == null ? command.meetingOccurrenceId() : meeting.title());
-                String body = (summary == null ? "" : summary) + "\n\nMeeting: " + command.meetingOccurrenceId()
-                        + "\nNote: " + note.id();
-                deliveryApi.get().enqueueDraftOrganizerNotification(
-                        command.tenantId(),
-                        noteVersionId,
-                        organizerEmail,
-                        organizerEmail,
-                        subject,
-                        body
-                );
-                deliveryWorker.ifPresent(worker -> {
-                    try {
-                        worker.pollOnce();
-                    } catch (RuntimeException ignored) {
-                        /* scheduled worker will retry */
-                    }
-                });
-                return;
-            }
-            if (draftMailNotifier.isPresent()) {
-                draftMailNotifier.get().notifyOrganizer(
-                        organizerEmail,
-                        meeting.title(),
-                        command.meetingOccurrenceId(),
-                        note.id(),
-                        summary
-                );
-            }
+            String subject = "Taslak tutanak hazır: "
+                    + (meeting.title() == null ? command.meetingOccurrenceId() : meeting.title());
+            String body = (summary == null ? "" : summary) + "\n\nMeeting: " + command.meetingOccurrenceId()
+                    + "\nNote: " + note.id();
+            deliveryApi.get().enqueueDraftOrganizerNotification(
+                    command.tenantId(),
+                    noteVersionId,
+                    organizerEmail,
+                    organizerEmail,
+                    subject,
+                    body
+            );
+            deliveryWorker.ifPresent(worker -> {
+                try {
+                    worker.pollOnce();
+                } catch (RuntimeException ignored) {
+                    /* scheduled worker will retry */
+                }
+            });
         } catch (RuntimeException ex) {
             // Mail must not fail handoff.
+            log.warn(
+                    "Draft organizer Delivery enqueue failed meetingId={} noteId={}: {}",
+                    command.meetingOccurrenceId(),
+                    note.id(),
+                    ex.toString()
+            );
         }
     }
 

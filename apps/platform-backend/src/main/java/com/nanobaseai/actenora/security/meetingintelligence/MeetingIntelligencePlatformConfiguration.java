@@ -69,13 +69,11 @@ import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
 import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
 import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.mail.javamail.JavaMailSender;
 
 import java.time.Clock;
 import java.util.Map;
@@ -301,16 +299,6 @@ public class MeetingIntelligencePlatformConfiguration {
         return new DefaultEvidenceValidationApi(service);
     }
 
-    @Bean
-    @ConditionalOnMissingBean(com.nanobaseai.actenora.delivery.api.DeliveryApi.class)
-    public DraftMinutesMailNotifier draftMinutesMailNotifier(
-            ObjectProvider<JavaMailSender> mailSender,
-            @Value("${actenora.delivery.mail.from:noreply@actenora.local}") String fromAddress,
-            @Value("${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai}") String portalBaseUrl
-    ) {
-        return new DraftMinutesMailNotifier(mailSender, fromAddress, portalBaseUrl);
-    }
-
     @ConditionalOnMissingBean(MeetingNoteHandoffPort.class)
     @Bean
     public MeetingNoteHandoffPort meetingNoteHandoffPort(
@@ -318,7 +306,6 @@ public class MeetingIntelligencePlatformConfiguration {
             EvidenceValidationApi evidenceValidationApi,
             TranscriptSegmentSourcePort segmentSource,
             MeetingIntelligenceAuditPort auditPort,
-            ObjectProvider<DraftMinutesMailNotifier> draftMinutesMailNotifier,
             MeetingApi meetingApi,
             NoteArtifactStoragePort noteArtifactStorage,
             ObjectProvider<PlatformUserNotificationPublisher> notificationPublisher,
@@ -330,7 +317,6 @@ public class MeetingIntelligencePlatformConfiguration {
                 evidenceValidationApi,
                 segmentSource,
                 auditPort,
-                Optional.ofNullable(draftMinutesMailNotifier.getIfAvailable()),
                 Optional.of(meetingApi),
                 noteArtifactStorage,
                 Optional.ofNullable(notificationPublisher.getIfAvailable()),

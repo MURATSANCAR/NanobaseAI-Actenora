@@ -90,6 +90,8 @@ export interface DecisionItem {
   status: ArtifactStatus;
   evidence: EvidenceRef[];
   createdAt: string;
+  rationale?: string | null;
+  decisionStatus?: string | null;
 }
 
 export interface ActionItem {
@@ -100,6 +102,9 @@ export interface ActionItem {
   ownerDisplayName: string;
   dueAt: string | null;
   evidence: EvidenceRef[];
+  ownerType?: string | null;
+  priority?: string | null;
+  relativeDate?: string | null;
 }
 
 export interface RiskItem {
@@ -107,6 +112,8 @@ export interface RiskItem {
   title: string;
   severity: "LOW" | "MEDIUM" | "HIGH";
   evidence: EvidenceRef[];
+  likelihood?: string | null;
+  mitigation?: string | null;
 }
 
 export interface CommitmentItem {

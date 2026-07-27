@@ -5,12 +5,21 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * Builds Template Studio {@code contentJson} from an approved meeting note detail.
  */
 public final class ApprovedNoteContentJsonMapper {
 
     private static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
+    private static final Pattern AGENDA_PREFIX = Pattern.compile(
+            "(?i)^(?:Gündem|Agenda)\\s*:\\s*(.+?)(?:\\.\\s+|\\.$|$)",
+            Pattern.DOTALL
+    );
 
     private ApprovedNoteContentJsonMapper() {
     }
@@ -22,6 +31,13 @@ public final class ApprovedNoteContentJsonMapper {
             String summary = note.currentVersion() == null ? "" : blankToEmpty(note.currentVersion().executiveSummary());
             root.put("executive_summary", summary);
 
+            ArrayNode agenda = root.putArray("agenda");
+            for (String item : parseAgendaItems(summary)) {
+                ObjectNode row = agenda.addObject();
+                row.put("item", item);
+                row.put("duration", "");
+            }
+
             ArrayNode decisions = root.putArray("decisions");
             if (note.decisions() != null) {
                 for (var d : note.decisions()) {
@@ -31,6 +47,8 @@ public final class ApprovedNoteContentJsonMapper {
                     ObjectNode row = decisions.addObject();
                     row.put("decision", d.text().trim());
                     row.put("owner", "");
+                    row.put("rationale", blankToEmpty(d.rationale()));
+                    row.put("status", blankToEmpty(d.decisionStatus()));
                 }
             }
 
@@ -44,6 +62,9 @@ public final class ApprovedNoteContentJsonMapper {
                     row.put("action", a.text().trim());
                     row.put("assignee", blankToEmpty(a.owner()));
                     row.put("due", a.dueDate() == null ? "" : a.dueDate().toString());
+                    row.put("ownerType", blankToEmpty(a.ownerType()));
+                    row.put("priority", blankToEmpty(a.priority()));
+                    row.put("relativeDate", blankToEmpty(a.relativeDate()));
                 }
             }
 
@@ -55,8 +76,9 @@ public final class ApprovedNoteContentJsonMapper {
                     }
                     ObjectNode row = risks.addObject();
                     row.put("risk", r.text().trim());
-                    row.put("impact", "");
+                    row.put("impact", blankToEmpty(r.likelihood()));
                     row.put("mitigation", blankToEmpty(r.mitigation()));
+                    row.put("likelihood", blankToEmpty(r.likelihood()));
                 }
             }
 
@@ -124,6 +146,31 @@ public final class ApprovedNoteContentJsonMapper {
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to build approved note contentJson", ex);
         }
+    }
+
+    /**
+     * Derives agenda rows from FinalNoteAssembler summary prefix ({@code Gündem:} / {@code Agenda:}).
+     */
+    public static List<String> parseAgendaItems(String executiveSummary) {
+        if (executiveSummary == null || executiveSummary.isBlank()) {
+            return List.of();
+        }
+        Matcher matcher = AGENDA_PREFIX.matcher(executiveSummary.trim());
+        if (!matcher.find()) {
+            return List.of();
+        }
+        String payload = matcher.group(1).trim();
+        if (payload.isEmpty()) {
+            return List.of();
+        }
+        List<String> items = new ArrayList<>();
+        for (String part : payload.split(";")) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) {
+                items.add(trimmed);
+            }
+        }
+        return items;
     }
 
     private static String blankToEmpty(String value) {

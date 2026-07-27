@@ -379,7 +379,9 @@ public class PortalApiController {
                             decision.text(),
                             decisionStatus(decision),
                             evidenceBySubject.getOrDefault(decision.id(), List.of()),
-                            decision.updatedAt() == null ? null : decision.updatedAt().toString()
+                            decision.updatedAt() == null ? null : decision.updatedAt().toString(),
+                            blankToNull(decision.rationale()),
+                            blankToNull(decision.decisionStatus())
                     ));
                 }
                 for (var action : note.actionItems()) {
@@ -393,7 +395,10 @@ public class PortalApiController {
                             action.status() == null ? "OPEN" : action.status().name(),
                             action.owner() == null || action.owner().isBlank() ? "—" : action.owner(),
                             action.dueDate() == null ? null : action.dueDate().toString(),
-                            evidenceBySubject.getOrDefault(action.id(), List.of())
+                            evidenceBySubject.getOrDefault(action.id(), List.of()),
+                            blankToNull(action.ownerType()),
+                            blankToNull(action.priority()),
+                            blankToNull(action.relativeDate())
                     ));
                 }
                 for (var risk : note.risks()) {
@@ -404,7 +409,9 @@ public class PortalApiController {
                             risk.id(),
                             risk.text(),
                             riskSeverity(risk.aiConfidence()),
-                            evidenceBySubject.getOrDefault(risk.id(), List.of())
+                            evidenceBySubject.getOrDefault(risk.id(), List.of()),
+                            blankToNull(risk.likelihood()),
+                            blankToNull(risk.mitigation())
                     ));
                 }
                 for (var commitment : note.commitments()) {
@@ -437,7 +444,9 @@ public class PortalApiController {
                         payloadText(event),
                         "APPROVED",
                         List.of(),
-                        event.occurredAt().toString()
+                        event.occurredAt().toString(),
+                        null,
+                        null
                 ));
             } else if (event.type() == LedgerEventType.COMMITMENT_RECORDED
                     && seenCommitmentIds.add(event.aggregateId())) {
@@ -795,7 +804,9 @@ public class PortalApiController {
                     payloadText(event),
                     "APPROVED",
                     List.of(),
-                    event.occurredAt().toString()
+                    event.occurredAt().toString(),
+                    null,
+                    null
             ));
         }
         if (status != null && !status.isBlank()) {
@@ -1224,7 +1235,10 @@ public class PortalApiController {
                 item.status().name(),
                 "unknown",
                 null,
-                List.of()
+                List.of(),
+                null,
+                null,
+                null
         );
     }
 
@@ -1341,27 +1355,66 @@ public class PortalApiController {
         sb.append('\n').append("1. YÖNETİCİ ÖZETİ").append('\n');
         sb.append(summary.isBlank() ? "—" : summary).append('\n');
 
-        appendMinutesSection(sb, "2. ALINAN KARARLAR", note.decisions() == null ? List.of()
-                : note.decisions().stream().map(d -> d.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "3. AKSİYON MADDELERİ", note.actionItems() == null ? List.of()
+        appendMinutesSection(sb, "2. GÜNDEM",
+                com.nanobaseai.actenora.security.delivery.ApprovedNoteContentJsonMapper.parseAgendaItems(summary));
+
+        appendMinutesSection(sb, "3. ALINAN KARARLAR", note.decisions() == null ? List.of()
+                : note.decisions().stream().map(d -> {
+                    StringBuilder line = new StringBuilder(d.text() == null ? "" : d.text());
+                    if (d.rationale() != null && !d.rationale().isBlank()) {
+                        line.append(" (Gerekçe: ").append(d.rationale().trim()).append(')');
+                    }
+                    if (d.decisionStatus() != null && !d.decisionStatus().isBlank()) {
+                        line.append(" [").append(d.decisionStatus().trim()).append(']');
+                    }
+                    return line.toString();
+                }).filter(t -> t != null && !t.isBlank()).toList());
+        appendMinutesSection(sb, "4. AKSİYON MADDELERİ", note.actionItems() == null ? List.of()
                 : note.actionItems().stream().map(a -> {
                     String owner = a.owner() == null || a.owner().isBlank() ? "—" : a.owner();
                     String due = a.dueDate() == null ? "—" : a.dueDate().toString();
-                    return a.text() + " (Sorumlu: " + owner + ", Son tarih: " + due + ")";
+                    StringBuilder line = new StringBuilder(a.text())
+                            .append(" (Sorumlu: ").append(owner).append(", Son tarih: ").append(due);
+                    if (a.ownerType() != null && !a.ownerType().isBlank()) {
+                        line.append(", Tip: ").append(a.ownerType().trim());
+                    }
+                    if (a.priority() != null && !a.priority().isBlank()) {
+                        line.append(", Öncelik: ").append(a.priority().trim());
+                    }
+                    if (a.relativeDate() != null && !a.relativeDate().isBlank()) {
+                        line.append(", Relatif: ").append(a.relativeDate().trim());
+                    }
+                    return line.append(')').toString();
                 }).toList());
-        appendMinutesSection(sb, "4. RİSKLER", note.risks() == null ? List.of()
-                : note.risks().stream().map(r -> r.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "5. TAAHHÜTLER", note.commitments() == null ? List.of()
+        appendMinutesSection(sb, "5. RİSKLER", note.risks() == null ? List.of()
+                : note.risks().stream().map(r -> {
+                    StringBuilder line = new StringBuilder(r.text() == null ? "" : r.text());
+                    if (r.likelihood() != null && !r.likelihood().isBlank()) {
+                        line.append(" (Olasılık: ").append(r.likelihood().trim()).append(')');
+                    }
+                    if (r.mitigation() != null && !r.mitigation().isBlank()) {
+                        line.append(" Azaltma: ").append(r.mitigation().trim());
+                    }
+                    return line.toString();
+                }).filter(t -> t != null && !t.isBlank()).toList());
+        appendMinutesSection(sb, "6. TAAHHÜTLER", note.commitments() == null ? List.of()
                 : note.commitments().stream().map(c -> c.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "6. AÇIK SORULAR", note.openQuestions() == null ? List.of()
+        appendMinutesSection(sb, "7. AÇIK SORULAR", note.openQuestions() == null ? List.of()
                 : note.openQuestions().stream().map(q -> q.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "7. SORUNLAR", note.issues() == null ? List.of()
+        appendMinutesSection(sb, "8. SORUNLAR", note.issues() == null ? List.of()
                 : note.issues().stream().map(i -> i.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "8. ÖNERİLER", note.proposals() == null ? List.of()
+        appendMinutesSection(sb, "9. ÖNERİLER", note.proposals() == null ? List.of()
                 : note.proposals().stream().map(p -> p.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "9. ÖNEMLİ BULGULAR", note.importantFacts() == null ? List.of()
+        appendMinutesSection(sb, "10. ÖNEMLİ BULGULAR", note.importantFacts() == null ? List.of()
                 : note.importantFacts().stream().map(f -> f.text()).filter(Objects::nonNull).toList());
         return sb.toString().trim();
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private static void appendMinutesSection(StringBuilder sb, String title, List<String> items) {
@@ -1918,7 +1971,9 @@ public class PortalApiController {
             String title,
             String status,
             List<PortalEvidenceView> evidence,
-            String createdAt
+            String createdAt,
+            String rationale,
+            String decisionStatus
     ) {
     }
 
@@ -1929,7 +1984,10 @@ public class PortalApiController {
             String status,
             String ownerDisplayName,
             String dueAt,
-            List<PortalEvidenceView> evidence
+            List<PortalEvidenceView> evidence,
+            String ownerType,
+            String priority,
+            String relativeDate
     ) {
     }
 
@@ -1937,7 +1995,9 @@ public class PortalApiController {
             UUID id,
             String title,
             String severity,
-            List<PortalEvidenceView> evidence
+            List<PortalEvidenceView> evidence,
+            String likelihood,
+            String mitigation
     ) {
     }
 
