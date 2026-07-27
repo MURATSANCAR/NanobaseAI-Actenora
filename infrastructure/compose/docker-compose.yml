@@ -401,7 +401,8 @@ services:
       <<: *local-only
       AI_ORCHESTRATOR_HOST: 0.0.0.0
       AI_ORCHESTRATOR_PORT: "8000"
-      # Qwen / local LLM — intentionally unset by default so readiness=DEGRADED
+      # Qwen / local LLM readiness — leave empty for DEGRADED; set to OpenAI-compatible base.
+      # Prefer host.docker.internal from this container (not 127.0.0.1).
       QWEN_BASE_URL: ${QWEN_BASE_URL:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       ACTENORA_AI_FAST_BASE_URL: ${ACTENORA_AI_FAST_BASE_URL:-}
@@ -415,6 +416,8 @@ services:
       OTEL_SERVICE_NAME: ai-orchestrator
     ports:
       - "${AI_ORCHESTRATOR_PORT:-8000}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     read_only: true
     tmpfs:
       - /tmp:size=32m,mode=1777
