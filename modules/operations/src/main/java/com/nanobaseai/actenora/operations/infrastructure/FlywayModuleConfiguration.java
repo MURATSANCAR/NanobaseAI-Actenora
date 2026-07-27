@@ -25,7 +25,8 @@ public class FlywayModuleConfiguration {
             "classpath:db/migration/template",
             "classpath:db/migration/delivery",
             "classpath:db/migration/audit",
-            "classpath:db/migration/operations"
+            "classpath:db/migration/operations",
+            "classpath:db/migration/notification"
     };
 
     @Bean

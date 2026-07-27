@@ -28,5 +28,6 @@
         <module>delivery</module>
         <module>audit</module>
         <module>operations</module>
+        <module>notification</module>
     </modules>
 </project>

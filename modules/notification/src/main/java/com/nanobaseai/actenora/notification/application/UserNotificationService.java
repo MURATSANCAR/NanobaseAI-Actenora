@@ -68,7 +68,7 @@ public final class UserNotificationService implements NotificationApi {
                 body,
                 href,
                 dedupeKey,
-                clock.instant()
+                clock.now()
         );
         return repository.insertIfAbsent(notification).isPresent();
     }

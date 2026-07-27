@@ -48,7 +48,7 @@ spring:
     # Schema-per-context layout; history lives in public so extension objects do not
     # collide with module schemas. create-schemas lets Flyway prepare empty schemas.
     create-schemas: true
-    schemas: public,identity,tenant,policy,microsoftconnection,meeting,transcript,modelmanagement,aiprocessing,meetingintelligence,approval,template,delivery,audit,operations
+    schemas: public,identity,tenant,policy,microsoftconnection,meeting,transcript,modelmanagement,aiprocessing,meetingintelligence,approval,template,delivery,audit,operations,notification
     default-schema: public
 
 management:

@@ -40,6 +40,10 @@ public final class PromptRegistryInferenceInputResolver implements InferenceInpu
         ids.put(InferenceTaskType.CANDIDATE_MERGE, InMemoryPromptRegistry.CANDIDATE_MERGE_PROMPT_ID);
         ids.put(InferenceTaskType.FINAL_NOTE, InMemoryPromptRegistry.FINAL_NOTE_PROMPT_ID);
         ids.put(InferenceTaskType.VALIDATION, InMemoryPromptRegistry.VALIDATION_PROMPT_ID);
+        ids.put(InferenceTaskType.MEETING_TRIAGE, InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID);
+        ids.put(InferenceTaskType.NORMALIZE, InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID);
+        ids.put(InferenceTaskType.CHUNK_PLAN, InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID);
+        ids.put(InferenceTaskType.EMBEDDING, InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID);
         return ids;
     }
 

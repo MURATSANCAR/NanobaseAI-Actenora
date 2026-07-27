@@ -394,6 +394,28 @@ public class AiProcessingPlatformConfiguration {
         if (manager != null) {
             tx = new org.springframework.transaction.support.TransactionTemplate(manager);
         }
+        return fairJobScheduler(jobs, attempts, tenantAiPolicy, modelRouter, properties, tx);
+    }
+
+    /** Test / manual wiring without Spring transaction manager. */
+    public JobScheduler fairJobScheduler(
+            AiJobRepository jobs,
+            AiAttemptRepository attempts,
+            TenantAiPolicyPort tenantAiPolicy,
+            ModelRouter modelRouter,
+            LocalProviderProperties properties
+    ) {
+        return fairJobScheduler(jobs, attempts, tenantAiPolicy, modelRouter, properties, null);
+    }
+
+    private static JobScheduler fairJobScheduler(
+            AiJobRepository jobs,
+            AiAttemptRepository attempts,
+            TenantAiPolicyPort tenantAiPolicy,
+            ModelRouter modelRouter,
+            LocalProviderProperties properties,
+            org.springframework.transaction.support.TransactionOperations tx
+    ) {
         return new FairJobScheduler(
                 jobs,
                 attempts,

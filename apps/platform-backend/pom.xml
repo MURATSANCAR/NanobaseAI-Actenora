@@ -79,6 +79,10 @@
       <groupId>ai.nanobase.actenora</groupId>
       <artifactId>operations</artifactId>
     </dependency>
+    <dependency>
+      <groupId>ai.nanobase.actenora</groupId>
+      <artifactId>notification</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
