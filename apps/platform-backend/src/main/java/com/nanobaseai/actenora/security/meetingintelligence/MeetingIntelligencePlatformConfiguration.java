@@ -285,7 +285,8 @@ public class MeetingIntelligencePlatformConfiguration {
             DraftMinutesMailNotifier draftMinutesMailNotifier,
             MeetingApi meetingApi,
             NoteArtifactStoragePort noteArtifactStorage,
-            ObjectProvider<PlatformUserNotificationPublisher> notificationPublisher
+            ObjectProvider<PlatformUserNotificationPublisher> notificationPublisher,
+            ObjectProvider<com.nanobaseai.actenora.delivery.api.DeliveryApi> deliveryApi
     ) {
         return new MeetingIntelligenceHandoffAdapter(
                 meetingIntelligenceApi,
@@ -295,7 +296,8 @@ public class MeetingIntelligencePlatformConfiguration {
                 Optional.of(draftMinutesMailNotifier),
                 Optional.of(meetingApi),
                 noteArtifactStorage,
-                Optional.ofNullable(notificationPublisher.getIfAvailable())
+                Optional.ofNullable(notificationPublisher.getIfAvailable()),
+                Optional.ofNullable(deliveryApi.getIfAvailable())
         );
     }
 

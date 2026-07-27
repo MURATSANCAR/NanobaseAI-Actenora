@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.approval.api.ApprovalRequestStatus;
 import com.nanobaseai.actenora.approval.api.ApprovalRequestView;
 import com.nanobaseai.actenora.approval.api.ApprovalSubjectType;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteLedgerPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteFinalDeliveryPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
@@ -40,6 +41,7 @@ public final class MeetingNoteApprovalService {
     private final ApprovedNoteLedgerPort approvedNoteLedgerPort;
     private final NoteArtifactStoragePort noteArtifactStorage;
     private final NoteApprovalOpenedNotifier approvalOpenedNotifier;
+    private final ApprovedNoteFinalDeliveryPort finalDeliveryPort;
     private final Clock clock;
 
     public MeetingNoteApprovalService(
@@ -58,6 +60,7 @@ public final class MeetingNoteApprovalService {
                 },
                 NoteArtifactStoragePort.noop(),
                 NoteApprovalOpenedNotifier.noop(),
+                ApprovedNoteFinalDeliveryPort.noop(),
                 clock
         );
     }
@@ -78,6 +81,7 @@ public final class MeetingNoteApprovalService {
                 approvedNoteLedgerPort,
                 NoteArtifactStoragePort.noop(),
                 NoteApprovalOpenedNotifier.noop(),
+                ApprovedNoteFinalDeliveryPort.noop(),
                 clock
         );
     }
@@ -99,6 +103,7 @@ public final class MeetingNoteApprovalService {
                 approvedNoteLedgerPort,
                 noteArtifactStorage,
                 NoteApprovalOpenedNotifier.noop(),
+                ApprovedNoteFinalDeliveryPort.noop(),
                 clock
         );
     }
@@ -113,6 +118,30 @@ public final class MeetingNoteApprovalService {
             NoteApprovalOpenedNotifier approvalOpenedNotifier,
             Clock clock
     ) {
+        this(
+                noteRepository,
+                versionRepository,
+                approvalApi,
+                auditPort,
+                approvedNoteLedgerPort,
+                noteArtifactStorage,
+                approvalOpenedNotifier,
+                ApprovedNoteFinalDeliveryPort.noop(),
+                clock
+        );
+    }
+
+    public MeetingNoteApprovalService(
+            MeetingNoteRepository noteRepository,
+            MeetingNoteVersionRepository versionRepository,
+            ApprovalApi approvalApi,
+            MeetingIntelligenceAuditPort auditPort,
+            ApprovedNoteLedgerPort approvedNoteLedgerPort,
+            NoteArtifactStoragePort noteArtifactStorage,
+            NoteApprovalOpenedNotifier approvalOpenedNotifier,
+            ApprovedNoteFinalDeliveryPort finalDeliveryPort,
+            Clock clock
+    ) {
         this.noteRepository = Objects.requireNonNull(noteRepository, "noteRepository");
         this.versionRepository = Objects.requireNonNull(versionRepository, "versionRepository");
         this.approvalApi = Objects.requireNonNull(approvalApi, "approvalApi");
@@ -120,6 +149,7 @@ public final class MeetingNoteApprovalService {
         this.approvedNoteLedgerPort = Objects.requireNonNull(approvedNoteLedgerPort, "approvedNoteLedgerPort");
         this.noteArtifactStorage = Objects.requireNonNull(noteArtifactStorage, "noteArtifactStorage");
         this.approvalOpenedNotifier = Objects.requireNonNull(approvalOpenedNotifier, "approvalOpenedNotifier");
+        this.finalDeliveryPort = Objects.requireNonNull(finalDeliveryPort, "finalDeliveryPort");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -242,6 +272,18 @@ public final class MeetingNoteApprovalService {
                     current.versionNumber(),
                     current.executiveSummary() == null ? "{}" : current.executiveSummary()
             );
+            try {
+                finalDeliveryPort.onApproved(
+                        tid,
+                        note.meetingOccurrenceId(),
+                        note.id(),
+                        current.id(),
+                        approvalId,
+                        current.executiveSummary() == null ? "" : current.executiveSummary()
+                );
+            } catch (RuntimeException ignored) {
+                // Final delivery must not unwind approval.
+            }
         }
 
         auditPort.record(

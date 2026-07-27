@@ -85,7 +85,8 @@ public class ApprovalPlatformConfiguration {
             MeetingIntelligenceAuditPort auditPort,
             ApprovedNoteLedgerPort approvedNoteLedgerPort,
             NoteArtifactStoragePort noteArtifactStorage,
-            ObjectProvider<NoteApprovalOpenedNotifier> approvalOpenedNotifier
+            ObjectProvider<NoteApprovalOpenedNotifier> approvalOpenedNotifier,
+            ObjectProvider<com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteFinalDeliveryPort> finalDelivery
     ) {
         NoteApprovalOpenedNotifier deferred = (tenantId, noteId, meetingOccurrenceId, approvalId, approverId) -> {
             NoteApprovalOpenedNotifier notifier = approvalOpenedNotifier.getIfAvailable();
@@ -93,6 +94,7 @@ public class ApprovalPlatformConfiguration {
                 notifier.onSubmitted(tenantId, noteId, meetingOccurrenceId, approvalId, approverId);
             }
         };
+        var delivery = finalDelivery.getIfAvailable();
         return new MeetingNoteApprovalService(
                 notes,
                 versions,
@@ -101,6 +103,9 @@ public class ApprovalPlatformConfiguration {
                 approvedNoteLedgerPort,
                 noteArtifactStorage,
                 deferred,
+                delivery == null
+                        ? com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteFinalDeliveryPort.noop()
+                        : delivery,
                 Clock.systemUTC()
         );
     }

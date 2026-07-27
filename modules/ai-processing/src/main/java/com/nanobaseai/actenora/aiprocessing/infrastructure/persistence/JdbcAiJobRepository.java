@@ -20,7 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /** JDBC AI job store ({@code aiprocessing.ai_jobs}). */
-public final class JdbcAiJobRepository implements AiJobRepository {
+public class JdbcAiJobRepository implements AiJobRepository {
 
     private static final String COLUMNS = """
             id, tenant_id, meeting_occurrence_id, transcript_id, task_type, priority, status,
