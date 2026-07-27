@@ -363,6 +363,49 @@ class PortalApiBindingTest {
     }
 
     @Test
+    void notificationsListMarkReadAndDedupe() {
+        assertTrue(notificationApi.publish(
+                tenantId,
+                "local-oid",
+                UserNotificationType.APPROVAL_REQUESTED,
+                "Approval requested",
+                "Waiting",
+                "/approvals",
+                "approval:portal-test"
+        ));
+        assertFalse(notificationApi.publish(
+                tenantId,
+                "local-oid",
+                UserNotificationType.APPROVAL_REQUESTED,
+                "Approval requested",
+                "Waiting",
+                "/approvals",
+                "approval:portal-test"
+        ));
+
+        PortalApiController.PortalNotificationFeedView feed = controller.listNotifications(20);
+        assertEquals(1, feed.items().size());
+        assertEquals(1, feed.unreadCount());
+        assertEquals("APPROVAL_REQUESTED", feed.items().getFirst().type());
+
+        controller.markNotificationRead(feed.items().getFirst().id());
+        assertEquals(0, controller.listNotifications(20).unreadCount());
+
+        notificationApi.publish(
+                tenantId,
+                "local-oid",
+                UserNotificationType.DRAFT_MINUTES_READY,
+                "Draft minutes ready",
+                "Ready",
+                "/meetings/" + UUID.randomUUID(),
+                "draft-minutes:portal-test"
+        );
+        assertEquals(1, controller.listNotifications(20).unreadCount());
+        controller.markAllNotificationsRead();
+        assertEquals(0, controller.listNotifications(20).unreadCount());
+    }
+
+    @Test
     void templatesListAndCreateAgainstTemplateModule() {
         PortalApiController.TemplateListView empty = controller.listTemplates(null);
         assertTrue(empty.items().isEmpty());

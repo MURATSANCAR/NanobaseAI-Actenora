@@ -1,11 +1,11 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
 /**
- * Chunk size / overlap bounds. Target shrinks dynamically with model context.
+ * Chunk size / overlap bounds. Target shrinks when model context is tight.
  */
 public record ChunkingConfig(
-        int minTargetTokens,
-        int maxTargetTokens,
+        int targetChunkTokens,
+        int maxChunkTokens,
         int minOverlapTokens,
         int maxOverlapTokens,
         int modelContextWindowTokens,
@@ -14,8 +14,8 @@ public record ChunkingConfig(
         int safetyMarginTokens
 ) {
     public ChunkingConfig {
-        if (minTargetTokens <= 0 || maxTargetTokens < minTargetTokens) {
-            throw new IllegalArgumentException("invalid target token range");
+        if (targetChunkTokens <= 0 || maxChunkTokens < targetChunkTokens) {
+            throw new IllegalArgumentException("invalid target/max chunk token range");
         }
         if (minOverlapTokens < 0 || maxOverlapTokens < minOverlapTokens) {
             throw new IllegalArgumentException("invalid overlap range");
@@ -27,26 +27,28 @@ public record ChunkingConfig(
 
     public static ChunkingConfig productionDefaults(int modelContextWindowTokens) {
         return new ChunkingConfig(
-                8_000,
-                12_000,
-                300,
-                500,
-                modelContextWindowTokens,
-                1_200,
-                6_000,
-                256
+                MeetingLlmBudgets.TARGET_CHUNK_TOKENS,
+                MeetingLlmBudgets.MAX_CHUNK_TOKENS,
+                MeetingLlmBudgets.OVERLAP_TOKENS,
+                MeetingLlmBudgets.OVERLAP_TOKENS,
+                MeetingLlmBudgets.operationalContextWindow(modelContextWindowTokens),
+                MeetingLlmBudgets.PROMPT_OVERHEAD_TOKENS,
+                MeetingLlmBudgets.EXTRACTION_MAX_TOKENS,
+                MeetingLlmBudgets.SAFETY_MARGIN_TOKENS
         );
     }
 
     /**
      * Effective chunk target after reserving prompt, output, and safety budget.
+     * Prefers {@link #targetChunkTokens()} when context allows; never exceeds
+     * {@link #maxChunkTokens()}; shrinks when usable context is tight.
      */
     public int effectiveTargetTokens() {
         int usable = modelContextWindowTokens - promptOverheadTokens - maxOutputTokens - safetyMarginTokens;
-        if (usable < minTargetTokens) {
-            return Math.max(500, usable);
+        if (usable < targetChunkTokens) {
+            return Math.max(500, Math.min(maxChunkTokens, usable));
         }
-        return Math.min(maxTargetTokens, Math.max(minTargetTokens, usable));
+        return Math.min(maxChunkTokens, targetChunkTokens);
     }
 
     public int effectiveOverlapTokens() {
@@ -57,8 +59,8 @@ public record ChunkingConfig(
 
     public ChunkingConfig withMaxOutput(int maxOutputTokens) {
         return new ChunkingConfig(
-                minTargetTokens,
-                maxTargetTokens,
+                targetChunkTokens,
+                maxChunkTokens,
                 minOverlapTokens,
                 maxOverlapTokens,
                 modelContextWindowTokens,

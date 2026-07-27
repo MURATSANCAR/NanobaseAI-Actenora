@@ -44,6 +44,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSo
 import com.nanobaseai.actenora.aiprocessing.application.routing.CapabilityModelRouter;
 import com.nanobaseai.actenora.aiprocessing.application.scheduling.FairJobScheduler;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.MultiModelRouter;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.LocalProviderModelRuntimeAdapter;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.Qwen27BModelAdapter;
@@ -264,8 +265,14 @@ public class AiProcessingPlatformConfiguration {
                         selected.map(ModelDefinition::modelKey).orElse(Qwen27BModelAdapter.CATALOG_ID),
                         servedModelId,
                         modelVersion,
-                        selected.map(ModelDefinition::contextWindow).orElse(Qwen27BModelAdapter.CONTEXT_WINDOW),
-                        Math.max(Qwen27BModelAdapter.MAX_OUTPUT, 6000)
+                        MeetingLlmBudgets.operationalContextWindow(
+                                selected.map(ModelDefinition::contextWindow)
+                                        .orElse(MeetingLlmBudgets.OPERATIONAL_CTX_SIZE)
+                        ),
+                        MeetingLlmBudgets.operationalMaxOutput(
+                                selected.map(ModelDefinition::maxOutputTokens)
+                                        .orElse(MeetingLlmBudgets.DEFAULT_MAX_TOKENS)
+                        )
                 ),
                 modelDefinitionId,
                 timeoutSeconds
@@ -395,7 +402,7 @@ public class AiProcessingPlatformConfiguration {
         if (manager != null) {
             tx = new org.springframework.transaction.support.TransactionTemplate(manager);
         }
-        return fairJobScheduler(jobs, attempts, tenantAiPolicy, modelRouter, properties, tx);
+        return createFairJobScheduler(jobs, attempts, tenantAiPolicy, modelRouter, properties, tx);
     }
 
     /** Test / manual wiring without Spring transaction manager. */
@@ -406,10 +413,10 @@ public class AiProcessingPlatformConfiguration {
             ModelRouter modelRouter,
             LocalProviderProperties properties
     ) {
-        return fairJobScheduler(jobs, attempts, tenantAiPolicy, modelRouter, properties, null);
+        return createFairJobScheduler(jobs, attempts, tenantAiPolicy, modelRouter, properties, null);
     }
 
-    private static JobScheduler fairJobScheduler(
+    private static JobScheduler createFairJobScheduler(
             AiJobRepository jobs,
             AiAttemptRepository attempts,
             TenantAiPolicyPort tenantAiPolicy,
@@ -449,13 +456,37 @@ public class AiProcessingPlatformConfiguration {
             JobProgressCache jobProgressCache,
             ObjectProvider<AiJobDeadNotifier> deadNotifier
     ) {
+        AiJobDeadNotifier deferred = job -> {
+            AiJobDeadNotifier notifier = deadNotifier.getIfAvailable();
+            if (notifier != null) {
+                notifier.onPermanentlyFailed(job);
+            }
+        };
         return new AiJobService(
                 admissionController,
                 jobs,
                 attempts,
                 jobScheduler,
                 jobProgressCache,
-                deadNotifier.getIfAvailable() == null ? AiJobDeadNotifier.noop() : deadNotifier.getObject()
+                deferred
+        );
+    }
+
+    /** Test / manual wiring without Spring ObjectProvider. */
+    public AiJobService aiJobService(
+            AdmissionController admissionController,
+            AiJobRepository jobs,
+            AiAttemptRepository attempts,
+            JobScheduler jobScheduler,
+            JobProgressCache jobProgressCache
+    ) {
+        return new AiJobService(
+                admissionController,
+                jobs,
+                attempts,
+                jobScheduler,
+                jobProgressCache,
+                AiJobDeadNotifier.noop()
         );
     }
 

@@ -12,6 +12,7 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelDescriptor
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelRuntimePort;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelUnavailableException;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
 
 import java.util.Map;
@@ -113,8 +114,10 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
                         .temperature(0.1)
                         .topP(0.85)
                         .topK(20)
-                        // Extraction schema needs headroom; never cap at meeting-smoke 1200.
-                        .maxTokens(request.maxOutputTokens() > 0 ? request.maxOutputTokens() : 6000)
+                        // Stage callers set maxOutputTokens; fallback stays at meeting-pipeline ceiling.
+                        .maxTokens(request.maxOutputTokens() > 0
+                                ? request.maxOutputTokens()
+                                : MeetingLlmBudgets.DEFAULT_MAX_TOKENS)
                         .stream(true)
                         .extra("repeat_penalty", 1.05)
                         .extra("response_format", java.util.Map.of("type", "json_object"))

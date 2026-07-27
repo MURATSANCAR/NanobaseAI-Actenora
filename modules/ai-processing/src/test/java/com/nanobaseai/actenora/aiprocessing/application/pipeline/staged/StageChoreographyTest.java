@@ -2,7 +2,6 @@ package com.nanobaseai.actenora.aiprocessing.application.pipeline.staged;
 
 import com.nanobaseai.actenora.aiprocessing.application.AiJobService;
 import com.nanobaseai.actenora.aiprocessing.application.admission.DefaultAdmissionController;
-import com.nanobaseai.actenora.aiprocessing.application.port.JobScheduler;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelRouter;
 import com.nanobaseai.actenora.aiprocessing.application.port.TenantAiPolicyPort;
 import com.nanobaseai.actenora.aiprocessing.application.scheduling.FairJobScheduler;
@@ -30,6 +29,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -87,14 +87,24 @@ class StageChoreographyTest {
         executors.put(ProcessingStage.CHUNK, stub(ProcessingStage.CHUNK, """
                 {"chunkCount":2}
                 """, false));
-        executors.put(ProcessingStage.EXTRACT, (job, now) -> StageExecutionResult.success(
-                job,
-                "chunk-extraction-" + job.chunkIndex().orElse(0),
-                """
-                        {"topics":[],"decisions":[],"actionItems":[],"risks":[],"openQuestions":[],"commitments":[],"qualityFlags":[],"evidenceSegmentIds":[],"confidence":0.0}
-                        """.trim(),
-                1, 1, 5L, now
-        ));
+        executors.put(ProcessingStage.EXTRACT, new StageExecutor() {
+            @Override
+            public ProcessingStage stage() {
+                return ProcessingStage.EXTRACT;
+            }
+
+            @Override
+            public StageExecutionResult execute(AiJob job, Instant now) {
+                return StageExecutionResult.success(
+                        job,
+                        "chunk-extraction-" + job.chunkIndex().orElse(0),
+                        """
+                                {"topics":[],"decisions":[],"actionItems":[],"risks":[],"openQuestions":[],"commitments":[],"qualityFlags":[],"evidenceSegmentIds":[],"confidence":0.0}
+                                """.trim(),
+                        1, 1, 5L, now
+                );
+            }
+        });
         executors.put(ProcessingStage.MERGE, stub(ProcessingStage.MERGE, """
                 {"topics":[],"decisions":[],"actionItems":[],"risks":[],"openQuestions":[],"commitments":[],"qualityFlags":[],"evidenceSegmentIds":[],"confidence":0.0}
                 """, false));
@@ -159,12 +169,12 @@ class StageChoreographyTest {
 
         Map<ProcessingStage, StageExecutor> executors = new EnumMap<>(ProcessingStage.class);
         executors.put(ProcessingStage.NORMALIZE, stub(ProcessingStage.NORMALIZE, "{}", false));
-        executors.put(ProcessingStage.TRIAGE, (job, now) -> StageExecutionResult.earlyExit(
-                job,
+        executors.put(ProcessingStage.TRIAGE, stub(
+                ProcessingStage.TRIAGE,
                 """
                         {"containsDecisions":false,"containsActions":false,"containsRisks":false,"meetingType":"INFORMATIONAL"}
                         """.trim(),
-                1, 1, 3L, now
+                true
         ));
         executors.put(ProcessingStage.MINUTES, stub(ProcessingStage.MINUTES, "{}", false));
         StagedPipelineRunner runner = new StagedPipelineRunner(scheduler, executors, completion);
@@ -180,6 +190,122 @@ class StageChoreographyTest {
         assertTrue(runner.runNext(ProcessingStage.EXTRACT, now.plusSeconds(2)).isEmpty());
         assertTrue(runner.runNext(ProcessingStage.MINUTES, now.plusSeconds(3)).isPresent());
         assertTrue(jobs.listByTenant(tenant).stream().noneMatch(j -> j.stage() == ProcessingStage.EXTRACT));
+    }
+
+    @Test
+    void nonRetryableFailureRecordsDlqMetricAndBlocksMerge() {
+        InMemoryProcessingJobDependencyRepository deps = new InMemoryProcessingJobDependencyRepository();
+        InMemoryAiJobRepository jobs = new InMemoryAiJobRepository(deps);
+        InMemoryAiAttemptRepository attempts = new InMemoryAiAttemptRepository();
+        InMemoryProcessingArtifactRepository artifacts = new InMemoryProcessingArtifactRepository();
+        StageCommandPublisher commands = new StageCommandPublisher(new InMemoryOutboxStore(new TenantFairnessTracker()));
+        PipelineGraphFactory graph = new PipelineGraphFactory(jobs, deps, commands);
+        FairJobScheduler scheduler = new FairJobScheduler(jobs, attempts, permissivePolicy(), successRouter());
+        AiJobService jobService = new AiJobService(
+                new DefaultAdmissionController(jobs, permissivePolicy(), successRouter(), scheduler),
+                jobs, attempts, scheduler
+        );
+
+        AtomicInteger dlq = new AtomicInteger();
+        StageMetricsPort metrics = new StageMetricsPort() {
+            @Override
+            public void recordDuration(ProcessingStage stage, long durationMs, boolean success) {
+            }
+
+            @Override
+            public void recordQueueWait(ProcessingStage stage, long waitMs) {
+            }
+
+            @Override
+            public void recordDlq(ProcessingStage stage) {
+                if (stage == ProcessingStage.EXTRACT) {
+                    dlq.incrementAndGet();
+                }
+            }
+
+            @Override
+            public void recordEarlyExit() {
+            }
+        };
+        StageCompletionService completion = new StageCompletionService(
+                jobService, jobs, deps, artifacts, commands, graph,
+                (t, id) -> "hash-fail", metrics
+        );
+
+        Map<ProcessingStage, StageExecutor> executors = new EnumMap<>(ProcessingStage.class);
+        executors.put(ProcessingStage.NORMALIZE, stub(ProcessingStage.NORMALIZE, "{\"segmentCount\":1}", false));
+        executors.put(ProcessingStage.TRIAGE, stub(ProcessingStage.TRIAGE, """
+                {"containsDecisions":true,"containsActions":false,"containsRisks":false,"meetingType":"DECISION"}
+                """, false));
+        executors.put(ProcessingStage.CHUNK, stub(ProcessingStage.CHUNK, "{\"chunkCount\":1}", false));
+        executors.put(ProcessingStage.EXTRACT, new StageExecutor() {
+            @Override
+            public ProcessingStage stage() {
+                return ProcessingStage.EXTRACT;
+            }
+
+            @Override
+            public StageExecutionResult execute(AiJob job, Instant now) {
+                return StageExecutionResult.failure(
+                        job, false, "EXTRACT_POISON", "non-retryable", 2L, now);
+            }
+        });
+        executors.put(ProcessingStage.MERGE, stub(ProcessingStage.MERGE, "{}", false));
+        StagedPipelineRunner runner = new StagedPipelineRunner(scheduler, executors, completion);
+
+        UUID tenant = UUID.randomUUID();
+        Instant now = Instant.parse("2026-07-27T16:00:00Z");
+        graph.admitFromTranscriptReady(
+                tenant, UUID.randomUUID(), UUID.randomUUID(), "hash-fail", JobPriority.NORMAL, "tr", 2,
+                UUID.randomUUID(), now, Duration.ofHours(1)
+        );
+        runner.runNext(ProcessingStage.NORMALIZE, now);
+        runner.runNext(ProcessingStage.TRIAGE, now.plusSeconds(1));
+        runner.runNext(ProcessingStage.CHUNK, now.plusSeconds(2));
+        Optional<StageExecutionResult> extract = runner.runNext(ProcessingStage.EXTRACT, now.plusSeconds(3));
+        assertTrue(extract.isPresent());
+        assertFalse(extract.get().succeeded());
+        assertEquals(1, dlq.get());
+        assertTrue(runner.runNext(ProcessingStage.MERGE, now.plusSeconds(4)).isEmpty());
+    }
+
+    @Test
+    void embeddingStageIndexesViaApprovedKnowledgePort() {
+        InMemoryProcessingJobDependencyRepository deps = new InMemoryProcessingJobDependencyRepository();
+        InMemoryAiJobRepository jobs = new InMemoryAiJobRepository(deps);
+        InMemoryAiAttemptRepository attempts = new InMemoryAiAttemptRepository();
+        InMemoryProcessingArtifactRepository artifacts = new InMemoryProcessingArtifactRepository();
+        StageCommandPublisher commands = new StageCommandPublisher(new InMemoryOutboxStore(new TenantFairnessTracker()));
+        PipelineGraphFactory graph = new PipelineGraphFactory(jobs, deps, commands);
+        FairJobScheduler scheduler = new FairJobScheduler(jobs, attempts, permissivePolicy(), successRouter());
+        AiJobService jobService = new AiJobService(
+                new DefaultAdmissionController(jobs, permissivePolicy(), successRouter(), scheduler),
+                jobs, attempts, scheduler
+        );
+        StageCompletionService completion = new StageCompletionService(
+                jobService, jobs, deps, artifacts, commands, graph,
+                (t, id) -> "hash-embed", StageMetricsPort.noop()
+        );
+
+        AtomicInteger indexed = new AtomicInteger();
+        Map<ProcessingStage, StageExecutor> executors = new EnumMap<>(ProcessingStage.class);
+        executors.put(ProcessingStage.EMBEDDING, new DefaultStageExecutors.EmbeddingExecutor(
+                (tenantId, meetingOccurrenceId, noteId, noteVersionId) -> {
+                    indexed.incrementAndGet();
+                }
+        ));
+        StagedPipelineRunner runner = new StagedPipelineRunner(scheduler, executors, completion);
+
+        UUID tenant = UUID.randomUUID();
+        UUID meeting = UUID.randomUUID();
+        UUID noteId = UUID.randomUUID();
+        UUID noteVersionId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-07-27T17:00:00Z");
+        graph.admitEmbedding(tenant, meeting, noteId, noteVersionId, "tr", now);
+        Optional<StageExecutionResult> result = runner.runNext(ProcessingStage.EMBEDDING, now);
+        assertTrue(result.isPresent());
+        assertTrue(result.get().succeeded());
+        assertEquals(1, indexed.get());
     }
 
     private static StageExecutor stub(ProcessingStage stage, String json, boolean early) {

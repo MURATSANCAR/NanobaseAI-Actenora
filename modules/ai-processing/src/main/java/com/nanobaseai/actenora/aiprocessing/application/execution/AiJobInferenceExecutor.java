@@ -23,6 +23,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.ServedModelResolver
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StageExecutionResult;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StagedPipelineRunner;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobException;

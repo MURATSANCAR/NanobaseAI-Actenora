@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
@@ -171,7 +172,7 @@ public final class MinutesSynthesisAndAudit {
                     ExtractionPromptRules.systemRulesFor(language),
                     userPrompt,
                     List.copyOf(allowedEvidenceIds),
-                    Math.max(2048, modelRuntime.descriptor().maxOutputTokens()),
+                    MeetingLlmBudgets.FINAL_MAX_TOKENS,
                     timeoutSeconds
             ));
             String json = response.rawText();
@@ -243,7 +244,7 @@ public final class MinutesSynthesisAndAudit {
                     ExtractionPromptRules.systemRulesFor(language),
                     userPrompt,
                     List.copyOf(allowedEvidenceIds),
-                    Math.max(1024, modelRuntime.descriptor().maxOutputTokens() / 2),
+                    MeetingLlmBudgets.AUDIT_MAX_TOKENS,
                     timeoutSeconds
             ));
             String json = response.rawText();

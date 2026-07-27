@@ -87,6 +87,12 @@ public class ApprovalPlatformConfiguration {
             NoteArtifactStoragePort noteArtifactStorage,
             ObjectProvider<NoteApprovalOpenedNotifier> approvalOpenedNotifier
     ) {
+        NoteApprovalOpenedNotifier deferred = (tenantId, noteId, meetingOccurrenceId, approvalId, approverId) -> {
+            NoteApprovalOpenedNotifier notifier = approvalOpenedNotifier.getIfAvailable();
+            if (notifier != null) {
+                notifier.onSubmitted(tenantId, noteId, meetingOccurrenceId, approvalId, approverId);
+            }
+        };
         return new MeetingNoteApprovalService(
                 notes,
                 versions,
@@ -94,9 +100,7 @@ public class ApprovalPlatformConfiguration {
                 auditPort,
                 approvedNoteLedgerPort,
                 noteArtifactStorage,
-                approvalOpenedNotifier.getIfAvailable() == null
-                        ? NoteApprovalOpenedNotifier.noop()
-                        : approvalOpenedNotifier.getObject(),
+                deferred,
                 Clock.systemUTC()
         );
     }

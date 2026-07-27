@@ -21,6 +21,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactR
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingJobDependencyRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.TenantRoutingPolicy;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.LocalProviderModelRuntimeAdapter;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.Qwen27BModelAdapter;
@@ -218,8 +219,8 @@ public class StagedPipelinePlatformConfiguration {
                         "fast-extraction",
                         fastServed,
                         fastServed + "@local-v1",
-                        8_192,
-                        4_096
+                        MeetingLlmBudgets.OPERATIONAL_CTX_SIZE,
+                        MeetingLlmBudgets.DEFAULT_MAX_TOKENS
                 ),
                 DefaultModelRoleBootstrap.FAST_EXTRACTION_MODEL_ID,
                 timeoutSeconds
@@ -230,8 +231,8 @@ public class StagedPipelinePlatformConfiguration {
                         Qwen27BModelAdapter.CATALOG_ID,
                         finalServed,
                         finalServed + "@local-v1",
-                        Qwen27BModelAdapter.CONTEXT_WINDOW,
-                        Math.max(Qwen27BModelAdapter.MAX_OUTPUT, 6000)
+                        MeetingLlmBudgets.OPERATIONAL_CTX_SIZE,
+                        MeetingLlmBudgets.DEFAULT_MAX_TOKENS
                 ),
                 DefaultModelRoleBootstrap.QWEN27_FINAL_MODEL_ID,
                 timeoutSeconds

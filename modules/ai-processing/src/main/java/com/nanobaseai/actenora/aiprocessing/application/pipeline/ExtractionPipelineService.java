@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionMerger;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FailureCategory;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteAssembler;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.PipelineException;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.PipelineRunMetrics;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.PipelineStage;
@@ -131,7 +132,7 @@ public final class ExtractionPipelineService {
 
             List<SegmentInput> normalized = normalizer.normalize(request.segments());
             ChunkingConfig chunkingConfig = ChunkingConfig.productionDefaults(descriptor.contextWindowTokens())
-                    .withMaxOutput(descriptor.maxOutputTokens());
+                    .withMaxOutput(MeetingLlmBudgets.EXTRACTION_MAX_TOKENS);
             contextWindowGuard.assertTranscriptFitsBudget(normalized, chunkingConfig);
 
             List<TranscriptChunk> chunks = chunker.chunk(normalized, chunkingConfig);
@@ -346,7 +347,7 @@ public final class ExtractionPipelineService {
         contextWindowGuard.assertFits(
                 systemPrompt + "\n" + userPrompt,
                 descriptor.contextWindowTokens(),
-                descriptor.maxOutputTokens()
+                MeetingLlmBudgets.EXTRACTION_MAX_TOKENS
         );
 
         InferenceRequest inferenceRequest = new InferenceRequest(
@@ -356,7 +357,7 @@ public final class ExtractionPipelineService {
                 systemPrompt,
                 userPrompt,
                 evidenceIds,
-                descriptor.maxOutputTokens(),
+                MeetingLlmBudgets.EXTRACTION_MAX_TOKENS,
                 timeoutSeconds
         );
 

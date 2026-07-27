@@ -21,6 +21,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingArtifact;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DeterministicExtractionValidator;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionMerger;
@@ -220,18 +221,20 @@ public final class DefaultStageExecutors {
                         system,
                         user,
                         List.of(),
-                        512,
+                        MeetingLlmBudgets.TRIAGE_MAX_TOKENS,
                         120
                 ));
                 String json = response.rawText() == null ? "{}" : response.rawText().trim();
                 boolean early = isInformationalEarlyExit(json);
                 long latency = (System.nanoTime() - t0) / 1_000_000L;
+                int inTok = clampTokens(response.inputTokens());
+                int outTok = clampTokens(response.outputTokens());
                 if (early) {
                     return StageExecutionResult.earlyExit(
-                            job, json, response.inputTokens(), response.outputTokens(), latency, now);
+                            job, json, inTok, outTok, latency, now);
                 }
                 return StageExecutionResult.success(
-                        job, "triage", json, response.inputTokens(), response.outputTokens(), latency, now);
+                        job, "triage", json, inTok, outTok, latency, now);
             } catch (RuntimeException ex) {
                 // Fail open to full path on triage errors.
                 String fallback = """
@@ -290,7 +293,7 @@ public final class DefaultStageExecutors {
             List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
             ModelDescriptor descriptor = modelRuntime.descriptor();
             ChunkingConfig config = ChunkingConfig.productionDefaults(descriptor.contextWindowTokens())
-                    .withMaxOutput(descriptor.maxOutputTokens());
+                    .withMaxOutput(MeetingLlmBudgets.EXTRACTION_MAX_TOKENS);
             guard.assertTranscriptFitsBudget(normalized, config);
             List<TranscriptChunk> chunks = chunker.chunk(normalized, config);
             ObjectNode node = MAPPER.createObjectNode();
@@ -355,7 +358,7 @@ public final class DefaultStageExecutors {
                 List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
                 ModelDescriptor descriptor = modelRuntime.descriptor();
                 ChunkingConfig config = ChunkingConfig.productionDefaults(descriptor.contextWindowTokens())
-                        .withMaxOutput(descriptor.maxOutputTokens());
+                        .withMaxOutput(MeetingLlmBudgets.EXTRACTION_MAX_TOKENS);
                 List<TranscriptChunk> chunks = chunker.chunk(normalized, config);
                 int index = job.chunkIndex().orElse(0);
                 if (index < 0 || index >= chunks.size()) {
@@ -373,7 +376,11 @@ public final class DefaultStageExecutors {
                         .replace("{{participants}}", "")
                         .replace("{{evidenceSegmentIds}}", String.join(",", chunk.segmentIds()))
                         .replace("{{chunk}}", formatChunk(chunk));
-                guard.assertFits(system + "\n" + user, descriptor.contextWindowTokens(), descriptor.maxOutputTokens());
+                guard.assertFits(
+                        system + "\n" + user,
+                        descriptor.contextWindowTokens(),
+                        MeetingLlmBudgets.EXTRACTION_MAX_TOKENS
+                );
                 InferenceResponse response = modelRuntime.infer(new InferenceRequest(
                         InferenceTaskType.CHUNK_EXTRACTION.name(),
                         prompt.promptVersionId(),
@@ -381,7 +388,7 @@ public final class DefaultStageExecutors {
                         system,
                         user,
                         chunk.segmentIds(),
-                        descriptor.maxOutputTokens(),
+                        MeetingLlmBudgets.EXTRACTION_MAX_TOKENS,
                         1800
                 ));
                 String json = response.rawText();
@@ -394,7 +401,7 @@ public final class DefaultStageExecutors {
                 String out = MAPPER.writeValueAsString(node);
                 return StageExecutionResult.success(
                         job, "chunk-extraction-" + index, out,
-                        response.inputTokens(), response.outputTokens(),
+                        clampTokens(response.inputTokens()), clampTokens(response.outputTokens()),
                         (System.nanoTime() - t0) / 1_000_000L, now);
             } catch (Exception ex) {
                 return StageExecutionResult.failure(
@@ -494,7 +501,7 @@ public final class DefaultStageExecutors {
                         system,
                         user,
                         List.of(),
-                        6000,
+                        MeetingLlmBudgets.MERGE_MAX_TOKENS,
                         1800
                 ));
                 String json = response.rawText();
@@ -513,7 +520,7 @@ public final class DefaultStageExecutors {
                 }
                 return StageExecutionResult.success(
                         job, "merged-bundle", json,
-                        response.inputTokens(), response.outputTokens(),
+                        clampTokens(response.inputTokens()), clampTokens(response.outputTokens()),
                         (System.nanoTime() - t0) / 1_000_000L, now);
             } catch (Exception ex) {
                 return StageExecutionResult.failure(
@@ -694,5 +701,12 @@ public final class DefaultStageExecutors {
             return "error";
         }
         return message.length() > 500 ? message.substring(0, 500) : message;
+    }
+
+    private static int clampTokens(long tokens) {
+        if (tokens <= 0L) {
+            return 0;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, tokens);
     }
 }

@@ -146,6 +146,11 @@
             </dependency>
             <dependency>
                 <groupId>ai.nanobase.actenora</groupId>
+                <artifactId>notification</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.nanobase.actenora</groupId>
                 <artifactId>teams-integration-service</artifactId>
                 <version>${project.version}</version>
             </dependency>

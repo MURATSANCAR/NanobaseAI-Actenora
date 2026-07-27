@@ -4,7 +4,7 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.AiPipeli
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StagedPipelineRunner;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -13,8 +13,10 @@ import java.time.Instant;
  * RabbitMQ stage consumers — wake and claim one job for the matching pipeline stage.
  */
 @Component
-@ConditionalOnProperty(name = "actenora.messaging.mode", havingValue = "jdbc-rabbit")
-@ConditionalOnProperty(name = "actenora.ai.pipeline.mode", havingValue = "staged", matchIfMissing = true)
+@ConditionalOnExpression(
+        "'${actenora.messaging.mode:}' == 'jdbc-rabbit'"
+                + " && '${actenora.ai.pipeline.mode:staged}' == 'staged'"
+)
 public class AiStageQueueConsumers {
 
     private final StagedPipelineRunner runner;

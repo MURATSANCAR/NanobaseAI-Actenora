@@ -1,0 +1,80 @@
+package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
+
+/**
+ * Production token budgets for the meeting-minutes pipeline on Qwen3-8B (CPU).
+ *
+ * <p>Qwen3-8B native context is 32_768 tokens. Operational llama-server
+ * {@code --ctx-size} is intentionally {@link #OPERATIONAL_CTX_SIZE} (16_384):
+ * long context on CPU is slow and unnecessary for meeting notes.
+ *
+ * <p>Critical distinction:
+ * <ul>
+ *   <li>{@code max_tokens} / stage max output = generation cap (keep low on 8B)</li>
+ *   <li>chunk target/max = transcript input slice size per LLM call</li>
+ * </ul>
+ */
+public final class MeetingLlmBudgets {
+
+    /** llama-server --ctx-size for nanobase-meeting-8b. */
+    public static final int OPERATIONAL_CTX_SIZE = 16_384;
+
+    /** Preferred transcript tokens per extraction call. */
+    public static final int TARGET_CHUNK_TOKENS = 3_500;
+
+    /** Hard ceiling for a single transcript chunk. */
+    public static final int MAX_CHUNK_TOKENS = 4_500;
+
+    /** Overlap between adjacent chunks. */
+    public static final int OVERLAP_TOKENS = 250;
+
+    /**
+     * Reserved for system prompt + extraction instructions + JSON schema + metadata.
+     * Must stay aligned with real prompt footprint under ctx-size.
+     */
+    public static final int PROMPT_OVERHEAD_TOKENS = 2_500;
+
+    /** Safety margin so prompt+chunk+output never saturates KV cache. */
+    public static final int SAFETY_MARGIN_TOKENS = 1_000;
+
+    /** CHUNK_EXTRACTION generation cap. */
+    public static final int EXTRACTION_MAX_TOKENS = 600;
+
+    /** MEETING_TRIAGE generation cap (tiny JSON classifier). */
+    public static final int TRIAGE_MAX_TOKENS = 512;
+
+    /** CANDIDATE_MERGE generation cap. */
+    public static final int MERGE_MAX_TOKENS = 1_000;
+
+    /** FINAL_NOTE / final minutes generation cap. */
+    public static final int FINAL_MAX_TOKENS = 1_200;
+
+    /** Evidence-audit generation cap (smaller JSON than full minutes). */
+    public static final int AUDIT_MAX_TOKENS = 800;
+
+    /** Descriptor / fallback ceiling when a call does not specify a stage budget. */
+    public static final int DEFAULT_MAX_TOKENS = FINAL_MAX_TOKENS;
+
+    private MeetingLlmBudgets() {
+    }
+
+    /**
+     * Clamp a registry context window to the operational llama-server ctx-size.
+     * Registry may advertise the model native 32k; the running server uses 16k.
+     */
+    public static int operationalContextWindow(int registryOrNativeContextWindow) {
+        if (registryOrNativeContextWindow <= 0) {
+            return OPERATIONAL_CTX_SIZE;
+        }
+        return Math.min(registryOrNativeContextWindow, OPERATIONAL_CTX_SIZE);
+    }
+
+    /**
+     * Clamp a registry max-output to the meeting-pipeline ceiling.
+     */
+    public static int operationalMaxOutput(int registryOrNativeMaxOutput) {
+        if (registryOrNativeMaxOutput <= 0) {
+            return DEFAULT_MAX_TOKENS;
+        }
+        return Math.min(registryOrNativeMaxOutput, DEFAULT_MAX_TOKENS);
+    }
+}

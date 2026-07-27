@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Lock Actenora LLM port :8010 to nanobase-meeting-8b only.
 # Masks legacy Qwen units and retargets DB-GPT so it cannot revive 35B/27B/MTP.
+#
+# Meeting pipeline budgets (modules/.../MeetingLlmBudgets.java) assume:
+#   llama-server --ctx-size 16384 --parallel 1
+# Do not raise ctx-size for meeting notes on CPU; YaRN / 128k is unnecessary and slow.
 set -euo pipefail
 
 LEGACY_UNITS=(
@@ -72,12 +76,31 @@ retarget_dbgpt() {
   fi
 }
 
+lock_meeting_8b_ctx() {
+  local unit=/etc/systemd/system/nanobase-qwen3-8b.service
+  [[ -f "${unit}" ]] || return 0
+  if grep -Eq -- '--ctx-size[= ]16384\b' "${unit}"; then
+    echo "ctx-size already 16384 on ${unit}"
+    return 0
+  fi
+  cp "${unit}" "${unit}.bak.$(date +%Y%m%d%H%M%S)"
+  if grep -Eq -- '--ctx-size[= ][0-9]+' "${unit}"; then
+    sed -i -E 's/--ctx-size[= ][0-9]+/--ctx-size 16384/g' "${unit}"
+  else
+    # Insert after --model / first ExecStart llama-server args
+    sed -i -E 's|(ExecStart=.*llama-server)|\1 --ctx-size 16384|' "${unit}"
+  fi
+  echo "set --ctx-size 16384 on ${unit}"
+}
+
 main() {
   require_root
   mask_legacy
   retarget_dbgpt
+  lock_meeting_8b_ctx
   systemctl enable nanobase-qwen3-8b.service
   systemctl daemon-reload
+  systemctl try-restart nanobase-qwen3-8b.service || true
   systemctl try-restart nanobase-dbgpt.service || true
 
   echo
