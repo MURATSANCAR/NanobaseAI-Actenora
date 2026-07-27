@@ -39,6 +39,8 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: actenora-rabbitmq
+    hostname: rabbitmq
+    entrypoint: ["/bin/sh", "/etc/rabbitmq/docker-entrypoint-actenora.sh"]
     environment:
       <<: *local-only
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-actenora}
@@ -52,6 +54,7 @@ services:
       - ../rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ../rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
       - ../rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ../rabbitmq/docker-entrypoint-actenora.sh:/etc/rabbitmq/docker-entrypoint-actenora.sh:ro
     networks:
       - data-network
       - app-network
@@ -59,7 +62,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "rabbitmq-diagnostics -q check_running && rabbitmqctl list_exchanges --silent | grep -q actenora.domain",
+          "rabbitmq-diagnostics -q check_running && rabbitmqctl authenticate_user \"$${RABBITMQ_DEFAULT_USER:-actenora}\" \"$${RABBITMQ_DEFAULT_PASS}\" >/dev/null && rabbitmqctl list_exchanges --silent | grep -q actenora.domain",
         ]
       interval: 10s
       timeout: 10s
