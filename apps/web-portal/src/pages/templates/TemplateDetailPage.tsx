@@ -99,7 +99,7 @@ export function TemplateDetailPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      if (!activeVersion) throw new Error("No active version");
+      if (!activeVersion) throw new Error(t("templates.editor.noActiveVersion"));
       return api.saveTemplateDesign(templateId, activeVersion.id, {
         designSchemaJson: designSchemaToJson(schema),
       });
@@ -114,7 +114,7 @@ export function TemplateDetailPage() {
 
   const publishMutation = useMutation({
     mutationFn: () => {
-      if (!activeVersion) throw new Error("No active version");
+      if (!activeVersion) throw new Error(t("templates.editor.noActiveVersion"));
       return api.publishTemplateVersion(templateId, activeVersion.id);
     },
     onSuccess: async () => {
@@ -163,10 +163,9 @@ export function TemplateDetailPage() {
       {detail ? (
         <div className="card-static mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-2">
-            <StatusBadge
-              label={detail.isDefault ? t("templates.default.badge") : t("templates.default.column")}
-              status={detail.isDefault ? "APPROVED" : "OPEN"}
-            />
+            {detail.isDefault ? (
+              <StatusBadge label={t("templates.default.badge")} status="APPROVED" />
+            ) : null}
             <p className="text-sm text-slate-600">{t("templates.default.explainer")}</p>
           </div>
           {!detail.isDefault && mutationsEnabled ? (

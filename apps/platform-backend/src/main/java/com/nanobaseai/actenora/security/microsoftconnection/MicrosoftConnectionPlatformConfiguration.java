@@ -56,9 +56,20 @@ public class MicrosoftConnectionPlatformConfiguration {
     @Bean
     GraphMailboxSyncRunner graphMailboxSyncRunner(
             GraphSubscribedMailboxResolver graphSubscribedMailboxResolver,
-            GraphMailboxSyncService graphMailboxSyncService
+            GraphMailboxSyncService graphMailboxSyncService,
+            MailboxSyncWorkStore mailboxSyncWorkStore,
+            @Value("${actenora.microsoft-graph.mailbox-sync-retry-backoff-base:PT1M}") Duration backoffBase,
+            @Value("${actenora.microsoft-graph.mailbox-sync-retry-backoff-cap:PT15M}") Duration backoffCap,
+            @Value("${actenora.microsoft-graph.mailbox-sync-retry-stale-claim:PT5M}") Duration staleClaim,
+            @Value("${actenora.microsoft-graph.mailbox-sync-retry-batch-size:20}") int batchSize
     ) {
-        return new GraphMailboxSyncRunner(graphSubscribedMailboxResolver, graphMailboxSyncService);
+        return new GraphMailboxSyncRunner(
+                graphSubscribedMailboxResolver,
+                graphMailboxSyncService,
+                mailboxSyncWorkStore,
+                new ExponentialBackoff(backoffBase, backoffCap),
+                staleClaim,
+                batchSize);
     }
 
     @Bean
@@ -151,6 +162,21 @@ public class MicrosoftConnectionPlatformConfiguration {
 
     @Bean
     @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "jdbc")
+    MailboxSyncWorkStore jdbcMailboxSyncWorkStore(JdbcTemplate jdbcTemplate) {
+        return new JdbcMailboxSyncWorkStore(jdbcTemplate);
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            name = "actenora.persistence.mode",
+            havingValue = "inmemory",
+            matchIfMissing = true)
+    MailboxSyncWorkStore inMemoryMailboxSyncWorkStore() {
+        return new InMemoryMailboxSyncWorkStore();
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "jdbc")
     GraphWorkerLeaseStore jdbcGraphWorkerLeaseStore(JdbcTemplate jdbcTemplate) {
         return new JdbcGraphWorkerLeaseStore(jdbcTemplate);
     }
@@ -182,6 +208,20 @@ public class MicrosoftConnectionPlatformConfiguration {
             @Value("${actenora.microsoft-graph.mailbox-sync-recover-empty-delta:true}") boolean recoverEmptyDelta
     ) {
         return new GraphPeriodicMailboxSyncWorker(
+                graphMailboxSyncRunner,
+                leaseStore,
+                recoverEmptyDelta,
+                UUID.randomUUID().toString());
+    }
+
+    @Bean
+    @ConditionalOnExpression("'${actenora.microsoft-graph.workers-enabled:true}' == 'true' && '${actenora.microsoft-graph.mailbox-sync-enabled:true}' == 'true'")
+    GraphMailboxSyncRetryWorker graphMailboxSyncRetryWorker(
+            GraphMailboxSyncRunner graphMailboxSyncRunner,
+            GraphWorkerLeaseStore leaseStore,
+            @Value("${actenora.microsoft-graph.mailbox-sync-recover-empty-delta:true}") boolean recoverEmptyDelta
+    ) {
+        return new GraphMailboxSyncRetryWorker(
                 graphMailboxSyncRunner,
                 leaseStore,
                 recoverEmptyDelta,
@@ -314,6 +354,39 @@ public class MicrosoftConnectionPlatformConfiguration {
                 syncRunner.syncAll("periodic", recoverEmptyDelta);
             } finally {
                 leaseStore.release("graph-mailbox-sync", ownerId, Instant.now());
+            }
+        }
+    }
+
+    static final class GraphMailboxSyncRetryWorker {
+
+        private final GraphMailboxSyncRunner syncRunner;
+        private final GraphWorkerLeaseStore leaseStore;
+        private final boolean recoverEmptyDelta;
+        private final String ownerId;
+
+        GraphMailboxSyncRetryWorker(
+                GraphMailboxSyncRunner syncRunner,
+                GraphWorkerLeaseStore leaseStore,
+                boolean recoverEmptyDelta,
+                String ownerId
+        ) {
+            this.syncRunner = Objects.requireNonNull(syncRunner);
+            this.leaseStore = Objects.requireNonNull(leaseStore);
+            this.recoverEmptyDelta = recoverEmptyDelta;
+            this.ownerId = Objects.requireNonNull(ownerId);
+        }
+
+        @Scheduled(fixedDelayString = "${actenora.microsoft-graph.mailbox-sync-retry-interval:PT1M}")
+        void drainRetries() {
+            Instant now = Instant.now();
+            if (!leaseStore.tryAcquire("graph-mailbox-sync-retry", ownerId, now, Duration.ofMinutes(2))) {
+                return;
+            }
+            try {
+                syncRunner.drainDue(recoverEmptyDelta);
+            } finally {
+                leaseStore.release("graph-mailbox-sync-retry", ownerId, Instant.now());
             }
         }
     }

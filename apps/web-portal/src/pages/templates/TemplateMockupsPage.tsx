@@ -27,21 +27,6 @@ type MockScenario =
   | "error"
   | "meeting-note";
 
-const MOCK_VERSIONS = [
-  {
-    version: 2,
-    status: "DRAFT" as const,
-    changelog: "Draft revision",
-    updatedAt: "2026-07-26T07:00:00.000Z",
-  },
-  {
-    version: 1,
-    status: "PUBLISHED" as const,
-    changelog: "Initial publish",
-    updatedAt: "2026-07-20T14:30:00.000Z",
-  },
-];
-
 export function TemplateMockupsPage() {
   const { t } = useI18n();
   const [scenario, setScenario] = useState<MockScenario>("studio");
@@ -50,6 +35,24 @@ export function TemplateMockupsPage() {
   const [activeVersion, setActiveVersion] = useState(2);
   const [noteSections, setNoteSections] = useState<Partial<Record<TemplateComponentType, string>>>({});
   const [noteError, setNoteError] = useState<string | null>(null);
+
+  const mockVersions = useMemo(
+    () => [
+      {
+        version: 2,
+        status: "DRAFT" as const,
+        changelog: t("templates.mockups.changelog.draftRevision"),
+        updatedAt: "2026-07-26T07:00:00.000Z",
+      },
+      {
+        version: 1,
+        status: "PUBLISHED" as const,
+        changelog: t("templates.mockups.changelog.initialPublish"),
+        updatedAt: "2026-07-20T14:30:00.000Z",
+      },
+    ],
+    [t],
+  );
 
   const validationIssues = useMemo(() => validateDesignSchema(schema), [schema]);
 
@@ -204,7 +207,7 @@ export function TemplateMockupsPage() {
           <TemplateDesignToolbar
             templateName={t("templates.mockups.sampleTemplateName")}
             locale={t("templates.mockups.sampleLocale")}
-            versions={MOCK_VERSIONS}
+            versions={mockVersions}
             activeVersion={activeVersion}
             components={schema.components}
             selectedId={selectedId}

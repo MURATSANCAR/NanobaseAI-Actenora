@@ -392,7 +392,7 @@ export function ModelManagementPage() {
                   {t("models.strategy")}: <strong>{q.data.routing.strategy}</strong>
                 </p>
                 <DataTable
-                  headers={["Role", "Primary", t("models.fallback")]}
+                  headers={[t("table.role"), t("table.primary"), t("models.fallback")]}
                   rows={q.data.routing.roles.map((r) => [r.role, r.primaryModel, r.fallbackModel])}
                 />
               </div>

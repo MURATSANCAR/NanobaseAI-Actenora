@@ -188,7 +188,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <button
                 key={loc}
                 type="button"
-                aria-label={loc === "en" ? "English" : "Türkçe"}
+                aria-label={loc === "en" ? t("locale.en") : t("locale.tr")}
                 aria-pressed={locale === loc}
                 onClick={() => setLocale(loc)}
                 className={clsx(
@@ -198,7 +198,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     : "text-slate-500 hover:bg-white/70 hover:text-violet-700",
                 )}
               >
-                {loc === "en" ? "English" : "Türkçe"}
+                {loc === "en" ? t("locale.en") : t("locale.tr")}
               </button>
             ))}
           </div>

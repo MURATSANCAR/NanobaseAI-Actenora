@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphMailboxSyncService;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeNotificationProcessor;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeWorkConsumer;
+import com.nanobaseai.actenora.security.microsoftconnection.InMemoryMailboxSyncWorkStore;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
@@ -27,6 +28,7 @@ class GraphChangeWorkConsumerRetryTest {
         when(syncService.syncMailbox(any(), anyString())).thenThrow(new IllegalStateException("Graph unavailable"));
         GraphChangeWorkConsumer handler = new GraphChangeWorkConsumer(
                 syncService,
+                new InMemoryMailboxSyncWorkStore(),
                 new ObjectMapper());
         EventBackbone backbone = EventBackbone.inMemory(
                 EventMessagingConfig.defaults("test").withMaxAttempts(2));

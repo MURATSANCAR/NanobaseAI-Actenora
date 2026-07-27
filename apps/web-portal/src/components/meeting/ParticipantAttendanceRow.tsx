@@ -4,21 +4,26 @@ import { useI18n } from "@/i18n";
 
 const ATTENDED = new Set(["JOINED", "LEFT"]);
 const EXPLICIT_ABSENT = new Set(["ABSENT", "DECLINED"]);
+/** After the occurrence ends, unresolved RSVP statuses are treated as did-not-attend. */
+const MEETING_FINISHED = new Set(["ENDED", "CANCELLED", "PROCESSING", "READY", "FAILED"]);
 
 export type AttendanceBucket = "attended" | "absent" | "pending";
 
 /**
- * Maps backend attendanceStatus only — never invents "absent" from meeting end.
- * INVITED/ACCEPTED/TENTATIVE stay pending until Teams attendance sync writes JOINED/ABSENT.
+ * Maps backend attendanceStatus. INVITED/ACCEPTED/TENTATIVE stay pending while the
+ * meeting is still live; once finished they count as absent (Katılmadı).
  */
 export function classifyAttendance(
   attendanceStatus: string | null | undefined,
-  _meetingStatus?: string,
+  meetingStatus?: string,
   _participantType?: string | null,
 ): AttendanceBucket {
   const status = (attendanceStatus || "UNKNOWN").toUpperCase();
   if (ATTENDED.has(status)) return "attended";
   if (EXPLICIT_ABSENT.has(status)) return "absent";
+  if (meetingStatus && MEETING_FINISHED.has(meetingStatus.toUpperCase())) {
+    return "absent";
+  }
   return "pending";
 }
 

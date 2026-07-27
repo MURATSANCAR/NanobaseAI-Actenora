@@ -75,7 +75,7 @@ export function PaginationBar({
   const { t } = useI18n();
 
   return (
-    <nav className="mobile-action-row pt-2" aria-label="Pagination">
+    <nav className="mobile-action-row pt-2" aria-label={t("pagination.aria")}>
       <button type="button" className="btn-secondary" onClick={onReset} disabled={disabled}>
         {t("pagination.first")}
       </button>

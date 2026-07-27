@@ -198,7 +198,7 @@
   "models.registryEmptyBody": "EasyMeeting AI connection is healthy. Test or save the connection to auto-register the local model.",
   "models.routingHidden": "Routing detail is restricted to admin / operations.",
   "models.strategy": "Strategy",
-  "models.fallback": "fallback",
+  "models.fallback": "Fallback",
   "models.sectionJobs": "NanobaseAI",
   "intelligence.section": "Connection",
   "intelligence.description": "Point EasyMeeting at your local AI endpoint. Only private/local network addresses are accepted.",

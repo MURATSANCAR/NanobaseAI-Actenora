@@ -1,10 +1,11 @@
 import { PRODUCT_BRAND } from "@/config/brand";
+import type { MessageKey } from "@/i18n";
 
 export interface FamilyProduct {
   key: "qa" | "bi" | "actenora";
   label: string;
   href: string;
-  description: string;
+  descriptionKey: MessageKey;
 }
 
 const DEFAULT_QA_URL = "https://portal.nanobase.ai";
@@ -27,19 +28,19 @@ export function familyProducts(): FamilyProduct[] {
       key: "actenora",
       label: PRODUCT_BRAND,
       href: meta?.VITE_NANOBI_ACTENORA_URL ?? DEFAULT_ACTENORA_URL,
-      description: "Teams meeting intelligence",
+      descriptionKey: "family.actenora.description",
     },
     {
       key: "qa",
       label: "NanobaseAI-QA",
       href: meta?.VITE_NANOBI_QA_URL ?? DEFAULT_QA_URL,
-      description: "Test automation and conformance",
+      descriptionKey: "family.qa.description",
     },
     {
       key: "bi",
       label: "NanobaseAI-BI",
       href: meta?.VITE_NANOBI_BI_URL ?? DEFAULT_BI_URL,
-      description: "Governed analytics and NL2SQL",
+      descriptionKey: "family.bi.description",
     },
   ];
 }
