@@ -8,6 +8,7 @@ import { PRODUCT_BRAND } from "@/config/brand";
 import { useI18n } from "@/i18n";
 import { sanitizeProductCopy } from "@/lib/brandSanitize";
 import {
+  enhanceParagraphReadability,
   parseActionMeta,
   parseSectionContent,
   type MinutesDocument,
@@ -274,7 +275,7 @@ function MinutesSectionCard({
             {t("meeting.noteSectionEmpty")}
           </p>
         ) : section.kind === "paragraph" ? (
-          <p className="whitespace-pre-wrap rounded-xl bg-white/80 px-4 py-3.5 text-sm leading-relaxed text-slate-800 shadow-sm ring-1 ring-white/90 sm:text-[15px] sm:leading-7">
+          <p className="whitespace-pre-wrap break-words rounded-xl bg-white/80 px-4 py-3.5 text-sm leading-relaxed text-slate-800 shadow-sm ring-1 ring-white/90 sm:text-[15px] sm:leading-7">
             {parsed.paragraph}
           </p>
         ) : (
@@ -286,20 +287,21 @@ function MinutesSectionCard({
                 <li
                   key={`${section.type}-${i}`}
                   className={[
-                    "flex gap-3 rounded-xl border px-3.5 py-3 text-sm leading-relaxed text-slate-800 shadow-sm",
+                    "flex items-start gap-3 rounded-xl border px-3.5 py-3 text-sm leading-relaxed text-slate-800 shadow-sm",
                     theme.item,
                   ].join(" ")}
                 >
                   <span
                     className={[
-                      "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold shadow-sm",
+                      "mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums shadow-sm",
                       theme.itemIndex,
                     ].join(" ")}
+                    aria-hidden
                   >
                     {i + 1}
                   </span>
                   <div className="min-w-0 flex-1 space-y-1.5">
-                    <p className="sm:text-[15px] sm:leading-6">{meta.text}</p>
+                    <p className="break-words [overflow-wrap:anywhere] sm:text-[15px] sm:leading-6">{meta.text}</p>
                     {"owner" in meta && (meta.owner || meta.due) ? (
                       <div className="flex flex-wrap gap-1.5">
                         {meta.owner ? (
@@ -326,8 +328,8 @@ function MinutesSectionCard({
 }
 
 function editableValue(section: MinutesSection): string {
-  if (section.kind !== "list") return section.value;
+  if (section.kind !== "list") return enhanceParagraphReadability(section.value);
   const parsed = parseSectionContent(section.value, "list");
   if (parsed.empty) return "";
-  return parsed.items.join("\n");
+  return parsed.items.map((item, i) => `${i + 1}. ${item}`).join("\n");
 }

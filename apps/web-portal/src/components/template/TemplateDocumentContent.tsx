@@ -148,9 +148,13 @@ export function TemplateDocumentContent({
       case "AGENDA":
         return (
           <SectionShell type="AGENDA" density={d}>
-            <ol className="list-inside list-decimal space-y-0.5 text-slate-400">
-              <li>{t("templates.preview.placeholder.item")}</li>
-              <li>{t("templates.preview.placeholder.item")}</li>
+            <ol className="space-y-1 text-slate-400">
+              {[0, 1].map((i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="shrink-0 tabular-nums">{i + 1}.</span>
+                  <span className="min-w-0 break-words">{t("templates.preview.placeholder.item")}</span>
+                </li>
+              ))}
             </ol>
           </SectionShell>
         );

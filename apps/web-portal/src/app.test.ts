@@ -387,6 +387,19 @@ Durum: Taslak (LLM)
   );
 });
 
+test("dense executive summary expands to numbered lines", async () => {
+  const { enhanceParagraphReadability, parseSectionContent } = await import("./lib/minutesDocument.ts");
+  const dense =
+    "Gündem: Sprint planlama ve kapasite; Ürün gereksinimleri ve filtre davranışı; Toplantı yönetimi ve teknik ayarlar; Mevcut kararların bağlamı ve doğrulanması. 3 karar kaydedildi. 2 aksiyon maddesi. 2 risk.";
+  const readable = enhanceParagraphReadability(dense);
+  assert.ok(readable.includes("Gündem:\n1. Sprint planlama ve kapasite"));
+  assert.ok(readable.includes("2. Ürün gereksinimleri ve filtre davranışı"));
+  assert.ok(readable.includes("\n3 karar kaydedildi."));
+  assert.ok(readable.includes("\n2 aksiyon maddesi."));
+  assert.ok(readable.includes("\n2 risk."));
+  assert.equal(parseSectionContent(dense, "paragraph").paragraph, readable);
+});
+
 test("onboarding progress tracks completed steps", () => {
   const state = defaultOnboardingState();
   assert.equal(onboardingProgress(state).done, 1);

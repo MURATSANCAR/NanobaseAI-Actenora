@@ -98,6 +98,50 @@ function matchSectionHeading(raw: string): (typeof SECTION_SPECS)[number] | null
   );
 }
 
+/**
+ * Expands dense one-line summaries (`Gündem: a; b. 3 karar kaydedildi.`) into
+ * numbered lines so sequence numbers stay with their item text.
+ */
+export function enhanceParagraphReadability(raw: string): string {
+  const text = raw.replace(/\r\n/g, "\n").trim();
+  if (!text) return text;
+  if (/^(?:Gündem|Agenda)\s*:\s*\n\s*\d+\.\s+/iu.test(text)) {
+    return text;
+  }
+
+  const prefix = /^(Gündem|Agenda)\s*:\s*/iu.exec(text);
+  if (!prefix) return text;
+
+  const label = prefix[1] ?? "Gündem";
+  const rest = text.slice(prefix[0].length).trim();
+  const countRe =
+    /(\d+\s+(?:karar kaydedildi|decision\(s\) recorded|aksiyon maddesi|action item\(s\)|risk(?:\(s\))?)\.?)/giu;
+  const counts: string[] = [];
+  let firstCountAt = -1;
+  let match: RegExpExecArray | null;
+  while ((match = countRe.exec(rest)) !== null) {
+    if (firstCountAt < 0) firstCountAt = match.index;
+    counts.push(`${match[0].trim().replace(/\.$/u, "")}.`);
+  }
+
+  let agendaPart = (firstCountAt >= 0 ? rest.slice(0, firstCountAt) : rest).trim().replace(/\.\s*$/u, "");
+  const items = agendaPart
+    .split(/;|\n/u)
+    .map((s) => s.replace(/^\d+\.\s+/u, "").trim())
+    .filter(Boolean);
+
+  if (items.length === 0 && counts.length === 0) return text;
+  if (items.length <= 1 && counts.length === 0 && !agendaPart.includes(";")) return text;
+
+  const lines: string[] = [`${label}:`];
+  items.forEach((item, i) => lines.push(`${i + 1}. ${item}`));
+  if (counts.length > 0) {
+    if (items.length > 0) lines.push("");
+    lines.push(...counts);
+  }
+  return lines.join("\n");
+}
+
 /** Splits numbered list lines (`1. item`) from free text; treats `—` / `-` as empty. */
 export function parseSectionContent(
   raw: string,
@@ -108,7 +152,7 @@ export function parseSectionContent(
     return { empty: true, paragraph: "", items: [] };
   }
   if (kind === "paragraph") {
-    return { empty: false, paragraph: trimmed, items: [] };
+    return { empty: false, paragraph: enhanceParagraphReadability(trimmed), items: [] };
   }
   const lines = trimmed.split(/\n+/).map((l) => l.trim()).filter(Boolean);
   const items: string[] = [];

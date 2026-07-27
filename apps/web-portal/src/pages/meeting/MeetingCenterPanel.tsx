@@ -481,10 +481,10 @@ function DecisionRow({
 }) {
   return (
     <div id={`artifact-decision-${item.id}`} className={artifactRowClass(linked, "decision")}>
-      <strong className="block text-slate-900">{item.title}</strong>
+      <strong className="block break-words text-slate-900 [overflow-wrap:anywhere]">{item.title}</strong>
       <div className="mt-1"><StatusBadge label={statusLabel} status={item.status} /></div>
       {item.rationale || item.decisionStatus ? (
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 break-words text-sm leading-relaxed text-slate-600 [overflow-wrap:anywhere]">
           {[item.decisionStatus, item.rationale].filter(Boolean).join(" · ")}
         </p>
       ) : null}
@@ -514,8 +514,8 @@ function ActionRow({
 }) {
   return (
     <div id={`artifact-action-${item.id}`} className={artifactRowClass(linked, "action")}>
-      <strong className="block text-slate-900">{item.title}</strong>
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+      <strong className="block break-words text-slate-900 [overflow-wrap:anywhere]">{item.title}</strong>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm leading-relaxed text-slate-600">
         <StatusBadge label={statusLabel} status={item.status} />
         <span>{item.ownerDisplayName}</span>
         <DueDateBadge dueAt={item.dueAt} />
@@ -548,14 +548,17 @@ function RiskRow({
 }) {
   return (
     <div id={`artifact-risk-${item.id}`} className={artifactRowClass(linked, "risk")}>
-      <strong className="block text-slate-900">{item.title}</strong>
+      <strong className="block break-words text-slate-900 [overflow-wrap:anywhere]">{item.title}</strong>
       <div className="mt-1"><StatusBadge label={severityLabel} status={item.severity} /></div>
       {item.likelihood || item.mitigation ? (
-        <p className="mt-1 text-sm text-slate-600">
-          {[item.likelihood ? `Olasılık: ${item.likelihood}` : null, item.mitigation ? `Azaltma: ${item.mitigation}` : null]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
+        <div className="mt-1 space-y-0.5 text-sm leading-relaxed text-slate-600">
+          {item.likelihood ? (
+            <p className="break-words [overflow-wrap:anywhere]">Olasılık: {item.likelihood}</p>
+          ) : null}
+          {item.mitigation ? (
+            <p className="break-words [overflow-wrap:anywhere]">Azaltma: {item.mitigation}</p>
+          ) : null}
+        </div>
       ) : null}
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
     </div>
