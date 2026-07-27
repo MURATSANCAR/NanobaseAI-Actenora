@@ -3,9 +3,12 @@ package com.nanobaseai.actenora.microsoftconnection.infrastructure.config;
 import com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore;
 import com.nanobaseai.actenora.microsoftconnection.application.port.NotificationInbox;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.notification.DeduplicatingNotificationInbox;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.notification.JdbcNotificationInbox;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.JdbcCalendarSyncCursorStore;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.JdbcSubscriptionStore;
+import com.nanobaseai.actenora.sharedkernel.coordination.ShortLivedDeduplicator;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -25,8 +28,13 @@ public class MicrosoftConnectionJdbcPersistenceConfiguration {
     }
 
     @Bean
-    NotificationInbox jdbcNotificationInbox(DataSource dataSource) {
-        return new JdbcNotificationInbox(new JdbcTemplate(dataSource));
+    NotificationInbox jdbcNotificationInbox(
+            DataSource dataSource,
+            ObjectProvider<ShortLivedDeduplicator> deduplicator
+    ) {
+        NotificationInbox durable = new JdbcNotificationInbox(new JdbcTemplate(dataSource));
+        ShortLivedDeduplicator front = deduplicator.getIfAvailable();
+        return front == null ? durable : new DeduplicatingNotificationInbox(durable, front);
     }
 
     @Bean

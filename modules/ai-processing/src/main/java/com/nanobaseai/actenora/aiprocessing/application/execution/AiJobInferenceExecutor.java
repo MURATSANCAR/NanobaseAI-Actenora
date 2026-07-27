@@ -16,6 +16,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.JobScheduler;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProviderLocator;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ServedModelResolverPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
@@ -63,6 +64,7 @@ public final class AiJobInferenceExecutor {
     private final TranscriptSegmentSourcePort segmentSource;
     private final JobRoutingCoordinatorPort routingCoordinator;
     private final MeetingNoteHandoffPort noteHandoff;
+    private final PipelineQualityMetricsPort qualityMetrics;
     private final int maxAttempts;
     private final int maxTimeoutSeconds;
 
@@ -164,6 +166,34 @@ public final class AiJobInferenceExecutor {
             int maxAttempts,
             int maxTimeoutSeconds
     ) {
+        this(
+                jobService,
+                providers,
+                inputResolver,
+                servedModels,
+                extractionPipeline,
+                segmentSource,
+                routingCoordinator,
+                noteHandoff,
+                PipelineQualityMetricsPort.noop(),
+                maxAttempts,
+                maxTimeoutSeconds
+        );
+    }
+
+    public AiJobInferenceExecutor(
+            AiJobService jobService,
+            LocalModelProviderLocator providers,
+            InferenceInputResolverPort inputResolver,
+            ServedModelResolverPort servedModels,
+            ExtractionPipelineService extractionPipeline,
+            TranscriptSegmentSourcePort segmentSource,
+            JobRoutingCoordinatorPort routingCoordinator,
+            MeetingNoteHandoffPort noteHandoff,
+            PipelineQualityMetricsPort qualityMetrics,
+            int maxAttempts,
+            int maxTimeoutSeconds
+    ) {
         this.jobService = Objects.requireNonNull(jobService, "jobService");
         this.providers = Objects.requireNonNull(providers, "providers");
         this.inputResolver = Objects.requireNonNull(inputResolver, "inputResolver");
@@ -172,6 +202,7 @@ public final class AiJobInferenceExecutor {
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
         this.routingCoordinator = routingCoordinator;
         this.noteHandoff = noteHandoff;
+        this.qualityMetrics = qualityMetrics == null ? PipelineQualityMetricsPort.noop() : qualityMetrics;
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
@@ -403,6 +434,7 @@ public final class AiJobInferenceExecutor {
                 && job.attemptCount() < maxAttempts;
         // Prefer the pipeline category name for attempt audit when available.
         String storedCategory = category == null ? mapped.name() : category.name();
+        qualityMetrics.recordFailure(category);
         AiJob failed = jobService.failAttempt(
                 job.id(), latencyMs, retryable, storedCategory, detailSafe, now);
         return ExecutionOutcome.failed(failed.id(), attemptId, failed.status(), latencyMs, mapped, retryable);

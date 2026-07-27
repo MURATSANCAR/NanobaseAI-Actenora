@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.modelmanagement.domain.ModelCapabilityType;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelDefinition;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelDeployment;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelStatus;
+import com.nanobaseai.actenora.security.aiprocessing.LocalProviderProperties;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import org.springframework.context.annotation.Bean;
@@ -62,10 +63,12 @@ public class ModelManagementPlatformConfiguration {
             ModelDefinitionRepository modelDefinitions,
             ModelDeploymentRepository deployments,
             DeploymentHealthSettings healthSettings,
-            InstantClock clock
+            InstantClock clock,
+            LocalProviderProperties providerProperties
     ) {
         InMemoryLocalDeploymentCatalog seed = new InMemoryLocalDeploymentCatalog();
-        DefaultModelRoleBootstrap.seed(seed, false);
+        boolean realFast = providerProperties.hasFastExtractionServedModelId();
+        DefaultModelRoleBootstrap.seed(seed, realFast);
         return new PreferRegistryLocalDeploymentCatalog(
                 modelDefinitions, deployments, healthSettings, clock, seed);
     }

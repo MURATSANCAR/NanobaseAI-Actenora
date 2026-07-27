@@ -118,6 +118,8 @@ actenora:
       max-concurrency: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY:4}
       max-concurrency-extraction: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_EXTRACTION:2}
       max-concurrency-final: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_FINAL:1}
+      # Distinct small extractor served-model id (empty = mock FastExtraction seed)
+      fast-extraction-served-model-id: ${ACTENORA_AI_PROVIDER_FAST_EXTRACTION_SERVED_MODEL_ID:}
       rate-limit-per-minute: ${ACTENORA_AI_PROVIDER_RATE_LIMIT_PER_MINUTE:60}
       streaming-enabled: ${ACTENORA_AI_PROVIDER_STREAMING_ENABLED:true}
       served-model-ids: ${ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS:nanobaseai-primary,nanobaseai-local}

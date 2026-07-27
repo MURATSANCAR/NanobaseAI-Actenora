@@ -55,8 +55,16 @@ public final class LocalProviderFactory {
                 .maxConcurrencyFinal(properties.getMaxConcurrencyFinal())
                 .streamingEnabled(properties.isStreamingEnabled())
                 .degradedProbeThresholdMs(properties.getDegradedProbeThresholdMs())
-                .knownServedModelIds(properties.getServedModelIds())
+                .knownServedModelIds(withFastExtraction(properties))
                 .build();
+    }
+
+    private static Set<String> withFastExtraction(LocalProviderProperties properties) {
+        java.util.LinkedHashSet<String> ids = new java.util.LinkedHashSet<>(properties.getServedModelIds());
+        if (properties.hasFastExtractionServedModelId()) {
+            ids.add(properties.getFastExtractionServedModelId());
+        }
+        return ids;
     }
 
     public static void assertLocalEndpoint(URI baseUrl) {

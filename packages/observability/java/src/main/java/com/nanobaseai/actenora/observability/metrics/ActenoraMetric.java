@@ -22,6 +22,8 @@ public enum ActenoraMetric {
     TOKENS("actenora.inference.tokens"),
     INVALID_JSON("actenora.validation.invalid_json"),
     EVIDENCE_FAILURE("actenora.validation.evidence_failure"),
+    UNSUPPORTED_CLAIM("actenora.validation.unsupported_claim_total"),
+    HUMAN_CORRECTION("actenora.meeting.human_correction_total"),
     APPROVAL_DURATION("actenora.approval.duration_ms"),
     RENDER_DURATION("actenora.render.duration_ms"),
     MAIL_FAILURES("actenora.delivery.mail_failures"),

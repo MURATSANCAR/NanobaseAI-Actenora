@@ -24,6 +24,12 @@ public class LocalProviderProperties {
     private int maxConcurrencyExtraction = 2;
     /** Merge / final / validation slots — keep at 1 on CPU. */
     private int maxConcurrencyFinal = 1;
+    /**
+     * Optional served-model id for FAST_EXTRACTION role (small/fast extractor).
+     * When blank, FastExtraction stays a mock catalog entry and CHUNK_EXTRACTION
+     * may fall back along the routing chain.
+     */
+    private String fastExtractionServedModelId = "";
     private boolean streamingEnabled = true;
     private long degradedProbeThresholdMs = 2_000L;
     private Set<String> servedModelIds = new LinkedHashSet<>(Set.of("nanobaseai-primary", "nanobaseai-local"));
@@ -87,6 +93,18 @@ public class LocalProviderProperties {
 
     public void setMaxConcurrencyFinal(int maxConcurrencyFinal) {
         this.maxConcurrencyFinal = maxConcurrencyFinal;
+    }
+
+    public String getFastExtractionServedModelId() {
+        return fastExtractionServedModelId;
+    }
+
+    public void setFastExtractionServedModelId(String fastExtractionServedModelId) {
+        this.fastExtractionServedModelId = fastExtractionServedModelId == null ? "" : fastExtractionServedModelId.trim();
+    }
+
+    public boolean hasFastExtractionServedModelId() {
+        return fastExtractionServedModelId != null && !fastExtractionServedModelId.isBlank();
     }
 
     public boolean isStreamingEnabled() {

@@ -30,6 +30,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffP
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelCatalogPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelRouter;
+import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.RetryQueuePort;
 import com.nanobaseai.actenora.aiprocessing.application.port.RoutableCandidate;
 import com.nanobaseai.actenora.aiprocessing.application.port.RoutingDecisionStorePort;
@@ -66,6 +67,7 @@ import com.nanobaseai.actenora.modelmanagement.domain.ModelStatus;
 import com.nanobaseai.actenora.observability.metrics.MetricRecorder;
 import com.nanobaseai.actenora.sharedkernel.coordination.DistributedLock;
 import com.nanobaseai.actenora.sharedkernel.coordination.FixedWindowRateLimiter;
+import com.nanobaseai.actenora.sharedkernel.coordination.JobProgressCache;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -195,9 +197,17 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
-    ServedModelResolverPort registryServedModelResolver(ModelDefinitionRepository modelDefinitions) {
-        return modelDefinitionId -> modelDefinitions.findById(modelDefinitionId)
-                .map(ModelDefinition::servedModelId);
+    ServedModelResolverPort registryServedModelResolver(
+            ModelDefinitionRepository modelDefinitions,
+            LocalProviderProperties properties
+    ) {
+        return modelDefinitionId -> {
+            if (properties.hasFastExtractionServedModelId()
+                    && DefaultModelRoleBootstrap.FAST_EXTRACTION_MODEL_ID.equals(modelDefinitionId)) {
+                return Optional.of(properties.getFastExtractionServedModelId());
+            }
+            return modelDefinitions.findById(modelDefinitionId).map(ModelDefinition::servedModelId);
+        };
     }
 
     @Bean
@@ -279,6 +289,11 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
+    PipelineQualityMetricsPort pipelineQualityMetricsPort(MetricRecorder metricRecorder) {
+        return new MetricRecorderPipelineQualityMetrics(metricRecorder);
+    }
+
+    @Bean
     AiJobInferenceExecutor aiJobInferenceExecutor(
             AiJobService aiJobService,
             LocalModelProviderLocator providers,
@@ -289,7 +304,8 @@ public class AiProcessingPlatformConfiguration {
             JobRoutingCoordinatorPort routingCoordinator,
             AiRoutingProperties routingProperties,
             MeetingNoteHandoffPort noteHandoff,
-            LocalProviderProperties properties
+            LocalProviderProperties properties,
+            PipelineQualityMetricsPort pipelineQualityMetrics
     ) {
         return new AiJobInferenceExecutor(
                 aiJobService,
@@ -300,6 +316,7 @@ public class AiProcessingPlatformConfiguration {
                 segmentSource,
                 routingProperties.isEnabled() ? routingCoordinator : null,
                 noteHandoff,
+                pipelineQualityMetrics,
                 properties.getMaxAttempts(),
                 (int) Math.max(1, properties.getReadTimeout().toSeconds())
         );
@@ -365,9 +382,10 @@ public class AiProcessingPlatformConfiguration {
             AdmissionController admissionController,
             AiJobRepository jobs,
             AiAttemptRepository attempts,
-            JobScheduler jobScheduler
+            JobScheduler jobScheduler,
+            JobProgressCache jobProgressCache
     ) {
-        return new AiJobService(admissionController, jobs, attempts, jobScheduler);
+        return new AiJobService(admissionController, jobs, attempts, jobScheduler, jobProgressCache);
     }
 
     @Bean

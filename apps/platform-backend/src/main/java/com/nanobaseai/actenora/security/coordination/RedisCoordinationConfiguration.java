@@ -4,8 +4,11 @@ import com.nanobaseai.actenora.sharedkernel.coordination.DistributedLock;
 import com.nanobaseai.actenora.sharedkernel.coordination.FixedWindowRateLimiter;
 import com.nanobaseai.actenora.sharedkernel.coordination.InMemoryDistributedLock;
 import com.nanobaseai.actenora.sharedkernel.coordination.InMemoryFixedWindowRateLimiter;
+import com.nanobaseai.actenora.sharedkernel.coordination.InMemoryJobProgressCache;
 import com.nanobaseai.actenora.sharedkernel.coordination.InMemoryShortLivedDeduplicator;
+import com.nanobaseai.actenora.sharedkernel.coordination.JobProgressCache;
 import com.nanobaseai.actenora.sharedkernel.coordination.ShortLivedDeduplicator;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -35,6 +38,11 @@ public class RedisCoordinationConfiguration {
         FixedWindowRateLimiter fixedWindowRateLimiter(StringRedisTemplate redis) {
             return new RedisFixedWindowRateLimiter(redis);
         }
+
+        @Bean
+        JobProgressCache jobProgressCache(StringRedisTemplate redis, ObjectMapper objectMapper) {
+            return new RedisJobProgressCache(redis, objectMapper);
+        }
     }
 
     @Bean
@@ -53,5 +61,11 @@ public class RedisCoordinationConfiguration {
     @ConditionalOnMissingBean(FixedWindowRateLimiter.class)
     FixedWindowRateLimiter inMemoryFixedWindowRateLimiter() {
         return new InMemoryFixedWindowRateLimiter();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(JobProgressCache.class)
+    JobProgressCache inMemoryJobProgressCache() {
+        return new InMemoryJobProgressCache();
     }
 }

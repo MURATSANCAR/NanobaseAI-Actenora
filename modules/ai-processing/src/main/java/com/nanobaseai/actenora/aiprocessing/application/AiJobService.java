@@ -8,6 +8,8 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.AiAttempt;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobException;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
+import com.nanobaseai.actenora.sharedkernel.coordination.JobProgressCache;
+import com.nanobaseai.actenora.sharedkernel.coordination.NoOpJobProgressCache;
 
 import java.time.Instant;
 import java.util.List;
@@ -24,6 +26,7 @@ public final class AiJobService {
     private final AiJobRepository jobs;
     private final AiAttemptRepository attempts;
     private final JobScheduler scheduler;
+    private final JobProgressCache progressCache;
 
     public AiJobService(
             AdmissionController admissionController,
@@ -31,10 +34,21 @@ public final class AiJobService {
             AiAttemptRepository attempts,
             JobScheduler scheduler
     ) {
+        this(admissionController, jobs, attempts, scheduler, new NoOpJobProgressCache());
+    }
+
+    public AiJobService(
+            AdmissionController admissionController,
+            AiJobRepository jobs,
+            AiAttemptRepository attempts,
+            JobScheduler scheduler,
+            JobProgressCache progressCache
+    ) {
         this.admissionController = Objects.requireNonNull(admissionController, "admissionController");
         this.jobs = Objects.requireNonNull(jobs, "jobs");
         this.attempts = Objects.requireNonNull(attempts, "attempts");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
+        this.progressCache = Objects.requireNonNull(progressCache, "progressCache");
     }
 
     public AdmissionController.AdmissionDecision submit(AdmissionController.SubmitAiJobCommand command) {
@@ -51,6 +65,7 @@ public final class AiJobService {
         }
         job.cancel(now);
         jobs.save(job);
+        publishProgress(job, "cancelled", now);
         return job;
     }
 
@@ -72,7 +87,9 @@ public final class AiJobService {
     }
 
     public Optional<JobScheduler.ClaimedJob> claimNext(Instant now) {
-        return scheduler.claimNext(now);
+        Optional<JobScheduler.ClaimedJob> claimed = scheduler.claimNext(now);
+        claimed.ifPresent(c -> publishProgress(c.job(), "running", now));
+        return claimed;
     }
 
     /**
@@ -85,6 +102,7 @@ public final class AiJobService {
         attempts.save(attempt);
         job.markSucceeded(inputTokens, outputTokens, now);
         jobs.save(job);
+        publishProgress(job, "succeeded", now);
         return job;
     }
 
@@ -106,6 +124,7 @@ public final class AiJobService {
         attempts.save(attempt);
         job.markFailed(retryable, now);
         jobs.save(job);
+        publishProgress(job, retryable ? "retry" : "dead", now);
         return job;
     }
 
@@ -123,6 +142,23 @@ public final class AiJobService {
 
     public List<AiJob> listForTenant(UUID tenantId) {
         return jobs.listByTenant(tenantId);
+    }
+
+    private void publishProgress(AiJob job, String stage, Instant now) {
+        try {
+            progressCache.put(
+                    job.meetingOccurrenceId(),
+                    new JobProgressCache.Progress(
+                            job.id(),
+                            job.status().name(),
+                            stage,
+                            job.attemptCount(),
+                            now
+                    )
+            );
+        } catch (RuntimeException ignored) {
+            // Progress cache must never fail the durable job path.
+        }
     }
 
     private AiJob requireJob(UUID jobId) {
