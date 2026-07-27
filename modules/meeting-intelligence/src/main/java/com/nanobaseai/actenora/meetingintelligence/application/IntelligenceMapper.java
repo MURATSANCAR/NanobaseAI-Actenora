@@ -4,9 +4,12 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.ActionItemResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.CommitmentResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.DecisionResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.EvidenceLinkResponse;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ImportantFactResponse;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.IssueResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteVersionResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.OpenQuestionResponse;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ProposalResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.ProvenanceResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.QualityFlagResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.RiskResponse;
@@ -14,10 +17,13 @@ import com.nanobaseai.actenora.meetingintelligence.domain.model.ActionItem;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Commitment;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Decision;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.EvidenceLink;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.ImportantFact;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.Issue;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNote;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNoteVersion;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.ModelPromptSchemaProvenance;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.OpenQuestion;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.Proposal;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.QualityFlag;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Risk;
 
@@ -36,6 +42,9 @@ final class IntelligenceMapper {
             List<Risk> risks,
             List<Commitment> commitments,
             List<OpenQuestion> openQuestions,
+            List<Issue> issues,
+            List<Proposal> proposals,
+            List<ImportantFact> importantFacts,
             List<EvidenceLink> evidenceLinks,
             List<QualityFlag> qualityFlags
     ) {
@@ -52,6 +61,9 @@ final class IntelligenceMapper {
                 risks.stream().map(IntelligenceMapper::toRiskResponse).toList(),
                 commitments.stream().map(IntelligenceMapper::toCommitmentResponse).toList(),
                 openQuestions.stream().map(IntelligenceMapper::toOpenQuestionResponse).toList(),
+                issues.stream().map(IntelligenceMapper::toIssueResponse).toList(),
+                proposals.stream().map(IntelligenceMapper::toProposalResponse).toList(),
+                importantFacts.stream().map(IntelligenceMapper::toImportantFactResponse).toList(),
                 evidenceLinks.stream().map(IntelligenceMapper::toEvidenceResponse).toList(),
                 qualityFlags.stream().map(IntelligenceMapper::toQualityFlagResponse).toList(),
                 note.createdAt(),
@@ -143,6 +155,45 @@ final class IntelligenceMapper {
                 question.aiConfidence(),
                 question.version(),
                 question.updatedAt()
+        );
+    }
+
+    static IssueResponse toIssueResponse(Issue issue) {
+        return new IssueResponse(
+                issue.id(),
+                issue.noteId(),
+                issue.text(),
+                issue.requiresManualReview(),
+                issue.aiConfidence(),
+                issue.humanApprovalStatus(),
+                issue.version(),
+                issue.updatedAt()
+        );
+    }
+
+    static ProposalResponse toProposalResponse(Proposal proposal) {
+        return new ProposalResponse(
+                proposal.id(),
+                proposal.noteId(),
+                proposal.text(),
+                proposal.requiresManualReview(),
+                proposal.aiConfidence(),
+                proposal.humanApprovalStatus(),
+                proposal.version(),
+                proposal.updatedAt()
+        );
+    }
+
+    static ImportantFactResponse toImportantFactResponse(ImportantFact fact) {
+        return new ImportantFactResponse(
+                fact.id(),
+                fact.noteId(),
+                fact.text(),
+                fact.requiresManualReview(),
+                fact.aiConfidence(),
+                fact.humanApprovalStatus(),
+                fact.version(),
+                fact.updatedAt()
         );
     }
 

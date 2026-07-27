@@ -10,7 +10,10 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.EvidenceLink
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingKnowledgeStorePort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.IssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ProposalRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.validation.port.ValidationRunRepository;
@@ -24,7 +27,10 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.Jd
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcMeetingKnowledgeStore;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcMeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcMeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcIssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcOpenQuestionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcProposalRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcQualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcRiskRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcValidationRunRepository;
@@ -72,6 +78,21 @@ public class MeetingIntelligenceJdbcPersistenceConfiguration {
     @Bean
     OpenQuestionRepository openQuestionRepository(DataSource dataSource) {
         return new JdbcOpenQuestionRepository(new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    IssueRepository issueRepository(DataSource dataSource) {
+        return new JdbcIssueRepository(new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    ProposalRepository proposalRepository(DataSource dataSource) {
+        return new JdbcProposalRepository(new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    ImportantFactRepository importantFactRepository(DataSource dataSource) {
+        return new JdbcImportantFactRepository(new JdbcTemplate(dataSource));
     }
 
     @Bean

@@ -23,6 +23,9 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.EvidenceLink
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ProposalRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.IssueRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ImportantFactRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.TenantContextPort;
@@ -59,6 +62,9 @@ public final class MeetingIntelligenceApplicationService {
     private final RiskRepository riskRepository;
     private final CommitmentRepository commitmentRepository;
     private final OpenQuestionRepository openQuestionRepository;
+    private final IssueRepository issueRepository;
+    private final ProposalRepository proposalRepository;
+    private final ImportantFactRepository importantFactRepository;
     private final EvidenceLinkRepository evidenceLinkRepository;
     private final QualityFlagRepository qualityFlagRepository;
 
@@ -73,6 +79,9 @@ public final class MeetingIntelligenceApplicationService {
             RiskRepository riskRepository,
             CommitmentRepository commitmentRepository,
             OpenQuestionRepository openQuestionRepository,
+            IssueRepository issueRepository,
+            ProposalRepository proposalRepository,
+            ImportantFactRepository importantFactRepository,
             EvidenceLinkRepository evidenceLinkRepository,
             QualityFlagRepository qualityFlagRepository
     ) {
@@ -86,6 +95,9 @@ public final class MeetingIntelligenceApplicationService {
         this.riskRepository = Objects.requireNonNull(riskRepository);
         this.commitmentRepository = Objects.requireNonNull(commitmentRepository);
         this.openQuestionRepository = Objects.requireNonNull(openQuestionRepository);
+        this.issueRepository = Objects.requireNonNull(issueRepository);
+        this.proposalRepository = Objects.requireNonNull(proposalRepository);
+        this.importantFactRepository = Objects.requireNonNull(importantFactRepository);
         this.evidenceLinkRepository = Objects.requireNonNull(evidenceLinkRepository);
         this.qualityFlagRepository = Objects.requireNonNull(qualityFlagRepository);
     }
@@ -264,6 +276,12 @@ public final class MeetingIntelligenceApplicationService {
                         .filter(c -> versionId.equals(c.noteVersionId())).toList(),
                 openQuestionRepository.findByNoteId(noteId, tenantId).stream()
                         .filter(q -> versionId.equals(q.noteVersionId())).toList(),
+                issueRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(i -> versionId.equals(i.noteVersionId())).toList(),
+                proposalRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(p -> versionId.equals(p.noteVersionId())).toList(),
+                importantFactRepository.findByNoteId(noteId, tenantId).stream()
+                        .filter(f -> versionId.equals(f.noteVersionId())).toList(),
                 evidenceLinkRepository.findByNoteId(noteId, tenantId).stream()
                         .filter(e -> versionId.equals(e.noteVersionId())).toList(),
                 qualityFlagRepository.findByNoteId(noteId, tenantId).stream()

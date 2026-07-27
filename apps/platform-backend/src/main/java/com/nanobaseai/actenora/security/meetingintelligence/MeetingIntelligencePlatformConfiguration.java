@@ -24,7 +24,10 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingKnowl
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.IssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ProposalRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.TenantContextPort;
@@ -52,7 +55,10 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.In
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingKnowledgeStore;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryIssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryOpenQuestionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryProposalRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryQualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryRiskRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.SystemClockPort;
@@ -134,6 +140,27 @@ public class MeetingIntelligencePlatformConfiguration {
     }
 
     @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
+    @ConditionalOnMissingBean(IssueRepository.class)
+    @Bean
+    public IssueRepository inMemoryIssueRepository() {
+        return new InMemoryIssueRepository();
+    }
+
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
+    @ConditionalOnMissingBean(ProposalRepository.class)
+    @Bean
+    public ProposalRepository inMemoryProposalRepository() {
+        return new InMemoryProposalRepository();
+    }
+
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
+    @ConditionalOnMissingBean(ImportantFactRepository.class)
+    @Bean
+    public ImportantFactRepository inMemoryImportantFactRepository() {
+        return new InMemoryImportantFactRepository();
+    }
+
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(EvidenceLinkRepository.class)
     @Bean
     public EvidenceLinkRepository inMemoryEvidenceLinkRepository() {
@@ -181,13 +208,16 @@ public class MeetingIntelligencePlatformConfiguration {
             RiskRepository risks,
             CommitmentRepository commitments,
             OpenQuestionRepository openQuestions,
+            IssueRepository issues,
+            ProposalRepository proposals,
+            ImportantFactRepository importantFacts,
             EvidenceLinkRepository evidenceLinks,
             QualityFlagRepository qualityFlags,
             ClockPort clock
     ) {
         return new MapAiCandidatesToNoteService(
                 notes, versions, decisions, actionItems, risks, commitments,
-                openQuestions, evidenceLinks, qualityFlags, clock
+                openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags, clock
         );
     }
 
@@ -203,12 +233,15 @@ public class MeetingIntelligencePlatformConfiguration {
             RiskRepository risks,
             CommitmentRepository commitments,
             OpenQuestionRepository openQuestions,
+            IssueRepository issues,
+            ProposalRepository proposals,
+            ImportantFactRepository importantFacts,
             EvidenceLinkRepository evidenceLinks,
             QualityFlagRepository qualityFlags
     ) {
         return new MeetingIntelligenceApplicationService(
                 tenantContext, clock, mappingService, notes, versions, decisions, actionItems,
-                risks, commitments, openQuestions, evidenceLinks, qualityFlags
+                risks, commitments, openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags
         );
     }
 

@@ -4,13 +4,19 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ImportantFactCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.IssueCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ProposalCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.ActionItemCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.AiCandidateBundle;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.CommitmentCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.DecisionCandidateInput;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ImportantFactCandidateInput;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.IssueCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.OpenQuestionCandidateInput;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ProposalCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.RiskCandidateInput;
 
 import java.util.ArrayList;
@@ -39,6 +45,9 @@ public final class FinalNoteDraftMapper {
                 draft.risks().stream().map(FinalNoteDraftMapper::risk).toList(),
                 draft.openQuestions().stream().map(FinalNoteDraftMapper::openQuestion).toList(),
                 draft.commitments().stream().map(FinalNoteDraftMapper::commitment).toList(),
+                draft.issues().stream().map(FinalNoteDraftMapper::issue).toList(),
+                draft.proposals().stream().map(FinalNoteDraftMapper::proposal).toList(),
+                draft.importantFacts().stream().map(FinalNoteDraftMapper::importantFact).toList(),
                 qualityFlags,
                 draft.evidenceSegmentIds(),
                 clamp(draft.confidence())
@@ -75,6 +84,20 @@ public final class FinalNoteDraftMapper {
                 candidate.evidenceSegmentIds(),
                 clamp(candidate.confidence())
         );
+    }
+
+    private static IssueCandidateInput issue(IssueCandidate candidate) {
+        return new IssueCandidateInput(candidate.text(), candidate.evidenceSegmentIds(), clamp(candidate.confidence()));
+    }
+
+    private static ProposalCandidateInput proposal(ProposalCandidate candidate) {
+        return new ProposalCandidateInput(
+                candidate.text(), candidate.evidenceSegmentIds(), clamp(candidate.confidence()));
+    }
+
+    private static ImportantFactCandidateInput importantFact(ImportantFactCandidate candidate) {
+        return new ImportantFactCandidateInput(
+                candidate.text(), candidate.evidenceSegmentIds(), clamp(candidate.confidence()));
     }
 
     private static double clamp(double confidence) {

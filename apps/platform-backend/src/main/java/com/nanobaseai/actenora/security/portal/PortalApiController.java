@@ -1247,6 +1247,12 @@ public class PortalApiController {
                 : note.commitments().stream().map(c -> c.text()).filter(Objects::nonNull).toList());
         appendMinutesSection(sb, "6. AÇIK SORULAR", note.openQuestions() == null ? List.of()
                 : note.openQuestions().stream().map(q -> q.text()).filter(Objects::nonNull).toList());
+        appendMinutesSection(sb, "7. SORUNLAR", note.issues() == null ? List.of()
+                : note.issues().stream().map(i -> i.text()).filter(Objects::nonNull).toList());
+        appendMinutesSection(sb, "8. ÖNERİLER", note.proposals() == null ? List.of()
+                : note.proposals().stream().map(p -> p.text()).filter(Objects::nonNull).toList());
+        appendMinutesSection(sb, "9. ÖNEMLİ BULGULAR", note.importantFacts() == null ? List.of()
+                : note.importantFacts().stream().map(f -> f.text()).filter(Objects::nonNull).toList());
         return sb.toString().trim();
     }
 

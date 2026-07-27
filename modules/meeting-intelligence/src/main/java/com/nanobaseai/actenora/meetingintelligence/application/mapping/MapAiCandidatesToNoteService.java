@@ -4,17 +4,23 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.ActionItemCandidateIn
 import com.nanobaseai.actenora.meetingintelligence.api.dto.AiCandidateBundle;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.CommitmentCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.DecisionCandidateInput;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ImportantFactCandidateInput;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.IssueCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MapAiCandidatesCommand;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.OpenQuestionCandidateInput;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ProposalCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.RiskCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ActionItemRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ClockPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.CommitmentRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.DecisionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.EvidenceLinkRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.IssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ProposalRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.ActionItem;
@@ -22,11 +28,14 @@ import com.nanobaseai.actenora.meetingintelligence.domain.model.Commitment;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Decision;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.EvidenceLink;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.EvidenceSubjectType;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.ImportantFact;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.Issue;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNote;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNoteVersion;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.ModelPromptSchemaProvenance;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.NoteReviewStatus;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.OpenQuestion;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.Proposal;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.QualityFlag;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.QualityFlagCode;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Risk;
@@ -52,6 +61,9 @@ public final class MapAiCandidatesToNoteService {
     private final RiskRepository riskRepository;
     private final CommitmentRepository commitmentRepository;
     private final OpenQuestionRepository openQuestionRepository;
+    private final IssueRepository issueRepository;
+    private final ProposalRepository proposalRepository;
+    private final ImportantFactRepository importantFactRepository;
     private final EvidenceLinkRepository evidenceLinkRepository;
     private final QualityFlagRepository qualityFlagRepository;
     private final ClockPort clock;
@@ -64,6 +76,9 @@ public final class MapAiCandidatesToNoteService {
             RiskRepository riskRepository,
             CommitmentRepository commitmentRepository,
             OpenQuestionRepository openQuestionRepository,
+            IssueRepository issueRepository,
+            ProposalRepository proposalRepository,
+            ImportantFactRepository importantFactRepository,
             EvidenceLinkRepository evidenceLinkRepository,
             QualityFlagRepository qualityFlagRepository,
             ClockPort clock
@@ -75,6 +90,9 @@ public final class MapAiCandidatesToNoteService {
         this.riskRepository = Objects.requireNonNull(riskRepository);
         this.commitmentRepository = Objects.requireNonNull(commitmentRepository);
         this.openQuestionRepository = Objects.requireNonNull(openQuestionRepository);
+        this.issueRepository = Objects.requireNonNull(issueRepository);
+        this.proposalRepository = Objects.requireNonNull(proposalRepository);
+        this.importantFactRepository = Objects.requireNonNull(importantFactRepository);
         this.evidenceLinkRepository = Objects.requireNonNull(evidenceLinkRepository);
         this.qualityFlagRepository = Objects.requireNonNull(qualityFlagRepository);
         this.clock = Objects.requireNonNull(clock);
@@ -196,6 +214,57 @@ public final class MapAiCandidatesToNoteService {
                 flags.add(QualityFlag.create(
                         tenantId, note.id(), version.id(), QualityFlagCode.MISSING_EVIDENCE,
                         "Open question lacks evidence", EvidenceSubjectType.OPEN_QUESTION, question.id(), now
+                ));
+            }
+        }
+
+        for (IssueCandidateInput candidate : candidates.issues()) {
+            boolean missing = candidate.evidenceSegmentIds().isEmpty();
+            anyMissingEvidence |= missing;
+            Issue issue = Issue.createFromMapping(
+                    tenantId, note.id(), version.id(), candidate.text(), missing, candidate.confidence(), now
+            );
+            issueRepository.save(issue);
+            linkEvidence(tenantId, note.id(), version.id(), EvidenceSubjectType.ISSUE, issue.id(),
+                    candidate.evidenceSegmentIds(), now);
+            if (missing) {
+                flags.add(QualityFlag.create(
+                        tenantId, note.id(), version.id(), QualityFlagCode.MISSING_EVIDENCE,
+                        "Issue lacks evidence", EvidenceSubjectType.ISSUE, issue.id(), now
+                ));
+            }
+        }
+
+        for (ProposalCandidateInput candidate : candidates.proposals()) {
+            boolean missing = candidate.evidenceSegmentIds().isEmpty();
+            anyMissingEvidence |= missing;
+            Proposal proposal = Proposal.createFromMapping(
+                    tenantId, note.id(), version.id(), candidate.text(), missing, candidate.confidence(), now
+            );
+            proposalRepository.save(proposal);
+            linkEvidence(tenantId, note.id(), version.id(), EvidenceSubjectType.PROPOSAL, proposal.id(),
+                    candidate.evidenceSegmentIds(), now);
+            if (missing) {
+                flags.add(QualityFlag.create(
+                        tenantId, note.id(), version.id(), QualityFlagCode.MISSING_EVIDENCE,
+                        "Proposal lacks evidence", EvidenceSubjectType.PROPOSAL, proposal.id(), now
+                ));
+            }
+        }
+
+        for (ImportantFactCandidateInput candidate : candidates.importantFacts()) {
+            boolean missing = candidate.evidenceSegmentIds().isEmpty();
+            anyMissingEvidence |= missing;
+            ImportantFact fact = ImportantFact.createFromMapping(
+                    tenantId, note.id(), version.id(), candidate.text(), missing, candidate.confidence(), now
+            );
+            importantFactRepository.save(fact);
+            linkEvidence(tenantId, note.id(), version.id(), EvidenceSubjectType.IMPORTANT_FACT, fact.id(),
+                    candidate.evidenceSegmentIds(), now);
+            if (missing) {
+                flags.add(QualityFlag.create(
+                        tenantId, note.id(), version.id(), QualityFlagCode.MISSING_EVIDENCE,
+                        "Important fact lacks evidence", EvidenceSubjectType.IMPORTANT_FACT, fact.id(), now
                 ));
             }
         }
