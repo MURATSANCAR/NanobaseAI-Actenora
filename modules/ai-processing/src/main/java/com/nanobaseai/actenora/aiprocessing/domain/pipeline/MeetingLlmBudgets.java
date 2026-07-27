@@ -36,8 +36,8 @@ public final class MeetingLlmBudgets {
     /** Safety margin so prompt+chunk+output never saturates KV cache. */
     public static final int SAFETY_MARGIN_TOKENS = 1_000;
 
-    /** CHUNK_EXTRACTION generation cap. */
-    public static final int EXTRACTION_MAX_TOKENS = 600;
+    /** CHUNK_EXTRACTION generation cap (8B often truncates below ~900 on dense TR meetings). */
+    public static final int EXTRACTION_MAX_TOKENS = 1_200;
 
     /** MEETING_TRIAGE generation cap (tiny JSON classifier). */
     public static final int TRIAGE_MAX_TOKENS = 512;

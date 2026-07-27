@@ -86,13 +86,67 @@ public final class LimitedJsonRepair {
             text = stripFence(text);
         }
         int start = text.indexOf('{');
-        int end = text.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            text = text.substring(start, end + 1);
+        if (start >= 0) {
+            text = text.substring(start);
         }
         text = text.replaceAll(",\\s*}", "}");
         text = text.replaceAll(",\\s*]", "]");
+        text = closeUnterminated(text);
         return text.trim();
+    }
+
+    /** Best-effort close for truncated model JSON (unclosed strings / arrays / objects). */
+    private static String closeUnterminated(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        StringBuilder out = new StringBuilder(text);
+        boolean inString = false;
+        boolean escape = false;
+        int brace = 0;
+        int bracket = 0;
+        for (int i = 0; i < out.length(); i++) {
+            char c = out.charAt(i);
+            if (inString) {
+                if (escape) {
+                    escape = false;
+                } else if (c == '\\') {
+                    escape = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+            } else if (c == '{') {
+                brace++;
+            } else if (c == '}') {
+                brace = Math.max(0, brace - 1);
+            } else if (c == '[') {
+                bracket++;
+            } else if (c == ']') {
+                bracket = Math.max(0, bracket - 1);
+            }
+        }
+        if (inString) {
+            out.append('"');
+        }
+        // Drop a dangling trailing comma before closing.
+        int end = out.length() - 1;
+        while (end >= 0 && Character.isWhitespace(out.charAt(end))) {
+            end--;
+        }
+        if (end >= 0 && out.charAt(end) == ',') {
+            out.deleteCharAt(end);
+        }
+        for (int i = 0; i < bracket; i++) {
+            out.append(']');
+        }
+        for (int i = 0; i < brace; i++) {
+            out.append('}');
+        }
+        return out.toString();
     }
 
     private static String stripFence(String text) {
