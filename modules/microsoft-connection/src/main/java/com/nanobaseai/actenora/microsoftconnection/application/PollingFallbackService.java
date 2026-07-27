@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 /**
  * Polling fallback when Graph subscriptions miss change notifications.
@@ -21,6 +22,15 @@ public final class PollingFallbackService {
 
     public List<CalendarEvent> pollMailbox(UUID tenantId, String userId) {
         return calendarSyncService.syncMailbox(tenantId, userId);
+    }
+
+    /**
+     * Polls with process-then-advance: {@code onPage} runs before the delta cursor is saved.
+     *
+     * @return total events processed
+     */
+    public int pollMailbox(UUID tenantId, String userId, Consumer<List<CalendarEvent>> onPage) {
+        return calendarSyncService.syncMailbox(tenantId, userId, onPage);
     }
 
     public List<CalendarEvent> pollAll(

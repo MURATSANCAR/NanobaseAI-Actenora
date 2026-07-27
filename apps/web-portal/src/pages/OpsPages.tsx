@@ -67,10 +67,10 @@ export function TemplateStudioPage() {
               <input className="input-field" value={name} onChange={(e) => setName(e.target.value)} />
             </label>
             <label className="block">
-              <span className="label-text">Locale</span>
+              <span className="label-text">{t("locale.label")}</span>
               <select className="input-field" value={locale} onChange={(e) => setLocale(e.target.value)}>
-                <option value="en">English</option>
-                <option value="tr">Türkçe</option>
+                <option value="en">{t("locale.en")}</option>
+                <option value="tr">{t("locale.tr")}</option>
               </select>
             </label>
           </div>
@@ -88,13 +88,13 @@ export function TemplateStudioPage() {
       <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("templates.description")}>
         <p className="mb-3 text-sm text-slate-600">{t("templates.default.explainer")}</p>
         <DataTable
-          headers={[t("table.title"), "Locale", t("filter.status"), t("templates.default.column")]}
+          headers={[t("table.title"), t("locale.label"), t("filter.status"), t("templates.default.column")]}
           rows={
             q.data?.items.map((item) => [
               <Link key={`${item.id}-name`} to={`/templates/${item.id}`} className="font-semibold text-violet-800 hover:underline">
                 {item.name}
               </Link>,
-              item.locale,
+              item.locale === "tr" ? t("locale.tr") : item.locale === "en" ? t("locale.en") : item.locale,
               <StatusBadge key={item.id} label={tb("artifactStatus", item.status)} status={item.status} />,
               item.isDefault ? (
                 <StatusBadge key={`${item.id}-default`} label={t("templates.default.badge")} status="APPROVED" />
@@ -356,7 +356,7 @@ export function ModelManagementPage() {
             <div className="space-y-3">
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("models.sectionModels")}</h2>
               <DataTable
-                headers={["Name", "Key", t("filter.status")]}
+                headers={[t("table.name"), t("table.key"), t("filter.status")]}
                 rows={q.data.models.map((m) => [
                   sanitizeProductCopy(m.displayName),
                   <span key={m.modelKey} className="text-xs text-slate-500">
@@ -373,7 +373,7 @@ export function ModelManagementPage() {
             <div className="space-y-3">
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("models.sectionDeployments")}</h2>
               <DataTable
-                headers={["Deployment", "Node", "Health"]}
+                headers={[t("table.deployment"), t("table.node"), t("table.health")]}
                 rows={q.data.deployments.map((d) => [
                   sanitizeProductCopy(d.deploymentKey),
                   sanitizeProductCopy(d.nodeName),

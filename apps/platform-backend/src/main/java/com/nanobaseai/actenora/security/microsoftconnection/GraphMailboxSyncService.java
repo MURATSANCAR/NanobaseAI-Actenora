@@ -1,16 +1,16 @@
 package com.nanobaseai.actenora.security.microsoftconnection;
 
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
-import com.nanobaseai.actenora.microsoftconnection.application.model.CalendarEvent;
 import com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Pulls Graph calendar delta for a mailbox and upserts Actenora meetings.
+ * Cursor advances only after each page is successfully upserted.
  */
 public final class GraphMailboxSyncService {
 
@@ -52,10 +52,13 @@ public final class GraphMailboxSyncService {
     }
 
     private SyncResult doSync(UUID tenantId, String mailboxUserId) {
-        List<CalendarEvent> events = microsoftConnectionApi.syncCalendar(tenantId, mailboxUserId);
-        calendarMeetingUpsertAdapter.upsertEvents(TenantId.of(tenantId), events);
-        microsoftConnectionApi.ensureTranscriptionForCalendarEvents(tenantId, mailboxUserId, events);
-        return new SyncResult(mailboxUserId, events.size(), false);
+        AtomicInteger eventsSynced = new AtomicInteger();
+        microsoftConnectionApi.syncCalendar(tenantId, mailboxUserId, events -> {
+            calendarMeetingUpsertAdapter.upsertEvents(TenantId.of(tenantId), events);
+            microsoftConnectionApi.ensureTranscriptionForCalendarEvents(tenantId, mailboxUserId, events);
+            eventsSynced.addAndGet(events.size());
+        });
+        return new SyncResult(mailboxUserId, eventsSynced.get(), false);
     }
 
     public record SyncResult(String mailboxUserId, int eventsSynced, boolean recoveredFromEmptyDelta) {

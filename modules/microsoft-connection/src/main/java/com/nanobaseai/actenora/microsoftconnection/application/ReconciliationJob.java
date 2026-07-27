@@ -45,10 +45,13 @@ public final class ReconciliationJob {
         List<RuntimeException> pollFailures = new ArrayList<>();
         for (PollingFallbackService.MailboxRef mailbox : mailboxes) {
             try {
-                List<CalendarEvent> events = pollingFallbackService.pollMailbox(
-                        mailbox.tenantId(), mailbox.userId());
-                eventConsumer.accept(mailbox, events);
-                polled.addAll(events);
+                pollingFallbackService.pollMailbox(
+                        mailbox.tenantId(),
+                        mailbox.userId(),
+                        events -> {
+                            eventConsumer.accept(mailbox, events);
+                            polled.addAll(events);
+                        });
             } catch (RuntimeException ex) {
                 pollFailures.add(ex);
             }

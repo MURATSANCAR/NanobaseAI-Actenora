@@ -67,6 +67,15 @@ public final class MicrosoftConnectionApi {
         return calendarSyncService.syncMailbox(tenantId, userId);
     }
 
+    /**
+     * Delta sync with process-then-advance: {@code onPage} runs before the cursor is persisted.
+     *
+     * @return total events processed across pages
+     */
+    public int syncCalendar(UUID tenantId, String userId, Consumer<List<CalendarEvent>> onPage) {
+        return calendarSyncService.syncMailbox(tenantId, userId, onPage);
+    }
+
     public void ensureTranscriptionForCalendarEvents(UUID tenantId, String userId, List<CalendarEvent> events) {
         transcriptionEnabler.enableForUpcomingMeetings(tenantId, userId, events);
     }
