@@ -54,6 +54,11 @@ class PipelineGraphFactoryTest {
                 UUID.randomUUID(), now, Duration.ofHours(1), true);
         assertTrue(forced.created());
         assertTrue(!forced.root().id().equals(first.root().id()));
+        assertTrue(!forced.normalize().id().equals(first.normalize().id()));
+        assertTrue(!forced.triage().id().equals(first.triage().id()));
+        assertTrue(forced.normalize().idempotencyKey().endsWith(":normalize"));
+        assertTrue(forced.triage().idempotencyKey().endsWith(":triage"));
+        assertFalse(forced.normalize().idempotencyKey().equals(forced.root().idempotencyKey()));
     }
 
     @Test

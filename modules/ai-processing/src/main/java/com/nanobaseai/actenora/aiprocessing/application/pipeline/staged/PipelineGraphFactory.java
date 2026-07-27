@@ -111,13 +111,14 @@ public final class PipelineGraphFactory {
         forceSucceeded(root, now);
         jobs.save(root);
 
+        // Child keys must never reuse rootKey — force reprocess previously collided on INSERT.
         AiJob normalize = AiJob.enqueueStaged(
                 tenantId, meetingOccurrenceId, transcriptId,
                 "NORMALIZE", ProcessingStage.NORMALIZE, priority,
                 AiCapability.TRANSCRIPT_EXTRACTION,
                 PROMPT_NORMALIZE, SCHEMA_EXTRACTION, language, contextSize, true,
                 now, deadlineAt, correlationId, root.id(),
-                (forceReprocess ? rootKey : "meeting:" + meetingOccurrenceId + ":normalize:" + transcriptHash + ":pv:v2"),
+                rootKey + ":normalize",
                 null
         );
         applySyntheticRoute(normalize, now);
@@ -129,7 +130,7 @@ public final class PipelineGraphFactory {
                 AiCapability.TRANSCRIPT_EXTRACTION,
                 PROMPT_TRIAGE, SCHEMA_TRIAGE, language, contextSize, true,
                 now, deadlineAt, correlationId, root.id(),
-                (forceReprocess ? rootKey + ":triage" : "meeting:" + meetingOccurrenceId + ":triage:" + transcriptHash + ":pv:v2"),
+                rootKey + ":triage",
                 null
         );
         applySyntheticRoute(triage, now);
@@ -159,7 +160,7 @@ public final class PipelineGraphFactory {
                 tenantId, meetingId, transcriptId, "CHUNK_PLAN", ProcessingStage.CHUNK,
                 priority, AiCapability.TRANSCRIPT_EXTRACTION, PROMPT_CHUNK, SCHEMA_EXTRACTION,
                 language, contextSize, now, deadlineAt, correlationId, rootId,
-                "meeting:" + meetingId + ":chunk:" + transcriptHash + ":pv:v2", null
+                runKey(meetingId, rootId, "chunk:" + transcriptHash), null
         );
         link(chunk.id(), triageJob.id(), now);
         commands.publishWakeup(tenantId, chunk.id(), meetingId, correlationId, ProcessingStage.CHUNK, now);
@@ -191,7 +192,7 @@ public final class PipelineGraphFactory {
                     tenantId, meetingId, transcriptId, "CHUNK_EXTRACTION", ProcessingStage.EXTRACT,
                     priority, AiCapability.TRANSCRIPT_EXTRACTION, PROMPT_EXTRACT, SCHEMA_EXTRACTION,
                     language, contextSize, now, deadlineAt, correlationId, rootId,
-                    "meeting:" + meetingId + ":extract:" + transcriptHash + ":chunk:" + i + ":pv:v2",
+                    runKey(meetingId, rootId, "extract:" + transcriptHash + ":chunk:" + i),
                     i
             );
             link(extract.id(), chunkJob.id(), now);
@@ -203,7 +204,7 @@ public final class PipelineGraphFactory {
                 tenantId, meetingId, transcriptId, "CANDIDATE_MERGE", ProcessingStage.MERGE,
                 priority, AiCapability.CONTRADICTION_DETECTION, PROMPT_MERGE, SCHEMA_EXTRACTION,
                 language, contextSize, now, deadlineAt, correlationId, rootId,
-                "meeting:" + meetingId + ":merge:" + transcriptHash + ":pv:v2", null
+                runKey(meetingId, rootId, "merge:" + transcriptHash), null
         );
         for (AiJob extract : extracts) {
             link(merge.id(), extract.id(), now);
@@ -213,7 +214,7 @@ public final class PipelineGraphFactory {
                 tenantId, meetingId, transcriptId, "VALIDATION", ProcessingStage.VALIDATE,
                 priority, AiCapability.VALIDATION, PROMPT_VALIDATE, SCHEMA_EXTRACTION,
                 language, contextSize, now, deadlineAt, correlationId, rootId,
-                "meeting:" + meetingId + ":validate:" + transcriptHash + ":pv:v2", null
+                runKey(meetingId, rootId, "validate:" + transcriptHash), null
         );
         link(validate.id(), merge.id(), now);
 
@@ -221,7 +222,7 @@ public final class PipelineGraphFactory {
                 tenantId, meetingId, transcriptId, "FINAL_NOTE", ProcessingStage.MINUTES,
                 priority, AiCapability.FINAL_NOTE, PROMPT_MINUTES, SCHEMA_MINUTES,
                 language, contextSize, now, deadlineAt, correlationId, rootId,
-                "meeting:" + meetingId + ":minutes:" + transcriptHash + ":pv:v2", null
+                runKey(meetingId, rootId, "minutes:" + transcriptHash), null
         );
         link(minutes.id(), validate.id(), now);
 
@@ -250,7 +251,7 @@ public final class PipelineGraphFactory {
                 triageJob.deadlineAt(),
                 triageJob.correlationId(),
                 rootId,
-                "meeting:" + triageJob.meetingOccurrenceId() + ":minutes-lite:" + transcriptHash + ":pv:v2",
+                runKey(triageJob.meetingOccurrenceId(), rootId, "minutes-lite:" + transcriptHash),
                 null
         );
         link(minutes.id(), triageJob.id(), now);
@@ -315,6 +316,11 @@ public final class PipelineGraphFactory {
         return job;
     }
 
+
+    /** Namespace stage keys by pipeline root so force reprocess never reuses prior-run jobs. */
+    private static String runKey(UUID meetingId, UUID rootId, String suffix) {
+        return "meeting:" + meetingId + ":run:" + rootId + ":" + suffix + ":pv:v2";
+    }
 
     private void link(UUID jobId, UUID dependsOnJobId, Instant now) {
         ProcessingJobDependency dep = ProcessingJobDependency.pending(jobId, dependsOnJobId, now);
