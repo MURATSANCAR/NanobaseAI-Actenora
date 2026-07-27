@@ -20,8 +20,9 @@ actenora:
   ai:
     provider:
       # Real local NanobaseAI Intelligence endpoint (never offline on this profile).
+      # OpenAI-compatible chat/completions (llama-server :8010) — not ai-orchestrator :8000.
       kind: ${ACTENORA_AI_PROVIDER_KIND:nanobaseai}
-      base-url: ${ACTENORA_AI_PROVIDER_BASE_URL:http://127.0.0.1:8000}
+      base-url: ${ACTENORA_AI_PROVIDER_BASE_URL:http://127.0.0.1:8010}
       served-model-ids: ${ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS:nanobaseai-primary,nanobaseai-local}
     worker:
       enabled: true

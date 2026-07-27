@@ -42,7 +42,9 @@ meeting-intelligence / callers
 | `.../TenantRoutingPolicy.java` | Default preference `QWEN27_FINAL` |
 | `.../TaskRoleMapping.java` | Maps final-note tasks → `ModelRole.QWEN27_FINAL` |
 | `infrastructure/compose/docker-compose.yml` | Env `QWEN_BASE_URL` |
-| `.env.example` | `LLM_BASE_URL` (Ollama port); empty `LLM_DEFAULT_MODEL` (OK) |
+| `.env.example` | `LLM_BASE_URL` / `ACTENORA_AI_PROVIDER_BASE_URL` → OpenAI-compatible runtime (`host.docker.internal:8010` llama-server; Ollama `:11434` alternative). Backend must **not** use ai-orchestrator `:8000` (health-only). |
+
+**Local llama-server:** `scripts/server/restore-meeting-35b-llm.sh` (alias must match `ACTENORA_AI_PROVIDER_*_SERVED_MODEL_ID`).
 
 **Remediation (Phase 1+):** rename role to e.g. `FINAL_NOTE_PRIMARY`; bind physical Qwen (or other) only in `modelmanagement.model_definition.served_model_id` / deployment rows.
 
