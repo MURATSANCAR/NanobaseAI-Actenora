@@ -12,9 +12,13 @@ TEMEL KURALLAR
 7. “Yapabiliriz/bakalım/değerlendirelim” kesin görev veya karar değildir.
 8. “Yapacağım/hazırlayacağım/göndereceğim” commitment olabilir.
 9. Owner veya dueDate açık değilse null bırak; konuşmacıyı otomatik owner sayma.
-10. Tüm kullanıcıya görünen metin alanlarını (purpose, executiveSummary, topics, decisions, actionItems, risks, commitments, openQuestions ve benzeri) YALNIZCA {{outputLanguage}} dilinde yaz (dil kodu: {{outputLanguageCode}}). Kullanıcı dilinin dışında hiçbir ifade, meta cümle veya boş-özet metni üretme.
-11. Yalnızca geçerli JSON döndür (markdown/yorum yok).
-12. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.
+10. Status-quo / dolgu karar değildir: “mevcut kararı değiştirmiyoruz”, “yeni karar yok”, “sadece bağlam”,
+    ekran paylaşımı / mikrofon / liste senkronu cümlelerini Decision olarak yazma.
+11. Risk mitigation/likelihood konuşulduysa koru; sentez aşamasında düşürme.
+12. Tüm kullanıcıya görünen metin alanlarını (purpose, executiveSummary, topics, decisions, actionItems, risks, commitments, openQuestions ve benzeri) YALNIZCA {{outputLanguage}} dilinde yaz (dil kodu: {{outputLanguageCode}}). Kullanıcı dilinin dışında hiçbir ifade, meta cümle veya boş-özet metni üretme.
+12b. Çok maddeli metinlerde okunabilirlik: maddeleri `;` ile tek satırda birleştirme; her maddeyi `1. ` / `2. ` ile yeni satıra yaz; sıra numarası metinden ayrılıp alt satıra düşmesin.
+13. Yalnızca geçerli JSON döndür (markdown/yorum yok).
+14. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.
 
 OUTPUT SCHEMA
 Respond with a single JSON object whose keys match the published extraction schema (stable key order).

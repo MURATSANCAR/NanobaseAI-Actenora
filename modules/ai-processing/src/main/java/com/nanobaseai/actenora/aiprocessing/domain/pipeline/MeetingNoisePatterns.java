@@ -2,7 +2,6 @@ package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
@@ -11,32 +10,28 @@ import java.util.regex.Pattern;
 public final class MeetingNoisePatterns {
 
     /**
-     * Ops / UI chatter with no extractable decisions, actions, or risks.
-     * Applied after whitespace cleanup; marker keywords alone must not keep these.
+     * Ops / UI / status-quo chatter. A segment is low-signal only when, after stripping these,
+     * little substantive text remains — so mixed signal+filler lines are kept.
      */
-    private static final Pattern LOW_SIGNAL_SEGMENT = Pattern.compile(
-            "(?iu)^("
+    private static final Pattern LOW_SIGNAL_PHRASE = Pattern.compile(
+            "(?iu)("
                     + "mikrofonumu\\s+a[cç][iı]yorum"
-                    + "|ekran[ıi]\\s+payla[sş][ıi]yorum[^\\p{L}]*"
+                    + "|ekran[ıi]\\s+payla[sş][ıi]yorum"
                     + "|tabloyu\\s+yukar[ıi]\\s+kayd[ıi]r[ıi]yorum"
                     + "|k[ıi]sa\\s+bir\\s+ara\\s+verip\\s+d[oö]n[uü]yoruz"
                     + "|benim\\s+taraf[ıi]mda\\s+ek\\s+bir\\s+engel\\s+yok"
                     + "|not\\s+ald[ıi]m[,.]?\\s*devam\\s+edelim"
                     + "|anlad[ıi]m[,.]?\\s*te[sş]ekk[uü]rler"
                     + "|yeni\\s+karar\\s+yok"
-                    + "|ekrandaki\\s+madde\\s+listesini\\s+senkronize\\s+ediyorum[^\\p{L}]*yeni\\s+karar\\s+yok"
+                    + "|ekrandaki\\s+madde\\s+listesini\\s+senkronize(\\s+ediyorum)?"
+                    + "|mevcut\\s+karar[ıi]?\\s+de[gğ]i[sş]tirmiyoruz"
+                    + "|sadece\\s+ba[gğ]lam\\s+payla[sş]([ıi]m[ıi]|ımı)?"
                     + "|this\\s+point\\s+needs\\s+more\\s+discussion"
                     + "|sharing\\s+(my\\s+)?screen"
                     + "|unmuting(\\s+myself)?"
-                    + ")$"
-                    + "|(?iu)bu\\s+arada\\s+ekrandaki\\s+madde\\s+listesini\\s+senkronize"
-                    + "|(?iu)\\bmevcut\\s+karar[ıi]?\\s+de[gğ]i[sş]tirmiyoruz\\b"
-                    + "|(?iu)\\bsadece\\s+ba[gğ]lam\\s+payla[sş]"
+                    + ")"
     );
 
-    /**
-     * Status-quo / "not changing the decision" filler that models elevate to Decision.
-     */
     private static final Pattern STATUS_QUO_DECISION = Pattern.compile(
             "(?iu)("
                     + "mevcut\\s+karar(lar)?([ıi]n[ıi]?)?\\s+de[gğ]i[sş]tir(miyoruz|meyece[gğ]iz|ilmeyecek)"
@@ -47,6 +42,8 @@ public final class MeetingNoisePatterns {
                     + "|only\\s+(sharing\\s+)?context"
                     + ")"
     );
+
+    private static final Pattern PUNCT_ONLY = Pattern.compile("[\\s\\p{Punct}]+");
 
     private MeetingNoisePatterns() {
     }
@@ -59,11 +56,15 @@ public final class MeetingNoisePatterns {
         if (text.isEmpty()) {
             return true;
         }
-        // Very short acknowledgements with no substance.
         if (text.length() < 12) {
             return true;
         }
-        return LOW_SIGNAL_SEGMENT.matcher(text).find();
+        if (!LOW_SIGNAL_PHRASE.matcher(text).find()) {
+            return false;
+        }
+        String remainder = PUNCT_ONLY.matcher(LOW_SIGNAL_PHRASE.matcher(text).replaceAll(" ")).replaceAll(" ").strip();
+        // Keep if meaningful content survives after removing known filler phrases.
+        return remainder.length() < 20;
     }
 
     public static boolean isStatusQuoNonDecision(String text) {
@@ -97,9 +98,5 @@ public final class MeetingNoisePatterns {
                 bundle.evidenceSegmentIds(),
                 bundle.confidence()
         );
-    }
-
-    static String normalizeKey(String text) {
-        return text == null ? "" : text.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").trim();
     }
 }

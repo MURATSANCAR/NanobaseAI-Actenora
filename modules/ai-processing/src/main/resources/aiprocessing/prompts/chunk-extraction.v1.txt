@@ -17,6 +17,9 @@ taahhütler, issues, riskler (+likelihood/mitigation), açık sorular, proposals
 Durum güncellemesi / tek konuşmacılı brifing olsa bile: kim neyi ne zamana bitirecek → commitments + actionItems;
 katılım yokluğu, iletilmeyen takvim, belirsiz teslim → risks ve/veya openQuestions.
 dueDate yalnızca konuşmada geçen tarih ifadesini aynen yaz (ISO uydurma); relativeDate kullanabilirsin.
+KARAR DEĞİL: "mevcut kararı değiştirmiyoruz", "yeni karar yok", "sadece bağlam paylaşımı", ekran/mikrofon/UI
+operasyon cümleleri — bunları decisions'a koyma (gerekirse importantFacts veya at).
+Riskte konuşulan mitigation/likelihood varsa mutlaka doldur (ör. "erken smoke", HIGH/MEDIUM/LOW).
 Tüm metin alanlarını yalnızca {{outputLanguage}} dilinde yaz; kullanıcı dilinin dışında ifade üretme.
 candidateId formatı: chunk-{n}-{type}-{seq} (ör. chunk-1-decision-01).
 

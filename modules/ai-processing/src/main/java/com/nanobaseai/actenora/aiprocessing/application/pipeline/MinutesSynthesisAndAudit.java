@@ -10,6 +10,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingNoisePatterns;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
@@ -180,7 +181,9 @@ public final class MinutesSynthesisAndAudit {
                 json = jsonRepair.repairOrThrow(json);
             }
             JsonNode node = schemaValidator.parseAndValidate(json);
-            ExtractionBundle bundle = bundleMapper.fromJson(node);
+            ExtractionBundle bundle = MeetingNoisePatterns.stripStatusQuoDecisions(
+                    bundleMapper.fromJson(node)
+            );
             stripUnknownEvidence(bundle, allowedEvidenceIds);
             String summary = OutputLanguagePolicy.sanitizeUserFacingText(
                     textOr(node.path("executiveSummary").asText(null), fallback.executiveSummary()),
@@ -277,6 +280,7 @@ public final class MinutesSynthesisAndAudit {
             }
             List<DecisionCandidate> decisions = draft.decisions().stream()
                     .filter(d -> !unsupported.contains(d.text().trim().toLowerCase(Locale.ROOT)))
+                    .filter(d -> !MeetingNoisePatterns.isStatusQuoNonDecision(d.text()))
                     .toList();
             List<ActionItemCandidate> actions = draft.actionItems().stream()
                     .filter(a -> !unsupported.contains(a.text().trim().toLowerCase(Locale.ROOT)))
@@ -425,9 +429,24 @@ public final class MinutesSynthesisAndAudit {
             ArrayNode ev = n.putArray("evidenceSegmentIds");
             item.evidenceSegmentIds().forEach(ev::add);
         }
-        root.set("risks", texts(draft.risks().stream().map(RiskCandidate::text).toList(),
-                draft.risks().stream().map(RiskCandidate::evidenceSegmentIds).toList(),
-                draft.risks().stream().map(RiskCandidate::confidence).toList()));
+        ArrayNode risks = root.putArray("risks");
+        for (RiskCandidate risk : draft.risks()) {
+            ObjectNode n = risks.addObject();
+            n.put("text", risk.text());
+            if (risk.likelihood() == null) {
+                n.putNull("likelihood");
+            } else {
+                n.put("likelihood", risk.likelihood());
+            }
+            if (risk.mitigation() == null) {
+                n.putNull("mitigation");
+            } else {
+                n.put("mitigation", risk.mitigation());
+            }
+            ArrayNode ev = n.putArray("evidenceSegmentIds");
+            risk.evidenceSegmentIds().forEach(ev::add);
+            n.put("confidence", risk.confidence());
+        }
         root.set("openQuestions", texts(draft.openQuestions().stream().map(OpenQuestionCandidate::text).toList(),
                 draft.openQuestions().stream().map(OpenQuestionCandidate::evidenceSegmentIds).toList(),
                 draft.openQuestions().stream().map(OpenQuestionCandidate::confidence).toList()));

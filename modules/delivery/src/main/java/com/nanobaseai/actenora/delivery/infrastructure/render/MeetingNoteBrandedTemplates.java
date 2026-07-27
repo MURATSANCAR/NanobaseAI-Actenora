@@ -35,7 +35,7 @@ public final class MeetingNoteBrandedTemplates {
                         <tr><td style="padding:24px 36px;">
                           <div style="background:linear-gradient(135deg,#f5f3ff 0%%,#ecfeff 100%%);border-radius:12px;padding:20px 22px;border:1px solid #e9d5ff;">
                             <p style="margin:0 0 8px 0;font-size:12px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:0.06em;">Yönetici Özeti</p>
-                            <p style="margin:0;font-size:15px;line-height:1.65;color:#334155;">%s</p>
+                            <p style="margin:0;font-size:15px;line-height:1.65;color:#334155;white-space:pre-wrap;">%s</p>
                           </div>
                         </td></tr>
                         %s
@@ -58,7 +58,7 @@ public final class MeetingNoteBrandedTemplates {
                 escape(doc.meetingDate()),
                 escape(doc.duration()),
                 escape(doc.organizer()),
-                escape(doc.executiveSummary()),
+                escapeMultiline(doc.executiveSummary()),
                 emailListSection("Kararlar", doc.decisions(), "#7c3aed"),
                 emailListSection("Aksiyonlar", doc.actions(), "#0d9488"),
                 emailFooter()
@@ -104,7 +104,7 @@ public final class MeetingNoteBrandedTemplates {
                     .badge { display: inline-block; background: rgba(255,255,255,0.18); padding: 4px 10px; border-radius: 999px; margin-right: 8px; }
                     .section { margin: 18px 0 14px 0; page-break-inside: avoid; }
                     .section-title { font-size: 11pt; font-weight: bold; color: #5b21b6; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 2px solid #ddd6fe; padding-bottom: 6px; margin-bottom: 10px; }
-                    .summary { background: #f5f3ff; border-left: 4px solid #7c3aed; padding: 14px 16px; border-radius: 0 8px 8px 0; }
+                    .summary { background: #f5f3ff; border-left: 4px solid #7c3aed; padding: 14px 16px; border-radius: 0 8px 8px 0; white-space: pre-wrap; }
                     ul { margin: 8px 0 0 18px; padding: 0; }
                     li { margin-bottom: 7px; }
                     table.participants { width: 100%%; border-collapse: collapse; margin-top: 8px; }
@@ -138,7 +138,7 @@ public final class MeetingNoteBrandedTemplates {
                 escape(doc.meetingDate()),
                 escape(doc.duration()),
                 escape(doc.organizer()),
-                escape(doc.executiveSummary()),
+                escapeMultiline(doc.executiveSummary()),
                 pdfParticipants(doc.participants()),
                 pdfListSection("Kararlar", doc.decisions()),
                 pdfListSection("Aksiyonlar", doc.actions()),
@@ -228,6 +228,11 @@ public final class MeetingNoteBrandedTemplates {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;");
+    }
+
+    /** Escapes HTML and preserves line breaks for scannable summaries. */
+    private static String escapeMultiline(String value) {
+        return escape(value).replace("\r\n", "\n").replace("\n", "<br/>");
     }
 
     private static String escapeAttr(String value) {

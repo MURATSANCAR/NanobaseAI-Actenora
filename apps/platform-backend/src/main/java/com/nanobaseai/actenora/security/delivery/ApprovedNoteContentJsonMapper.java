@@ -16,10 +16,11 @@ import java.util.regex.Pattern;
 public final class ApprovedNoteContentJsonMapper {
 
     private static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
-    private static final Pattern AGENDA_PREFIX = Pattern.compile(
-            "(?i)^(?:Gündem|Agenda)\\s*:\\s*(.+?)(?:\\.\\s+|\\.$|$)",
-            Pattern.DOTALL
+    private static final Pattern AGENDA_PREFIX = Pattern.compile("(?i)^(?:Gündem|Agenda)\\s*:\\s*");
+    private static final Pattern AGENDA_STAT_LINE = Pattern.compile(
+            "(?im)^\\d+\\s+(?:karar\\b|decision\\b|aksiyon\\b|action\\b|risk\\b)"
     );
+    private static final Pattern NUMBERED_ITEM = Pattern.compile("^\\d+\\.\\s+(.+)$");
 
     private ApprovedNoteContentJsonMapper() {
     }
@@ -150,27 +151,48 @@ public final class ApprovedNoteContentJsonMapper {
 
     /**
      * Derives agenda rows from FinalNoteAssembler summary prefix ({@code Gündem:} / {@code Agenda:}).
+     * Supports numbered multiline format and legacy semicolon-joined payloads.
      */
     public static List<String> parseAgendaItems(String executiveSummary) {
         if (executiveSummary == null || executiveSummary.isBlank()) {
             return List.of();
         }
-        Matcher matcher = AGENDA_PREFIX.matcher(executiveSummary.trim());
-        if (!matcher.find()) {
+        String text = executiveSummary.trim();
+        Matcher prefix = AGENDA_PREFIX.matcher(text);
+        if (!prefix.find()) {
             return List.of();
         }
-        String payload = matcher.group(1).trim();
+        String rest = text.substring(prefix.end());
+        Matcher stop = AGENDA_STAT_LINE.matcher(rest);
+        String payload = stop.find() ? rest.substring(0, stop.start()) : rest;
+        payload = payload.trim();
+        if (payload.endsWith(".")) {
+            payload = payload.substring(0, payload.length() - 1).trim();
+        }
         if (payload.isEmpty()) {
             return List.of();
         }
-        List<String> items = new ArrayList<>();
-        for (String part : payload.split(";")) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                items.add(trimmed);
+
+        List<String> numbered = new ArrayList<>();
+        List<String> legacy = new ArrayList<>();
+        for (String line : payload.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            Matcher item = NUMBERED_ITEM.matcher(trimmed);
+            if (item.matches()) {
+                numbered.add(item.group(1).trim());
+            } else {
+                for (String part : trimmed.split(";")) {
+                    String piece = part.trim();
+                    if (!piece.isEmpty()) {
+                        legacy.add(piece.replaceAll("\\.$", "").trim());
+                    }
+                }
             }
         }
-        return items;
+        return numbered.isEmpty() ? List.copyOf(legacy) : List.copyOf(numbered);
     }
 
     private static String blankToEmpty(String value) {

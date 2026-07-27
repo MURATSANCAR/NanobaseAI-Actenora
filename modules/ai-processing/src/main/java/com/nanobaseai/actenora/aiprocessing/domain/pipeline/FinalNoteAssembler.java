@@ -53,45 +53,47 @@ public final class FinalNoteAssembler {
         );
     }
 
+    /**
+     * Builds a scannable executive summary: numbered agenda lines, then count lines —
+     * never a single semicolon-joined paragraph.
+     */
     private static String buildSummary(ExtractionBundle bundle, String language) {
         boolean en = "en".equals(language);
         StringBuilder sb = new StringBuilder();
         if (!bundle.topics().isEmpty()) {
-            sb.append(en ? "Agenda: " : "Gündem: ");
-            List<String> topicLines = new ArrayList<>();
+            sb.append(en ? "Agenda:" : "Gündem:").append('\n');
+            int i = 1;
             for (TopicCandidate topic : bundle.topics()) {
+                String line;
                 if (topic.summary() != null && !topic.summary().isBlank()) {
-                    topicLines.add(topic.text() + " — " + topic.summary());
+                    line = topic.text() + " — " + topic.summary();
                 } else {
-                    topicLines.add(topic.text());
+                    line = topic.text();
                 }
+                sb.append(i++).append(". ").append(line).append('\n');
             }
-            sb.append(String.join("; ", topicLines)).append('.');
         }
+        List<String> stats = new ArrayList<>(3);
         if (!bundle.decisions().isEmpty()) {
-            if (!sb.isEmpty()) {
-                sb.append(' ');
-            }
-            sb.append(bundle.decisions().size())
-                    .append(en ? " decision(s) recorded." : " karar kaydedildi.");
+            stats.add(bundle.decisions().size() + (en ? " decision(s) recorded." : " karar kaydedildi."));
         }
         if (!bundle.actionItems().isEmpty()) {
-            if (!sb.isEmpty()) {
-                sb.append(' ');
-            }
-            sb.append(bundle.actionItems().size())
-                    .append(en ? " action item(s)." : " aksiyon maddesi.");
+            stats.add(bundle.actionItems().size() + (en ? " action item(s)." : " aksiyon maddesi."));
         }
         if (!bundle.risks().isEmpty()) {
+            stats.add(bundle.risks().size() + (en ? " risk(s)." : " risk."));
+        }
+        if (!stats.isEmpty()) {
             if (!sb.isEmpty()) {
-                sb.append(' ');
+                sb.append('\n');
             }
-            sb.append(bundle.risks().size())
-                    .append(en ? " risk(s)." : " risk.");
+            for (String stat : stats) {
+                sb.append(stat).append('\n');
+            }
         }
         if (sb.isEmpty()) {
             return OutputLanguagePolicy.emptySummary(language);
         }
-        return sb.toString();
+        return sb.toString().trim();
     }
 }

@@ -44,7 +44,7 @@ public final class ExtractionMerger {
                 actions.putIfAbsent(norm(item.text()), item);
             }
             for (RiskCandidate risk : chunk.risks()) {
-                risks.putIfAbsent(norm(risk.text()), risk);
+                risks.merge(norm(risk.text()), risk, ExtractionMerger::preferRicherRisk);
             }
             for (OpenQuestionCandidate question : chunk.openQuestions()) {
                 questions.putIfAbsent(norm(question.text()), question);
@@ -81,6 +81,14 @@ public final class ExtractionMerger {
                 new ArrayList<>(evidence),
                 clamp(confidence)
         ));
+    }
+
+    private static RiskCandidate preferRicherRisk(RiskCandidate a, RiskCandidate b) {
+        int scoreA = (a.mitigation() != null && !a.mitigation().isBlank() ? 2 : 0)
+                + (a.likelihood() != null && !a.likelihood().isBlank() ? 1 : 0);
+        int scoreB = (b.mitigation() != null && !b.mitigation().isBlank() ? 2 : 0)
+                + (b.likelihood() != null && !b.likelihood().isBlank() ? 1 : 0);
+        return scoreB > scoreA ? b : a;
     }
 
     private static String norm(String text) {
