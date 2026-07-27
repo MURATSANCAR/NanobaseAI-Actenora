@@ -400,6 +400,21 @@ test("dense executive summary expands to numbered lines", async () => {
   assert.equal(parseSectionContent(dense, "paragraph").paragraph, readable);
 });
 
+test("person names split longest match for bold highlighting", async () => {
+  const { collectPersonNames, splitByPersonNames } = await import("./lib/personNames.ts");
+  const names = collectPersonNames(["Murat Sancar", "Burak", "unknown", "ada@example.com"]);
+  assert.deepEqual(names, ["Murat Sancar", "Burak"]);
+  const segments = splitByPersonNames(
+    "Murat Sancar tarafından analiz tamamlanması. Burak bitireceğini söyledi.",
+    names,
+  );
+  assert.deepEqual(
+    segments.filter((s) => s.isName).map((s) => s.text),
+    ["Murat Sancar", "Burak"],
+  );
+  assert.equal(segments[0]?.isName, true);
+});
+
 test("onboarding progress tracks completed steps", () => {
   const state = defaultOnboardingState();
   assert.equal(onboardingProgress(state).done, 1);

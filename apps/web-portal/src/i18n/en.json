@@ -483,6 +483,8 @@
   "backend.qualityFlag.REQUIRES_MANUAL_REVIEW": "Requires manual review",
   "backend.qualityFlag.MISSING_EVIDENCE": "Missing evidence",
   "backend.qualityFlag.PARTIAL_EVIDENCE_NEEDS_REVIEW": "Partial evidence — needs review",
+  "backend.qualityFlag.SCHEMA_WARNING": "Schema warning",
+  "backend.qualityFlag.HUMAN_CORRECTION": "Human correction",
   "backend.noteVisibility.SHARED": "Shared",
   "backend.noteVisibility.PRIVATE": "Private",
   "backend.portalRole.VIEWER": "Viewer",

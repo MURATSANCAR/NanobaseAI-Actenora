@@ -483,6 +483,8 @@
   "backend.qualityFlag.REQUIRES_MANUAL_REVIEW": "Manuel inceleme gerekli",
   "backend.qualityFlag.MISSING_EVIDENCE": "Kanıt eksik",
   "backend.qualityFlag.PARTIAL_EVIDENCE_NEEDS_REVIEW": "Kısmi kanıt — inceleme gerekli",
+  "backend.qualityFlag.SCHEMA_WARNING": "Şema uyarısı",
+  "backend.qualityFlag.HUMAN_CORRECTION": "İnsan düzeltmesi",
   "backend.noteVisibility.SHARED": "Paylaşımlı",
   "backend.noteVisibility.PRIVATE": "Özel",
   "backend.portalRole.VIEWER": "İzleyici",

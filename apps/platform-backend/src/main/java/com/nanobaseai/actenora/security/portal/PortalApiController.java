@@ -362,19 +362,17 @@ public class PortalApiController {
                                     approvalHistory.add(toApprovalRecord(view, note.id(), null))));
                 }
                 if (note.qualityFlags() != null) {
+                    java.util.LinkedHashSet<String> uniqueFlags = new java.util.LinkedHashSet<>();
                     for (var flag : note.qualityFlags()) {
                         if (flag == null || flag.code() == null) {
                             continue;
                         }
-                        // Prefer durable pipeline tokens stored as OTHER.detail for pre-V244 notes.
-                        String label = flag.code().name();
-                        if (flag.code().name().equals("OTHER")
-                                && flag.detail() != null
-                                && isPipelineQualityFlagToken(flag.detail())) {
-                            label = flag.detail().trim().toUpperCase(java.util.Locale.ROOT);
+                        String label = portalQualityFlagLabel(flag.code().name(), flag.detail());
+                        if (label != null) {
+                            uniqueFlags.add(label);
                         }
-                        qualityFlags.add(label);
                     }
+                    qualityFlags.addAll(uniqueFlags);
                 }
                 Map<UUID, List<PortalEvidenceView>> evidenceBySubject = indexEvidence(note, segmentsById);
                 for (var decision : note.decisions()) {
@@ -1425,17 +1423,34 @@ public class PortalApiController {
         return value.trim();
     }
 
-    /** Pipeline soft-degrade tokens previously stored as OTHER.detail. */
-    private static boolean isPipelineQualityFlagToken(String detail) {
+    /**
+     * Maps note quality flags to portal labels. Bare {@code OTHER} (and internal LLM/SV/PV tokens)
+     * are omitted; pipeline tokens stored in {@code OTHER.detail} are promoted to the detail label.
+     */
+    static String portalQualityFlagLabel(String codeName, String detail) {
+        if (codeName == null || codeName.isBlank()) {
+            return null;
+        }
+        String code = codeName.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!"OTHER".equals(code)) {
+            return code;
+        }
         if (detail == null || detail.isBlank()) {
-            return false;
+            return null;
         }
         String normalized = detail.trim().toUpperCase(java.util.Locale.ROOT);
-        return normalized.equals("SYNTHESIS_FALLBACK")
-                || normalized.equals("AUDIT_FALLBACK")
-                || normalized.equals("PARTIAL_EVIDENCE_NEEDS_REVIEW")
-                || normalized.equals("NEEDS_REVIEW")
-                || normalized.equals("REQUIRES_MANUAL_REVIEW");
+        if (isInternalQualityFlagToken(normalized)) {
+            return null;
+        }
+        return normalized;
+    }
+
+    /** Ops/version tokens that must not surface in the meeting conversation UI. */
+    private static boolean isInternalQualityFlagToken(String normalized) {
+        return normalized.contains("LLM")
+                || normalized.startsWith("SV-")
+                || normalized.startsWith("PV-")
+                || "OTHER".equals(normalized);
     }
 
     private static void appendMinutesSection(StringBuilder sb, String title, List<String> items) {

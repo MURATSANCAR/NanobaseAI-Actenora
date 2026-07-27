@@ -42,6 +42,11 @@
   ::-webkit-scrollbar-thumb {
     @apply rounded-full bg-slate-400/60;
   }
+
+  .conversation-scroll {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+  }
 }
 
 @layer components {

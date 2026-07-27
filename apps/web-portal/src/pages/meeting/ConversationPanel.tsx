@@ -66,23 +66,37 @@ export function ConversationPanel({
     [turns, speaker, q, marker],
   );
 
-  const visibleQualityFlags = useMemo(
-    () => qualityFlags.filter((f) => !isInternalQualityFlag(f)),
-    [qualityFlags],
-  );
+  const visibleQualityFlags = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const flag of qualityFlags) {
+      const normalized = flag.trim().toUpperCase();
+      if (!normalized || isInternalQualityFlag(normalized) || seen.has(normalized)) continue;
+      seen.add(normalized);
+      out.push(normalized);
+    }
+    return out;
+  }, [qualityFlags]);
 
   const virtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => parentRef.current,
     estimateSize: (index) => estimateTurnHeight(filtered[index]?.text ?? ""),
     overscan: 8,
+    getItemKey: (index) => filtered[index]?.segmentIds.join("|") ?? index,
   });
 
+  const highlightSegmentId = highlightEvidence?.segmentId ?? null;
+  const scrolledHighlightRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!highlightEvidence) return;
-    const inAll = findEvidenceIndex(segments, highlightEvidence.segmentId);
+    if (!highlightSegmentId) {
+      scrolledHighlightRef.current = null;
+      return;
+    }
+    const inAll = findEvidenceIndex(segments, highlightSegmentId);
     if (inAll < 0) return;
-    const idx = findTurnIndexBySegmentId(filtered, highlightEvidence.segmentId);
+    const idx = findTurnIndexBySegmentId(filtered, highlightSegmentId);
     if (idx < 0) {
       // Active filters hide the target segment — clear them so jump can land.
       setSpeaker("");
@@ -90,8 +104,14 @@ export function ConversationPanel({
       setMarker("");
       return;
     }
-    virtualizer.scrollToIndex(idx, { align: "center", behavior: "smooth" });
-  }, [highlightEvidence, filtered, segments, virtualizer]);
+    if (scrolledHighlightRef.current === highlightSegmentId) return;
+    scrolledHighlightRef.current = highlightSegmentId;
+    // Defer until layout settles so we do not fight measureElement resize loops.
+    const frame = requestAnimationFrame(() => {
+      virtualizer.scrollToIndex(idx, { align: "center", behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [highlightSegmentId, filtered, segments, virtualizer]);
 
   return (
     <section
@@ -166,7 +186,7 @@ export function ConversationPanel({
 
       <div
         ref={parentRef}
-        className="min-h-[20rem] flex-1 overflow-auto rounded-2xl border border-white/70 bg-gradient-to-b from-white/70 to-violet-50/20 p-3"
+        className="conversation-scroll min-h-[20rem] flex-1 overflow-x-hidden overflow-y-auto rounded-2xl border border-white/70 bg-gradient-to-b from-white/70 to-violet-50/20 p-3"
         role="list"
       >
         <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
@@ -182,7 +202,7 @@ export function ConversationPanel({
 
             return (
               <article
-                key={turn.segmentIds.join("|")}
+                key={row.key}
                 ref={virtualizer.measureElement}
                 data-index={row.index}
                 role="listitem"
@@ -201,7 +221,9 @@ export function ConversationPanel({
                   }
                 }}
                 className={[
-                  "absolute left-0 top-0 w-full cursor-pointer px-1 py-1.5 transition",
+                  // Do not use Tailwind `transition` here — it animates `transform` and makes
+                  // virtualized translateY updates look like a constantly moving scrollbar.
+                  "absolute left-0 top-0 w-full cursor-pointer px-1 py-1.5",
                   active ? "z-10" : "",
                 ].join(" ")}
                 style={{
@@ -222,7 +244,9 @@ export function ConversationPanel({
                     <div className="mb-1 flex flex-wrap items-center gap-2">
                       <strong className="text-xs text-slate-800">{turn.speaker}</strong>
                       <span className="font-mono text-[10px] text-slate-400">{formatMs(turn.startMs)}</span>
-                      {markers.map((m) => (
+                      {markers
+                        .filter((m): m is MarkerKind => MARKERS.includes(m as MarkerKind))
+                        .map((m) => (
                         <span
                           key={m}
                           className={[
@@ -260,8 +284,10 @@ function turnContainsSegment(segmentIds: readonly string[], segmentId: string): 
 }
 
 function estimateTurnHeight(text: string): number {
-  const lines = Math.max(1, Math.ceil(text.length / 72));
-  return 64 + lines * 22;
+  // Header (avatar/name) + bubble padding + line wraps — keep close to measured height
+  // so the scrollbar thumb does not jitter while measureElement corrects sizes.
+  const lines = Math.max(1, Math.ceil(text.length / 64));
+  return 88 + lines * 22;
 }
 
 function speakerInitials(name: string): string {
@@ -278,10 +304,11 @@ function formatMs(ms: number): string {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
-/** Ops/version tokens stay hidden; soft-degrade fallbacks are user-visible. */
+/** Ops/version tokens and bare OTHER stay hidden; soft-degrade fallbacks are user-visible. */
 function isInternalQualityFlag(flag: string): boolean {
   const normalized = flag.trim().toUpperCase();
   return (
+    normalized === "OTHER" ||
     normalized.includes("LLM") ||
     normalized.startsWith("SV-") ||
     normalized.startsWith("PV-")

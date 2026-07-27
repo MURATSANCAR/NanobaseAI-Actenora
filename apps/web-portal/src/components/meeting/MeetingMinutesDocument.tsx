@@ -50,12 +50,8 @@ export function MeetingMinutesDocument({
     const sources: Array<string | null | undefined> = participants.map((p) => p.displayName);
     for (const section of document.sections) {
       if (section.kind !== "list") continue;
-      const parsed = parseSectionContent(section.value, "list");
-      for (const item of parsed.items) {
-        const meta = parseActionMeta(item);
-        if ("owner" in meta) sources.push(meta.owner);
-        // Also catch "Name tarafından" style phrases already inside the item text —
-        // participant list covers those; owners from meta cover Sorumlu fields.
+      for (const item of parseSectionContent(section.value, "list").items) {
+        sources.push(parseActionMeta(item).owner);
       }
     }
     return collectPersonNames(sources);

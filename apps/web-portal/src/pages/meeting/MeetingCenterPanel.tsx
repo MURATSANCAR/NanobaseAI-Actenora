@@ -483,12 +483,14 @@ function EvidenceButtons({
 
 function DecisionRow({
   item,
+  personNames,
   linked,
   onEvidence,
   statusLabel,
   jumpLabel,
 }: {
   item: DecisionItem;
+  personNames: string[];
   linked: boolean;
   onEvidence: (ref: EvidenceRef) => void;
   statusLabel: string;
@@ -496,11 +498,16 @@ function DecisionRow({
 }) {
   return (
     <div id={`artifact-decision-${item.id}`} className={artifactRowClass(linked, "decision")}>
-      <strong className="block break-words text-slate-900 [overflow-wrap:anywhere]">{item.title}</strong>
+      <p className="block break-words text-slate-900 [overflow-wrap:anywhere]">
+        <HighlightPersonNames text={item.title} names={personNames} />
+      </p>
       <div className="mt-1"><StatusBadge label={statusLabel} status={item.status} /></div>
       {item.rationale || item.decisionStatus ? (
         <p className="mt-1 break-words text-sm leading-relaxed text-slate-600 [overflow-wrap:anywhere]">
-          {[item.decisionStatus, item.rationale].filter(Boolean).join(" · ")}
+          <HighlightPersonNames
+            text={[item.decisionStatus, item.rationale].filter(Boolean).join(" · ")}
+            names={personNames}
+          />
         </p>
       ) : null}
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
@@ -510,6 +517,7 @@ function DecisionRow({
 
 function ActionRow({
   item,
+  personNames,
   linked,
   onEvidence,
   statusLabel,
@@ -519,6 +527,7 @@ function ActionRow({
   onComplete,
 }: {
   item: ActionItem;
+  personNames: string[];
   linked: boolean;
   onEvidence: (ref: EvidenceRef) => void;
   statusLabel: string;
@@ -529,10 +538,14 @@ function ActionRow({
 }) {
   return (
     <div id={`artifact-action-${item.id}`} className={artifactRowClass(linked, "action")}>
-      <strong className="block break-words text-slate-900 [overflow-wrap:anywhere]">{item.title}</strong>
+      <p className="block break-words text-slate-900 [overflow-wrap:anywhere]">
+        <HighlightPersonNames text={item.title} names={personNames} />
+      </p>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm leading-relaxed text-slate-600">
         <StatusBadge label={statusLabel} status={item.status} />
-        <span>{item.ownerDisplayName}</span>
+        <span>
+          <HighlightPersonNames text={item.ownerDisplayName} names={personNames} />
+        </span>
         <DueDateBadge dueAt={item.dueAt} />
         {item.ownerType ? <span>{item.ownerType}</span> : null}
         {item.priority ? <span>{item.priority}</span> : null}
@@ -550,12 +563,14 @@ function ActionRow({
 
 function RiskRow({
   item,
+  personNames,
   linked,
   onEvidence,
   severityLabel,
   jumpLabel,
 }: {
   item: RiskItem;
+  personNames: string[];
   linked: boolean;
   onEvidence: (ref: EvidenceRef) => void;
   severityLabel: string;
@@ -563,15 +578,21 @@ function RiskRow({
 }) {
   return (
     <div id={`artifact-risk-${item.id}`} className={artifactRowClass(linked, "risk")}>
-      <strong className="block break-words text-slate-900 [overflow-wrap:anywhere]">{item.title}</strong>
+      <p className="block break-words text-slate-900 [overflow-wrap:anywhere]">
+        <HighlightPersonNames text={item.title} names={personNames} />
+      </p>
       <div className="mt-1"><StatusBadge label={severityLabel} status={item.severity} /></div>
       {item.likelihood || item.mitigation ? (
         <div className="mt-1 space-y-0.5 text-sm leading-relaxed text-slate-600">
           {item.likelihood ? (
-            <p className="break-words [overflow-wrap:anywhere]">Olasılık: {item.likelihood}</p>
+            <p className="break-words [overflow-wrap:anywhere]">
+              Olasılık: <HighlightPersonNames text={item.likelihood} names={personNames} />
+            </p>
           ) : null}
           {item.mitigation ? (
-            <p className="break-words [overflow-wrap:anywhere]">Azaltma: {item.mitigation}</p>
+            <p className="break-words [overflow-wrap:anywhere]">
+              Azaltma: <HighlightPersonNames text={item.mitigation} names={personNames} />
+            </p>
           ) : null}
         </div>
       ) : null}
@@ -582,12 +603,14 @@ function RiskRow({
 
 function CommitmentRow({
   item,
+  personNames,
   linked,
   onEvidence,
   statusLabel,
   jumpLabel,
 }: {
   item: CommitmentItem;
+  personNames: string[];
   linked: boolean;
   onEvidence: (ref: EvidenceRef) => void;
   statusLabel: string;
@@ -595,10 +618,14 @@ function CommitmentRow({
 }) {
   return (
     <div id={`artifact-commitment-${item.id}`} className={artifactRowClass(linked, "commitment")}>
-      <strong className="block break-words text-slate-900 [overflow-wrap:anywhere]">{item.statement}</strong>
+      <p className="block break-words text-slate-900 [overflow-wrap:anywhere]">
+        <HighlightPersonNames text={item.statement} names={personNames} />
+      </p>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm leading-relaxed text-slate-600">
         <StatusBadge label={statusLabel} status={item.status} />
-        <span>{item.ownerDisplayName}</span>
+        <span>
+          <HighlightPersonNames text={item.ownerDisplayName} names={personNames} />
+        </span>
         <DueDateBadge dueAt={item.dueAt} />
       </div>
       <EvidenceButtons evidence={item.evidence} onEvidence={onEvidence} jumpLabel={jumpLabel} />
