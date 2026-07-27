@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
 /**
  * Accumulated token / latency metrics for a pipeline run.
+ * Methods are synchronized so parallel chunk extraction can update safely.
  */
 public final class PipelineRunMetrics {
 
@@ -11,47 +12,47 @@ public final class PipelineRunMetrics {
     private int chunkCount;
     private int repairCount;
 
-    public void addInputTokens(long tokens) {
+    public synchronized void addInputTokens(long tokens) {
         this.inputTokens += Math.max(0, tokens);
     }
 
-    public void addOutputTokens(long tokens) {
+    public synchronized void addOutputTokens(long tokens) {
         this.outputTokens += Math.max(0, tokens);
     }
 
-    public void addDurationMs(long ms) {
+    public synchronized void addDurationMs(long ms) {
         this.durationMs += Math.max(0, ms);
     }
 
-    public void incrementChunkCount() {
+    public synchronized void incrementChunkCount() {
         this.chunkCount++;
     }
 
-    public void incrementRepairCount() {
+    public synchronized void incrementRepairCount() {
         this.repairCount++;
     }
 
-    public long inputTokens() {
+    public synchronized long inputTokens() {
         return inputTokens;
     }
 
-    public long outputTokens() {
+    public synchronized long outputTokens() {
         return outputTokens;
     }
 
-    public long durationMs() {
+    public synchronized long durationMs() {
         return durationMs;
     }
 
-    public int chunkCount() {
+    public synchronized int chunkCount() {
         return chunkCount;
     }
 
-    public int repairCount() {
+    public synchronized int repairCount() {
         return repairCount;
     }
 
-    public PipelineRunMetrics snapshot() {
+    public synchronized PipelineRunMetrics snapshot() {
         PipelineRunMetrics copy = new PipelineRunMetrics();
         copy.inputTokens = inputTokens;
         copy.outputTokens = outputTokens;

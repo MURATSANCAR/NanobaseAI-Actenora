@@ -31,6 +31,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -132,24 +137,20 @@ public final class ExtractionPipelineService {
             List<TranscriptChunk> chunks = chunker.chunk(normalized, chunkingConfig);
             String corpus = groundingCorpus(normalized);
 
-            List<ExtractionBundle> perChunk = new ArrayList<>();
             String meetingTitle = request.meetingOccurrenceId().toString();
             String language = request.language();
             int timeoutSeconds = request.timeoutSeconds();
-            for (TranscriptChunk chunk : chunks) {
-                metrics.incrementChunkCount();
-                ExtractionBundle bundle = extractChunkWithRetry(
-                        prompt,
-                        descriptor,
-                        chunk,
-                        corpus,
-                        meetingTitle,
-                        language,
-                        timeoutSeconds,
-                        metrics
-                );
-                perChunk.add(bundle);
-            }
+            List<ExtractionBundle> perChunk = extractChunks(
+                    chunks,
+                    prompt,
+                    descriptor,
+                    corpus,
+                    meetingTitle,
+                    language,
+                    timeoutSeconds,
+                    request.parallelChunkLimit(),
+                    metrics
+            );
 
             ExtractionBundle merged = merger.merge(perChunk);
             Set<String> allowed = normalized.stream()
@@ -192,6 +193,87 @@ public final class ExtractionPipelineService {
      */
     private static boolean isPermanentRunFailure(FailureCategory category) {
         return category != FailureCategory.MODEL_UNAVAILABLE;
+    }
+
+    /**
+     * Extract chunks with a merge barrier. Parallelism is bounded by {@code parallelChunkLimit}
+     * and further constrained by provider extraction semaphores. Merge/final stay single-threaded
+     * after this method returns.
+     */
+    private List<ExtractionBundle> extractChunks(
+            List<TranscriptChunk> chunks,
+            PublishedPrompt prompt,
+            ModelDescriptor descriptor,
+            String corpus,
+            String meetingTitle,
+            String language,
+            int timeoutSeconds,
+            int parallelChunkLimit,
+            PipelineRunMetrics metrics
+    ) {
+        if (chunks.isEmpty()) {
+            return List.of();
+        }
+        if (chunks.size() == 1 || parallelChunkLimit <= 1) {
+            List<ExtractionBundle> sequential = new ArrayList<>(chunks.size());
+            for (TranscriptChunk chunk : chunks) {
+                metrics.incrementChunkCount();
+                sequential.add(extractChunkWithRetry(
+                        prompt, descriptor, chunk, corpus, meetingTitle, language, timeoutSeconds, metrics));
+            }
+            return sequential;
+        }
+
+        int workers = Math.min(parallelChunkLimit, chunks.size());
+        ExecutorService pool = Executors.newFixedThreadPool(workers, r -> {
+            Thread t = new Thread(r, "ai-chunk-extract");
+            t.setDaemon(true);
+            return t;
+        });
+        try {
+            @SuppressWarnings("unchecked")
+            CompletableFuture<ExtractionBundle>[] futures = new CompletableFuture[chunks.size()];
+            for (int i = 0; i < chunks.size(); i++) {
+                TranscriptChunk chunk = chunks.get(i);
+                futures[i] = CompletableFuture.supplyAsync(() -> {
+                    metrics.incrementChunkCount();
+                    return extractChunkWithRetry(
+                            prompt, descriptor, chunk, corpus, meetingTitle, language, timeoutSeconds, metrics);
+                }, pool);
+            }
+            CompletableFuture.allOf(futures).join();
+            List<ExtractionBundle> ordered = new ArrayList<>(chunks.size());
+            for (CompletableFuture<ExtractionBundle> future : futures) {
+                ordered.add(future.join());
+            }
+            return ordered;
+        } catch (CompletionException ex) {
+            Throwable cause = ex.getCause() == null ? ex : ex.getCause();
+            if (cause instanceof PipelineException pipelineException) {
+                throw pipelineException;
+            }
+            if (cause instanceof ModelUnavailableException modelUnavailable) {
+                throw modelUnavailable;
+            }
+            if (cause instanceof RuntimeException runtime) {
+                throw runtime;
+            }
+            throw new PipelineException(
+                    FailureCategory.UNKNOWN,
+                    PipelineStage.EXTRACT,
+                    cause.getMessage() == null ? "parallel chunk extraction failed" : cause.getMessage()
+            );
+        } finally {
+            pool.shutdown();
+            try {
+                if (!pool.awaitTermination(5, TimeUnit.SECONDS)) {
+                    pool.shutdownNow();
+                }
+            } catch (InterruptedException interrupted) {
+                pool.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private ExtractionBundle extractChunkWithRetry(

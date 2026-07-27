@@ -20,6 +20,10 @@ public class LocalProviderProperties {
     private Duration connectTimeout = Duration.ofSeconds(2);
     private Duration readTimeout = Duration.ofSeconds(1800);
     private int maxConcurrency = 4;
+    /** Parallel chunk extraction slots (CPU-friendly default). */
+    private int maxConcurrencyExtraction = 2;
+    /** Merge / final / validation slots — keep at 1 on CPU. */
+    private int maxConcurrencyFinal = 1;
     private boolean streamingEnabled = true;
     private long degradedProbeThresholdMs = 2_000L;
     private Set<String> servedModelIds = new LinkedHashSet<>(Set.of("nanobaseai-primary", "nanobaseai-local"));
@@ -67,6 +71,22 @@ public class LocalProviderProperties {
 
     public void setMaxConcurrency(int maxConcurrency) {
         this.maxConcurrency = maxConcurrency;
+    }
+
+    public int getMaxConcurrencyExtraction() {
+        return maxConcurrencyExtraction;
+    }
+
+    public void setMaxConcurrencyExtraction(int maxConcurrencyExtraction) {
+        this.maxConcurrencyExtraction = maxConcurrencyExtraction;
+    }
+
+    public int getMaxConcurrencyFinal() {
+        return maxConcurrencyFinal;
+    }
+
+    public void setMaxConcurrencyFinal(int maxConcurrencyFinal) {
+        this.maxConcurrencyFinal = maxConcurrencyFinal;
     }
 
     public boolean isStreamingEnabled() {

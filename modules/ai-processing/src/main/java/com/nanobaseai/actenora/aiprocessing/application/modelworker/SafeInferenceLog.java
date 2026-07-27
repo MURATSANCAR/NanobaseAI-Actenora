@@ -43,6 +43,17 @@ public final class SafeInferenceLog {
         );
     }
 
+    public static void ttft(WorkerRequestEnvelope envelope, long timeToFirstTokenMs) {
+        LOG.info(
+                "service={} event=inference_ttft jobId={} attemptId={} servedModelId={} ttftMs={}",
+                SERVICE,
+                envelope.jobId(),
+                envelope.attemptId(),
+                envelope.servedModelId(),
+                timeToFirstTokenMs
+        );
+    }
+
     public static void failed(
             WorkerRequestEnvelope envelope,
             ProviderFailureCategory category,

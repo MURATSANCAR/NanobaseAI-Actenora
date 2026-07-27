@@ -8,6 +8,9 @@ import java.util.Set;
 /**
  * Shared HTTP/runtime configuration for OpenAI-compatible local providers.
  * Connect and read timeouts are intentionally separate.
+ * <p>
+ * Concurrency: {@code maxConcurrency} is the global ceiling; extraction and final/merge
+ * caps prevent a CPU 27B final path from being flooded by parallel chunk work.
  */
 public record LocalProviderConfig(
         String providerKind,
@@ -15,6 +18,8 @@ public record LocalProviderConfig(
         Duration connectTimeout,
         Duration readTimeout,
         int maxConcurrency,
+        int maxConcurrencyExtraction,
+        int maxConcurrencyFinal,
         boolean streamingEnabled,
         long degradedProbeThresholdMs,
         Set<String> knownServedModelIds
@@ -33,6 +38,12 @@ public record LocalProviderConfig(
         if (maxConcurrency < 1) {
             throw new IllegalArgumentException("maxConcurrency must be >= 1");
         }
+        if (maxConcurrencyExtraction < 1) {
+            throw new IllegalArgumentException("maxConcurrencyExtraction must be >= 1");
+        }
+        if (maxConcurrencyFinal < 1) {
+            throw new IllegalArgumentException("maxConcurrencyFinal must be >= 1");
+        }
         if (degradedProbeThresholdMs < 1) {
             throw new IllegalArgumentException("degradedProbeThresholdMs must be >= 1");
         }
@@ -43,12 +54,30 @@ public record LocalProviderConfig(
         return new Builder(providerKind, baseUrl);
     }
 
+    /** Rebuild with a different provider kind label while keeping runtime settings. */
+    public LocalProviderConfig withProviderKind(String kind) {
+        return new LocalProviderConfig(
+                kind,
+                baseUrl,
+                connectTimeout,
+                readTimeout,
+                maxConcurrency,
+                maxConcurrencyExtraction,
+                maxConcurrencyFinal,
+                streamingEnabled,
+                degradedProbeThresholdMs,
+                knownServedModelIds
+        );
+    }
+
     public static final class Builder {
         private final String providerKind;
         private final URI baseUrl;
         private Duration connectTimeout = Duration.ofSeconds(2);
         private Duration readTimeout = Duration.ofSeconds(1800);
         private int maxConcurrency = 4;
+        private int maxConcurrencyExtraction = 2;
+        private int maxConcurrencyFinal = 1;
         private boolean streamingEnabled = true;
         private long degradedProbeThresholdMs = 2_000L;
         private Set<String> knownServedModelIds = Set.of();
@@ -70,6 +99,16 @@ public record LocalProviderConfig(
 
         public Builder maxConcurrency(int maxConcurrency) {
             this.maxConcurrency = maxConcurrency;
+            return this;
+        }
+
+        public Builder maxConcurrencyExtraction(int maxConcurrencyExtraction) {
+            this.maxConcurrencyExtraction = maxConcurrencyExtraction;
+            return this;
+        }
+
+        public Builder maxConcurrencyFinal(int maxConcurrencyFinal) {
+            this.maxConcurrencyFinal = maxConcurrencyFinal;
             return this;
         }
 
@@ -95,6 +134,8 @@ public record LocalProviderConfig(
                     connectTimeout,
                     readTimeout,
                     maxConcurrency,
+                    maxConcurrencyExtraction,
+                    maxConcurrencyFinal,
                     streamingEnabled,
                     degradedProbeThresholdMs,
                     knownServedModelIds

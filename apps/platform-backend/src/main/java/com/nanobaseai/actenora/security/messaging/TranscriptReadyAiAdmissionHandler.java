@@ -5,6 +5,8 @@ import com.nanobaseai.actenora.aiprocessing.application.port.AdmissionController
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.job.JobPriority;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.OutputLanguagePolicy;
+import com.nanobaseai.actenora.sharedkernel.coordination.DistributedLock;
+import com.nanobaseai.actenora.sharedkernel.coordination.InMemoryDistributedLock;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventEnvelope;
 import com.nanobaseai.actenora.tenant.api.TenantApi;
@@ -13,6 +15,7 @@ import com.nanobaseai.actenora.transcript.api.event.TranscriptIntegrationEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,6 +27,9 @@ import java.util.regex.Pattern;
 /**
  * Submits AI extraction jobs when {@code transcript.TranscriptReady.v1} is consumed.
  * Output language: transcript language → tenant default_language → {@code tr}.
+ * <p>
+ * A short-lived distributed lock avoids duplicate admission across replicas; durable
+ * idempotency remains on AiJob correlation_id in PostgreSQL.
  */
 public final class TranscriptReadyAiAdmissionHandler {
 
@@ -40,12 +46,14 @@ public final class TranscriptReadyAiAdmissionHandler {
     private static final String SCHEMA_VERSION = "extraction-output.v1";
     /** Meetings at/above this segment count use BULK SLA (240m) instead of NORMAL (60m). */
     static final int BULK_SEGMENT_THRESHOLD = 100;
+    static final Duration ADMISSION_LOCK_TTL = Duration.ofSeconds(30);
 
     private final AiProcessingApi aiProcessingApi;
     private final Function<UUID, Optional<String>> tenantDefaultLanguage;
+    private final DistributedLock distributedLock;
 
     public TranscriptReadyAiAdmissionHandler(AiProcessingApi aiProcessingApi) {
-        this(aiProcessingApi, tenantId -> Optional.empty());
+        this(aiProcessingApi, tenantId -> Optional.empty(), new InMemoryDistributedLock());
     }
 
     public TranscriptReadyAiAdmissionHandler(AiProcessingApi aiProcessingApi, TenantApi tenantApi) {
@@ -53,7 +61,8 @@ public final class TranscriptReadyAiAdmissionHandler {
                 aiProcessingApi,
                 tenantId -> Objects.requireNonNull(tenantApi, "tenantApi")
                         .findById(TenantId.of(tenantId))
-                        .map(TenantView::defaultLanguage)
+                        .map(TenantView::defaultLanguage),
+                new InMemoryDistributedLock()
         );
     }
 
@@ -61,8 +70,31 @@ public final class TranscriptReadyAiAdmissionHandler {
             AiProcessingApi aiProcessingApi,
             Function<UUID, Optional<String>> tenantDefaultLanguage
     ) {
+        this(aiProcessingApi, tenantDefaultLanguage, new InMemoryDistributedLock());
+    }
+
+    public TranscriptReadyAiAdmissionHandler(
+            AiProcessingApi aiProcessingApi,
+            Function<UUID, Optional<String>> tenantDefaultLanguage,
+            DistributedLock distributedLock
+    ) {
         this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
         this.tenantDefaultLanguage = Objects.requireNonNull(tenantDefaultLanguage, "tenantDefaultLanguage");
+        this.distributedLock = Objects.requireNonNull(distributedLock, "distributedLock");
+    }
+
+    public TranscriptReadyAiAdmissionHandler(
+            AiProcessingApi aiProcessingApi,
+            TenantApi tenantApi,
+            DistributedLock distributedLock
+    ) {
+        this(
+                aiProcessingApi,
+                tenantId -> Objects.requireNonNull(tenantApi, "tenantApi")
+                        .findById(TenantId.of(tenantId))
+                        .map(TenantView::defaultLanguage),
+                distributedLock
+        );
     }
 
     public void handle(EventEnvelope envelope) {
@@ -70,41 +102,54 @@ public final class TranscriptReadyAiAdmissionHandler {
             return;
         }
         TranscriptIntegrationEvents.TranscriptReady payload = parse(envelope.payloadJson());
-        String language = resolveLanguage(payload);
-        JobPriority priority = priorityForSegmentCount(payload.segmentCount());
-        AdmissionController.SubmitAiJobCommand command = new AdmissionController.SubmitAiJobCommand(
-                payload.tenantId(),
-                payload.meetingOccurrenceId(),
-                payload.transcriptId(),
-                TASK_TYPE,
-                priority,
-                AiCapability.TRANSCRIPT_EXTRACTION,
-                PROMPT_VERSION,
-                SCHEMA_VERSION,
-                language,
-                Math.max(0, payload.segmentCount()),
-                null,
-                payload.eventId(),
-                payload.occurredAt() == null ? Instant.now() : payload.occurredAt()
-        );
-        AdmissionController.AdmissionDecision decision = aiProcessingApi.submitJob(command);
-        if (!decision.admitted()) {
-            log.warn(
-                    "TranscriptReady AI admission rejected tenantId={} transcriptId={} reason={}",
-                    payload.tenantId(),
-                    payload.transcriptId(),
-                    decision.rejectReason());
+        String lockKey = "meeting:" + payload.meetingOccurrenceId() + ":processing";
+        Optional<String> lockToken = distributedLock.tryAcquire(lockKey, ADMISSION_LOCK_TTL);
+        if (lockToken.isEmpty()) {
+            log.info(
+                    "TranscriptReady admission skipped; lock held meetingOccurrenceId={} transcriptId={}",
+                    payload.meetingOccurrenceId(),
+                    payload.transcriptId());
             return;
         }
-        log.info(
-                "TranscriptReady admitted AI job tenantId={} meetingOccurrenceId={} transcriptId={} jobId={} language={} priority={} segmentCount={}",
-                payload.tenantId(),
-                payload.meetingOccurrenceId(),
-                payload.transcriptId(),
-                decision.job().id(),
-                language,
-                priority,
-                payload.segmentCount());
+        try {
+            String language = resolveLanguage(payload);
+            JobPriority priority = priorityForSegmentCount(payload.segmentCount());
+            AdmissionController.SubmitAiJobCommand command = new AdmissionController.SubmitAiJobCommand(
+                    payload.tenantId(),
+                    payload.meetingOccurrenceId(),
+                    payload.transcriptId(),
+                    TASK_TYPE,
+                    priority,
+                    AiCapability.TRANSCRIPT_EXTRACTION,
+                    PROMPT_VERSION,
+                    SCHEMA_VERSION,
+                    language,
+                    Math.max(0, payload.segmentCount()),
+                    null,
+                    payload.eventId(),
+                    payload.occurredAt() == null ? Instant.now() : payload.occurredAt()
+            );
+            AdmissionController.AdmissionDecision decision = aiProcessingApi.submitJob(command);
+            if (!decision.admitted()) {
+                log.warn(
+                        "TranscriptReady AI admission rejected tenantId={} transcriptId={} reason={}",
+                        payload.tenantId(),
+                        payload.transcriptId(),
+                        decision.rejectReason());
+                return;
+            }
+            log.info(
+                    "TranscriptReady admitted AI job tenantId={} meetingOccurrenceId={} transcriptId={} jobId={} language={} priority={} segmentCount={}",
+                    payload.tenantId(),
+                    payload.meetingOccurrenceId(),
+                    payload.transcriptId(),
+                    decision.job().id(),
+                    language,
+                    priority,
+                    payload.segmentCount());
+        } finally {
+            distributedLock.release(lockKey, lockToken.get());
+        }
     }
 
     static JobPriority priorityForSegmentCount(int segmentCount) {

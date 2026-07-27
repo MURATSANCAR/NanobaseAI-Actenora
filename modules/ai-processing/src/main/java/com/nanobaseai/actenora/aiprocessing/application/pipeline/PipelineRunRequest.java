@@ -15,8 +15,11 @@ public record PipelineRunRequest(
         String promptId,
         List<SegmentInput> segments,
         String language,
-        int timeoutSeconds
+        int timeoutSeconds,
+        int parallelChunkLimit
 ) {
+    public static final int DEFAULT_PARALLEL_CHUNK_LIMIT = 2;
+
     public PipelineRunRequest(
             TenantId tenantId,
             UUID transcriptId,
@@ -24,7 +27,7 @@ public record PipelineRunRequest(
             String promptId,
             List<SegmentInput> segments
     ) {
-        this(tenantId, transcriptId, meetingOccurrenceId, promptId, segments, "tr", 0);
+        this(tenantId, transcriptId, meetingOccurrenceId, promptId, segments, "tr", 0, DEFAULT_PARALLEL_CHUNK_LIMIT);
     }
 
     public PipelineRunRequest(
@@ -35,7 +38,28 @@ public record PipelineRunRequest(
             List<SegmentInput> segments,
             String language
     ) {
-        this(tenantId, transcriptId, meetingOccurrenceId, promptId, segments, language, 0);
+        this(tenantId, transcriptId, meetingOccurrenceId, promptId, segments, language, 0, DEFAULT_PARALLEL_CHUNK_LIMIT);
+    }
+
+    public PipelineRunRequest(
+            TenantId tenantId,
+            UUID transcriptId,
+            UUID meetingOccurrenceId,
+            String promptId,
+            List<SegmentInput> segments,
+            String language,
+            int timeoutSeconds
+    ) {
+        this(
+                tenantId,
+                transcriptId,
+                meetingOccurrenceId,
+                promptId,
+                segments,
+                language,
+                timeoutSeconds,
+                DEFAULT_PARALLEL_CHUNK_LIMIT
+        );
     }
 
     public PipelineRunRequest {
@@ -47,6 +71,9 @@ public record PipelineRunRequest(
         language = ExtractionPromptRules.normalizeLanguage(language);
         if (timeoutSeconds < 0) {
             throw new IllegalArgumentException("timeoutSeconds must be >= 0");
+        }
+        if (parallelChunkLimit < 1) {
+            throw new IllegalArgumentException("parallelChunkLimit must be >= 1");
         }
     }
 }

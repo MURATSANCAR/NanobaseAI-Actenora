@@ -63,6 +63,8 @@ import com.nanobaseai.actenora.modelmanagement.domain.ModelCapability;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelDefinition;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelDeployment;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelStatus;
+import com.nanobaseai.actenora.observability.metrics.MetricRecorder;
+import com.nanobaseai.actenora.sharedkernel.coordination.DistributedLock;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -106,9 +108,13 @@ public class AiProcessingPlatformConfiguration {
      */
     @Bean
     @Primary
-    SwappableLocalModelProvider swappableLocalModelProvider(LocalProviderProperties properties, Environment environment) {
+    SwappableLocalModelProvider swappableLocalModelProvider(
+            LocalProviderProperties properties,
+            Environment environment,
+            MetricRecorder metricRecorder
+    ) {
         LocalModelProvider initial = LocalProviderFactory.create(properties, ActenoraProfiles.isStrictProduction(environment));
-        return new SwappableLocalModelProvider(initial);
+        return new SwappableLocalModelProvider(new MetricsRecordingLocalModelProvider(initial, metricRecorder));
     }
 
     @Bean
@@ -356,9 +362,10 @@ public class AiProcessingPlatformConfiguration {
     @Bean
     TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler(
             AiProcessingApi aiProcessingApi,
-            TenantApi tenantApi
+            TenantApi tenantApi,
+            DistributedLock distributedLock
     ) {
-        return new TranscriptReadyAiAdmissionHandler(aiProcessingApi, tenantApi);
+        return new TranscriptReadyAiAdmissionHandler(aiProcessingApi, tenantApi, distributedLock);
     }
 
     @Bean

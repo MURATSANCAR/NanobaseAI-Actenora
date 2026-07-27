@@ -38,6 +38,9 @@ actenora:
     mode: jdbc
   messaging:
     mode: jdbc-rabbit
+  redis:
+    coordination:
+      enabled: ${ACTENORA_REDIS_COORDINATION_ENABLED:true}
   tenancy:
     require-security-context: true
   object-storage:

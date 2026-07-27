@@ -51,6 +51,8 @@ public final class LocalProviderFactory {
                 .connectTimeout(properties.getConnectTimeout())
                 .readTimeout(properties.getReadTimeout())
                 .maxConcurrency(properties.getMaxConcurrency())
+                .maxConcurrencyExtraction(properties.getMaxConcurrencyExtraction())
+                .maxConcurrencyFinal(properties.getMaxConcurrencyFinal())
                 .streamingEnabled(properties.isStreamingEnabled())
                 .degradedProbeThresholdMs(properties.getDegradedProbeThresholdMs())
                 .knownServedModelIds(properties.getServedModelIds())

@@ -16,6 +16,7 @@ import com.nanobaseai.actenora.aiprocessing.application.modelworker.TokenEstimat
 import com.nanobaseai.actenora.aiprocessing.application.modelworker.TokenUsage;
 import com.nanobaseai.actenora.aiprocessing.application.modelworker.WorkerRequestEnvelope;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
+import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -52,7 +53,9 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
     private final LocalProviderConfig config;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
-    private final Semaphore concurrency;
+    private final Semaphore globalConcurrency;
+    private final Semaphore extractionConcurrency;
+    private final Semaphore finalConcurrency;
     private final ConcurrentHashMap<UUID, AtomicBoolean> cancellations = new ConcurrentHashMap<>();
     private final AtomicReference<ProviderHealth> lastHealth =
             new AtomicReference<>(ProviderHealth.down("not probed", 0));
@@ -66,7 +69,9 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
         this.config = Objects.requireNonNull(config, "config");
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
-        this.concurrency = new Semaphore(config.maxConcurrency(), true);
+        this.globalConcurrency = new Semaphore(config.maxConcurrency(), true);
+        this.extractionConcurrency = new Semaphore(config.maxConcurrencyExtraction(), true);
+        this.finalConcurrency = new Semaphore(config.maxConcurrencyFinal(), true);
     }
 
     private static HttpClient defaultHttpClient(LocalProviderConfig config) {
@@ -140,7 +145,8 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
                     parsed.model() == null ? envelope.servedModelId() : parsed.model(),
                     parsed.content(),
                     usage,
-                    latencyMs
+                    latencyMs,
+                    -1L
             );
         } catch (LocalModelProviderException ex) {
             throw ex;
@@ -151,7 +157,7 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
             throw mapTransport(envelope, ex, started);
         } finally {
             cancellations.remove(envelope.attemptId());
-            concurrency.release();
+            releaseConcurrency(envelope.taskType());
         }
     }
 
@@ -198,15 +204,18 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
                         "provider HTTP status=" + response.statusCode(), true, started);
             }
 
-            List<InferenceStreamChunk> chunks = readSse(response.body(), envelope, cancelled, started);
-            TokenUsage usage = chunks.stream()
+            SseReadResult sse = readSse(response.body(), envelope, cancelled, started);
+            TokenUsage usage = sse.chunks().stream()
                     .filter(InferenceStreamChunk::done)
                     .map(InferenceStreamChunk::tokenUsage)
                     .filter(Objects::nonNull)
                     .findFirst()
                     .orElse(TokenUsage.unknown());
             SafeInferenceLog.completed(envelope, usage, elapsedMs(started));
-            return chunks.stream();
+            if (sse.timeToFirstTokenMs() >= 0) {
+                SafeInferenceLog.ttft(envelope, sse.timeToFirstTokenMs());
+            }
+            return sse.chunks().stream();
         } catch (LocalModelProviderException ex) {
             throw ex;
         } catch (InterruptedException ex) {
@@ -216,7 +225,7 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
             throw mapTransport(envelope, ex, started);
         } finally {
             cancellations.remove(envelope.attemptId());
-            concurrency.release();
+            releaseConcurrency(envelope.taskType());
         }
     }
 
@@ -290,10 +299,32 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
     }
 
     private void acquireOrReject(WorkerRequestEnvelope envelope) {
-        if (!concurrency.tryAcquire()) {
+        if (!globalConcurrency.tryAcquire()) {
             throw fail(envelope, ProviderFailureCategory.CONCURRENCY_LIMIT,
                     "provider concurrency limit reached max=" + config.maxConcurrency(), true, System.nanoTime());
         }
+        Semaphore taskSlot = taskSemaphore(envelope.taskType());
+        if (!taskSlot.tryAcquire()) {
+            globalConcurrency.release();
+            throw fail(envelope, ProviderFailureCategory.CONCURRENCY_LIMIT,
+                    "task concurrency limit reached taskType=" + envelope.taskType()
+                            + " extractionMax=" + config.maxConcurrencyExtraction()
+                            + " finalMax=" + config.maxConcurrencyFinal(),
+                    true,
+                    System.nanoTime());
+        }
+    }
+
+    private void releaseConcurrency(InferenceTaskType taskType) {
+        taskSemaphore(taskType).release();
+        globalConcurrency.release();
+    }
+
+    private Semaphore taskSemaphore(InferenceTaskType taskType) {
+        return switch (taskType) {
+            case CHUNK_EXTRACTION -> extractionConcurrency;
+            case CANDIDATE_MERGE, FINAL_NOTE, VALIDATION -> finalConcurrency;
+        };
     }
 
     private void rejectIfDraining() {
@@ -415,7 +446,7 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
         }
     }
 
-    private List<InferenceStreamChunk> readSse(
+    private SseReadResult readSse(
             InputStream body,
             WorkerRequestEnvelope envelope,
             AtomicBoolean cancelled,
@@ -424,6 +455,7 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
         List<InferenceStreamChunk> chunks = new ArrayList<>();
         String responseModel = null;
         int completionTokens = 0;
+        long timeToFirstTokenMs = -1L;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
@@ -450,8 +482,12 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
                 if (choices != null && choices.isArray() && !choices.isEmpty()) {
                     JsonNode delta = choices.get(0).path("delta").path("content");
                     if (!delta.isMissingNode() && !delta.isNull()) {
-                        chunks.add(InferenceStreamChunk.delta(delta.asText()));
-                        completionTokens += estimateTokens(delta.asText()).tokens();
+                        String text = delta.asText();
+                        if (timeToFirstTokenMs < 0 && text != null && !text.isEmpty()) {
+                            timeToFirstTokenMs = elapsedMs(started);
+                        }
+                        chunks.add(InferenceStreamChunk.delta(text));
+                        completionTokens += estimateTokens(text).tokens();
                     }
                 }
             }
@@ -459,7 +495,10 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
         if (chunks.isEmpty() || !chunks.get(chunks.size() - 1).done()) {
             chunks.add(InferenceStreamChunk.done(TokenUsage.of(0, completionTokens)));
         }
-        return chunks;
+        return new SseReadResult(chunks, timeToFirstTokenMs);
+    }
+
+    private record SseReadResult(List<InferenceStreamChunk> chunks, long timeToFirstTokenMs) {
     }
 
     private HttpResponse<String> send(HttpRequest request, WorkerRequestEnvelope envelope)

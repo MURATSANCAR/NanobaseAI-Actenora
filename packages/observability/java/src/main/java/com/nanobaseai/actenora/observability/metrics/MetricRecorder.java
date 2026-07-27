@@ -13,6 +13,16 @@ public interface MetricRecorder {
 
     void timing(ActenoraMetric metric, long durationMs, Map<String, String> attributes);
 
+    /** Add {@code delta} to a counter (tokens, retries, etc.). */
+    default void count(ActenoraMetric metric, long delta, Map<String, String> attributes) {
+        if (delta <= 0) {
+            return;
+        }
+        for (long i = 0; i < delta; i++) {
+            increment(metric, attributes);
+        }
+    }
+
     default void increment(ActenoraMetric metric) {
         increment(metric, Map.of());
     }

@@ -24,16 +24,7 @@ public final class LlamaCppProvider implements LocalModelProvider {
 
     public LlamaCppProvider(LocalProviderConfig config) {
         Objects.requireNonNull(config, "config");
-        this.delegate = new OpenAiCompatibleLocalProvider(
-                LocalProviderConfig.builder("llamacpp", config.baseUrl())
-                        .connectTimeout(config.connectTimeout())
-                        .readTimeout(config.readTimeout())
-                        .maxConcurrency(config.maxConcurrency())
-                        .streamingEnabled(config.streamingEnabled())
-                        .degradedProbeThresholdMs(config.degradedProbeThresholdMs())
-                        .knownServedModelIds(config.knownServedModelIds())
-                        .build()
-        );
+        this.delegate = new OpenAiCompatibleLocalProvider(config.withProviderKind("llamacpp"));
     }
 
     public LlamaCppProvider(URI baseUrl) {

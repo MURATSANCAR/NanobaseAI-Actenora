@@ -90,6 +90,10 @@ actenora:
     secret-key: ${OBJECT_STORAGE_SECRET_KEY:}
     bucket: ${OBJECT_STORAGE_BUCKET:actenora}
     tenant-prefix-root: ${OBJECT_STORAGE_TENANT_PREFIX_ROOT:tenants}
+  redis:
+    # Short-lived lock/dedup/rate-limit. Job SoT stays in PostgreSQL.
+    coordination:
+      enabled: ${ACTENORA_REDIS_COORDINATION_ENABLED:false}
   security:
     auth:
       mode: ${ACTENORA_AUTH_MODE:headers}
@@ -112,6 +116,8 @@ actenora:
       connect-timeout: ${ACTENORA_AI_PROVIDER_CONNECT_TIMEOUT:2s}
       read-timeout: ${ACTENORA_AI_PROVIDER_READ_TIMEOUT:1800s}
       max-concurrency: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY:4}
+      max-concurrency-extraction: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_EXTRACTION:2}
+      max-concurrency-final: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_FINAL:1}
       streaming-enabled: ${ACTENORA_AI_PROVIDER_STREAMING_ENABLED:true}
       served-model-ids: ${ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS:nanobaseai-primary,nanobaseai-local}
       max-attempts: ${ACTENORA_AI_PROVIDER_MAX_ATTEMPTS:5}

@@ -41,6 +41,16 @@ public final class InMemoryMetricRecorder implements MetricRecorder {
         samples.add(new MetricSample(metric, "timing", durationMs, Map.copyOf(attributes)));
     }
 
+    @Override
+    public void count(ActenoraMetric metric, long delta, Map<String, String> attributes) {
+        if (delta <= 0) {
+            return;
+        }
+        String key = key(metric, attributes);
+        counters.computeIfAbsent(key, k -> new AtomicLong()).addAndGet(delta);
+        samples.add(new MetricSample(metric, "counter", delta, Map.copyOf(attributes == null ? Map.of() : attributes)));
+    }
+
     public long counter(ActenoraMetric metric) {
         return counters.getOrDefault(metric.otelName(), new AtomicLong()).get();
     }

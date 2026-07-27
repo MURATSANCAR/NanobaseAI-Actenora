@@ -162,6 +162,8 @@ public final class NanobaseAiConnectionService {
                 .connectTimeout(s.connectTimeout())
                 .readTimeout(s.readTimeout())
                 .maxConcurrency(s.maxConcurrency())
+                .maxConcurrencyExtraction(Math.max(1, Math.min(s.maxConcurrency(), 2)))
+                .maxConcurrencyFinal(1)
                 .streamingEnabled(s.streamingEnabled())
                 .knownServedModelIds(s.servedModelIds())
                 .build();
