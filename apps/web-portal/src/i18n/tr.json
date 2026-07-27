@@ -277,6 +277,8 @@
   "meeting.minutesDocumentTitle": "Toplantı tutanağı",
   "meeting.minutesUntitled": "Başlıksız toplantı",
   "meeting.minutesStatus": "Durum",
+  "meeting.minutesGlobalBadge": "Küresel toplantı zekası",
+  "meeting.minutesSectionsFilled": "{filled}/{total} bölüm hazır",
   "meeting.minutesListPlaceholder": "Her satıra bir madde…",
   "meeting.minutesOwner": "Sorumlu",
   "meeting.minutesDue": "Son tarih",

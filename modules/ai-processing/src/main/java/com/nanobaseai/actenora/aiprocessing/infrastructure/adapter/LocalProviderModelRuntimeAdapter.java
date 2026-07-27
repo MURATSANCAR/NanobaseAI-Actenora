@@ -113,7 +113,8 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
                         .temperature(0.1)
                         .topP(0.85)
                         .topK(20)
-                        .maxTokens(1200)
+                        // Extraction schema needs headroom; never cap at meeting-smoke 1200.
+                        .maxTokens(request.maxOutputTokens() > 0 ? request.maxOutputTokens() : 6000)
                         .stream(true)
                         .extra("repeat_penalty", 1.05)
                         .extra("response_format", java.util.Map.of("type", "json_object"))

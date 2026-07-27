@@ -277,6 +277,8 @@
   "meeting.minutesDocumentTitle": "Meeting minutes",
   "meeting.minutesUntitled": "Untitled meeting",
   "meeting.minutesStatus": "Status",
+  "meeting.minutesGlobalBadge": "Global meeting intelligence",
+  "meeting.minutesSectionsFilled": "{filled}/{total} sections ready",
   "meeting.minutesListPlaceholder": "One item per line…",
   "meeting.minutesOwner": "Owner",
   "meeting.minutesDue": "Due",
