@@ -67,7 +67,7 @@ public final class ExtractionMerger {
         }
 
         double confidence = confidenceSum / chunks.size();
-        return MeetingNoisePatterns.stripStatusQuoDecisions(new ExtractionBundle(
+        return new ExtractionBundle(
                 new ArrayList<>(topics.values()),
                 new ArrayList<>(decisions.values()),
                 new ArrayList<>(actions.values()),
@@ -80,7 +80,7 @@ public final class ExtractionMerger {
                 new ArrayList<>(qualityFlags),
                 new ArrayList<>(evidence),
                 clamp(confidence)
-        ));
+        );
     }
 
     private static RiskCandidate preferRicherRisk(RiskCandidate a, RiskCandidate b) {

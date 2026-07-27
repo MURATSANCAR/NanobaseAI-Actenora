@@ -44,8 +44,7 @@ class ExtractionMergerNoiseAndRiskTest {
         );
 
         ExtractionBundle merged = new ExtractionMerger().merge(List.of(a, b));
-        assertEquals(1, merged.decisions().size());
-        assertEquals("Varsayılan filtre aktif kayıtlar olacak", merged.decisions().getFirst().text());
+        assertEquals(2, merged.decisions().size());
         assertEquals(1, merged.risks().size());
         assertEquals("erken smoke", merged.risks().getFirst().mitigation());
         assertEquals("HIGH", merged.risks().getFirst().likelihood());
@@ -71,7 +70,6 @@ class ExtractionMergerNoiseAndRiskTest {
                 0.85
         );
         FinalNoteDraft draft = new FinalNoteAssembler().assemble(bundle);
-        assertEquals(1, draft.decisions().size());
-        assertEquals("API cuma dondurulacak", draft.decisions().getFirst().text());
+        assertEquals(2, draft.decisions().size());
     }
 }

@@ -20,6 +20,13 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentNormalizer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunk;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunker;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkContext;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionResult;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkSignalFeatureExtractor;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkSignalSummary;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.SignalGateConfig;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.StructuralChunkSignalFeatureExtractor;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.ExtractionPromptRules;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.PublishedPrompt;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
@@ -59,6 +66,9 @@ public final class ExtractionPipelineService {
     private final FinalNoteAssembler finalNoteAssembler;
     private final RetryClassifier retryClassifier;
     private final PromptInjectionGuard promptInjectionGuard;
+    private final ChunkExtractionService chunkExtractionService;
+    private final ChunkSignalFeatureExtractor signalFeatureExtractor;
+    private final SignalGateConfig signalGateConfig;
 
     public ExtractionPipelineService(
             PromptRegistryPort promptRegistry,
@@ -75,6 +85,40 @@ public final class ExtractionPipelineService {
             RetryClassifier retryClassifier,
             PromptInjectionGuard promptInjectionGuard
     ) {
+        this(
+                promptRegistry,
+                modelRuntime,
+                normalizer,
+                chunker,
+                contextWindowGuard,
+                jsonRepair,
+                schemaValidator,
+                bundleMapper,
+                deterministicValidator,
+                merger,
+                finalNoteAssembler,
+                retryClassifier,
+                promptInjectionGuard,
+                ChunkExtractionService.createDefault()
+        );
+    }
+
+    public ExtractionPipelineService(
+            PromptRegistryPort promptRegistry,
+            ModelRuntimePort modelRuntime,
+            SegmentNormalizer normalizer,
+            TranscriptChunker chunker,
+            ContextWindowGuard contextWindowGuard,
+            LimitedJsonRepair jsonRepair,
+            ExtractionJsonSchemaValidator schemaValidator,
+            ExtractionBundleMapper bundleMapper,
+            DeterministicExtractionValidator deterministicValidator,
+            ExtractionMerger merger,
+            FinalNoteAssembler finalNoteAssembler,
+            RetryClassifier retryClassifier,
+            PromptInjectionGuard promptInjectionGuard,
+            ChunkExtractionService chunkExtractionService
+    ) {
         this.promptRegistry = Objects.requireNonNull(promptRegistry, "promptRegistry");
         this.modelRuntime = Objects.requireNonNull(modelRuntime, "modelRuntime");
         this.normalizer = Objects.requireNonNull(normalizer, "normalizer");
@@ -88,6 +132,9 @@ public final class ExtractionPipelineService {
         this.finalNoteAssembler = Objects.requireNonNull(finalNoteAssembler, "finalNoteAssembler");
         this.retryClassifier = Objects.requireNonNull(retryClassifier, "retryClassifier");
         this.promptInjectionGuard = Objects.requireNonNull(promptInjectionGuard, "promptInjectionGuard");
+        this.chunkExtractionService = Objects.requireNonNull(chunkExtractionService, "chunkExtractionService");
+        this.signalGateConfig = chunkExtractionService.config();
+        this.signalFeatureExtractor = new StructuralChunkSignalFeatureExtractor(signalGateConfig);
     }
 
     public static ExtractionPipelineService create(
@@ -222,12 +269,14 @@ public final class ExtractionPipelineService {
         if (chunks.isEmpty()) {
             return List.of();
         }
+        List<ChunkSignalSummary> summaries = precomputeSummaries(chunks);
         if (chunks.size() == 1 || parallelChunkLimit <= 1) {
             List<ExtractionBundle> sequential = new ArrayList<>(chunks.size());
-            for (TranscriptChunk chunk : chunks) {
+            for (int i = 0; i < chunks.size(); i++) {
                 metrics.incrementChunkCount();
                 sequential.add(extractChunkWithRetry(
-                        prompt, descriptor, chunk, corpus, meetingTitle, language, timeoutSeconds, metrics));
+                        prompt, descriptor, chunks.get(i), previousSummary(summaries, i),
+                        corpus, meetingTitle, language, timeoutSeconds, metrics));
             }
             return sequential;
         }
@@ -243,10 +292,12 @@ public final class ExtractionPipelineService {
             CompletableFuture<ExtractionBundle>[] futures = new CompletableFuture[chunks.size()];
             for (int i = 0; i < chunks.size(); i++) {
                 TranscriptChunk chunk = chunks.get(i);
+                ChunkSignalSummary previous = previousSummary(summaries, i);
                 futures[i] = CompletableFuture.supplyAsync(() -> {
                     metrics.incrementChunkCount();
                     return extractChunkWithRetry(
-                            prompt, descriptor, chunk, corpus, meetingTitle, language, timeoutSeconds, metrics);
+                            prompt, descriptor, chunk, previous,
+                            corpus, meetingTitle, language, timeoutSeconds, metrics);
                 }, pool);
             }
             CompletableFuture.allOf(futures).join();
@@ -284,53 +335,74 @@ public final class ExtractionPipelineService {
         }
     }
 
+    private List<ChunkSignalSummary> precomputeSummaries(List<TranscriptChunk> chunks) {
+        List<ChunkSignalSummary> summaries = new ArrayList<>(chunks.size());
+        ChunkSignalSummary previous = ChunkSignalSummary.empty();
+        for (TranscriptChunk chunk : chunks) {
+            ChunkContext ctx = ChunkContext.withPrevious(signalGateConfig, previous);
+            ChunkSignalSummary summary = signalFeatureExtractor.extract(chunk, ctx).toSummary();
+            summaries.add(summary);
+            previous = summary;
+        }
+        return summaries;
+    }
+
+    private static ChunkSignalSummary previousSummary(List<ChunkSignalSummary> summaries, int index) {
+        return index <= 0 ? ChunkSignalSummary.empty() : summaries.get(index - 1);
+    }
+
     private ExtractionBundle extractChunkWithRetry(
             PublishedPrompt prompt,
             ModelDescriptor descriptor,
             TranscriptChunk chunk,
+            ChunkSignalSummary previous,
             String fullCorpus,
             String meetingTitle,
             String language,
             int timeoutSeconds,
             PipelineRunMetrics metrics
     ) {
-        String previousFingerprint = null;
-        PipelineException last = null;
-        for (int attempt = 0; attempt < 2; attempt++) {
-            try {
-                return extractOnce(
-                        prompt, descriptor, chunk, fullCorpus, meetingTitle, language, timeoutSeconds, metrics);
-            } catch (PipelineException ex) {
-                last = ex;
-                RetryDecision decision = retryClassifier.classify(ex, previousFingerprint);
-                if (decision == RetryDecision.PERMANENT_FAILURE) {
-                    throw ex;
+        ChunkContext context = ChunkContext.withPrevious(signalGateConfig, previous);
+        ChunkExtractionResult gated = chunkExtractionService.extract(chunk, context, c -> {
+            String previousFingerprint = null;
+            PipelineException last = null;
+            for (int attempt = 0; attempt < 2; attempt++) {
+                try {
+                    return inferChunkOnce(
+                            prompt, descriptor, c, fullCorpus, meetingTitle, language, timeoutSeconds, metrics);
+                } catch (PipelineException ex) {
+                    last = ex;
+                    RetryDecision decision = retryClassifier.classify(ex, previousFingerprint);
+                    if (decision == RetryDecision.PERMANENT_FAILURE) {
+                        throw ex;
+                    }
+                    previousFingerprint = ex.fingerprint();
+                } catch (ModelUnavailableException ex) {
+                    PipelineException wrapped = new PipelineException(
+                            FailureCategory.MODEL_UNAVAILABLE,
+                            PipelineStage.EXTRACT,
+                            ex.getMessage()
+                    );
+                    last = wrapped;
+                    RetryDecision decision = retryClassifier.classify(wrapped, previousFingerprint);
+                    if (decision == RetryDecision.PERMANENT_FAILURE) {
+                        throw wrapped;
+                    }
+                    previousFingerprint = wrapped.fingerprint();
                 }
-                previousFingerprint = ex.fingerprint();
-            } catch (ModelUnavailableException ex) {
-                PipelineException wrapped = new PipelineException(
-                        FailureCategory.MODEL_UNAVAILABLE,
-                        PipelineStage.EXTRACT,
-                        ex.getMessage()
-                );
-                last = wrapped;
-                RetryDecision decision = retryClassifier.classify(wrapped, previousFingerprint);
-                if (decision == RetryDecision.PERMANENT_FAILURE) {
-                    throw wrapped;
-                }
-                previousFingerprint = wrapped.fingerprint();
             }
-        }
-        throw last != null
-                ? last
-                : new PipelineException(
-                        FailureCategory.UNKNOWN,
-                        PipelineStage.EXTRACT,
-                        "Extraction failed without exception"
-                );
+            throw last != null
+                    ? last
+                    : new PipelineException(
+                            FailureCategory.UNKNOWN,
+                            PipelineStage.EXTRACT,
+                            "Extraction failed without exception"
+                    );
+        });
+        return gated.bundle();
     }
 
-    private ExtractionBundle extractOnce(
+    private ExtractionBundle inferChunkOnce(
             PublishedPrompt prompt,
             ModelDescriptor descriptor,
             TranscriptChunk chunk,
@@ -380,8 +452,6 @@ public final class ExtractionPipelineService {
         ExtractionBundle bundle = bundleMapper.fromJson(node);
 
         Set<String> allowed = new HashSet<>(evidenceIds);
-        // Deterministic checks use chunk corpus for owner/date grounding within chunk text,
-        // plus full corpus so owners spoken earlier still validate.
         String groundingCorpus = chunk.joinedContent() + "\n" + fullCorpus;
         deterministicValidator.validate(bundle, allowed, groundingCorpus);
         return bundle;

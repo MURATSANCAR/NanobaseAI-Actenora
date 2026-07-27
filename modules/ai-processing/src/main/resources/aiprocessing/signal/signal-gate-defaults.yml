@@ -1,0 +1,14 @@
+# Adaptive chunk signal gate (helper dictionaries under aiprocessing/signal/dictionaries/)
+# Shadow mode default: measure FN before hard-skip in production.
+meeting:
+  signal-gate:
+    enabled: true
+    mode: adaptive
+    threshold: 4.5
+    continuation-aware: true
+    semantic-repetition-enabled: true
+    hard-marker-shortcut-enabled: true
+    shadow-mode: true
+    policy-version: adaptive-gate-v1
+  speech-signals:
+    dictionary-version: tr-en-v1

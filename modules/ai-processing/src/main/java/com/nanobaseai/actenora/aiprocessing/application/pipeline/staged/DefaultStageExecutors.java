@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.aiprocessing.application.pipeline.staged;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.InferenceRequest;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingContext;
@@ -31,6 +32,13 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentNormalizer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunk;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunker;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkContext;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionResult;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkSignalFeatureExtractor;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkSignalSummary;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.SignalGateConfig;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.StructuralChunkSignalFeatureExtractor;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.ExtractionPromptRules;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.PublishedPrompt;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
@@ -95,13 +103,15 @@ public final class DefaultStageExecutors {
         DeterministicExtractionValidator validator = new DeterministicExtractionValidator();
         ExtractionMerger merger = new ExtractionMerger();
         FinalNoteAssembler noteAssembler = new FinalNoteAssembler();
+        ChunkExtractionService chunkExtraction = ChunkExtractionService.createDefault();
 
         return Map.of(
                 ProcessingStage.NORMALIZE, new NormalizeExecutor(segments, normalizer, artifacts),
                 ProcessingStage.TRIAGE, new TriageExecutor(prompts, modelRuntime, segments, normalizer),
                 ProcessingStage.CHUNK, new ChunkPlanExecutor(segments, normalizer, chunker, guard, modelRuntime, artifacts),
                 ProcessingStage.EXTRACT, new ExtractChunkExecutor(
-                        prompts, modelRuntime, segments, normalizer, chunker, guard, repair, schema, bundleMapper, validator, artifacts),
+                        prompts, modelRuntime, segments, normalizer, chunker, guard, repair, schema, bundleMapper,
+                        validator, artifacts, chunkExtraction),
                 ProcessingStage.MERGE, new MergeExecutor(modelRuntime, prompts, artifacts, merger, repair, schema, bundleMapper),
                 ProcessingStage.VALIDATE, new ValidateExecutor(artifacts, validator, segments, normalizer),
                 ProcessingStage.MINUTES, new MinutesExecutor(
@@ -371,6 +381,9 @@ public final class DefaultStageExecutors {
         private final ExtractionBundleMapper bundleMapper;
         private final DeterministicExtractionValidator validator;
         private final ProcessingArtifactRepository artifacts;
+        private final ChunkExtractionService chunkExtraction;
+        private final ChunkSignalFeatureExtractor signalFeatures;
+        private final SignalGateConfig signalGateConfig;
 
         ExtractChunkExecutor(
                 PromptRegistryPort prompts,
@@ -383,7 +396,8 @@ public final class DefaultStageExecutors {
                 ExtractionJsonSchemaValidator schema,
                 ExtractionBundleMapper bundleMapper,
                 DeterministicExtractionValidator validator,
-                ProcessingArtifactRepository artifacts
+                ProcessingArtifactRepository artifacts,
+                ChunkExtractionService chunkExtraction
         ) {
             this.prompts = prompts;
             this.modelRuntime = modelRuntime;
@@ -396,6 +410,9 @@ public final class DefaultStageExecutors {
             this.bundleMapper = bundleMapper;
             this.validator = validator;
             this.artifacts = artifacts;
+            this.chunkExtraction = Objects.requireNonNull(chunkExtraction, "chunkExtraction");
+            this.signalGateConfig = chunkExtraction.config();
+            this.signalFeatures = new StructuralChunkSignalFeatureExtractor(signalGateConfig);
         }
 
         @Override
@@ -419,41 +436,64 @@ public final class DefaultStageExecutors {
                             (System.nanoTime() - t0) / 1_000_000L, now);
                 }
                 TranscriptChunk chunk = chunks.get(index);
-                PublishedPrompt prompt = prompts.requirePublished(
-                        com.nanobaseai.actenora.aiprocessing.infrastructure.prompt.InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID);
-                String system = ExtractionPromptRules.systemRulesFor(job.language());
-                String user = ExtractionPromptRules.applyLanguage(prompt.template(), job.language())
-                        .replace("{{meetingTitle}}", job.meetingOccurrenceId().toString())
-                        .replace("{{meetingDate}}", "")
-                        .replace("{{participants}}", "")
-                        .replace("{{evidenceSegmentIds}}", String.join(",", chunk.segmentIds()))
-                        .replace("{{chunk}}", formatChunk(chunk));
-                guard.assertFits(
-                        system + "\n" + user,
-                        descriptor.contextWindowTokens(),
-                        MeetingLlmBudgets.EXTRACTION_MAX_TOKENS
-                );
-                InferenceResponse response = modelRuntime.infer(new InferenceRequest(
-                        InferenceTaskType.CHUNK_EXTRACTION.name(),
-                        prompt.promptVersionId(),
-                        prompt.outputSchemaId(),
-                        system,
-                        user,
-                        chunk.segmentIds(),
-                        MeetingLlmBudgets.EXTRACTION_MAX_TOKENS,
-                        1800
-                ));
-                String json = response.rawText();
-                if (repair.needsRepair(json)) {
-                    json = repair.repairOrThrow(json);
+                ChunkSignalSummary previous = ChunkSignalSummary.empty();
+                if (index > 0) {
+                    ChunkContext prevCtx = ChunkContext.of(signalGateConfig);
+                    previous = signalFeatures.extract(chunks.get(index - 1), prevCtx).toSummary();
                 }
-                JsonNode node = schema.parseAndValidate(json);
-                ExtractionBundle bundle = bundleMapper.fromJson(node);
-                validator.validate(bundle, new HashSet<>(chunk.segmentIds()), chunk.joinedContent() + "\n" + groundingCorpus(normalized));
-                String out = MAPPER.writeValueAsString(node);
+                ChunkContext context = ChunkContext.withPrevious(signalGateConfig, previous);
+                int[] tokens = new int[]{0, 0};
+                ChunkExtractionResult result = chunkExtraction.extract(chunk, context, c -> {
+                    PublishedPrompt prompt = prompts.requirePublished(
+                            com.nanobaseai.actenora.aiprocessing.infrastructure.prompt.InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID);
+                    String system = ExtractionPromptRules.systemRulesFor(job.language());
+                    String user = ExtractionPromptRules.applyLanguage(prompt.template(), job.language())
+                            .replace("{{meetingTitle}}", job.meetingOccurrenceId().toString())
+                            .replace("{{meetingDate}}", "")
+                            .replace("{{participants}}", "")
+                            .replace("{{evidenceSegmentIds}}", String.join(",", c.segmentIds()))
+                            .replace("{{chunk}}", formatChunk(c));
+                    guard.assertFits(
+                            system + "\n" + user,
+                            descriptor.contextWindowTokens(),
+                            MeetingLlmBudgets.EXTRACTION_MAX_TOKENS
+                    );
+                    InferenceResponse response = modelRuntime.infer(new InferenceRequest(
+                            InferenceTaskType.CHUNK_EXTRACTION.name(),
+                            prompt.promptVersionId(),
+                            prompt.outputSchemaId(),
+                            system,
+                            user,
+                            c.segmentIds(),
+                            MeetingLlmBudgets.EXTRACTION_MAX_TOKENS,
+                            1800
+                    ));
+                    tokens[0] = clampTokens(response.inputTokens());
+                    tokens[1] = clampTokens(response.outputTokens());
+                    String json = response.rawText();
+                    if (repair.needsRepair(json)) {
+                        json = repair.repairOrThrow(json);
+                    }
+                    JsonNode node = schema.parseAndValidate(json);
+                    ExtractionBundle bundle = bundleMapper.fromJson(node);
+                    validator.validate(
+                            bundle,
+                            new HashSet<>(c.segmentIds()),
+                            c.joinedContent() + "\n" + groundingCorpus(normalized)
+                    );
+                    return bundle;
+                });
+                // Keep merge-compatible extraction schema; gate metadata lives in qualityFlags.
+                JsonNode outNode = MAPPER.valueToTree(result.bundle());
+                String out = MAPPER.writeValueAsString(outNode);
+                try {
+                    schema.parseAndValidate(out);
+                } catch (RuntimeException schemaEx) {
+                    out = emptyExtractionJson(result.bundle().qualityFlags());
+                }
                 return StageExecutionResult.success(
                         job, "chunk-extraction-" + index, out,
-                        clampTokens(response.inputTokens()), clampTokens(response.outputTokens()),
+                        tokens[0], tokens[1],
                         (System.nanoTime() - t0) / 1_000_000L, now);
             } catch (Exception ex) {
                 return StageExecutionResult.failure(
@@ -470,6 +510,26 @@ public final class DefaultStageExecutors {
                 sb.append(segment.content()).append('\n');
             }
             return sb.toString();
+        }
+
+        private static String emptyExtractionJson(List<String> qualityFlags) throws Exception {
+            ObjectNode root = MAPPER.createObjectNode();
+            root.putArray("topics");
+            root.putArray("decisions");
+            root.putArray("actionItems");
+            root.putArray("risks");
+            root.putArray("openQuestions");
+            root.putArray("commitments");
+            root.putArray("issues");
+            root.putArray("proposals");
+            root.putArray("importantFacts");
+            ArrayNode flags = root.putArray("qualityFlags");
+            for (String flag : qualityFlags) {
+                flags.add(flag);
+            }
+            root.putArray("evidenceSegmentIds");
+            root.put("confidence", 0.0d);
+            return MAPPER.writeValueAsString(root);
         }
     }
 

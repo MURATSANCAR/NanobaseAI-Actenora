@@ -1,0 +1,43 @@
+{
+  "version": "tr-en-v1",
+  "decisionVerbs": [
+    "kararlaştır", "karar verdik", "onayla", "onaylandı", "kabul et", "kabul edildi",
+    "dondur", "dondurul", "kapattık", "kapatıyoruz", "freeze", "approve", "approved",
+    "decide", "decided", "agreed", "we will ship"
+  ],
+  "assignmentCues": [
+    "sahipliğini alsın", "alsın", "yapsın", "hazırlasın", "bıraksın", "assigned to",
+    "will prepare", "will send", "will deliver", "owner"
+  ],
+  "commitmentCues": [
+    "yapacağım", "hazırlayacağım", "göndereceğim", "bitireceğim", "i'll", "i will",
+    "we'll deliver", "taahhüt"
+  ],
+  "deadlineCues": [
+    "cuma", "çarşamba", "pazartesi", "salı", "perşembe", "cumartesi", "pazar",
+    "gelecek hafta", "bu hafta", "next week", "by friday", "eod", "eow", "öğleden sonra"
+  ],
+  "riskCues": [
+    "risk", "gecik", "kaydır", "engel", "blocker", "delay", "slip"
+  ],
+  "mitigationCues": [
+    "önlem", "mitigation", "smoke", "erken smoke", "workaround", "tedbir"
+  ],
+  "moneyCues": [
+    "tl", "usd", "eur", "maliyet", "cost", "%"
+  ],
+  "openQuestionCues": [
+    "kim onay", "açık soru", "open question", "who will", "henüz net değil"
+  ],
+  "proposalCues": [
+    "belki", "öner", "öneri", "should", "could", "might", "erteleyebiliriz", "değerlendirelim"
+  ],
+  "negatedDecisionCues": [
+    "henüz karar değil", "yeni karar yok", "yeni bir karar alınmadı", "karar alınmadı",
+    "not a decision", "no new decision"
+  ],
+  "uiNoiseCues": [
+    "ekran", "mikrofon", "paylaşıyorum", "unmute", "mute", "bağlantı", "duyabiliyor",
+    "kayit", "kayıt başlat"
+  ]
+}

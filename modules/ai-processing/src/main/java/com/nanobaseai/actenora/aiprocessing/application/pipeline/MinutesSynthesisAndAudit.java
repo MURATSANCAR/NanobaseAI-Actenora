@@ -10,7 +10,6 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
-import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingNoisePatterns;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
@@ -181,9 +180,7 @@ public final class MinutesSynthesisAndAudit {
                 json = jsonRepair.repairOrThrow(json);
             }
             JsonNode node = schemaValidator.parseAndValidate(json);
-            ExtractionBundle bundle = MeetingNoisePatterns.stripStatusQuoDecisions(
-                    bundleMapper.fromJson(node)
-            );
+            ExtractionBundle bundle = bundleMapper.fromJson(node);
             stripUnknownEvidence(bundle, allowedEvidenceIds);
             String summary = OutputLanguagePolicy.sanitizeUserFacingText(
                     textOr(node.path("executiveSummary").asText(null), fallback.executiveSummary()),
@@ -280,7 +277,13 @@ public final class MinutesSynthesisAndAudit {
             }
             List<DecisionCandidate> decisions = draft.decisions().stream()
                     .filter(d -> !unsupported.contains(d.text().trim().toLowerCase(Locale.ROOT)))
-                    .filter(d -> !MeetingNoisePatterns.isStatusQuoNonDecision(d.text()))
+                    .toList();
+            if (decisions.size() < draft.decisions().size()) {
+                // Audit may drop unsupported claims; flag architectural leakage if any remain status-quo-only.
+            }
+            List<String> leaked = draft.decisions().stream()
+                    .map(DecisionCandidate::text)
+                    .filter(t -> t != null && t.toLowerCase(Locale.ROOT).contains("yeni karar yok"))
                     .toList();
             List<ActionItemCandidate> actions = draft.actionItems().stream()
                     .filter(a -> !unsupported.contains(a.text().trim().toLowerCase(Locale.ROOT)))
@@ -296,6 +299,9 @@ public final class MinutesSynthesisAndAudit {
                     .toList();
             List<String> flags = new ArrayList<>(draft.qualityFlags());
             flags.add("LLM_AUDITED");
+            if (!leaked.isEmpty()) {
+                flags.add("UNSUPPORTED_DECISION_REACHED_FINAL_ASSEMBLY");
+            }
             if (!partial.isEmpty()) {
                 flags.add("PARTIAL_EVIDENCE_NEEDS_REVIEW");
             }
