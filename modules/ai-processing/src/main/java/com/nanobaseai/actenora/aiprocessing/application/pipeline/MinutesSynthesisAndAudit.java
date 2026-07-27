@@ -370,9 +370,24 @@ public final class MinutesSynthesisAndAudit {
             item.evidenceSegmentIds().forEach(ev::add);
             n.put("confidence", item.confidence());
         }
-        root.set("risks", texts(bundle.risks().stream().map(RiskCandidate::text).toList(),
-                bundle.risks().stream().map(RiskCandidate::evidenceSegmentIds).toList(),
-                bundle.risks().stream().map(RiskCandidate::confidence).toList()));
+        ArrayNode risks = root.putArray("risks");
+        for (RiskCandidate risk : bundle.risks()) {
+            ObjectNode n = risks.addObject();
+            n.put("text", risk.text());
+            if (risk.likelihood() == null) {
+                n.putNull("likelihood");
+            } else {
+                n.put("likelihood", risk.likelihood());
+            }
+            if (risk.mitigation() == null) {
+                n.putNull("mitigation");
+            } else {
+                n.put("mitigation", risk.mitigation());
+            }
+            ArrayNode ev = n.putArray("evidenceSegmentIds");
+            risk.evidenceSegmentIds().forEach(ev::add);
+            n.put("confidence", risk.confidence());
+        }
         root.set("openQuestions", texts(bundle.openQuestions().stream().map(OpenQuestionCandidate::text).toList(),
                 bundle.openQuestions().stream().map(OpenQuestionCandidate::evidenceSegmentIds).toList(),
                 bundle.openQuestions().stream().map(OpenQuestionCandidate::confidence).toList()));

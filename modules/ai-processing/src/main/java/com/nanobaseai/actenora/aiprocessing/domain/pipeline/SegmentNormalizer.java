@@ -22,8 +22,21 @@ public final class SegmentNormalizer {
         List<SegmentInput> out = new ArrayList<>(raw.size());
         for (SegmentInput segment : raw) {
             String cleaned = collapseWhitespace(stripCueMarkup(segment.content()));
+            if (MeetingNoisePatterns.isLowSignalSegment(cleaned)) {
+                // Drop ops/UI filler before chunking so it cannot saturate ctx or invent decisions.
+                continue;
+            }
             boolean marker = segment.markerNear() || MARKER.matcher(cleaned).find();
             out.add(segment.withContent(cleaned).withMarker(marker));
+        }
+        // Never empty the transcript entirely (pathological all-noise input).
+        if (out.isEmpty() && !raw.isEmpty()) {
+            for (SegmentInput segment : raw) {
+                String cleaned = collapseWhitespace(stripCueMarkup(segment.content()));
+                if (!cleaned.isBlank()) {
+                    out.add(segment.withContent(cleaned).withMarker(true));
+                }
+            }
         }
         return List.copyOf(out);
     }
