@@ -201,8 +201,9 @@ class AiProcessingAuthBindingTest {
                         "tr",
                         1000,
                         null,
-                        UUID.randomUUID()
-                )).getBody();
+                        UUID.randomUUID(),
+                null
+        )).getBody();
 
         assertNotNull(response);
         assertTrue(response.admitted());
@@ -233,8 +234,9 @@ class AiProcessingAuthBindingTest {
                         "tr",
                         1000,
                         null,
-                        UUID.randomUUID()
-                )));
+                        UUID.randomUUID(),
+                null
+        )));
     }
 
     @Test
@@ -318,7 +320,8 @@ class AiProcessingAuthBindingTest {
                 "tr",
                 1000,
                 null,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                null
         )).getBody();
         assertNotNull(submitted);
 
@@ -377,7 +380,8 @@ class AiProcessingAuthBindingTest {
                 "tr",
                 1000,
                 null,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                null
         )).getBody();
         assertNotNull(submitted);
 
@@ -413,7 +417,8 @@ class AiProcessingAuthBindingTest {
                 "tr",
                 1000,
                 null,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                null
         )).getBody();
         assertNotNull(submitted);
 
@@ -463,8 +468,9 @@ class AiProcessingAuthBindingTest {
                         "tr",
                         100,
                         null,
-                        UUID.randomUUID()
-                )));
+                        UUID.randomUUID(),
+                null
+        )));
     }
 
     private void bindPrincipal(Set<String> permissions) {

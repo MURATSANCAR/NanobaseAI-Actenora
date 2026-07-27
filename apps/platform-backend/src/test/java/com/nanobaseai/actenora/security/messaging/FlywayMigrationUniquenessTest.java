@@ -29,7 +29,8 @@ class FlywayMigrationUniquenessTest {
 
     /**
      * Inclusive integer bands (underscore suffixes like 140_1 map to major 140).
-     * meetingintelligence expanded to 240–259 for headroom beyond the legacy 180–189 band.
+     * meetingintelligence expanded to 240–249 for headroom beyond the legacy 180–189 band.
+     * notification owns 250–259.
      */
     private static final Map<String, int[]> SCHEMA_BANDS = Map.ofEntries(
             Map.entry("identity", new int[]{100, 109}),
@@ -40,12 +41,13 @@ class FlywayMigrationUniquenessTest {
             Map.entry("transcript", new int[]{150, 159}),
             Map.entry("modelmanagement", new int[]{160, 169}),
             Map.entry("aiprocessing", new int[]{170, 179}),
-            Map.entry("meetingintelligence", new int[]{180, 259}),
+            Map.entry("meetingintelligence", new int[]{180, 249}),
             Map.entry("approval", new int[]{190, 199}),
             Map.entry("template", new int[]{200, 209}),
             Map.entry("delivery", new int[]{210, 219}),
             Map.entry("audit", new int[]{220, 229}),
-            Map.entry("operations", new int[]{230, 239})
+            Map.entry("operations", new int[]{230, 239}),
+            Map.entry("notification", new int[]{250, 259})
     );
 
     @Test

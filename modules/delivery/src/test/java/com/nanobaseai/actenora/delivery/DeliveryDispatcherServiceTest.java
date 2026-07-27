@@ -109,6 +109,25 @@ class DeliveryDispatcherServiceTest {
     }
 
     @Test
+    void draftOrganizerAndFinalExternalCanCoexistForSameRecipient() {
+        EnqueueDeliveryResult draft = enqueue(
+                List.of(DeliveryRecipient.internal("org@ex.com", "Org")),
+                DeliveryPolicySnapshot.draftOrganizer()
+        );
+        EnqueueDeliveryResult finale = enqueue(
+                List.of(DeliveryRecipient.internal("org@ex.com", "Org")),
+                DeliveryPolicySnapshot.defaults()
+        );
+
+        assertEquals(1, draft.createdIds().size());
+        assertEquals(1, finale.createdIds().size());
+        assertEquals(0, draft.duplicateIds().size());
+        assertEquals(0, finale.duplicateIds().size());
+        assertNotEquals(draft.createdIds().getFirst(), finale.createdIds().getFirst());
+        assertEquals(2, repository.findByNoteVersion(tenant, noteVersionId).size());
+    }
+
+    @Test
     void externalRecipientsReceiveIsolatedMails() {
         enqueue(List.of(
                 DeliveryRecipient.external("ext1@client.com", "E1"),

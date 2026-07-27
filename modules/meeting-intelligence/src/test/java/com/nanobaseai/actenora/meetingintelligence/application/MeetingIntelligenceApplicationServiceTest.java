@@ -302,7 +302,7 @@ class MeetingIntelligenceApplicationServiceTest {
                 risks, commitments, openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags
         );
 
-        MeetingNoteDetailResponse detail = reloaded.getNoteDetail(noteId);
+        MeetingNoteDetailResponse detail = reloaded.noteDetail(noteId);
         assertEquals(1, detail.decisions().size());
         assertEquals(1, detail.actionItems().size());
         assertEquals(1, detail.risks().size());

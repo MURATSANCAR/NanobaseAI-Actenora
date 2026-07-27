@@ -31,13 +31,29 @@ class LimitedJsonRepairTest {
     }
 
     @Test
-    void schemaValidatorRejectsMissingRequired() {
+    void schemaValidatorRejectsInvalidEnum() {
         ExtractionJsonSchemaValidator validator = new ExtractionJsonSchemaValidator();
         PipelineException ex = assertThrows(
                 PipelineException.class,
-                () -> validator.parseAndValidate("{\"topics\":[]}")
+                () -> validator.parseAndValidate("""
+                        {
+                          "topics": [],
+                          "decisions": [],
+                          "actionItems": [{
+                            "text": "Ship it",
+                            "ownerType": "CONTRACTOR",
+                            "evidenceSegmentIds": ["seg-1"]
+                          }],
+                          "risks": [],
+                          "openQuestions": [],
+                          "commitments": [],
+                          "qualityFlags": [],
+                          "evidenceSegmentIds": ["seg-1"],
+                          "confidence": 0.8
+                        }
+                        """)
         );
         assertEquals(FailureCategory.SCHEMA_VIOLATION, ex.category());
-        assertTrue(ex.getMessage().contains("Missing required"));
+        assertTrue(ex.getMessage().contains("ownerType"));
     }
 }

@@ -114,15 +114,19 @@ class ApprovalAuthBindingTest {
         var risks = miConfig.inMemoryRiskRepository();
         commitments = miConfig.inMemoryCommitmentRepository();
         var openQuestions = miConfig.inMemoryOpenQuestionRepository();
+        var issues = miConfig.inMemoryIssueRepository();
+        var proposals = miConfig.inMemoryProposalRepository();
+        var importantFacts = miConfig.inMemoryImportantFactRepository();
         var evidence = miConfig.inMemoryEvidenceLinkRepository();
         var qualityFlags = miConfig.inMemoryQualityFlagRepository();
         var clockPort = miConfig.meetingIntelligenceClockPort();
         var tenantPort = miConfig.meetingIntelligenceTenantContextPort();
         var mapping = miConfig.mapAiCandidatesToNoteService(
-                notes, versions, decisions, actionItems, risks, commitments, openQuestions, evidence, qualityFlags, clockPort);
+                notes, versions, decisions, actionItems, risks, commitments, openQuestions,
+                issues, proposals, importantFacts, evidence, qualityFlags, clockPort);
         var miService = miConfig.meetingIntelligenceApplicationService(
                 tenantPort, clockPort, mapping, notes, versions, decisions, actionItems,
-                risks, commitments, openQuestions, evidence, qualityFlags);
+                risks, commitments, openQuestions, issues, proposals, importantFacts, evidence, qualityFlags);
         meetingIntelligenceApi = miConfig.meetingIntelligenceApi(miService);
         ledgerApi = new ContinuityLedgerApi(new ContinuityLedgerService(
                 new InMemoryLedgerEventStore(),

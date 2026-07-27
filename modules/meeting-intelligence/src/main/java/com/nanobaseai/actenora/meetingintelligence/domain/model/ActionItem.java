@@ -141,7 +141,8 @@ public final class ActionItem {
     ) {
         return new ActionItem(
                 id, tenantId, noteId, noteVersionId, text, owner, dueDate, status,
-                requiresManualReview, aiConfidence, humanApprovalStatus, createdAt, updatedAt, version
+                requiresManualReview, aiConfidence, humanApprovalStatus,
+                ownerType, priority, relativeDate, createdAt, updatedAt, version
         );
     }
 
