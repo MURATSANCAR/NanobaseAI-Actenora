@@ -11,7 +11,6 @@ import com.nanobaseai.actenora.delivery.application.EnqueueDeliveryCommand;
 import com.nanobaseai.actenora.delivery.application.EnqueueDeliveryResult;
 import com.nanobaseai.actenora.delivery.application.ExternalDeliveryService;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryRequestRepository;
-import com.nanobaseai.actenora.delivery.domain.DeliveryIntent;
 import com.nanobaseai.actenora.delivery.domain.DeliveryPolicySnapshot;
 import com.nanobaseai.actenora.delivery.domain.DeliveryRecipient;
 import com.nanobaseai.actenora.delivery.domain.DeliveryStatus;
