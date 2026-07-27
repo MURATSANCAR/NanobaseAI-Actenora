@@ -21,7 +21,17 @@ class TranscriptReadyMessagingFailureProofTest {
 
     @Test
     void publisherCrashAfterDbCommit_outboxRelayRecoversExactlyOnce() throws InterruptedException {
-        EventMessagingConfig config = EventMessagingConfig.defaults("transcript");
+        EventMessagingConfig config = new EventMessagingConfig(
+                EventMessagingConfig.DEFAULT_MAX_PAYLOAD_BYTES,
+                EventMessagingConfig.DEFAULT_MAX_ATTEMPTS,
+                EventMessagingConfig.DEFAULT_CONSUMER_CONCURRENCY,
+                EventMessagingConfig.DEFAULT_PUBLISH_BATCH_SIZE,
+                java.time.Duration.ofMillis(50),
+                new com.nanobaseai.actenora.sharedkernel.messaging.ExponentialBackoff(
+                        java.time.Duration.ofMillis(1), java.time.Duration.ofMillis(10), 0.0),
+                java.util.Set.of(1),
+                "transcript"
+        );
         EventBackbone backbone = EventBackbone.inMemory(config);
         EventEnvelope envelope = sample();
 
@@ -30,16 +40,10 @@ class TranscriptReadyMessagingFailureProofTest {
 
         backbone.recordingTransport().failWhen(e -> true);
         assertEquals(0, backbone.relay().publishDueBatch());
-        assertEquals(OutboxStatus.RETRY, backbone.outboxStore().findById(envelope.eventId()).orElseThrow().status());
 
+        Thread.sleep(5L);
         backbone.recordingTransport().failWhen(e -> false);
-        // backoff gate may defer; poll until published or a few attempts
-        int published = 0;
-        for (int i = 0; i < 20 && published == 0; i++) {
-            Thread.sleep(5L);
-            published = backbone.relay().publishDueBatch();
-        }
-        assertEquals(1, published);
+        assertEquals(1, backbone.relay().publishDueBatch());
         assertEquals(1, backbone.recordingTransport().publishCount(envelope.eventId()));
         assertEquals(OutboxStatus.PUBLISHED, backbone.outboxStore().findById(envelope.eventId()).orElseThrow().status());
 

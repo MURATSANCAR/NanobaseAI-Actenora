@@ -165,7 +165,8 @@ class MeetingIntelligenceAuthBindingTest {
         var router = aiConfig.capabilityModelRouter(modelCatalog, tenantAiPolicy);
         var scheduler = aiConfig.fairJobScheduler(jobs, attempts, tenantAiPolicy, router, new LocalProviderProperties());
         var admission = aiConfig.defaultAdmissionController(jobs, tenantAiPolicy, router, scheduler);
-        var jobService = aiConfig.aiJobService(admission, jobs, attempts, scheduler);
+        var jobService = aiConfig.aiJobService(
+                admission, jobs, attempts, scheduler, new com.nanobaseai.actenora.sharedkernel.coordination.InMemoryJobProgressCache());
         AiProcessingApi aiProcessingApi = aiConfig.aiProcessingApi(jobService);
 
         var decisionStore = aiConfig.inMemoryRoutingDecisionStore();
@@ -191,7 +192,7 @@ class MeetingIntelligenceAuthBindingTest {
                 jobService,
                 LocalModelProviderLocator.single(provider),
                 aiConfig.promptRegistryInferenceInputResolver(aiConfig.inMemoryPromptRegistry()),
-                aiConfig.registryServedModelResolver(models),
+                aiConfig.registryServedModelResolver(models, new com.nanobaseai.actenora.security.aiprocessing.LocalProviderProperties()),
                 pipeline,
                 segmentSource,
                 null,

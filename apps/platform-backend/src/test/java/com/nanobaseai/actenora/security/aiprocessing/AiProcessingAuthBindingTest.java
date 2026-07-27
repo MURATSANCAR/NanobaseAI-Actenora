@@ -131,7 +131,8 @@ class AiProcessingAuthBindingTest {
         var router = config.capabilityModelRouter(modelCatalog, tenantAiPolicy);
         var scheduler = config.fairJobScheduler(jobs, attempts, tenantAiPolicy, router, new LocalProviderProperties());
         var admission = config.defaultAdmissionController(jobs, tenantAiPolicy, router, scheduler);
-        var jobService = config.aiJobService(admission, jobs, attempts, scheduler);
+        var jobService = config.aiJobService(
+                admission, jobs, attempts, scheduler, new com.nanobaseai.actenora.sharedkernel.coordination.InMemoryJobProgressCache());
         aiProcessingApi = config.aiProcessingApi(jobService);
 
         var decisionStore = config.inMemoryRoutingDecisionStore();
@@ -157,7 +158,7 @@ class AiProcessingAuthBindingTest {
                 jobService,
                 LocalModelProviderLocator.single(provider),
                 config.promptRegistryInferenceInputResolver(config.inMemoryPromptRegistry()),
-                config.registryServedModelResolver(models),
+                config.registryServedModelResolver(models, new LocalProviderProperties()),
                 pipeline,
                 segmentSource,
                 config.jobRoutingCoordinator(routingService, tenantAiPolicy, new AiRoutingProperties()),
