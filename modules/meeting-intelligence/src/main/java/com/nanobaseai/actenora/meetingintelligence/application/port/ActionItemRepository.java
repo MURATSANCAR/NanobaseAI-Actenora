@@ -14,4 +14,6 @@ public interface ActionItemRepository {
     Optional<ActionItem> findByIdAndTenantId(UUID id, TenantId tenantId);
 
     List<ActionItem> findByNoteId(UUID noteId, TenantId tenantId);
+
+    List<ActionItem> findByTenantId(TenantId tenantId);
 }

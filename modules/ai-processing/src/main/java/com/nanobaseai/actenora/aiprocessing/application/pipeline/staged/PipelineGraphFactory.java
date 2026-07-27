@@ -112,7 +112,7 @@ public final class PipelineGraphFactory {
         );
         applySyntheticRoute(triage, now);
         jobs.save(triage);
-        dependencies.save(ProcessingJobDependency.pending(triage.id(), normalize.id(), now));
+        link(triage.id(), normalize.id(), now);
 
         commands.publishWakeup(tenantId, normalize.id(), meetingOccurrenceId, correlationId, ProcessingStage.NORMALIZE, now);
         return new GraphAdmission(root, normalize, triage, true);
@@ -139,7 +139,7 @@ public final class PipelineGraphFactory {
                 language, contextSize, now, deadlineAt, correlationId, rootId,
                 "meeting:" + meetingId + ":chunk:" + transcriptHash + ":pv:v2", null
         );
-        dependencies.save(ProcessingJobDependency.pending(chunk.id(), triageJob.id(), now));
+        link(chunk.id(), triageJob.id(), now);
         commands.publishWakeup(tenantId, chunk.id(), meetingId, correlationId, ProcessingStage.CHUNK, now);
         return List.of(chunk);
     }
@@ -172,7 +172,7 @@ public final class PipelineGraphFactory {
                     "meeting:" + meetingId + ":extract:" + transcriptHash + ":chunk:" + i + ":pv:v2",
                     i
             );
-            dependencies.save(ProcessingJobDependency.pending(extract.id(), chunkJob.id(), now));
+            link(extract.id(), chunkJob.id(), now);
             extracts.add(extract);
             commands.publishWakeup(tenantId, extract.id(), meetingId, correlationId, ProcessingStage.EXTRACT, now);
         }
@@ -184,7 +184,7 @@ public final class PipelineGraphFactory {
                 "meeting:" + meetingId + ":merge:" + transcriptHash + ":pv:v2", null
         );
         for (AiJob extract : extracts) {
-            dependencies.save(ProcessingJobDependency.pending(merge.id(), extract.id(), now));
+            link(merge.id(), extract.id(), now);
         }
 
         AiJob validate = saveStaged(
@@ -193,7 +193,7 @@ public final class PipelineGraphFactory {
                 language, contextSize, now, deadlineAt, correlationId, rootId,
                 "meeting:" + meetingId + ":validate:" + transcriptHash + ":pv:v2", null
         );
-        dependencies.save(ProcessingJobDependency.pending(validate.id(), merge.id(), now));
+        link(validate.id(), merge.id(), now);
 
         AiJob minutes = saveStaged(
                 tenantId, meetingId, transcriptId, "FINAL_NOTE", ProcessingStage.MINUTES,
@@ -201,7 +201,7 @@ public final class PipelineGraphFactory {
                 language, contextSize, now, deadlineAt, correlationId, rootId,
                 "meeting:" + meetingId + ":minutes:" + transcriptHash + ":pv:v2", null
         );
-        dependencies.save(ProcessingJobDependency.pending(minutes.id(), validate.id(), now));
+        link(minutes.id(), validate.id(), now);
 
         List<AiJob> all = new ArrayList<>(extracts);
         all.add(merge);
@@ -231,7 +231,7 @@ public final class PipelineGraphFactory {
                 "meeting:" + triageJob.meetingOccurrenceId() + ":minutes-lite:" + transcriptHash + ":pv:v2",
                 null
         );
-        dependencies.save(ProcessingJobDependency.pending(minutes.id(), triageJob.id(), now));
+        link(minutes.id(), triageJob.id(), now);
         commands.publishWakeup(
                 triageJob.tenantId(), minutes.id(), triageJob.meetingOccurrenceId(),
                 triageJob.correlationId(), ProcessingStage.MINUTES, now);
@@ -291,6 +291,16 @@ public final class PipelineGraphFactory {
         applySyntheticRoute(job, now);
         jobs.save(job);
         return job;
+    }
+
+
+    private void link(UUID jobId, UUID dependsOnJobId, Instant now) {
+        ProcessingJobDependency dep = ProcessingJobDependency.pending(jobId, dependsOnJobId, now);
+        Optional<AiJob> upstream = jobs.findById(dependsOnJobId);
+        if (upstream.isPresent() && upstream.get().status() == AiJobStatus.SUCCEEDED) {
+            dep.markSatisfied();
+        }
+        dependencies.save(dep);
     }
 
     private static void applySyntheticRoute(AiJob job, Instant now) {

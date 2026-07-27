@@ -14,7 +14,9 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNote
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.NoteApprovalOpenedNotifier;
 import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -82,7 +84,8 @@ public class ApprovalPlatformConfiguration {
             ApprovalApi approvalApi,
             MeetingIntelligenceAuditPort auditPort,
             ApprovedNoteLedgerPort approvedNoteLedgerPort,
-            NoteArtifactStoragePort noteArtifactStorage
+            NoteArtifactStoragePort noteArtifactStorage,
+            ObjectProvider<NoteApprovalOpenedNotifier> approvalOpenedNotifier
     ) {
         return new MeetingNoteApprovalService(
                 notes,
@@ -91,6 +94,9 @@ public class ApprovalPlatformConfiguration {
                 auditPort,
                 approvedNoteLedgerPort,
                 noteArtifactStorage,
+                approvalOpenedNotifier.getIfAvailable() == null
+                        ? NoteApprovalOpenedNotifier.noop()
+                        : approvalOpenedNotifier.getObject(),
                 Clock.systemUTC()
         );
     }

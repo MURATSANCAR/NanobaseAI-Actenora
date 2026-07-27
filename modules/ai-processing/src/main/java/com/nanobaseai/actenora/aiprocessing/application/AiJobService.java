@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.aiprocessing.application;
 
 import com.nanobaseai.actenora.aiprocessing.application.port.AdmissionController;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiAttemptRepository;
+import com.nanobaseai.actenora.aiprocessing.application.port.AiJobDeadNotifier;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiJobRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.JobScheduler;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiAttempt;
@@ -27,6 +28,7 @@ public final class AiJobService {
     private final AiAttemptRepository attempts;
     private final JobScheduler scheduler;
     private final JobProgressCache progressCache;
+    private final AiJobDeadNotifier deadNotifier;
 
     public AiJobService(
             AdmissionController admissionController,
@@ -34,7 +36,7 @@ public final class AiJobService {
             AiAttemptRepository attempts,
             JobScheduler scheduler
     ) {
-        this(admissionController, jobs, attempts, scheduler, new NoOpJobProgressCache());
+        this(admissionController, jobs, attempts, scheduler, new NoOpJobProgressCache(), AiJobDeadNotifier.noop());
     }
 
     public AiJobService(
@@ -44,11 +46,23 @@ public final class AiJobService {
             JobScheduler scheduler,
             JobProgressCache progressCache
     ) {
+        this(admissionController, jobs, attempts, scheduler, progressCache, AiJobDeadNotifier.noop());
+    }
+
+    public AiJobService(
+            AdmissionController admissionController,
+            AiJobRepository jobs,
+            AiAttemptRepository attempts,
+            JobScheduler scheduler,
+            JobProgressCache progressCache,
+            AiJobDeadNotifier deadNotifier
+    ) {
         this.admissionController = Objects.requireNonNull(admissionController, "admissionController");
         this.jobs = Objects.requireNonNull(jobs, "jobs");
         this.attempts = Objects.requireNonNull(attempts, "attempts");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
         this.progressCache = Objects.requireNonNull(progressCache, "progressCache");
+        this.deadNotifier = Objects.requireNonNull(deadNotifier, "deadNotifier");
     }
 
     public AdmissionController.AdmissionDecision submit(AdmissionController.SubmitAiJobCommand command) {
@@ -125,6 +139,13 @@ public final class AiJobService {
         job.markFailed(retryable, now);
         jobs.save(job);
         publishProgress(job, retryable ? "retry" : "dead", now);
+        if (job.status() == AiJobStatus.DEAD) {
+            try {
+                deadNotifier.onPermanentlyFailed(job);
+            } catch (RuntimeException ignored) {
+                // Notification must not fail the durable job path.
+            }
+        }
         return job;
     }
 

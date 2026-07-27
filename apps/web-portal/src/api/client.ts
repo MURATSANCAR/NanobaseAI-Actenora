@@ -94,6 +94,11 @@ function createHttpApiClient(baseUrl: string): ApiClient {
   return {
     getCurrentUser: () => httpJson<PortalUser>(baseUrl, "/api/v1/portal/me"),
     getDashboard: () => httpJson(baseUrl, "/api/v1/portal/dashboard"),
+    listNotifications: (params) => httpJson(baseUrl, `/api/v1/portal/notifications${q(params)}`),
+    markNotificationRead: (id) =>
+      httpJson(baseUrl, `/api/v1/portal/notifications/${id}/read`, { method: "POST" }),
+    markAllNotificationsRead: () =>
+      httpJson(baseUrl, "/api/v1/portal/notifications/read-all", { method: "POST" }),
     listMeetings: (params) => httpJson(baseUrl, `/api/v1/portal/meetings${q(params)}`),
     getMeetingDetail: (id) => httpJson(baseUrl, `/api/v1/portal/meetings/${id}`),
     getMeetingTranscript: (id, params) =>
@@ -215,6 +220,7 @@ export function createApiClient(opts?: {
 export const queryKeys = {
   me: ["me"] as const,
   dashboard: ["dashboard"] as const,
+  notifications: ["notifications"] as const,
   approvalsPending: ["approvals-pending"] as const,
   meetings: (params: object) => ["meetings", params] as const,
   meetingDetail: (id: string) => ["meeting", id] as const,

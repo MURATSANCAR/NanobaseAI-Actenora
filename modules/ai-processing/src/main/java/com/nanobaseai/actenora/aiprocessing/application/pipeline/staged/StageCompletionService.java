@@ -8,16 +8,13 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingArtifact;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingJobDependency;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
-import com.nanobaseai.actenora.observability.metrics.ActenoraMetric;
-import com.nanobaseai.actenora.observability.metrics.MetricRecorder;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Completes a stage job, persists artifacts, satisfies DAG edges, and wakes dependents.
@@ -30,8 +27,9 @@ public final class StageCompletionService {
     private final ProcessingArtifactRepository artifacts;
     private final StageCommandPublisher commands;
     private final PipelineGraphFactory graphFactory;
-    private final MetricRecorder metrics;
     private final TranscriptHashResolver transcriptHashResolver;
+    private final StageMetricsPort metrics;
+    private final AtomicLong earlyExitTotal = new AtomicLong();
 
     public StageCompletionService(
             AiJobService jobService,
@@ -40,8 +38,20 @@ public final class StageCompletionService {
             ProcessingArtifactRepository artifacts,
             StageCommandPublisher commands,
             PipelineGraphFactory graphFactory,
-            MetricRecorder metrics,
             TranscriptHashResolver transcriptHashResolver
+    ) {
+        this(jobService, jobs, dependencies, artifacts, commands, graphFactory, transcriptHashResolver, StageMetricsPort.noop());
+    }
+
+    public StageCompletionService(
+            AiJobService jobService,
+            AiJobRepository jobs,
+            ProcessingJobDependencyRepository dependencies,
+            ProcessingArtifactRepository artifacts,
+            StageCommandPublisher commands,
+            PipelineGraphFactory graphFactory,
+            TranscriptHashResolver transcriptHashResolver,
+            StageMetricsPort metrics
     ) {
         this.jobService = Objects.requireNonNull(jobService, "jobService");
         this.jobs = Objects.requireNonNull(jobs, "jobs");
@@ -49,8 +59,13 @@ public final class StageCompletionService {
         this.artifacts = Objects.requireNonNull(artifacts, "artifacts");
         this.commands = Objects.requireNonNull(commands, "commands");
         this.graphFactory = Objects.requireNonNull(graphFactory, "graphFactory");
-        this.metrics = metrics;
         this.transcriptHashResolver = Objects.requireNonNull(transcriptHashResolver, "transcriptHashResolver");
+        this.metrics = metrics == null ? StageMetricsPort.noop() : metrics;
+    }
+
+    /** Exposed for OTel adapters in the composition root. */
+    public long earlyExitTotal() {
+        return earlyExitTotal.get();
     }
 
     public void complete(StageExecutionResult result) {
@@ -67,7 +82,10 @@ public final class StageCompletionService {
                     result.errorMessage() == null ? "stage failed" : result.errorMessage(),
                     now
             );
-            recordMetric(job, result, false);
+            metrics.recordDuration(job.stage(), result.latencyMs(), false);
+            if (!result.retryable()) {
+                metrics.recordDlq(job.stage());
+            }
             return;
         }
 
@@ -82,13 +100,21 @@ public final class StageCompletionService {
             ));
         }
 
+        job.queuedAt();
+        long queueWaitMs = Math.max(0L, java.time.Duration.between(job.queuedAt(), now).toMillis() - result.latencyMs());
+        metrics.recordQueueWait(job.stage(), queueWaitMs);
+
         jobService.completeAttempt(job.id(), result.latencyMs(), result.inputTokens(), result.outputTokens(), now);
         dependencies.markSatisfiedForCompletedDependency(job.id());
 
         String hash = transcriptHashResolver.hashFor(job.tenantId(), job.transcriptId());
         expandGraphIfNeeded(job, result, hash, now);
         wakeNewlyEligible(job, now);
-        recordMetric(job, result, true);
+        metrics.recordDuration(job.stage(), result.latencyMs(), true);
+        if (result.earlyExitInformational()) {
+            earlyExitTotal.incrementAndGet();
+            metrics.recordEarlyExit();
+        }
     }
 
     private void expandGraphIfNeeded(AiJob job, StageExecutionResult result, String hash, Instant now) {
@@ -159,19 +185,6 @@ public final class StageCompletionService {
             return Math.max(1, Integer.parseInt(digits.toString()));
         } catch (NumberFormatException ex) {
             return 1;
-        }
-    }
-
-    private void recordMetric(AiJob job, StageExecutionResult result, boolean success) {
-        if (metrics == null) {
-            return;
-        }
-        Map<String, String> tags = new HashMap<>();
-        tags.put("stage", job.stage().name());
-        tags.put("success", Boolean.toString(success));
-        metrics.timing(ActenoraMetric.MEETING_JOB_DURATION, result.latencyMs(), tags);
-        if (result.earlyExitInformational()) {
-            metrics.increment(ActenoraMetric.MEETING_TRIAGE_EARLY_EXIT, Map.of("stage", "TRIAGE"));
         }
     }
 

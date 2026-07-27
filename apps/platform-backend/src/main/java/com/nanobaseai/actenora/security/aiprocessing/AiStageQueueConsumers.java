@@ -23,42 +23,42 @@ public class AiStageQueueConsumers {
         this.runner = runner;
     }
 
-    @RabbitListener(queues = "actenora.ai.normalize", ackMode = "AUTO", concurrency = "1-4")
+    @RabbitListener(queues = "actenora.ai.normalize", containerFactory = "aiParserStageListenerFactory")
     public void onNormalize(byte[] ignored) {
         runner.runNext(ProcessingStage.NORMALIZE, Instant.now());
     }
 
-    @RabbitListener(queues = "actenora.ai.triage", ackMode = "AUTO", concurrency = "1-2")
+    @RabbitListener(queues = "actenora.ai.triage", containerFactory = "aiFastStageListenerFactory")
     public void onTriage(byte[] ignored) {
         runner.runNext(ProcessingStage.TRIAGE, Instant.now());
     }
 
-    @RabbitListener(queues = "actenora.ai.chunk", ackMode = "AUTO", concurrency = "1-4")
+    @RabbitListener(queues = "actenora.ai.chunk", containerFactory = "aiParserStageListenerFactory")
     public void onChunk(byte[] ignored) {
         runner.runNext(ProcessingStage.CHUNK, Instant.now());
     }
 
-    @RabbitListener(queues = "actenora.ai.extract", ackMode = "AUTO", concurrency = "1-4")
+    @RabbitListener(queues = "actenora.ai.extract", containerFactory = "aiLlmStageListenerFactory")
     public void onExtract(byte[] ignored) {
         runner.runNext(ProcessingStage.EXTRACT, Instant.now());
     }
 
-    @RabbitListener(queues = "actenora.ai.merge", ackMode = "AUTO", concurrency = "1")
+    @RabbitListener(queues = "actenora.ai.merge", containerFactory = "aiLlmStageListenerFactory")
     public void onMerge(byte[] ignored) {
         runner.runNext(ProcessingStage.MERGE, Instant.now());
     }
 
-    @RabbitListener(queues = "actenora.ai.validate", ackMode = "AUTO", concurrency = "1-4")
+    @RabbitListener(queues = "actenora.ai.validate", containerFactory = "aiParserStageListenerFactory")
     public void onValidate(byte[] ignored) {
         runner.runNext(ProcessingStage.VALIDATE, Instant.now());
     }
 
-    @RabbitListener(queues = "actenora.ai.minutes", ackMode = "AUTO", concurrency = "1")
+    @RabbitListener(queues = "actenora.ai.minutes", containerFactory = "aiLlmStageListenerFactory")
     public void onMinutes(byte[] ignored) {
         runner.runNext(ProcessingStage.MINUTES, Instant.now());
     }
 
-    @RabbitListener(queues = "actenora.ai.embed", ackMode = "AUTO", concurrency = "1-2")
+    @RabbitListener(queues = "actenora.ai.embed", containerFactory = "aiFastStageListenerFactory")
     public void onEmbed(byte[] ignored) {
         runner.runNext(ProcessingStage.EMBEDDING, Instant.now());
     }

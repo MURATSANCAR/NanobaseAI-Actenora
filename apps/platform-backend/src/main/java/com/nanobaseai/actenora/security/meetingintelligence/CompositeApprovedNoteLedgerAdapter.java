@@ -12,8 +12,8 @@ import java.util.UUID;
 
 /**
  * Chains continuity-ledger append with approved-knowledge indexing.
- * In staged mode, embedding is admitted as an async EMBEDDING job; indexer still runs
- * immediately as best-effort so local/dev without Rabbit still indexes.
+ * Staged mode enqueues an EMBEDDING job (indexer runs in that stage).
+ * Legacy mode indexes synchronously in-process.
  */
 public final class CompositeApprovedNoteLedgerAdapter implements ApprovedNoteLedgerPort {
 
@@ -59,6 +59,7 @@ public final class CompositeApprovedNoteLedgerAdapter implements ApprovedNoteLed
                         "tr",
                         Instant.now()
                 );
+                return;
             } catch (RuntimeException ignored) {
                 // fall through to sync indexer
             }

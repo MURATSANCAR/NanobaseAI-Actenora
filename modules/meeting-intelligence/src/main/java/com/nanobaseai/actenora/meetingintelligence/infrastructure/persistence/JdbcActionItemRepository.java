@@ -103,4 +103,17 @@ public final class JdbcActionItemRepository implements ActionItemRepository {
                 """;
         return jdbc.query(sql, ROW_MAPPER, noteId, tenantId.value());
     }
+
+    @Override
+    public List<ActionItem> findByTenantId(TenantId tenantId) {
+        String sql = """
+                SELECT id, tenant_id, note_id, note_version_id, text, owner, due_date, status,
+                       requires_manual_review, ai_confidence, human_approval_status,
+                       created_at, updated_at, version
+                FROM meetingintelligence.action_items
+                WHERE tenant_id = ?
+                ORDER BY created_at
+                """;
+        return jdbc.query(sql, ROW_MAPPER, tenantId.value());
+    }
 }

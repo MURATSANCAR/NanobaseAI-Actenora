@@ -40,6 +40,10 @@ import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiBrandSanitizer;
 import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphObservability;
 import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
+import com.nanobaseai.actenora.notification.api.NotificationApi;
+import com.nanobaseai.actenora.notification.api.UserNotificationListView;
+import com.nanobaseai.actenora.notification.api.UserNotificationView;
+import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.template.api.MeetingTemplateId;
 import com.nanobaseai.actenora.template.api.TemplateApi;
@@ -113,6 +117,8 @@ public class PortalApiController {
     private final String graphClientId;
     private final Optional<GraphObservability> graphObservability;
     private final Optional<TeamsTranscriptPollScheduler> transcriptPollScheduler;
+    private final Optional<NotificationApi> notificationApi;
+    private final Optional<PlatformUserNotificationPublisher> notificationPublisher;
 
     public PortalApiController(
             IdentityApi identityApi,
@@ -131,6 +137,8 @@ public class PortalApiController {
             ObjectProvider<AuditApi> auditApi,
             ObjectProvider<GraphObservability> graphObservability,
             ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
+            ObjectProvider<NotificationApi> notificationApi,
+            ObjectProvider<PlatformUserNotificationPublisher> notificationPublisher,
             PortalTeamsPreferencesStore teamsPreferencesStore,
             @Value("${actenora.microsoft-graph.client-id:}") String graphClientId
     ) {
@@ -150,6 +158,8 @@ public class PortalApiController {
         this.auditApi = Optional.ofNullable(auditApi.getIfAvailable());
         this.graphObservability = Optional.ofNullable(graphObservability.getIfAvailable());
         this.transcriptPollScheduler = Optional.ofNullable(transcriptPollScheduler.getIfAvailable());
+        this.notificationApi = Optional.ofNullable(notificationApi.getIfAvailable());
+        this.notificationPublisher = Optional.ofNullable(notificationPublisher.getIfAvailable());
         this.teamsPreferencesStore = Objects.requireNonNull(teamsPreferencesStore, "teamsPreferencesStore");
         this.graphClientId = graphClientId == null ? "" : graphClientId;
     }
@@ -182,6 +192,72 @@ public class PortalApiController {
         int overdue = ledgerApi.overdueCommitments(principal.tenantId()).size();
         int runningJobs = resolveRunningJobs(principal.tenantId().value());
         return new DashboardView(pendingApprovals, openActions, overdue, runningJobs, recent);
+    }
+
+    @GetMapping("/notifications")
+    @RequiresPermission(Permission.MEETING_READ)
+    public PortalNotificationFeedView listNotifications(
+            @RequestParam(value = "limit", required = false) Integer limit
+    ) {
+        AuthenticatedPrincipal principal = require(Permission.MEETING_READ);
+        if (notificationApi.isEmpty()) {
+            return new PortalNotificationFeedView(List.of(), 0);
+        }
+        notificationPublisher.ifPresent(p -> p.ensureOverdueNotifications(principal.tenantId()));
+        String oid = recipientOid(principal);
+        UserNotificationListView list = notificationApi.get().listForRecipient(
+                principal.tenantId(),
+                oid,
+                limit == null ? 30 : limit
+        );
+        return new PortalNotificationFeedView(
+                list.items().stream().map(PortalApiController::toNotificationItem).toList(),
+                list.unreadCount()
+        );
+    }
+
+    @PostMapping("/notifications/{id}/read")
+    @RequiresPermission(Permission.MEETING_READ)
+    public ResponseEntity<Void> markNotificationRead(@PathVariable UUID id) {
+        AuthenticatedPrincipal principal = require(Permission.MEETING_READ);
+        if (notificationApi.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        boolean ok = notificationApi.get().markRead(principal.tenantId(), recipientOid(principal), id);
+        if (!ok) {
+            throw new ActenoraException("NOTIFICATION_NOT_FOUND", "Notification not found: " + id);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/notifications/read-all")
+    @RequiresPermission(Permission.MEETING_READ)
+    public ResponseEntity<Void> markAllNotificationsRead() {
+        AuthenticatedPrincipal principal = require(Permission.MEETING_READ);
+        if (notificationApi.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        notificationApi.get().markAllRead(principal.tenantId(), recipientOid(principal));
+        return ResponseEntity.noContent().build();
+    }
+
+    private static String recipientOid(AuthenticatedPrincipal principal) {
+        if (principal.entraObjectId() != null && !principal.entraObjectId().isBlank()) {
+            return principal.entraObjectId();
+        }
+        return principal.userId().toString();
+    }
+
+    private static PortalNotificationItemView toNotificationItem(UserNotificationView view) {
+        return new PortalNotificationItemView(
+                view.id(),
+                view.type().name(),
+                view.title(),
+                view.body(),
+                view.href(),
+                view.createdAt() == null ? null : view.createdAt().toString(),
+                view.readAt() == null ? null : view.readAt().toString()
+        );
     }
 
     @GetMapping("/meetings")
@@ -1607,6 +1683,23 @@ public class PortalApiController {
             int overdueCommitments,
             int runningJobs,
             List<MeetingSummaryView> recentMeetings
+    ) {
+    }
+
+    public record PortalNotificationFeedView(
+            List<PortalNotificationItemView> items,
+            int unreadCount
+    ) {
+    }
+
+    public record PortalNotificationItemView(
+            UUID id,
+            String type,
+            String title,
+            String body,
+            String href,
+            String createdAt,
+            String readAt
     ) {
     }
 

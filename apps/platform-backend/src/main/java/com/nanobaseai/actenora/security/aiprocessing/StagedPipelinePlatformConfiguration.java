@@ -11,9 +11,12 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StageCom
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StageCompletionService;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StageExecutor;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StagedPipelineRunner;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StageMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiJobRepository;
+import com.nanobaseai.actenora.aiprocessing.application.port.ApprovedKnowledgeIndexPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.JobScheduler;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
+import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingJobDependencyRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
@@ -25,7 +28,10 @@ import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.RoleAwareMode
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.InMemoryProcessingArtifactRepository;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.InMemoryProcessingJobDependencyRepository;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.routing.DefaultModelRoleBootstrap;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedKnowledgeIndexerPort;
+import com.nanobaseai.actenora.observability.metrics.ActenoraMetric;
 import com.nanobaseai.actenora.observability.metrics.MetricRecorder;
+import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.messaging.infrastructure.InMemoryOutboxStore;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxStore;
 import com.nanobaseai.actenora.sharedkernel.messaging.support.TenantFairnessTracker;
@@ -73,6 +79,55 @@ public class StagedPipelinePlatformConfiguration {
     }
 
     @Bean
+    StageMetricsPort stageMetricsPort(MetricRecorder metricRecorder) {
+        return new StageMetricsPort() {
+            @Override
+            public void recordDuration(ProcessingStage stage, long durationMs, boolean success) {
+                metricRecorder.timing(
+                        ActenoraMetric.MEETING_JOB_DURATION,
+                        durationMs,
+                        java.util.Map.of("stage", stage.name(), "success", Boolean.toString(success))
+                );
+            }
+
+            @Override
+            public void recordQueueWait(ProcessingStage stage, long waitMs) {
+                metricRecorder.timing(
+                        ActenoraMetric.MEETING_JOB_QUEUE_WAIT,
+                        waitMs,
+                        java.util.Map.of("stage", stage.name())
+                );
+            }
+
+            @Override
+            public void recordDlq(ProcessingStage stage) {
+                metricRecorder.increment(
+                        ActenoraMetric.MEETING_JOB_DLQ,
+                        java.util.Map.of("stage", stage.name())
+                );
+            }
+
+            @Override
+            public void recordEarlyExit() {
+                metricRecorder.increment(ActenoraMetric.MEETING_TRIAGE_EARLY_EXIT);
+            }
+        };
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(ApprovedKnowledgeIndexPort.class)
+    ApprovedKnowledgeIndexPort approvedKnowledgeIndexPort(
+            ObjectProvider<ApprovedKnowledgeIndexerPort> indexer
+    ) {
+        ApprovedKnowledgeIndexerPort delegate = indexer.getIfAvailable();
+        if (delegate == null) {
+            return ApprovedKnowledgeIndexPort.noop();
+        }
+        return (tenantId, meetingOccurrenceId, noteId, noteVersionId) ->
+                delegate.indexApprovedNote(TenantId.of(tenantId), meetingOccurrenceId, noteId, noteVersionId);
+    }
+
+    @Bean
     StageCompletionService stageCompletionService(
             AiJobService jobService,
             AiJobRepository jobs,
@@ -80,7 +135,7 @@ public class StagedPipelinePlatformConfiguration {
             ProcessingArtifactRepository artifacts,
             StageCommandPublisher commands,
             PipelineGraphFactory graphFactory,
-            MetricRecorder metrics
+            StageMetricsPort stageMetricsPort
     ) {
         return new StageCompletionService(
                 jobService,
@@ -89,8 +144,8 @@ public class StagedPipelinePlatformConfiguration {
                 artifacts,
                 commands,
                 graphFactory,
-                metrics,
-                (tenantId, transcriptId) -> transcriptId.toString()
+                (tenantId, transcriptId) -> transcriptId.toString(),
+                stageMetricsPort
         );
     }
 
@@ -100,9 +155,21 @@ public class StagedPipelinePlatformConfiguration {
             ModelRuntimePort modelRuntime,
             TranscriptSegmentSourcePort segments,
             ProcessingArtifactRepository artifacts,
-            PriorMeetingContextPort priorMeetingContext
+            PriorMeetingContextPort priorMeetingContext,
+            ObjectProvider<MeetingNoteHandoffPort> noteHandoff,
+            ApprovedKnowledgeIndexPort knowledgeIndex
     ) {
-        return DefaultStageExecutors.createAll(prompts, modelRuntime, segments, artifacts, priorMeetingContext);
+        return DefaultStageExecutors.createAll(
+                prompts,
+                modelRuntime,
+                segments,
+                artifacts,
+                priorMeetingContext,
+                noteHandoff.getIfAvailable() == null
+                        ? MeetingNoteHandoffPort.noop()
+                        : noteHandoff.getIfAvailable(),
+                knowledgeIndex
+        );
     }
 
     @Bean

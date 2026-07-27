@@ -40,7 +40,9 @@ public enum ProcessingStage {
             case "NORMALIZE", "TRANSCRIPT_NORMALIZE" -> NORMALIZE;
             case "MEETING_TRIAGE" -> TRIAGE;
             case "CHUNK_PLAN", "CHUNK" -> CHUNK;
-            case "CHUNK_EXTRACTION" -> EXTRACT;
+            // Monolith admit uses task_type CHUNK_EXTRACTION without explicit stage;
+            // staged extract nodes set ProcessingStage.EXTRACT via enqueueStaged.
+            case "CHUNK_EXTRACTION" -> LEGACY;
             case "CANDIDATE_MERGE" -> MERGE;
             case "VALIDATION", "DETERMINISTIC_VALIDATE" -> VALIDATE;
             case "FINAL_NOTE" -> MINUTES;

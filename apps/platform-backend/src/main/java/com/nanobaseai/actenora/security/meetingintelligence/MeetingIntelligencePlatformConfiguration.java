@@ -61,9 +61,9 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InM
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryValidationRunRepository;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
 import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
+import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -284,7 +284,8 @@ public class MeetingIntelligencePlatformConfiguration {
             MeetingIntelligenceAuditPort auditPort,
             DraftMinutesMailNotifier draftMinutesMailNotifier,
             MeetingApi meetingApi,
-            NoteArtifactStoragePort noteArtifactStorage
+            NoteArtifactStoragePort noteArtifactStorage,
+            ObjectProvider<PlatformUserNotificationPublisher> notificationPublisher
     ) {
         return new MeetingIntelligenceHandoffAdapter(
                 meetingIntelligenceApi,
@@ -293,7 +294,8 @@ public class MeetingIntelligencePlatformConfiguration {
                 auditPort,
                 Optional.of(draftMinutesMailNotifier),
                 Optional.of(meetingApi),
-                noteArtifactStorage
+                noteArtifactStorage,
+                Optional.ofNullable(notificationPublisher.getIfAvailable())
         );
     }
 

@@ -10,6 +10,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNote
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.NoteApprovalOpenedNotifier;
 import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
 import com.nanobaseai.actenora.meetingintelligence.domain.exception.MeetingNoteNotFoundException;
 import com.nanobaseai.actenora.meetingintelligence.domain.exception.NoteVersionImmutableException;
@@ -38,6 +39,7 @@ public final class MeetingNoteApprovalService {
     private final MeetingIntelligenceAuditPort auditPort;
     private final ApprovedNoteLedgerPort approvedNoteLedgerPort;
     private final NoteArtifactStoragePort noteArtifactStorage;
+    private final NoteApprovalOpenedNotifier approvalOpenedNotifier;
     private final Clock clock;
 
     public MeetingNoteApprovalService(
@@ -55,6 +57,7 @@ public final class MeetingNoteApprovalService {
                 (tenantId, meetingOccurrenceId, noteId, noteVersionId) -> {
                 },
                 NoteArtifactStoragePort.noop(),
+                NoteApprovalOpenedNotifier.noop(),
                 clock
         );
     }
@@ -74,6 +77,7 @@ public final class MeetingNoteApprovalService {
                 auditPort,
                 approvedNoteLedgerPort,
                 NoteArtifactStoragePort.noop(),
+                NoteApprovalOpenedNotifier.noop(),
                 clock
         );
     }
@@ -87,12 +91,35 @@ public final class MeetingNoteApprovalService {
             NoteArtifactStoragePort noteArtifactStorage,
             Clock clock
     ) {
+        this(
+                noteRepository,
+                versionRepository,
+                approvalApi,
+                auditPort,
+                approvedNoteLedgerPort,
+                noteArtifactStorage,
+                NoteApprovalOpenedNotifier.noop(),
+                clock
+        );
+    }
+
+    public MeetingNoteApprovalService(
+            MeetingNoteRepository noteRepository,
+            MeetingNoteVersionRepository versionRepository,
+            ApprovalApi approvalApi,
+            MeetingIntelligenceAuditPort auditPort,
+            ApprovedNoteLedgerPort approvedNoteLedgerPort,
+            NoteArtifactStoragePort noteArtifactStorage,
+            NoteApprovalOpenedNotifier approvalOpenedNotifier,
+            Clock clock
+    ) {
         this.noteRepository = Objects.requireNonNull(noteRepository, "noteRepository");
         this.versionRepository = Objects.requireNonNull(versionRepository, "versionRepository");
         this.approvalApi = Objects.requireNonNull(approvalApi, "approvalApi");
         this.auditPort = Objects.requireNonNull(auditPort, "auditPort");
         this.approvedNoteLedgerPort = Objects.requireNonNull(approvedNoteLedgerPort, "approvedNoteLedgerPort");
         this.noteArtifactStorage = Objects.requireNonNull(noteArtifactStorage, "noteArtifactStorage");
+        this.approvalOpenedNotifier = Objects.requireNonNull(approvalOpenedNotifier, "approvalOpenedNotifier");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -156,6 +183,17 @@ public final class MeetingNoteApprovalService {
                 ),
                 now
         );
+        try {
+            approvalOpenedNotifier.onSubmitted(
+                    tenantId,
+                    note.id(),
+                    note.meetingOccurrenceId(),
+                    approvalId.value(),
+                    approverId
+            );
+        } catch (RuntimeException ignored) {
+            // Notification must not fail approval submit.
+        }
         return approvalId;
     }
 

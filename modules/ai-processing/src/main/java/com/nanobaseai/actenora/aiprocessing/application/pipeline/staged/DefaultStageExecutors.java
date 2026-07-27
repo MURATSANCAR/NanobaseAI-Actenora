@@ -12,6 +12,8 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelDescriptor
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelRuntimePort;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingContextPort;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PromptRegistryPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.ApprovedKnowledgeIndexPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
@@ -43,6 +45,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -61,6 +64,26 @@ public final class DefaultStageExecutors {
             TranscriptSegmentSourcePort segments,
             ProcessingArtifactRepository artifacts,
             PriorMeetingContextPort priorContext
+    ) {
+        return createAll(
+                prompts,
+                modelRuntime,
+                segments,
+                artifacts,
+                priorContext,
+                MeetingNoteHandoffPort.noop(),
+                ApprovedKnowledgeIndexPort.noop()
+        );
+    }
+
+    public static Map<ProcessingStage, StageExecutor> createAll(
+            PromptRegistryPort prompts,
+            ModelRuntimePort modelRuntime,
+            TranscriptSegmentSourcePort segments,
+            ProcessingArtifactRepository artifacts,
+            PriorMeetingContextPort priorContext,
+            MeetingNoteHandoffPort noteHandoff,
+            ApprovedKnowledgeIndexPort knowledgeIndex
     ) {
         SegmentNormalizer normalizer = new SegmentNormalizer();
         TranscriptChunker chunker = new TranscriptChunker();
@@ -81,8 +104,15 @@ public final class DefaultStageExecutors {
                 ProcessingStage.MERGE, new MergeExecutor(modelRuntime, prompts, artifacts, merger, repair, schema, bundleMapper),
                 ProcessingStage.VALIDATE, new ValidateExecutor(artifacts, validator, segments, normalizer),
                 ProcessingStage.MINUTES, new MinutesExecutor(
-                        modelRuntime, artifacts, noteAssembler, priorContext == null ? PriorMeetingContextPort.noop() : priorContext),
-                ProcessingStage.EMBEDDING, new EmbeddingExecutor()
+                        modelRuntime,
+                        artifacts,
+                        noteAssembler,
+                        priorContext == null ? PriorMeetingContextPort.noop() : priorContext,
+                        noteHandoff == null ? MeetingNoteHandoffPort.noop() : noteHandoff
+                ),
+                ProcessingStage.EMBEDDING, new EmbeddingExecutor(
+                        knowledgeIndex == null ? ApprovedKnowledgeIndexPort.noop() : knowledgeIndex
+                )
         );
     }
 
@@ -543,17 +573,20 @@ public final class DefaultStageExecutors {
         private final ProcessingArtifactRepository artifacts;
         private final FinalNoteAssembler noteAssembler;
         private final PriorMeetingContextPort priorContext;
+        private final MeetingNoteHandoffPort noteHandoff;
 
         MinutesExecutor(
                 ModelRuntimePort modelRuntime,
                 ProcessingArtifactRepository artifacts,
                 FinalNoteAssembler noteAssembler,
-                PriorMeetingContextPort priorContext
+                PriorMeetingContextPort priorContext,
+                MeetingNoteHandoffPort noteHandoff
         ) {
             this.modelRuntime = modelRuntime;
             this.artifacts = artifacts;
             this.noteAssembler = noteAssembler;
             this.priorContext = priorContext;
+            this.noteHandoff = noteHandoff;
         }
 
         @Override
@@ -591,9 +624,20 @@ public final class DefaultStageExecutors {
                                     prior
                             );
                 }
+                Optional<UUID> noteId = noteHandoff.handoff(new MeetingNoteHandoffPort.HandoffCommand(
+                        job.tenantId(),
+                        job.meetingOccurrenceId(),
+                        job.transcriptId(),
+                        job.id(),
+                        modelRuntime.descriptor().servedModelId(),
+                        job.promptVersion(),
+                        job.schemaVersion(),
+                        draft
+                ));
                 String json = MAPPER.writeValueAsString(Map.of(
                         "executiveSummary", draft.executiveSummary() == null ? "" : draft.executiveSummary(),
-                        "requiresManualReview", draft.requiresManualReview()
+                        "requiresManualReview", draft.requiresManualReview(),
+                        "meetingNoteId", noteId.map(UUID::toString).orElse("")
                 ));
                 return StageExecutionResult.success(
                         job, "final-minutes", json, inTok, outTok, (System.nanoTime() - t0) / 1_000_000L, now);
@@ -606,10 +650,16 @@ public final class DefaultStageExecutors {
     }
 
     /**
-     * Embedding is triggered post-approval; this stage records a wake artifact.
-     * Actual vector write is performed by ApprovedKnowledgeIndexer via EmbeddingStageBridge.
+     * Runs approved-knowledge indexing for the note version carried in correlationId.
+     * {@code transcriptId} on the job is the noteId (see PipelineGraphFactory.admitEmbedding).
      */
     static final class EmbeddingExecutor implements StageExecutor {
+        private final ApprovedKnowledgeIndexPort knowledgeIndex;
+
+        EmbeddingExecutor(ApprovedKnowledgeIndexPort knowledgeIndex) {
+            this.knowledgeIndex = knowledgeIndex;
+        }
+
         @Override
         public ProcessingStage stage() {
             return ProcessingStage.EMBEDDING;
@@ -618,9 +668,24 @@ public final class DefaultStageExecutors {
         @Override
         public StageExecutionResult execute(AiJob job, Instant now) {
             long t0 = System.nanoTime();
-            String json = "{\"status\":\"queued_for_indexer\",\"noteVersionId\":\"" + job.correlationId() + "\"}";
-            return StageExecutionResult.success(
-                    job, "embedding-request", json, 0, 0, (System.nanoTime() - t0) / 1_000_000L, now);
+            try {
+                UUID noteId = job.transcriptId();
+                UUID noteVersionId = job.correlationId();
+                knowledgeIndex.indexApprovedNote(
+                        job.tenantId(),
+                        job.meetingOccurrenceId(),
+                        noteId,
+                        noteVersionId
+                );
+                String json = "{\"status\":\"indexed\",\"noteId\":\"" + noteId
+                        + "\",\"noteVersionId\":\"" + noteVersionId + "\"}";
+                return StageExecutionResult.success(
+                        job, "embedding-complete", json, 0, 0, (System.nanoTime() - t0) / 1_000_000L, now);
+            } catch (Exception ex) {
+                return StageExecutionResult.failure(
+                        job, true, "EMBED_FAILED", safe(ex.getMessage()),
+                        (System.nanoTime() - t0) / 1_000_000L, now);
+            }
         }
     }
 

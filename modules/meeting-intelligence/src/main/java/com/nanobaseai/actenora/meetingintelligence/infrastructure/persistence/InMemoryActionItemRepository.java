@@ -31,4 +31,11 @@ public final class InMemoryActionItemRepository implements ActionItemRepository 
                 .filter(e -> e.tenantId().equals(tenantId) && e.noteId().equals(noteId))
                 .toList();
     }
+
+    @Override
+    public List<ActionItem> findByTenantId(TenantId tenantId) {
+        return byId.values().stream()
+                .filter(e -> e.tenantId().equals(tenantId))
+                .toList();
+    }
 }

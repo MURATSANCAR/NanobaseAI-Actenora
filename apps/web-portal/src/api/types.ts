@@ -192,6 +192,28 @@ export interface DashboardResponse {
   recentMeetings: MeetingSummary[];
 }
 
+export type NotificationType =
+  | "APPROVAL_REQUESTED"
+  | "DRAFT_MINUTES_READY"
+  | "AI_JOB_FAILED"
+  | "ACTION_OVERDUE"
+  | "COMMITMENT_OVERDUE";
+
+export interface PortalNotificationItem {
+  id: string;
+  type: NotificationType | string;
+  title: string;
+  body: string;
+  href: string;
+  createdAt: string | null;
+  readAt: string | null;
+}
+
+export interface PortalNotificationFeed {
+  items: PortalNotificationItem[];
+  unreadCount: number;
+}
+
 export interface TemplateSummary {
   id: string;
   name: string;
@@ -335,6 +357,9 @@ export interface ListArtifactsParams {
 export interface ApiClient {
   getCurrentUser(): Promise<PortalUser>;
   getDashboard(): Promise<DashboardResponse>;
+  listNotifications(params?: { limit?: number }): Promise<PortalNotificationFeed>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(): Promise<void>;
   listMeetings(params?: ListMeetingsParams): Promise<CursorPage<MeetingSummary>>;
   getMeetingDetail(meetingId: string): Promise<MeetingDetailResponse>;
   getMeetingTranscript(

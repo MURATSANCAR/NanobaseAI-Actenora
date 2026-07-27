@@ -20,6 +20,7 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.PromptRegistryP
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.PipelineGraphFactory;
 import com.nanobaseai.actenora.aiprocessing.application.port.AdmissionController;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiAttemptRepository;
+import com.nanobaseai.actenora.aiprocessing.application.port.AiJobDeadNotifier;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiJobRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.AttemptHistoryPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.InferenceInputResolverPort;
@@ -221,7 +222,7 @@ public class AiProcessingPlatformConfiguration {
         return new TranscriptSegmentSourceAdapter(segments);
     }
 
-    @Bean
+    @Bean(name = "singleModelRuntimePort")
     ModelRuntimePort localModelRuntimePort(
             SwappableLocalModelProvider provider,
             ModelDefinitionRepository modelDefinitions,
@@ -445,9 +446,17 @@ public class AiProcessingPlatformConfiguration {
             AiJobRepository jobs,
             AiAttemptRepository attempts,
             JobScheduler jobScheduler,
-            JobProgressCache jobProgressCache
+            JobProgressCache jobProgressCache,
+            ObjectProvider<AiJobDeadNotifier> deadNotifier
     ) {
-        return new AiJobService(admissionController, jobs, attempts, jobScheduler, jobProgressCache);
+        return new AiJobService(
+                admissionController,
+                jobs,
+                attempts,
+                jobScheduler,
+                jobProgressCache,
+                deadNotifier.getIfAvailable() == null ? AiJobDeadNotifier.noop() : deadNotifier.getObject()
+        );
     }
 
     @Bean

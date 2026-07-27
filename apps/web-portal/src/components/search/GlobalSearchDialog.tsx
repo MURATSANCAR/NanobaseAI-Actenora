@@ -124,14 +124,19 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-900/30 p-4 pt-[12vh] backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-900/45 p-4 pt-[12vh] backdrop-blur-[2px]"
+      onClick={onClose}
+      role="presentation"
+    >
       <div
-        className="card-static w-full max-w-2xl overflow-hidden shadow-2xl"
+        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl shadow-slate-900/20"
         role="dialog"
         aria-modal="true"
         aria-label={t("search.title")}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 border-b border-white/60 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
           <Search className="h-5 w-5 shrink-0 text-violet-600" aria-hidden />
           <input
             ref={inputRef}
@@ -142,7 +147,7 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
             aria-label={t("search.placeholder")}
           />
           {loading ? <Loader2 className="h-4 w-4 animate-spin text-violet-600" aria-hidden /> : null}
-          <button type="button" className="rounded-lg p-1.5 text-slate-500 hover:bg-white/70" onClick={onClose}>
+          <button type="button" className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" onClick={onClose}>
             <X className="h-4 w-4" />
             <span className="sr-only">{t("search.close")}</span>
           </button>
@@ -175,7 +180,7 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
           )}
         </div>
 
-        <div className="border-t border-white/60 px-4 py-2 text-xs text-slate-500">
+        <div className="border-t border-slate-100 px-4 py-2 text-xs text-slate-500">
           {t("search.hint")}
         </div>
       </div>

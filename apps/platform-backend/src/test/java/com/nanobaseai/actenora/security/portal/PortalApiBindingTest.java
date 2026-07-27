@@ -46,6 +46,10 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.InMemor
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.InMemoryLedgerProjectionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteVersionRepository;
+import com.nanobaseai.actenora.notification.api.NotificationApi;
+import com.nanobaseai.actenora.notification.application.UserNotificationService;
+import com.nanobaseai.actenora.notification.domain.UserNotificationType;
+import com.nanobaseai.actenora.notification.infrastructure.persistence.InMemoryUserNotificationRepository;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.IdentityClaims;
@@ -94,6 +98,7 @@ class PortalApiBindingTest {
     private ContinuityLedgerService ledgerService;
     private ApprovalApi approvalApi;
     private AuditApi auditApi;
+    private NotificationApi notificationApi;
 
     @BeforeEach
     void setUp() {
@@ -177,6 +182,14 @@ class PortalApiBindingTest {
         auditApi = new AuditApiAdapter(new AuditAppendService(new InMemoryAuditEntryStore()));
         optionalBeans.addBean("auditApi", auditApi);
 
+        InMemoryUserNotificationRepository notificationRepository = new InMemoryUserNotificationRepository();
+        NotificationApi notificationApi = new UserNotificationService(
+                notificationRepository,
+                new InstantClock(Clock.systemUTC())
+        );
+        optionalBeans.addBean("notificationApi", notificationApi);
+        this.notificationApi = notificationApi;
+
         controller = new PortalApiController(
                 stubIdentityApi(),
                 meetingApi,
@@ -195,6 +208,9 @@ class PortalApiBindingTest {
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.security.microsoftconnection.GraphObservability.class),
                 optionalBeans.getBeanProvider(
                         com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler.class),
+                optionalBeans.getBeanProvider(com.nanobaseai.actenora.notification.api.NotificationApi.class),
+                optionalBeans.getBeanProvider(
+                        com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher.class),
                 new PortalTeamsPreferencesStore(),
                 "test-graph-client-id"
         );

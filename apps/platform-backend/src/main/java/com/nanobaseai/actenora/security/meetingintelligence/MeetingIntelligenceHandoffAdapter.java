@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResp
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.QualityGateOutcome;
+import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.Instant;
@@ -38,6 +39,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final Optional<DraftMinutesMailNotifier> draftMailNotifier;
     private final Optional<MeetingApi> meetingApi;
     private final NoteArtifactStoragePort noteArtifactStorage;
+    private final Optional<PlatformUserNotificationPublisher> notificationPublisher;
 
     public MeetingIntelligenceHandoffAdapter(
             MeetingIntelligenceApi meetingIntelligenceApi,
@@ -52,7 +54,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 auditPort,
                 Optional.empty(),
                 Optional.empty(),
-                NoteArtifactStoragePort.noop()
+                NoteArtifactStoragePort.noop(),
+                Optional.empty()
         );
     }
 
@@ -71,7 +74,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 auditPort,
                 draftMailNotifier,
                 meetingApi,
-                NoteArtifactStoragePort.noop()
+                NoteArtifactStoragePort.noop(),
+                Optional.empty()
         );
     }
 
@@ -84,6 +88,28 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             Optional<MeetingApi> meetingApi,
             NoteArtifactStoragePort noteArtifactStorage
     ) {
+        this(
+                meetingIntelligenceApi,
+                evidenceValidationApi,
+                segmentSource,
+                auditPort,
+                draftMailNotifier,
+                meetingApi,
+                noteArtifactStorage,
+                Optional.empty()
+        );
+    }
+
+    public MeetingIntelligenceHandoffAdapter(
+            MeetingIntelligenceApi meetingIntelligenceApi,
+            EvidenceValidationApi evidenceValidationApi,
+            TranscriptSegmentSourcePort segmentSource,
+            MeetingIntelligenceAuditPort auditPort,
+            Optional<DraftMinutesMailNotifier> draftMailNotifier,
+            Optional<MeetingApi> meetingApi,
+            NoteArtifactStoragePort noteArtifactStorage,
+            Optional<PlatformUserNotificationPublisher> notificationPublisher
+    ) {
         this.meetingIntelligenceApi = Objects.requireNonNull(meetingIntelligenceApi, "meetingIntelligenceApi");
         this.evidenceValidationApi = Objects.requireNonNull(evidenceValidationApi, "evidenceValidationApi");
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
@@ -91,6 +117,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         this.draftMailNotifier = draftMailNotifier == null ? Optional.empty() : draftMailNotifier;
         this.meetingApi = meetingApi == null ? Optional.empty() : meetingApi;
         this.noteArtifactStorage = Objects.requireNonNull(noteArtifactStorage, "noteArtifactStorage");
+        this.notificationPublisher = notificationPublisher == null ? Optional.empty() : notificationPublisher;
     }
 
     @Override
@@ -140,7 +167,28 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 Instant.now()
         );
         notifyDraftMail(command, note);
+        notifyDraftInApp(command, note);
         return Optional.of(note.id());
+    }
+
+    private void notifyDraftInApp(HandoffCommand command, MeetingNoteDetailResponse note) {
+        if (notificationPublisher.isEmpty()) {
+            return;
+        }
+        try {
+            String title = null;
+            if (meetingApi.isPresent()) {
+                title = meetingApi.get().getMeeting(command.meetingOccurrenceId()).title();
+            }
+            notificationPublisher.get().notifyDraftMinutesReady(
+                    command.tenantId(),
+                    command.meetingOccurrenceId(),
+                    note.id(),
+                    title
+            );
+        } catch (RuntimeException ignored) {
+            // In-app notification must not fail handoff.
+        }
     }
 
     private void notifyDraftMail(HandoffCommand command, MeetingNoteDetailResponse note) {
