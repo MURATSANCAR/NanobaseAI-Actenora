@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.security.meetingintelligence;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
+import com.nanobaseai.actenora.delivery.api.DeliveryApi;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
@@ -40,6 +41,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final Optional<MeetingApi> meetingApi;
     private final NoteArtifactStoragePort noteArtifactStorage;
     private final Optional<PlatformUserNotificationPublisher> notificationPublisher;
+    private final Optional<DeliveryApi> deliveryApi;
 
     public MeetingIntelligenceHandoffAdapter(
             MeetingIntelligenceApi meetingIntelligenceApi,
@@ -55,6 +57,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 Optional.empty(),
                 Optional.empty(),
                 NoteArtifactStoragePort.noop(),
+                Optional.empty(),
                 Optional.empty()
         );
     }
@@ -75,6 +78,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 draftMailNotifier,
                 meetingApi,
                 NoteArtifactStoragePort.noop(),
+                Optional.empty(),
                 Optional.empty()
         );
     }
@@ -96,6 +100,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 draftMailNotifier,
                 meetingApi,
                 noteArtifactStorage,
+                Optional.empty(),
                 Optional.empty()
         );
     }
@@ -110,6 +115,30 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             NoteArtifactStoragePort noteArtifactStorage,
             Optional<PlatformUserNotificationPublisher> notificationPublisher
     ) {
+        this(
+                meetingIntelligenceApi,
+                evidenceValidationApi,
+                segmentSource,
+                auditPort,
+                draftMailNotifier,
+                meetingApi,
+                noteArtifactStorage,
+                notificationPublisher,
+                Optional.empty()
+        );
+    }
+
+    public MeetingIntelligenceHandoffAdapter(
+            MeetingIntelligenceApi meetingIntelligenceApi,
+            EvidenceValidationApi evidenceValidationApi,
+            TranscriptSegmentSourcePort segmentSource,
+            MeetingIntelligenceAuditPort auditPort,
+            Optional<DraftMinutesMailNotifier> draftMailNotifier,
+            Optional<MeetingApi> meetingApi,
+            NoteArtifactStoragePort noteArtifactStorage,
+            Optional<PlatformUserNotificationPublisher> notificationPublisher,
+            Optional<DeliveryApi> deliveryApi
+    ) {
         this.meetingIntelligenceApi = Objects.requireNonNull(meetingIntelligenceApi, "meetingIntelligenceApi");
         this.evidenceValidationApi = Objects.requireNonNull(evidenceValidationApi, "evidenceValidationApi");
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
@@ -118,6 +147,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         this.meetingApi = meetingApi == null ? Optional.empty() : meetingApi;
         this.noteArtifactStorage = Objects.requireNonNull(noteArtifactStorage, "noteArtifactStorage");
         this.notificationPublisher = notificationPublisher == null ? Optional.empty() : notificationPublisher;
+        this.deliveryApi = deliveryApi == null ? Optional.empty() : deliveryApi;
     }
 
     @Override
@@ -192,7 +222,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     }
 
     private void notifyDraftMail(HandoffCommand command, MeetingNoteDetailResponse note) {
-        if (draftMailNotifier.isEmpty() || meetingApi.isEmpty()) {
+        if (meetingApi.isEmpty()) {
             return;
         }
         try {
@@ -215,14 +245,35 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                                     .filter(email -> email != null && !email.isBlank())
                                     .findFirst()
                                     .orElse(null)));
+            if (organizerEmail == null || organizerEmail.isBlank()) {
+                return;
+            }
             String summary = note.currentVersion() == null ? "" : note.currentVersion().executiveSummary();
-            draftMailNotifier.get().notifyOrganizer(
-                    organizerEmail,
-                    meeting.title(),
-                    command.meetingOccurrenceId(),
-                    note.id(),
-                    summary
-            );
+            UUID noteVersionId = note.currentVersion() == null ? note.id() : note.currentVersion().id();
+            if (deliveryApi.isPresent()) {
+                String subject = "Taslak tutanak hazır: "
+                        + (meeting.title() == null ? command.meetingOccurrenceId() : meeting.title());
+                String body = (summary == null ? "" : summary) + "\n\nMeeting: " + command.meetingOccurrenceId()
+                        + "\nNote: " + note.id();
+                deliveryApi.get().enqueueDraftOrganizerNotification(
+                        command.tenantId(),
+                        noteVersionId,
+                        organizerEmail,
+                        organizerEmail,
+                        subject,
+                        body
+                );
+                return;
+            }
+            if (draftMailNotifier.isPresent()) {
+                draftMailNotifier.get().notifyOrganizer(
+                        organizerEmail,
+                        meeting.title(),
+                        command.meetingOccurrenceId(),
+                        note.id(),
+                        summary
+                );
+            }
         } catch (RuntimeException ex) {
             // Mail must not fail handoff.
         }

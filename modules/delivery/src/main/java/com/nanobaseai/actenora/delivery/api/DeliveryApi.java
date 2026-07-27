@@ -45,4 +45,22 @@ public interface DeliveryApi {
      * FAZ 31 — resolve our delivery request id from a provider-side message id.
      */
     DeliveryRequestId resolveByProviderMessageId(TenantId tenantId, String providerMessageId);
+
+    /**
+     * Enqueue organizer draft-minutes mail without ApprovalGranted.
+     * Idempotent on (tenant, noteVersionId, recipient). Uses synthetic approval id = noteVersionId.
+     */
+    EnqueueDeliveryResult enqueueDraftOrganizerNotification(
+            UUID tenantId,
+            UUID noteVersionId,
+            String recipientEmail,
+            String recipientDisplayName,
+            String subject,
+            String bodyText
+    );
+
+    /**
+     * List delivery requests for a note version (portal status surface).
+     */
+    java.util.List<DeliveryRequestStatusView> listByNoteVersion(UUID tenantId, UUID noteVersionId);
 }

@@ -53,6 +53,21 @@ public record DeliveryPolicySnapshot(
         );
     }
 
+    /** Organizer draft notification — no approval gate, no PDF. */
+    public static DeliveryPolicySnapshot draftOrganizer() {
+        return new DeliveryPolicySnapshot(
+                true,
+                false,
+                false,
+                false,
+                false,
+                5,
+                60,
+                Duration.ofHours(24),
+                PROVIDER_MAILHOG
+        );
+    }
+
     public static DeliveryPolicySnapshot sensitiveMeetingDefaults() {
         return new DeliveryPolicySnapshot(
                 true,

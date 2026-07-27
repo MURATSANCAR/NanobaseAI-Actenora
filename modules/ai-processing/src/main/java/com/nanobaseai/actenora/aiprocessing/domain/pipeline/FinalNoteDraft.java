@@ -14,6 +14,9 @@ public record FinalNoteDraft(
         List<OpenQuestionCandidate> openQuestions,
         List<CommitmentCandidate> commitments,
         List<TopicCandidate> topics,
+        List<IssueCandidate> issues,
+        List<ProposalCandidate> proposals,
+        List<ImportantFactCandidate> importantFacts,
         List<String> qualityFlags,
         List<String> evidenceSegmentIds,
         double confidence,
@@ -27,6 +30,9 @@ public record FinalNoteDraft(
         openQuestions = List.copyOf(Objects.requireNonNull(openQuestions, "openQuestions"));
         commitments = List.copyOf(Objects.requireNonNull(commitments, "commitments"));
         topics = List.copyOf(Objects.requireNonNull(topics, "topics"));
+        issues = List.copyOf(Objects.requireNonNull(issues, "issues"));
+        proposals = List.copyOf(Objects.requireNonNull(proposals, "proposals"));
+        importantFacts = List.copyOf(Objects.requireNonNull(importantFacts, "importantFacts"));
         qualityFlags = List.copyOf(Objects.requireNonNull(qualityFlags, "qualityFlags"));
         evidenceSegmentIds = List.copyOf(Objects.requireNonNull(evidenceSegmentIds, "evidenceSegmentIds"));
     }

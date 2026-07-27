@@ -19,6 +19,9 @@ class DeterministicExtractionValidatorTest {
                 java.util.List.of(),
                 java.util.List.of(),
                 java.util.List.of(),
+                java.util.List.of(),
+                java.util.List.of(),
+                java.util.List.of(),
                 java.util.List.of("missing"),
                 0.9
         );
@@ -34,6 +37,9 @@ class DeterministicExtractionValidatorTest {
         ExtractionBundle bundle = new ExtractionBundle(
                 java.util.List.of(),
                 java.util.List.of(new DecisionCandidate("We should maybe postpone", java.util.List.of("seg-1"), 0.9)),
+                java.util.List.of(),
+                java.util.List.of(),
+                java.util.List.of(),
                 java.util.List.of(),
                 java.util.List.of(),
                 java.util.List.of(),

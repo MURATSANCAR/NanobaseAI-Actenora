@@ -13,6 +13,9 @@ public record ExtractionBundle(
         List<RiskCandidate> risks,
         List<OpenQuestionCandidate> openQuestions,
         List<CommitmentCandidate> commitments,
+        List<IssueCandidate> issues,
+        List<ProposalCandidate> proposals,
+        List<ImportantFactCandidate> importantFacts,
         List<String> qualityFlags,
         List<String> evidenceSegmentIds,
         double confidence
@@ -24,6 +27,9 @@ public record ExtractionBundle(
         risks = List.copyOf(Objects.requireNonNull(risks, "risks"));
         openQuestions = List.copyOf(Objects.requireNonNull(openQuestions, "openQuestions"));
         commitments = List.copyOf(Objects.requireNonNull(commitments, "commitments"));
+        issues = List.copyOf(Objects.requireNonNull(issues, "issues"));
+        proposals = List.copyOf(Objects.requireNonNull(proposals, "proposals"));
+        importantFacts = List.copyOf(Objects.requireNonNull(importantFacts, "importantFacts"));
         qualityFlags = List.copyOf(Objects.requireNonNull(qualityFlags, "qualityFlags"));
         evidenceSegmentIds = List.copyOf(Objects.requireNonNull(evidenceSegmentIds, "evidenceSegmentIds"));
         if (confidence < 0.0d || confidence > 1.0d) {
@@ -34,6 +40,7 @@ public record ExtractionBundle(
     public static ExtractionBundle empty() {
         return new ExtractionBundle(
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(),
                 List.of(), List.of(), 0.0d
         );
     }

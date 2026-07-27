@@ -5,14 +5,19 @@ import com.nanobaseai.actenora.approval.api.ApprovalId;
 import com.nanobaseai.actenora.delivery.api.DeliveryApi;
 import com.nanobaseai.actenora.delivery.api.DeliveryOrderView;
 import com.nanobaseai.actenora.delivery.api.DeliveryRequestId;
+import com.nanobaseai.actenora.delivery.api.DeliveryRequestStatusView;
 import com.nanobaseai.actenora.delivery.application.DeliveryDispatcherService;
 import com.nanobaseai.actenora.delivery.application.EnqueueDeliveryCommand;
 import com.nanobaseai.actenora.delivery.application.EnqueueDeliveryResult;
 import com.nanobaseai.actenora.delivery.application.ExternalDeliveryService;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryRequestRepository;
+import com.nanobaseai.actenora.delivery.domain.DeliveryIntent;
+import com.nanobaseai.actenora.delivery.domain.DeliveryPolicySnapshot;
+import com.nanobaseai.actenora.delivery.domain.DeliveryRecipient;
 import com.nanobaseai.actenora.delivery.domain.DeliveryStatus;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -83,5 +88,54 @@ public final class DeliveryApiAdapter implements DeliveryApi {
     @Override
     public DeliveryRequestId resolveByProviderMessageId(TenantId tenantId, String providerMessageId) {
         return DeliveryRequestId.of(dispatcher.resolveByProviderMessageId(tenantId.value(), providerMessageId));
+    }
+
+    @Override
+    public EnqueueDeliveryResult enqueueDraftOrganizerNotification(
+            UUID tenantId,
+            UUID noteVersionId,
+            String recipientEmail,
+            String recipientDisplayName,
+            String subject,
+            String bodyText
+    ) {
+        Objects.requireNonNull(tenantId, "tenantId");
+        Objects.requireNonNull(noteVersionId, "noteVersionId");
+        Objects.requireNonNull(recipientEmail, "recipientEmail");
+        TenantId tid = TenantId.of(tenantId);
+        // Synthetic approval id = noteVersionId for draft path (requireApproval=false).
+        ApprovalId synthetic = ApprovalId.of(noteVersionId);
+        String display = recipientDisplayName == null || recipientDisplayName.isBlank()
+                ? recipientEmail
+                : recipientDisplayName;
+        return dispatcher.enqueue(new EnqueueDeliveryCommand(
+                tid,
+                noteVersionId,
+                synthetic,
+                List.of(DeliveryRecipient.internal(recipientEmail.trim(), display)),
+                DeliveryPolicySnapshot.draftOrganizer(),
+                subject == null ? "Draft meeting minutes" : subject,
+                bodyText == null ? "" : bodyText,
+                "system:draft-organizer"
+        ));
+    }
+
+    @Override
+    public List<DeliveryRequestStatusView> listByNoteVersion(UUID tenantId, UUID noteVersionId) {
+        TenantId tid = TenantId.of(tenantId);
+        return repository.findByNoteVersion(tid, noteVersionId).stream()
+                .map(r -> {
+                    boolean draft = !r.policySnapshot().requireApproval();
+                    return new DeliveryRequestStatusView(
+                            r.id(),
+                            r.noteVersionId(),
+                            draft ? DeliveryIntent.DRAFT_ORGANIZER : DeliveryIntent.FINAL_EXTERNAL,
+                            r.status(),
+                            r.recipient().email(),
+                            r.createdAt(),
+                            r.updatedAt()
+                    );
+                })
+                .toList();
     }
 }

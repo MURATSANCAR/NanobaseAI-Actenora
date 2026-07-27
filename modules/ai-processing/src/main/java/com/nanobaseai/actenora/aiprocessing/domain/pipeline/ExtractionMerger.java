@@ -26,6 +26,9 @@ public final class ExtractionMerger {
         Map<String, RiskCandidate> risks = new LinkedHashMap<>();
         Map<String, OpenQuestionCandidate> questions = new LinkedHashMap<>();
         Map<String, CommitmentCandidate> commitments = new LinkedHashMap<>();
+        Map<String, IssueCandidate> issues = new LinkedHashMap<>();
+        Map<String, ProposalCandidate> proposals = new LinkedHashMap<>();
+        Map<String, ImportantFactCandidate> facts = new LinkedHashMap<>();
         Set<String> qualityFlags = new LinkedHashSet<>();
         Set<String> evidence = new LinkedHashSet<>();
         double confidenceSum = 0.0d;
@@ -49,6 +52,15 @@ public final class ExtractionMerger {
             for (CommitmentCandidate commitment : chunk.commitments()) {
                 commitments.putIfAbsent(norm(commitment.text()), commitment);
             }
+            for (IssueCandidate issue : chunk.issues()) {
+                issues.putIfAbsent(norm(issue.text()), issue);
+            }
+            for (ProposalCandidate proposal : chunk.proposals()) {
+                proposals.putIfAbsent(norm(proposal.text()), proposal);
+            }
+            for (ImportantFactCandidate fact : chunk.importantFacts()) {
+                facts.putIfAbsent(norm(fact.text()), fact);
+            }
             qualityFlags.addAll(chunk.qualityFlags());
             evidence.addAll(chunk.evidenceSegmentIds());
             confidenceSum += chunk.confidence();
@@ -62,6 +74,9 @@ public final class ExtractionMerger {
                 new ArrayList<>(risks.values()),
                 new ArrayList<>(questions.values()),
                 new ArrayList<>(commitments.values()),
+                new ArrayList<>(issues.values()),
+                new ArrayList<>(proposals.values()),
+                new ArrayList<>(facts.values()),
                 new ArrayList<>(qualityFlags),
                 new ArrayList<>(evidence),
                 clamp(confidence)

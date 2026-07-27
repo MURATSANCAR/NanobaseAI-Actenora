@@ -56,6 +56,15 @@ public final class InMemoryDeliveryRequestRepository implements DeliveryRequestR
     }
 
     @Override
+    public List<DeliveryRequest> findByNoteVersion(TenantId tenantId, UUID noteVersionId) {
+        return byId.values().stream()
+                .filter(r -> r.tenantId().equals(tenantId))
+                .filter(r -> r.noteVersionId().equals(noteVersionId))
+                .sorted(Comparator.comparing(DeliveryRequest::createdAt))
+                .toList();
+    }
+
+    @Override
     public Optional<DeliveryRequest> findByProviderMessageId(TenantId tenantId, String providerMessageId) {
         if (providerMessageId == null || providerMessageId.isBlank()) {
             return Optional.empty();

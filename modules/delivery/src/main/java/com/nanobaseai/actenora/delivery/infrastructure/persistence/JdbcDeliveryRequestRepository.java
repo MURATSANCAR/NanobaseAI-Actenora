@@ -76,6 +76,21 @@ public final class JdbcDeliveryRequestRepository implements DeliveryRequestRepos
     }
 
     @Override
+    public List<DeliveryRequest> findByNoteVersion(TenantId tenantId, UUID noteVersionId) {
+        String sql = """
+                SELECT id FROM delivery.requests
+                WHERE tenant_id = ? AND note_version_id = ?
+                ORDER BY created_at ASC
+                """;
+        List<DeliveryRequest> out = new ArrayList<>();
+        jdbc.query(sql, rs -> {
+            UUID id = rs.getObject("id", UUID.class);
+            findById(tenantId, id).ifPresent(out::add);
+        }, tenantId.value(), noteVersionId);
+        return out;
+    }
+
+    @Override
     public Optional<DeliveryRequest> findByProviderMessageId(TenantId tenantId, String providerMessageId) {
         String sql = """
                 SELECT r.id FROM delivery.requests r

@@ -21,6 +21,8 @@ public interface DeliveryRequestRepository {
             String recipientEmail
     );
 
+    List<DeliveryRequest> findByNoteVersion(TenantId tenantId, UUID noteVersionId);
+
     /**
      * FAZ 31 — resolve a request by provider-side message id within a tenant.
      */
