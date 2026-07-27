@@ -25,6 +25,17 @@ public final class InMemoryMeetingSeriesRepository implements MeetingSeriesRepos
                 .filter(s -> s.tenantId().equals(tenantId));
     }
 
+    @Override
+    public Optional<MeetingSeries> findByTenantIdAndGraphSeriesMasterId(TenantId tenantId, String graphSeriesMasterId) {
+        if (graphSeriesMasterId == null || graphSeriesMasterId.isBlank()) {
+            return Optional.empty();
+        }
+        return store.values().stream()
+                .filter(s -> s.tenantId().equals(tenantId))
+                .filter(s -> graphSeriesMasterId.equals(s.graphSeriesMasterId()))
+                .findFirst();
+    }
+
     public void clear() {
         store.clear();
     }

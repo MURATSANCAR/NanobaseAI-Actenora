@@ -76,6 +76,16 @@ public final class JdbcMeetingSeriesRepository implements MeetingSeriesRepositor
         return jdbc.query(sql, ROW_MAPPER, id, tenantId.value()).stream().findFirst();
     }
 
+    @Override
+    public Optional<MeetingSeries> findByTenantIdAndGraphSeriesMasterId(TenantId tenantId, String graphSeriesMasterId) {
+        if (graphSeriesMasterId == null || graphSeriesMasterId.isBlank()) {
+            return Optional.empty();
+        }
+        String sql = "SELECT " + COLUMNS
+                + " FROM meeting.meeting_series WHERE tenant_id = ? AND graph_series_master_id = ?";
+        return jdbc.query(sql, ROW_MAPPER, tenantId.value(), graphSeriesMasterId).stream().findFirst();
+    }
+
     private void insert(MeetingSeries series) {
         String sql = """
                 INSERT INTO meeting.meeting_series (

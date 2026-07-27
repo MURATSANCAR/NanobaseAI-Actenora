@@ -11,6 +11,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.ValidationExecutionResult
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MapAiCandidatesCommand;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.QualityGateOutcome;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
@@ -36,6 +37,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final MeetingIntelligenceAuditPort auditPort;
     private final Optional<DraftMinutesMailNotifier> draftMailNotifier;
     private final Optional<MeetingApi> meetingApi;
+    private final NoteArtifactStoragePort noteArtifactStorage;
 
     public MeetingIntelligenceHandoffAdapter(
             MeetingIntelligenceApi meetingIntelligenceApi,
@@ -43,7 +45,15 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             TranscriptSegmentSourcePort segmentSource,
             MeetingIntelligenceAuditPort auditPort
     ) {
-        this(meetingIntelligenceApi, evidenceValidationApi, segmentSource, auditPort, Optional.empty(), Optional.empty());
+        this(
+                meetingIntelligenceApi,
+                evidenceValidationApi,
+                segmentSource,
+                auditPort,
+                Optional.empty(),
+                Optional.empty(),
+                NoteArtifactStoragePort.noop()
+        );
     }
 
     public MeetingIntelligenceHandoffAdapter(
@@ -54,12 +64,33 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             Optional<DraftMinutesMailNotifier> draftMailNotifier,
             Optional<MeetingApi> meetingApi
     ) {
+        this(
+                meetingIntelligenceApi,
+                evidenceValidationApi,
+                segmentSource,
+                auditPort,
+                draftMailNotifier,
+                meetingApi,
+                NoteArtifactStoragePort.noop()
+        );
+    }
+
+    public MeetingIntelligenceHandoffAdapter(
+            MeetingIntelligenceApi meetingIntelligenceApi,
+            EvidenceValidationApi evidenceValidationApi,
+            TranscriptSegmentSourcePort segmentSource,
+            MeetingIntelligenceAuditPort auditPort,
+            Optional<DraftMinutesMailNotifier> draftMailNotifier,
+            Optional<MeetingApi> meetingApi,
+            NoteArtifactStoragePort noteArtifactStorage
+    ) {
         this.meetingIntelligenceApi = Objects.requireNonNull(meetingIntelligenceApi, "meetingIntelligenceApi");
         this.evidenceValidationApi = Objects.requireNonNull(evidenceValidationApi, "evidenceValidationApi");
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
         this.auditPort = Objects.requireNonNull(auditPort, "auditPort");
         this.draftMailNotifier = draftMailNotifier == null ? Optional.empty() : draftMailNotifier;
         this.meetingApi = meetingApi == null ? Optional.empty() : meetingApi;
+        this.noteArtifactStorage = Objects.requireNonNull(noteArtifactStorage, "noteArtifactStorage");
     }
 
     @Override
@@ -83,6 +114,14 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 command.schemaId(),
                 clamp(command.draft().confidence())
         ));
+        noteArtifactStorage.storeExtractionBundle(
+                TenantId.of(command.tenantId()),
+                command.meetingOccurrenceId(),
+                command.jobId(),
+                "{\"noteId\":\"" + note.id() + "\",\"executiveSummary\":"
+                        + jsonString(command.draft().executiveSummary())
+                        + ",\"qualityGateOutcome\":\"" + outcome.name() + "\"}"
+        );
         auditPort.record(
                 command.tenantId(),
                 "system:ai-handoff",
@@ -180,5 +219,12 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             return 1.0d;
         }
         return confidence;
+    }
+
+    private static String jsonString(String value) {
+        if (value == null) {
+            return "\"\"";
+        }
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 }

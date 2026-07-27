@@ -59,6 +59,22 @@ public final class InMemoryMeetingOccurrenceRepository implements MeetingOccurre
     }
 
     @Override
+    public Optional<MeetingOccurrence> findPreviousInSeries(
+            TenantId tenantId,
+            UUID seriesId,
+            Instant beforeStart,
+            UUID excludeId
+    ) {
+        Objects.requireNonNull(beforeStart, "beforeStart");
+        return store.values().stream()
+                .filter(o -> o.tenantId().equals(tenantId))
+                .filter(o -> o.meetingSeriesId().equals(seriesId))
+                .filter(o -> !o.id().equals(excludeId))
+                .filter(o -> o.scheduledStartAt().isBefore(beforeStart))
+                .max(Comparator.comparing(MeetingOccurrence::scheduledStartAt));
+    }
+
+    @Override
     public PageResult<MeetingOccurrence> findByTenant(
             TenantId tenantId,
             MeetingOccurrenceStatus status,

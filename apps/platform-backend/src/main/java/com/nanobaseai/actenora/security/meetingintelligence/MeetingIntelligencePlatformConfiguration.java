@@ -23,6 +23,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntel
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingKnowledgeStorePort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
@@ -59,6 +60,7 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InM
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryQualityGatePolicyPort;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.validation.InMemoryValidationRunRepository;
 import com.nanobaseai.actenora.sharedkernel.messaging.port.OutboxPublisher;
+import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -408,6 +410,15 @@ public class MeetingIntelligencePlatformConfiguration {
                     "actenora.knowledge.embedding.base-url is required when mode=openai-compatible");
         }
         return new HashEmbeddingPort(dimensions);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(NoteArtifactStoragePort.class)
+    public NoteArtifactStoragePort noteArtifactStoragePort(
+            ObjectProvider<ObjectStorage> objectStorage
+    ) {
+        ObjectStorage storage = objectStorage.getIfAvailable();
+        return storage == null ? NoteArtifactStoragePort.noop() : new ObjectStorageNoteArtifactAdapter(storage);
     }
 
     @Bean

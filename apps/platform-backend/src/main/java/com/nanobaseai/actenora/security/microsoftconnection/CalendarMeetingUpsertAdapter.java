@@ -5,8 +5,10 @@ import com.nanobaseai.actenora.meeting.api.dto.BusinessContextResponse;
 import com.nanobaseai.actenora.meeting.api.dto.CreateMeetingRequest;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
+import com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateGraphIdentityException;
 import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
+import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerApi;
 import com.nanobaseai.actenora.microsoftconnection.application.model.CalendarEvent;
 import com.nanobaseai.actenora.microsoftconnection.application.model.ParticipantMetadata;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
@@ -19,8 +21,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Upserts {@link MeetingResponse} rows from Graph {@link CalendarEvent} snapshots.
- * Requires at least one business context per tenant (operator-provisioned via Meeting API).
+ * Upserts {@link MeetingResponse} rows from Graph {@link CalendarEvent} snapshots
+ * and links continuity projections for prior-meeting carry-over.
  */
 public final class CalendarMeetingUpsertAdapter {
 
@@ -30,10 +32,23 @@ public final class CalendarMeetingUpsertAdapter {
 
     private final MeetingApi meetingApi;
     private final FixedTenantContext tenantContext;
+    private final ContinuityLedgerApi continuityLedgerApi;
+    private final MeetingOccurrenceRepository occurrenceRepository;
 
     public CalendarMeetingUpsertAdapter(MeetingApi meetingApi, FixedTenantContext tenantContext) {
+        this(meetingApi, tenantContext, null, null);
+    }
+
+    public CalendarMeetingUpsertAdapter(
+            MeetingApi meetingApi,
+            FixedTenantContext tenantContext,
+            ContinuityLedgerApi continuityLedgerApi,
+            MeetingOccurrenceRepository occurrenceRepository
+    ) {
         this.meetingApi = Objects.requireNonNull(meetingApi, "meetingApi");
         this.tenantContext = Objects.requireNonNull(tenantContext, "tenantContext");
+        this.continuityLedgerApi = continuityLedgerApi;
+        this.occurrenceRepository = occurrenceRepository;
     }
 
     public void upsertEvents(TenantId tenantId, List<CalendarEvent> events) {
@@ -47,7 +62,7 @@ public final class CalendarMeetingUpsertAdapter {
             if (event.cancelled()) {
                 continue;
             }
-            upsertOne(businessContextId, event);
+            upsertOne(tenantId, businessContextId, event);
         }
     }
 
@@ -61,16 +76,47 @@ public final class CalendarMeetingUpsertAdapter {
         return contexts.getFirst().id();
     }
 
-    private void upsertOne(UUID businessContextId, CalendarEvent event) {
+    private void upsertOne(TenantId tenantId, UUID businessContextId, CalendarEvent event) {
         String graphId = event.immutableIdentity().graphEventImmutableId();
         CreateMeetingRequest create = toCreateRequest(businessContextId, event);
+        MeetingResponse meeting;
         try {
-            meetingApi.createMeeting(create);
+            meeting = meetingApi.createMeeting(create);
         } catch (DuplicateGraphIdentityException ex) {
             MeetingResponse existing = meetingApi.findByGraphEventImmutableId(graphId)
                     .orElseThrow(() -> ex);
-            meetingApi.updateMeeting(existing.id(), toUpdateRequest(event, existing.version()));
+            meeting = meetingApi.updateMeeting(existing.id(), toUpdateRequest(event, existing.version()));
             log.debug("Updated meeting from Graph calendar event graphEventImmutableId={}", graphId);
+        }
+        linkContinuity(tenantId, businessContextId, meeting);
+    }
+
+    private void linkContinuity(TenantId tenantId, UUID businessContextId, MeetingResponse meeting) {
+        if (continuityLedgerApi == null || occurrenceRepository == null || meeting.meetingSeriesId() == null) {
+            return;
+        }
+        try {
+            UUID previousId = occurrenceRepository.findPreviousInSeries(
+                            tenantId,
+                            meeting.meetingSeriesId(),
+                            meeting.scheduledStartAt(),
+                            meeting.id()
+                    )
+                    .map(o -> o.id())
+                    .orElse(null);
+            continuityLedgerApi.linkContinuity(
+                    tenantId,
+                    meeting.id(),
+                    meeting.meetingSeriesId(),
+                    businessContextId,
+                    previousId
+            );
+        } catch (RuntimeException ex) {
+            log.warn(
+                    "Continuity link failed for meetingOccurrenceId={} reason={}",
+                    meeting.id(),
+                    ex.getMessage()
+            );
         }
     }
 

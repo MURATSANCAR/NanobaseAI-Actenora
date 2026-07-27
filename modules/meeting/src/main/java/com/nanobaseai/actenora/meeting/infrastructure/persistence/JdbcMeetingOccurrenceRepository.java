@@ -154,6 +154,32 @@ public final class JdbcMeetingOccurrenceRepository implements MeetingOccurrenceR
     }
 
     @Override
+    public Optional<MeetingOccurrence> findPreviousInSeries(
+            TenantId tenantId,
+            UUID seriesId,
+            Instant beforeStart,
+            UUID excludeId
+    ) {
+        String sql = "SELECT " + COLUMNS + """
+                 FROM meeting.meeting_occurrences
+                WHERE tenant_id = ?
+                  AND meeting_series_id = ?
+                  AND scheduled_start_at < ?
+                  AND id <> ?
+                ORDER BY scheduled_start_at DESC
+                LIMIT 1
+                """;
+        return jdbc.query(
+                sql,
+                ROW_MAPPER,
+                tenantId.value(),
+                seriesId,
+                JdbcInstant.toTimestamp(beforeStart),
+                excludeId
+        ).stream().findFirst();
+    }
+
+    @Override
     public PageResult<MeetingOccurrence> findByTenant(
             TenantId tenantId,
             MeetingOccurrenceStatus status,

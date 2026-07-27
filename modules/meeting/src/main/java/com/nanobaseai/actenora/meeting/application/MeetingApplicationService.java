@@ -94,6 +94,14 @@ public final class MeetingApplicationService {
         assertUniqueOccurrenceIdentity(tenantId, request.icalUid(), originalStart);
 
         UUID seriesId = request.meetingSeriesId();
+        if (seriesId == null
+                && request.graphSeriesMasterId() != null
+                && !request.graphSeriesMasterId().isBlank()) {
+            seriesId = seriesRepository
+                    .findByTenantIdAndGraphSeriesMasterId(tenantId, request.graphSeriesMasterId())
+                    .map(MeetingSeries::id)
+                    .orElse(null);
+        }
         if (seriesId == null) {
             MeetingSeries series = MeetingSeries.create(
                     tenantId,

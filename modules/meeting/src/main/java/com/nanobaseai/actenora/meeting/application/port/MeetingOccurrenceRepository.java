@@ -27,6 +27,16 @@ public interface MeetingOccurrenceRepository {
 
     boolean existsByTenantIdAndIcalUidAndOriginalStartAt(TenantId tenantId, String icalUid, Instant originalStartAt);
 
+    /**
+     * Previous occurrence in the same series strictly before {@code beforeStart}, excluding {@code excludeId}.
+     */
+    Optional<MeetingOccurrence> findPreviousInSeries(
+            TenantId tenantId,
+            UUID seriesId,
+            Instant beforeStart,
+            UUID excludeId
+    );
+
     PageResult<MeetingOccurrence> findByTenant(
             TenantId tenantId,
             MeetingOccurrenceStatus status,

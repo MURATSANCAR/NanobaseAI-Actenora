@@ -8,6 +8,10 @@ import com.nanobaseai.actenora.meeting.infrastructure.persistence.JdbcBusinessCo
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.JdbcMeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.JdbcMeetingParticipantRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.persistence.JdbcMeetingSeriesRepository;
+import com.nanobaseai.actenora.meeting.application.relation.port.MeetingRelationRepository;
+import com.nanobaseai.actenora.meeting.application.relation.port.MeetingRelationSuggestionRepository;
+import com.nanobaseai.actenora.meeting.infrastructure.relation.JdbcMeetingRelationRepository;
+import com.nanobaseai.actenora.meeting.infrastructure.relation.JdbcMeetingRelationSuggestionRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,5 +41,15 @@ public class MeetingJdbcPersistenceConfiguration {
     @Bean
     MeetingParticipantRepository meetingParticipantRepository(DataSource dataSource) {
         return new JdbcMeetingParticipantRepository(new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    MeetingRelationRepository meetingRelationRepository(DataSource dataSource) {
+        return new JdbcMeetingRelationRepository(new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    MeetingRelationSuggestionRepository meetingRelationSuggestionRepository(DataSource dataSource) {
+        return new JdbcMeetingRelationSuggestionRepository(new JdbcTemplate(dataSource));
     }
 }

@@ -1,7 +1,9 @@
 package com.nanobaseai.actenora.security.microsoftconnection;
 
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
+import com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.infrastructure.tenancy.FixedTenantContext;
+import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerApi;
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackService;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
@@ -62,9 +64,12 @@ public class MicrosoftConnectionPlatformConfiguration {
     @Bean
     CalendarMeetingUpsertAdapter calendarMeetingUpsertAdapter(
             MeetingApi meetingApi,
-            FixedTenantContext fixedTenantContext
+            FixedTenantContext fixedTenantContext,
+            ContinuityLedgerApi continuityLedgerApi,
+            MeetingOccurrenceRepository meetingOccurrenceRepository
     ) {
-        return new CalendarMeetingUpsertAdapter(meetingApi, fixedTenantContext);
+        return new CalendarMeetingUpsertAdapter(
+                meetingApi, fixedTenantContext, continuityLedgerApi, meetingOccurrenceRepository);
     }
 
     @Bean

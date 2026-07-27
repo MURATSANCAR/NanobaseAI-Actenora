@@ -10,6 +10,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNote
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
 import com.nanobaseai.actenora.meetingintelligence.domain.exception.MeetingNoteNotFoundException;
 import com.nanobaseai.actenora.meetingintelligence.domain.exception.NoteVersionImmutableException;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNote;
@@ -36,6 +37,7 @@ public final class MeetingNoteApprovalService {
     private final ApprovalApi approvalApi;
     private final MeetingIntelligenceAuditPort auditPort;
     private final ApprovedNoteLedgerPort approvedNoteLedgerPort;
+    private final NoteArtifactStoragePort noteArtifactStorage;
     private final Clock clock;
 
     public MeetingNoteApprovalService(
@@ -52,6 +54,7 @@ public final class MeetingNoteApprovalService {
                 auditPort,
                 (tenantId, meetingOccurrenceId, noteId, noteVersionId) -> {
                 },
+                NoteArtifactStoragePort.noop(),
                 clock
         );
     }
@@ -64,11 +67,32 @@ public final class MeetingNoteApprovalService {
             ApprovedNoteLedgerPort approvedNoteLedgerPort,
             Clock clock
     ) {
+        this(
+                noteRepository,
+                versionRepository,
+                approvalApi,
+                auditPort,
+                approvedNoteLedgerPort,
+                NoteArtifactStoragePort.noop(),
+                clock
+        );
+    }
+
+    public MeetingNoteApprovalService(
+            MeetingNoteRepository noteRepository,
+            MeetingNoteVersionRepository versionRepository,
+            ApprovalApi approvalApi,
+            MeetingIntelligenceAuditPort auditPort,
+            ApprovedNoteLedgerPort approvedNoteLedgerPort,
+            NoteArtifactStoragePort noteArtifactStorage,
+            Clock clock
+    ) {
         this.noteRepository = Objects.requireNonNull(noteRepository, "noteRepository");
         this.versionRepository = Objects.requireNonNull(versionRepository, "versionRepository");
         this.approvalApi = Objects.requireNonNull(approvalApi, "approvalApi");
         this.auditPort = Objects.requireNonNull(auditPort, "auditPort");
         this.approvedNoteLedgerPort = Objects.requireNonNull(approvedNoteLedgerPort, "approvedNoteLedgerPort");
+        this.noteArtifactStorage = Objects.requireNonNull(noteArtifactStorage, "noteArtifactStorage");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -84,6 +108,13 @@ public final class MeetingNoteApprovalService {
         MeetingNoteVersion version = note.attachInitialAiVersion(content, provenance, now);
         noteRepository.save(note);
         versionRepository.save(version);
+        noteArtifactStorage.storeDraft(
+                tid,
+                meetingOccurrenceId,
+                note.id(),
+                version.versionNumber(),
+                content == null ? "{}" : content
+        );
         auditPort.record(
                 tenantId, "system", "NOTE_DRAFT_CREATED", "MeetingNote", note.id(),
                 Map.of("versionId", version.id().toString(), "status", version.approvalStatus().name()), now
@@ -165,6 +196,13 @@ public final class MeetingNoteApprovalService {
                     note.meetingOccurrenceId(),
                     note.id(),
                     current.id()
+            );
+            noteArtifactStorage.storeApproved(
+                    tid,
+                    note.meetingOccurrenceId(),
+                    note.id(),
+                    current.versionNumber(),
+                    current.executiveSummary() == null ? "{}" : current.executiveSummary()
             );
         }
 

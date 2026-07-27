@@ -11,4 +11,6 @@ public interface MeetingSeriesRepository {
     MeetingSeries save(MeetingSeries series);
 
     Optional<MeetingSeries> findByIdAndTenantId(UUID id, TenantId tenantId);
+
+    Optional<MeetingSeries> findByTenantIdAndGraphSeriesMasterId(TenantId tenantId, String graphSeriesMasterId);
 }
