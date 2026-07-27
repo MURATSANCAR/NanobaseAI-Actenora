@@ -77,7 +77,22 @@ retarget_dbgpt() {
 }
 
 lock_meeting_8b_ctx() {
+  local envf=/etc/nanobaseai/qwen3-8b.env
   local unit=/etc/systemd/system/nanobase-qwen3-8b.service
+  if [[ -f "${envf}" ]]; then
+    if grep -q '^CTX_SIZE=16384$' "${envf}"; then
+      echo "CTX_SIZE already 16384 in ${envf}"
+    else
+      cp "${envf}" "${envf}.bak.$(date +%Y%m%d%H%M%S)"
+      if grep -q '^CTX_SIZE=' "${envf}"; then
+        sed -i 's/^CTX_SIZE=.*/CTX_SIZE=16384/' "${envf}"
+      else
+        printf '\nCTX_SIZE=16384\n' >> "${envf}"
+      fi
+      echo "set CTX_SIZE=16384 in ${envf}"
+    fi
+    return 0
+  fi
   [[ -f "${unit}" ]] || return 0
   if grep -Eq -- '--ctx-size[= ]16384\b' "${unit}"; then
     echo "ctx-size already 16384 on ${unit}"
@@ -86,11 +101,14 @@ lock_meeting_8b_ctx() {
   cp "${unit}" "${unit}.bak.$(date +%Y%m%d%H%M%S)"
   if grep -Eq -- '--ctx-size[= ][0-9]+' "${unit}"; then
     sed -i -E 's/--ctx-size[= ][0-9]+/--ctx-size 16384/g' "${unit}"
+  elif grep -q -- '--ctx-size ${CTX_SIZE}' "${unit}"; then
+    echo "unit uses \${CTX_SIZE}; create ${envf} with CTX_SIZE=16384"
+    mkdir -p /etc/nanobaseai
+    printf 'CTX_SIZE=16384\n' > "${envf}"
   else
-    # Insert after --model / first ExecStart llama-server args
     sed -i -E 's|(ExecStart=.*llama-server)|\1 --ctx-size 16384|' "${unit}"
   fi
-  echo "set --ctx-size 16384 on ${unit}"
+  echo "locked ctx-size 16384"
 }
 
 main() {
