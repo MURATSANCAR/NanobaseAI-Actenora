@@ -31,6 +31,10 @@ public final class CompositeApprovedNoteLedgerAdapter implements ApprovedNoteLed
             UUID noteVersionId
     ) {
         ledger.append(tenantId, meetingOccurrenceId, noteId, noteVersionId);
-        knowledgeIndexer.indexApprovedNote(tenantId, meetingOccurrenceId, noteId, noteVersionId);
+        try {
+            knowledgeIndexer.indexApprovedNote(tenantId, meetingOccurrenceId, noteId, noteVersionId);
+        } catch (RuntimeException ignored) {
+            // Ledger is source of carry-over truth; knowledge index retries on redelivery/ops replay.
+        }
     }
 }

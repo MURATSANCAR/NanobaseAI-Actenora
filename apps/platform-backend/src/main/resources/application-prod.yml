@@ -21,6 +21,7 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD:}
   flyway:
     enabled: true
   mail:
@@ -68,6 +69,14 @@ actenora:
     worker:
       enabled: ${ACTENORA_AI_WORKER_ENABLED:true}
       poll-interval: ${ACTENORA_AI_WORKER_POLL_INTERVAL:PT15S}
+  knowledge:
+    embedding:
+      # Hash embeddings are forbidden in production (boot fails closed).
+      mode: ${ACTENORA_KNOWLEDGE_EMBEDDING_MODE:openai-compatible}
+      dimensions: ${ACTENORA_KNOWLEDGE_EMBEDDING_DIMENSIONS:1024}
+      base-url: ${ACTENORA_KNOWLEDGE_EMBEDDING_BASE_URL}
+      model-id: ${ACTENORA_KNOWLEDGE_EMBEDDING_MODEL_ID}
+      api-key: ${ACTENORA_KNOWLEDGE_EMBEDDING_API_KEY:}
   microsoft-graph:
     enabled: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:true}
     auth-mode: ${ACTENORA_MICROSOFT_GRAPH_AUTH_MODE:${MICROSOFT_GRAPH_AUTH_MODE:CERTIFICATE}}

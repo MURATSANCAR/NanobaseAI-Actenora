@@ -72,6 +72,7 @@ import com.nanobaseai.actenora.sharedkernel.coordination.JobProgressCache;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
 import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerApi;
+import com.nanobaseai.actenora.meetingintelligence.application.port.HybridKnowledgeSearchPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -331,10 +332,14 @@ public class AiProcessingPlatformConfiguration {
     @Bean
     @ConditionalOnMissingBean(PriorMeetingContextPort.class)
     PriorMeetingContextPort priorMeetingContextPort(
-            ObjectProvider<ContinuityLedgerApi> continuityLedgerApi
+            ObjectProvider<ContinuityLedgerApi> continuityLedgerApi,
+            ObjectProvider<HybridKnowledgeSearchPort> knowledgeSearch
     ) {
         ContinuityLedgerApi api = continuityLedgerApi.getIfAvailable();
-        return api == null ? PriorMeetingContextPort.noop() : new LedgerPriorMeetingContextAdapter(api);
+        if (api == null) {
+            return PriorMeetingContextPort.noop();
+        }
+        return new LedgerPriorMeetingContextAdapter(api, knowledgeSearch.getIfAvailable());
     }
 
     @Bean

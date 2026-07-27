@@ -58,6 +58,8 @@ public class ProductionSecretGuard implements ApplicationRunner {
     private final String graphAuthMode;
     private final String graphCertificatePath;
     private final String graphPrivateKeyPath;
+    private final String knowledgeEmbeddingMode;
+    private final String knowledgeEmbeddingBaseUrl;
 
     public ProductionSecretGuard(
             Environment environment,
@@ -74,7 +76,9 @@ public class ProductionSecretGuard implements ApplicationRunner {
             @Value("${actenora.messaging.mode:inmemory}") String messagingMode,
             @Value("${actenora.microsoft-graph.auth-mode:CLIENT_SECRET}") String graphAuthMode,
             @Value("${actenora.microsoft-graph.certificate-pem-path:}") String graphCertificatePath,
-            @Value("${actenora.microsoft-graph.private-key-pem-path:}") String graphPrivateKeyPath
+            @Value("${actenora.microsoft-graph.private-key-pem-path:}") String graphPrivateKeyPath,
+            @Value("${actenora.knowledge.embedding.mode:hash}") String knowledgeEmbeddingMode,
+            @Value("${actenora.knowledge.embedding.base-url:}") String knowledgeEmbeddingBaseUrl
     ) {
         this.environment = environment;
         this.allowDefaultSecrets = allowDefaultSecrets;
@@ -91,6 +95,8 @@ public class ProductionSecretGuard implements ApplicationRunner {
         this.graphAuthMode = graphAuthMode;
         this.graphCertificatePath = graphCertificatePath;
         this.graphPrivateKeyPath = graphPrivateKeyPath;
+        this.knowledgeEmbeddingMode = knowledgeEmbeddingMode;
+        this.knowledgeEmbeddingBaseUrl = knowledgeEmbeddingBaseUrl;
     }
 
     @Override
@@ -123,6 +129,13 @@ public class ProductionSecretGuard implements ApplicationRunner {
         }
         if (microsoftGraphEnabled && (graphPrivateKeyPath == null || graphPrivateKeyPath.isBlank())) {
             offenders.add("actenora.microsoft-graph.private-key-pem-path (required in production)");
+        }
+        if ("hash".equalsIgnoreCase(knowledgeEmbeddingMode)) {
+            offenders.add("actenora.knowledge.embedding.mode (hash forbidden in production)");
+        }
+        if ("openai-compatible".equalsIgnoreCase(knowledgeEmbeddingMode)
+                && (knowledgeEmbeddingBaseUrl == null || knowledgeEmbeddingBaseUrl.isBlank())) {
+            offenders.add("actenora.knowledge.embedding.base-url (required when mode=openai-compatible)");
         }
 
         if (!offenders.isEmpty()) {

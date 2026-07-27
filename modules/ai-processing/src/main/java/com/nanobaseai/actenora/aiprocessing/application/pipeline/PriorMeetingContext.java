@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * Compact prior-meeting continuity brief injected into final minutes synthesis.
- * Sourced from the continuity ledger — never from raw transcript.
+ * Sourced from the continuity ledger + hybrid knowledge search — never raw transcript.
  */
 public record PriorMeetingContext(
         Optional<UUID> previousOccurrenceId,
@@ -15,11 +15,31 @@ public record PriorMeetingContext(
         List<String> openRisks,
         List<String> unresolvedQuestions,
         List<String> activeDecisions,
-        List<String> overdueCommitments
+        List<String> overdueCommitments,
+        List<String> relatedKnowledge
 ) {
     public static final PriorMeetingContext EMPTY = new PriorMeetingContext(
-            Optional.empty(), List.of(), List.of(), List.of(), List.of(), List.of()
+            Optional.empty(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
     );
+
+    public PriorMeetingContext(
+            Optional<UUID> previousOccurrenceId,
+            List<String> openTasks,
+            List<String> openRisks,
+            List<String> unresolvedQuestions,
+            List<String> activeDecisions,
+            List<String> overdueCommitments
+    ) {
+        this(
+                previousOccurrenceId,
+                openTasks,
+                openRisks,
+                unresolvedQuestions,
+                activeDecisions,
+                overdueCommitments,
+                List.of()
+        );
+    }
 
     public PriorMeetingContext {
         previousOccurrenceId = previousOccurrenceId == null ? Optional.empty() : previousOccurrenceId;
@@ -28,6 +48,7 @@ public record PriorMeetingContext(
         unresolvedQuestions = List.copyOf(Objects.requireNonNull(unresolvedQuestions, "unresolvedQuestions"));
         activeDecisions = List.copyOf(Objects.requireNonNull(activeDecisions, "activeDecisions"));
         overdueCommitments = List.copyOf(Objects.requireNonNull(overdueCommitments, "overdueCommitments"));
+        relatedKnowledge = List.copyOf(Objects.requireNonNullElse(relatedKnowledge, List.of()));
     }
 
     public boolean isEmpty() {
@@ -35,7 +56,8 @@ public record PriorMeetingContext(
                 && openRisks.isEmpty()
                 && unresolvedQuestions.isEmpty()
                 && activeDecisions.isEmpty()
-                && overdueCommitments.isEmpty();
+                && overdueCommitments.isEmpty()
+                && relatedKnowledge.isEmpty();
     }
 
     public String toPromptBlock() {
@@ -49,6 +71,7 @@ public record PriorMeetingContext(
         appendList(sb, "UNRESOLVED_QUESTIONS", unresolvedQuestions);
         appendList(sb, "ACTIVE_DECISIONS", activeDecisions);
         appendList(sb, "OVERDUE_COMMITMENTS", overdueCommitments);
+        appendList(sb, "RELATED_KNOWLEDGE", relatedKnowledge);
         return sb.toString().trim();
     }
 

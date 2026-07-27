@@ -23,6 +23,7 @@ public final class OpenAiCompatibleEmbeddingPort implements EmbeddingPort {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final Duration timeout;
+    private final String apiKey;
 
     public OpenAiCompatibleEmbeddingPort(
             URI baseUrl,
@@ -30,13 +31,24 @@ public final class OpenAiCompatibleEmbeddingPort implements EmbeddingPort {
             int dimensions,
             Duration timeout
     ) {
+        this(baseUrl, modelId, dimensions, timeout, null);
+    }
+
+    public OpenAiCompatibleEmbeddingPort(
+            URI baseUrl,
+            String modelId,
+            int dimensions,
+            Duration timeout,
+            String apiKey
+    ) {
         this(
                 Objects.requireNonNull(baseUrl, "baseUrl").resolve("/v1/embeddings"),
                 modelId,
                 dimensions,
                 HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build(),
                 new ObjectMapper(),
-                timeout == null ? Duration.ofSeconds(30) : timeout
+                timeout == null ? Duration.ofSeconds(30) : timeout,
+                apiKey
         );
     }
 
@@ -46,7 +58,8 @@ public final class OpenAiCompatibleEmbeddingPort implements EmbeddingPort {
             int dimensions,
             HttpClient httpClient,
             ObjectMapper objectMapper,
-            Duration timeout
+            Duration timeout,
+            String apiKey
     ) {
         this.embeddingsUri = Objects.requireNonNull(embeddingsUri, "embeddingsUri");
         this.modelId = Objects.requireNonNull(modelId, "modelId");
@@ -57,6 +70,7 @@ public final class OpenAiCompatibleEmbeddingPort implements EmbeddingPort {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.timeout = Objects.requireNonNull(timeout, "timeout");
+        this.apiKey = apiKey == null || apiKey.isBlank() ? null : apiKey;
     }
 
     @Override
@@ -72,12 +86,14 @@ public final class OpenAiCompatibleEmbeddingPort implements EmbeddingPort {
                     .put("model", modelId)
                     .put("input", text)
                     .toString();
-            HttpRequest request = HttpRequest.newBuilder(embeddingsUri)
+            HttpRequest.Builder builder = HttpRequest.newBuilder(embeddingsUri)
                     .timeout(timeout)
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    .POST(HttpRequest.BodyPublishers.ofString(body));
+            if (apiKey != null) {
+                builder.header("Authorization", "Bearer " + apiKey);
+            }
+            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new IllegalStateException("embedding HTTP " + response.statusCode());
             }

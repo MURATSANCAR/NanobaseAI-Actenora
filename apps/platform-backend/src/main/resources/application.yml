@@ -141,6 +141,7 @@ actenora:
       dimensions: ${ACTENORA_KNOWLEDGE_EMBEDDING_DIMENSIONS:1024}
       base-url: ${ACTENORA_KNOWLEDGE_EMBEDDING_BASE_URL:}
       model-id: ${ACTENORA_KNOWLEDGE_EMBEDDING_MODEL_ID:}
+      api-key: ${ACTENORA_KNOWLEDGE_EMBEDDING_API_KEY:}
   delivery:
     webhook:
       # Shared secret for provider delivery confirmation callbacks (FAZ 30)

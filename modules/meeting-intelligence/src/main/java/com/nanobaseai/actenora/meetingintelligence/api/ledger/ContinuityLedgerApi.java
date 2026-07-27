@@ -118,6 +118,36 @@ public final class ContinuityLedgerApi {
         return service.listOpenTasks(tenantId, occurrenceId);
     }
 
+    public UUID recordActionItem(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID noteId,
+            UUID actionItemId,
+            String text
+    ) {
+        return service.recordActionItem(tenantId, meetingOccurrenceId, noteId, actionItemId, text);
+    }
+
+    public UUID recordRisk(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID noteId,
+            UUID riskId,
+            String text
+    ) {
+        return service.recordRisk(tenantId, meetingOccurrenceId, noteId, riskId, text);
+    }
+
+    public UUID recordOpenQuestion(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID noteId,
+            UUID openQuestionId,
+            String text
+    ) {
+        return service.recordOpenQuestion(tenantId, meetingOccurrenceId, noteId, openQuestionId, text);
+    }
+
     public Optional<LedgerProjectionState.TrackedActionItem> findActionItem(TenantId tenantId, UUID actionItemId) {
         return service.findActionItem(tenantId, actionItemId);
     }

@@ -198,8 +198,26 @@ public final class ContinuityLedgerService {
             UUID noteId,
             String text
     ) {
+        return recordActionItem(tenantId, meetingOccurrenceId, noteId, null, text);
+    }
+
+    /**
+     * Records an action item; when {@code actionItemId} is supplied the call is idempotent.
+     */
+    public UUID recordActionItem(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID noteId,
+            UUID actionItemId,
+            String text
+    ) {
+        UUID id = actionItemId == null ? UUID.randomUUID() : actionItemId;
+        Optional<LedgerProjectionState.TrackedActionItem> existing =
+                projectionRepository.getOrCreate(tenantId).actionItem(id);
+        if (existing.isPresent()) {
+            return existing.get().id();
+        }
         Instant now = clock.instant();
-        UUID id = UUID.randomUUID();
         appendAndProject(LedgerEvent.create(
                 tenantId,
                 LedgerEventType.ACTION_ITEM_RECORDED,
@@ -231,8 +249,23 @@ public final class ContinuityLedgerService {
     }
 
     public UUID recordRisk(TenantId tenantId, UUID meetingOccurrenceId, UUID noteId, String text) {
+        return recordRisk(tenantId, meetingOccurrenceId, noteId, null, text);
+    }
+
+    public UUID recordRisk(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID noteId,
+            UUID riskId,
+            String text
+    ) {
+        UUID id = riskId == null ? UUID.randomUUID() : riskId;
+        Optional<LedgerProjectionState.TrackedRisk> existing =
+                projectionRepository.getOrCreate(tenantId).risk(id);
+        if (existing.isPresent()) {
+            return existing.get().id();
+        }
         Instant now = clock.instant();
-        UUID id = UUID.randomUUID();
         appendAndProject(LedgerEvent.create(
                 tenantId,
                 LedgerEventType.RISK_RECORDED,
@@ -264,8 +297,23 @@ public final class ContinuityLedgerService {
     }
 
     public UUID recordOpenQuestion(TenantId tenantId, UUID meetingOccurrenceId, UUID noteId, String text) {
+        return recordOpenQuestion(tenantId, meetingOccurrenceId, noteId, null, text);
+    }
+
+    public UUID recordOpenQuestion(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID noteId,
+            UUID openQuestionId,
+            String text
+    ) {
+        UUID id = openQuestionId == null ? UUID.randomUUID() : openQuestionId;
+        Optional<LedgerProjectionState.TrackedOpenQuestion> existing =
+                projectionRepository.getOrCreate(tenantId).openQuestion(id);
+        if (existing.isPresent()) {
+            return existing.get().id();
+        }
         Instant now = clock.instant();
-        UUID id = UUID.randomUUID();
         appendAndProject(LedgerEvent.create(
                 tenantId,
                 LedgerEventType.OPEN_QUESTION_RECORDED,

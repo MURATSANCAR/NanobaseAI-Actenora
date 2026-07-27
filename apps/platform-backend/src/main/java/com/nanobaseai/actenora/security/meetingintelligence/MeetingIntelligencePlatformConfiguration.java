@@ -322,10 +322,14 @@ public class MeetingIntelligencePlatformConfiguration {
     @Bean
     public ApprovedNoteLedgerAdapter approvedNoteLedgerWriter(
             DecisionRepository decisions,
+            ActionItemRepository actionItems,
             CommitmentRepository commitments,
+            RiskRepository risks,
+            OpenQuestionRepository openQuestions,
             ContinuityLedgerApi ledgerApi
     ) {
-        return new ApprovedNoteLedgerAdapter(decisions, commitments, ledgerApi);
+        return new ApprovedNoteLedgerAdapter(
+                decisions, actionItems, commitments, risks, openQuestions, ledgerApi);
     }
 
     @Bean
@@ -375,15 +379,33 @@ public class MeetingIntelligencePlatformConfiguration {
             @org.springframework.beans.factory.annotation.Value(
                     "${actenora.knowledge.embedding.base-url:}") String baseUrl,
             @org.springframework.beans.factory.annotation.Value(
-                    "${actenora.knowledge.embedding.model-id:}") String modelId
+                    "${actenora.knowledge.embedding.model-id:}") String modelId,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.api-key:}") String apiKey,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.env:local}") String env
     ) {
+        boolean productionLike = env != null && (
+                env.equalsIgnoreCase("production")
+                        || env.equalsIgnoreCase("prod")
+                        || env.equalsIgnoreCase("staging"));
+        if (productionLike && "hash".equalsIgnoreCase(mode)) {
+            throw new IllegalStateException(
+                    "actenora.knowledge.embedding.mode=hash is forbidden in production; "
+                            + "set openai-compatible with base-url and model-id");
+        }
         if ("openai-compatible".equalsIgnoreCase(mode) && baseUrl != null && !baseUrl.isBlank()) {
             return new OpenAiCompatibleEmbeddingPort(
                     java.net.URI.create(baseUrl),
                     modelId == null || modelId.isBlank() ? "embedding" : modelId,
                     dimensions,
-                    java.time.Duration.ofSeconds(30)
+                    java.time.Duration.ofSeconds(30),
+                    apiKey == null || apiKey.isBlank() ? null : apiKey
             );
+        }
+        if ("openai-compatible".equalsIgnoreCase(mode)) {
+            throw new IllegalStateException(
+                    "actenora.knowledge.embedding.base-url is required when mode=openai-compatible");
         }
         return new HashEmbeddingPort(dimensions);
     }

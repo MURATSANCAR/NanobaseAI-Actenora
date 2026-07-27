@@ -129,7 +129,8 @@ class ApprovalAuthBindingTest {
                 new InMemoryLedgerProjectionRepository(),
                 clock
         ));
-        approvedNoteLedgerWriter = new ApprovedNoteLedgerAdapter(decisions, commitments, ledgerApi);
+        approvedNoteLedgerWriter = new ApprovedNoteLedgerAdapter(
+                decisions, actionItems, commitments, risks, openQuestions, ledgerApi);
 
         TenantFairnessTracker fairness = new TenantFairnessTracker();
         InMemoryOutboxStore outbox = new InMemoryOutboxStore(fairness);
