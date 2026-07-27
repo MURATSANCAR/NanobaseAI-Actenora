@@ -42,7 +42,6 @@ services:
     image: rabbitmq:3.13-management-alpine
     container_name: actenora-prodlike-rabbitmq
     hostname: rabbitmq
-    entrypoint: ["/bin/sh", "/etc/rabbitmq/docker-entrypoint-actenora.sh"]
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-actenora}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD required}
@@ -53,9 +52,7 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
       - ../rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - ../rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
       - ../rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
-      - ../rabbitmq/docker-entrypoint-actenora.sh:/etc/rabbitmq/docker-entrypoint-actenora.sh:ro
     networks:
       - data-network
       - app-network
@@ -63,13 +60,34 @@ services:
       test:
         [
           "CMD-SHELL",
-          "rabbitmq-diagnostics -q check_running && rabbitmqctl authenticate_user \"$${RABBITMQ_DEFAULT_USER:-actenora}\" \"$${RABBITMQ_DEFAULT_PASS}\" >/dev/null && rabbitmqctl list_exchanges --silent | grep -q actenora.domain",
+          "rabbitmq-diagnostics -q check_running && rabbitmqctl authenticate_user \"$${RABBITMQ_DEFAULT_USER:-actenora}\" \"$${RABBITMQ_DEFAULT_PASS}\" >/dev/null",
         ]
       interval: 10s
       timeout: 10s
       retries: 18
       start_period: 40s
     restart: unless-stopped
+
+  rabbitmq-init:
+    image: curlimages/curl:8.12.1
+    container_name: actenora-prodlike-rabbitmq-init
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_MANAGEMENT_PORT: "15672"
+      RABBITMQ_USER: ${RABBITMQ_USER:-actenora}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD required}
+      DEFINITIONS_FILE: /definitions.json
+    volumes:
+      - ../rabbitmq/definitions.json:/definitions.json:ro
+      - ../rabbitmq/import-definitions.sh:/import-definitions.sh:ro
+    entrypoint: ["/bin/sh", "/import-definitions.sh"]
+    networks:
+      - data-network
+      - app-network
+    restart: "no"
 
   redis:
     image: redis:7-alpine
@@ -156,6 +174,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      rabbitmq-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       minio:
