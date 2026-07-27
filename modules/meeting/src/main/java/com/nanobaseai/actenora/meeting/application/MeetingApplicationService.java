@@ -27,6 +27,7 @@ import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingParticipant;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingSeries;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingType;
+import com.nanobaseai.actenora.meeting.domain.model.AttendanceStatus;
 import com.nanobaseai.actenora.meeting.domain.model.ParticipantType;
 import com.nanobaseai.actenora.meeting.domain.model.ProcessingPriority;
 import com.nanobaseai.actenora.meeting.domain.service.MeetingOccurrenceLifecyclePolicy;
@@ -154,6 +155,7 @@ public final class MeetingApplicationService {
                         type,
                         input.external()
                 );
+                applyInviteResponse(participant, input.participantType());
                 participantRepository.save(participant);
             }
         }
@@ -423,7 +425,11 @@ public final class MeetingApplicationService {
     }
 
     private static boolean isOrganizerRole(String role) {
-        return role != null && "organizer".equalsIgnoreCase(role.trim());
+        if (role == null) {
+            return false;
+        }
+        String base = role.contains("|") ? role.substring(0, role.indexOf('|')) : role;
+        return "organizer".equalsIgnoreCase(base.trim());
     }
 
     private static String normalizeEmail(String email) {
@@ -474,14 +480,42 @@ public final class MeetingApplicationService {
         if (value == null || value.isBlank()) {
             return ParticipantType.REQUIRED;
         }
-        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        String typePart = value.contains("|") ? value.substring(0, value.indexOf('|')) : value;
+        String normalized = typePart.trim().toUpperCase(Locale.ROOT);
         if ("ATTENDEE".equals(normalized)) {
+            return ParticipantType.REQUIRED;
+        }
+        if ("ORGANIZER".equals(normalized)) {
+            return ParticipantType.ORGANIZER;
+        }
+        if ("OPTIONAL".equals(normalized)) {
+            return ParticipantType.OPTIONAL;
+        }
+        if ("PRESENTER".equals(normalized)) {
+            return ParticipantType.PRESENTER;
+        }
+        if ("REQUIRED".equals(normalized)) {
             return ParticipantType.REQUIRED;
         }
         try {
             return ParticipantType.valueOf(normalized);
         } catch (IllegalArgumentException ex) {
             return ParticipantType.REQUIRED;
+        }
+    }
+
+    private static void applyInviteResponse(MeetingParticipant participant, String roleWithResponse) {
+        if (roleWithResponse == null || !roleWithResponse.contains("|")) {
+            return;
+        }
+        String response = roleWithResponse.substring(roleWithResponse.indexOf('|') + 1).trim().toUpperCase(Locale.ROOT);
+        switch (response) {
+            case "ACCEPTED" -> participant.applyInviteResponse(AttendanceStatus.ACCEPTED);
+            case "DECLINED" -> participant.applyInviteResponse(AttendanceStatus.DECLINED);
+            case "TENTATIVELYACCEPTED", "TENTATIVE" -> participant.applyInviteResponse(AttendanceStatus.TENTATIVE);
+            case "NOTRESPONDED", "NONE" -> participant.applyInviteResponse(AttendanceStatus.INVITED);
+            default -> {
+            }
         }
     }
 }

@@ -192,7 +192,7 @@
   }
 
   .dashboard-stage {
-    @apply min-h-0;
+    @apply w-full;
   }
 
   .dashboard-hero {

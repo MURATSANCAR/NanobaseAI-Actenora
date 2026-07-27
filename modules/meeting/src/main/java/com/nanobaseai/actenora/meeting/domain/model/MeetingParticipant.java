@@ -139,6 +139,24 @@ public final class MeetingParticipant {
         this.leftAt = null;
     }
 
+    /** Calendar RSVP before attendance report (does not override JOINED/LEFT/ABSENT). */
+    public void applyInviteResponse(AttendanceStatus response) {
+        if (response == null) {
+            return;
+        }
+        if (attendanceStatus == AttendanceStatus.JOINED
+                || attendanceStatus == AttendanceStatus.LEFT
+                || attendanceStatus == AttendanceStatus.ABSENT) {
+            return;
+        }
+        if (response == AttendanceStatus.ACCEPTED
+                || response == AttendanceStatus.DECLINED
+                || response == AttendanceStatus.TENTATIVE
+                || response == AttendanceStatus.INVITED) {
+            this.attendanceStatus = response;
+        }
+    }
+
     public void promoteToOrganizer() {
         this.participantType = ParticipantType.ORGANIZER;
     }

@@ -119,20 +119,32 @@ public final class TeamsTranscriptPollScheduler {
         for (TranscriptPollWorkStore.WorkItem target : workStore.claimDue(now, batchSize, staleClaimAfter)) {
             int attempt = target.attemptCount() + 1;
             try {
+                TenantId tenantId = TenantId.of(target.tenantId());
                 TeamsTranscriptIngestService.PollResult result =
-                        ingestService.pollMeeting(TenantId.of(target.tenantId()), target.meetingOccurrenceId());
-                if (result == TeamsTranscriptIngestService.PollResult.INGESTED
-                        || result == TeamsTranscriptIngestService.PollResult.ALREADY_INGESTED) {
-                    workStore.complete(target.tenantId(), target.meetingOccurrenceId(), now);
-                    recordPoll(result.name().toLowerCase());
-                } else if (result == TeamsTranscriptIngestService.PollResult.CONFIGURATION_MISSING) {
+                        ingestService.pollMeeting(tenantId, target.meetingOccurrenceId());
+                if (result == TeamsTranscriptIngestService.PollResult.CONFIGURATION_MISSING) {
                     workStore.deadLetter(
                             target.tenantId(), target.meetingOccurrenceId(), attempt,
                             "GRAPH_MAILBOX_CONFIGURATION_MISSING", now);
                     recordPoll("configuration_missing");
+                    continue;
+                }
+                boolean transcriptOk = result == TeamsTranscriptIngestService.PollResult.INGESTED
+                        || result == TeamsTranscriptIngestService.PollResult.ALREADY_INGESTED;
+                boolean attendanceOk;
+                try {
+                    tenantContext.use(tenantId, CalendarMeetingUpsertAdapter.SYSTEM_ACTOR);
+                    attendanceOk = !needsAttendanceRefresh(meetingApi.getMeeting(target.meetingOccurrenceId()));
+                } catch (RuntimeException ex) {
+                    attendanceOk = false;
+                }
+                if (transcriptOk && attendanceOk) {
+                    workStore.complete(target.tenantId(), target.meetingOccurrenceId(), now);
+                    recordPoll(result.name().toLowerCase());
                 } else {
-                    rescheduleOrDeadLetter(target, attempt, "TRANSCRIPT_NOT_AVAILABLE", now);
-                    recordPoll("not_available");
+                    String code = transcriptOk ? "ATTENDANCE_PENDING" : "TRANSCRIPT_NOT_AVAILABLE";
+                    rescheduleOrDeadLetter(target, attempt, code, now);
+                    recordPoll(transcriptOk ? "attendance_pending" : "not_available");
                 }
             } catch (RuntimeException ex) {
                 log.warn("Transcript poll failed tenantId={} meetingId={}: {}",

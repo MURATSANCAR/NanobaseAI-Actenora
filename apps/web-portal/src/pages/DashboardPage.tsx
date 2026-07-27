@@ -33,8 +33,8 @@ export function DashboardPage() {
   const greetingName = firstName ? `, ${firstName}` : "";
 
   return (
-    <div className="dashboard-stage mobile-page mx-auto flex w-full min-w-0 max-w-7xl flex-1 flex-col gap-5 animate-fade-in sm:gap-6">
-      <section className="dashboard-hero" aria-labelledby="dashboard-hero-title">
+    <div className="dashboard-stage mobile-page mx-auto flex w-full min-w-0 max-w-7xl shrink-0 flex-col gap-5 animate-fade-in sm:gap-6">
+      <section className="dashboard-hero shrink-0" aria-labelledby="dashboard-hero-title">
         <div className="dashboard-hero-aurora" aria-hidden />
         <div className="dashboard-hero-grid" aria-hidden />
         <div className="dashboard-hero-orb dashboard-hero-orb--a" aria-hidden />
@@ -129,7 +129,7 @@ function MetricStrip({ data }: { data: DashboardResponse }) {
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item, index) => (
         <Link
           key={item.to}
@@ -168,7 +168,7 @@ function RecentMeetings({
   viewAll: string;
 }) {
   return (
-    <section className="dashboard-meetings" aria-labelledby="dashboard-meetings-title">
+    <section className="dashboard-meetings shrink-0" aria-labelledby="dashboard-meetings-title">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="dashboard-meetings-title" className="font-display text-lg font-semibold tracking-tight text-slate-900">

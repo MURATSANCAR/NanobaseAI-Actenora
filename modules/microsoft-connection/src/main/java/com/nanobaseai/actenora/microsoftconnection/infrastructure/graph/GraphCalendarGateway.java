@@ -114,11 +114,19 @@ public final class GraphCalendarGateway implements CalendarGateway {
             if (organizerAddress != null && organizerAddress.equalsIgnoreCase(address)) {
                 continue;
             }
+            // Preserve Graph RSVP on the role suffix so upsert can map ACCEPTED/DECLINED later.
+            // Format: "{type}|{response}" e.g. "required|accepted".
+            String attendeeType = text(attendee, "type");
+            String response = text(attendee.path("status"), "response");
+            String role = attendeeType == null ? "required" : attendeeType;
+            if (response != null && !response.isBlank()) {
+                role = role + "|" + response.trim().toLowerCase();
+            }
             attendees.add(new ParticipantMetadata(
                     attendeeId,
                     name,
                     address,
-                    text(attendee, "type"),
+                    role,
                     address
             ));
         }
