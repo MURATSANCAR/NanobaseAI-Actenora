@@ -29,7 +29,7 @@ export function MeetingHeaderBar({ detail }: { detail: MeetingDetailResponse }) 
     const absent: Participant[] = [];
     const pending: Participant[] = [];
     for (const p of detail.participants) {
-      const bucket = classifyAttendance(p.attendanceStatus, m.status);
+      const bucket = classifyAttendance(p.attendanceStatus, m.status, p.participantType);
       if (bucket === "attended") attended.push(p);
       else if (bucket === "absent") absent.push(p);
       else pending.push(p);

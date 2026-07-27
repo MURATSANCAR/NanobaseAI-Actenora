@@ -24,8 +24,13 @@ export function MeetingReviewPanel({ detail }: { detail: MeetingDetailResponse }
   const pending = hasPendingNoteApprovals(detail);
 
   const submitMutation = useMutation({
-    mutationFn: (note: MeetingNote) =>
-      api.submitNoteForApproval(meetingId, note.id, note.version ?? 0),
+    mutationFn: async (note: MeetingNote) => {
+      // Always use the server's current optimistic-lock version — drafts may have
+      // advanced via AI regen / saves after the detail payload was cached.
+      const fresh = await api.getMeetingDetail(meetingId);
+      const latest = fresh.notes.find((n) => n.id === note.id);
+      return api.submitNoteForApproval(meetingId, note.id, latest?.version);
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.meetingDetail(meetingId) });
       void qc.invalidateQueries({ queryKey: queryKeys.approvalsPending });

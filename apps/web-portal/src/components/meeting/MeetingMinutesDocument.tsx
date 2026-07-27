@@ -1,5 +1,5 @@
-import { FileText, Globe2, Sparkles } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { FileText, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Participant } from "@/api/types";
 import { MinutesAttendanceBanner } from "@/components/meeting/MinutesAttendanceBanner";
 import { classifyAttendance } from "@/components/meeting/ParticipantAttendanceRow";
@@ -47,7 +47,7 @@ export function MeetingMinutesDocument({
     let attended = 0;
     let absent = 0;
     for (const p of participants) {
-      const bucket = classifyAttendance(p.attendanceStatus, meetingStatus);
+      const bucket = classifyAttendance(p.attendanceStatus, meetingStatus, p.participantType);
       if (bucket === "attended") attended += 1;
       else if (bucket === "absent") absent += 1;
     }
@@ -71,7 +71,6 @@ export function MeetingMinutesDocument({
                   <Sparkles className="h-3.5 w-3.5" />
                 </span>
                 {PRODUCT_BRAND}
-                <span className="meeting-note-ai-pill">{t("templates.brand.aiBadge")}</span>
               </p>
               <p className="mt-3 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-white/75">
                 <FileText className="h-3.5 w-3.5" aria-hidden />
@@ -80,16 +79,9 @@ export function MeetingMinutesDocument({
               <h2 className="meeting-note-title">
                 {document.title.trim() || t("meeting.minutesUntitled")}
               </h2>
-              <p className="mt-2 max-w-2xl text-sm text-white/80 sm:text-[15px]">
-                {t("templates.brand.slogan")}
-              </p>
             </div>
 
             <div className="flex flex-col items-end gap-2">
-              <span className="meeting-note-live-pill">
-                <Globe2 className="h-3.5 w-3.5" aria-hidden />
-                {t("meeting.minutesGlobalBadge")}
-              </span>
               <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold text-white/90 ring-1 ring-white/25 backdrop-blur">
                 {t("meeting.minutesSectionsFilled", {
                   filled: filledCount,
@@ -193,6 +185,13 @@ function MinutesSectionCard({
   const theme = minutesSectionTheme(section.type);
   const Icon = theme.icon;
   const parsed = parseSectionContent(section.value, section.kind);
+  const remoteValue = editableValue(section);
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState(remoteValue);
+
+  useEffect(() => {
+    if (!focused) setDraft(remoteValue);
+  }, [remoteValue, focused]);
 
   return (
     <section
@@ -244,8 +243,21 @@ function MinutesSectionCard({
         {canEdit && onChange ? (
           <textarea
             className="w-full resize-y rounded-xl border border-white/90 bg-white/80 px-3.5 py-3 text-sm leading-relaxed text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-300/40"
-            value={editableValue(section)}
-            onChange={(e) => onChange(e.target.value)}
+            value={draft}
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              setFocused(false);
+              onChange(draft);
+            }}
+            onChange={(e) => {
+              const next = e.target.value;
+              setDraft(next);
+              onChange(next);
+            }}
+            onKeyDown={(e) => {
+              // Keep Enter as a newline inside the note field (not a form submit).
+              if (e.key === "Enter") e.stopPropagation();
+            }}
             placeholder={
               section.kind === "list"
                 ? t("meeting.minutesListPlaceholder")
@@ -253,8 +265,8 @@ function MinutesSectionCard({
             }
             rows={
               section.kind === "paragraph"
-                ? Math.max(3, Math.min(8, section.value.split("\n").length + 1))
-                : Math.max(3, Math.min(10, parseSectionContent(section.value, "list").items.length + 2))
+                ? Math.max(3, Math.min(12, draft.split("\n").length + 1))
+                : Math.max(3, Math.min(12, draft.split("\n").length + 2))
             }
           />
         ) : parsed.empty ? (

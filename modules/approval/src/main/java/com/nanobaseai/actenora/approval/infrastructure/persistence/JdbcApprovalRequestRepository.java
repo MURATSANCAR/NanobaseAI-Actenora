@@ -59,7 +59,9 @@ public final class JdbcApprovalRequestRepository implements ApprovalRequestRepos
                 SELECT id, tenant_id, subject_type, subject_id, status, created_at, updated_at, expires_at, version
                 FROM approval.approval_requests WHERE id = ? AND tenant_id = ?
                 """;
-        List<ApprovalRequest> rows = jdbc.query(sql, (rs, rowNum) -> ApprovalRequest.rehydrate(
+        // Load a row shell first — ApprovalRequest.rehydrate requires steps, so children
+        // must be joined before constructing the aggregate.
+        List<ApprovalRequestRow> rows = jdbc.query(sql, (rs, rowNum) -> new ApprovalRequestRow(
                 rs.getObject("id", UUID.class),
                 TenantId.of(rs.getObject("tenant_id", UUID.class)),
                 ApprovalSubjectType.valueOf(rs.getString("subject_type")),
@@ -68,12 +70,9 @@ public final class JdbcApprovalRequestRepository implements ApprovalRequestRepos
                 JdbcInstant.get(rs, "created_at"),
                 JdbcInstant.get(rs, "updated_at"),
                 JdbcInstant.get(rs, "expires_at"),
-                rs.getLong("version"),
-                List.of(),
-                List.of(),
-                List.of()
+                rs.getLong("version")
         ), approvalRequestId, tenantId.value());
-        return rows.stream().findFirst().map(this::hydrateChildren);
+        return rows.stream().findFirst().map(this::hydrate);
     }
 
     @Override
@@ -99,15 +98,28 @@ public final class JdbcApprovalRequestRepository implements ApprovalRequestRepos
                 .toList();
     }
 
-    private ApprovalRequest hydrateChildren(ApprovalRequest shell) {
-        List<ApprovalStep> steps = loadSteps(shell.id());
-        List<ApprovalDecision> decisions = loadDecisions(shell.id());
-        List<ChangeRequest> changeRequests = loadChangeRequests(shell.id());
+    private ApprovalRequest hydrate(ApprovalRequestRow row) {
+        List<ApprovalStep> steps = loadSteps(row.id());
+        List<ApprovalDecision> decisions = loadDecisions(row.id());
+        List<ChangeRequest> changeRequests = loadChangeRequests(row.id());
         return ApprovalRequest.rehydrate(
-                shell.id(), shell.tenantId(), shell.subjectType(), shell.subjectId(), shell.status(),
-                shell.createdAt(), shell.updatedAt(), shell.expiresAt(), shell.version(),
+                row.id(), row.tenantId(), row.subjectType(), row.subjectId(), row.status(),
+                row.createdAt(), row.updatedAt(), row.expiresAt(), row.version(),
                 steps, decisions, changeRequests
         );
+    }
+
+    private record ApprovalRequestRow(
+            UUID id,
+            TenantId tenantId,
+            ApprovalSubjectType subjectType,
+            UUID subjectId,
+            ApprovalRequestStatus status,
+            java.time.Instant createdAt,
+            java.time.Instant updatedAt,
+            java.time.Instant expiresAt,
+            long version
+    ) {
     }
 
     private void persistRequest(Connection conn, ApprovalRequest request) throws SQLException {

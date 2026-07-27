@@ -114,7 +114,9 @@ function createHttpApiClient(baseUrl: string): ApiClient {
     submitNoteForApproval: (meetingId, noteId, expectedVersion) =>
       httpJson(baseUrl, `/api/v1/portal/meetings/${meetingId}/notes/${noteId}/submit-for-approval`, {
         method: "POST",
-        body: JSON.stringify({ expectedVersion: expectedVersion ?? 0 }),
+        body: JSON.stringify(
+          expectedVersion == null ? {} : { expectedVersion },
+        ),
       }),
     decideApproval: (approvalId, decision, comment) =>
       httpJson(baseUrl, `/api/v1/portal/approvals/${approvalId}/decide`, {

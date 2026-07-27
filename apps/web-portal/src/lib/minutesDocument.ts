@@ -134,7 +134,13 @@ export function parseMinutesBody(body: string, fallbackTitle = ""): MinutesDocum
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
+    if (!trimmed) {
+      // Keep blank lines inside paragraph sections so Enter creates real breaks.
+      if (current?.kind === "paragraph") {
+        buckets.get(current.type)!.push("");
+      }
+      continue;
+    }
 
     const upper = trimmed.toUpperCase();
     if (upper.startsWith("TOPLANTI TUTANA") || upper.startsWith("MEETING MINUTES")) {
@@ -170,10 +176,14 @@ export function parseMinutesBody(body: string, fallbackTitle = ""): MinutesDocum
 
   const sections: MinutesSection[] = SECTION_SPECS.map((spec) => {
     const linesForSection = buckets.get(spec.type) ?? [];
+    const value =
+      spec.kind === "paragraph"
+        ? linesForSection.join("\n").replace(/^\n+|\n+$/g, "")
+        : linesForSection.join("\n");
     return {
       type: spec.type,
       kind: spec.kind,
-      value: linesForSection.join("\n"),
+      value,
     };
   });
 

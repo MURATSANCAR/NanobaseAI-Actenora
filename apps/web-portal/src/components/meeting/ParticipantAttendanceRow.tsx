@@ -8,13 +8,23 @@ const MEETING_ENDED = new Set(["ENDED", "PROCESSING", "READY", "FAILED", "CANCEL
 
 export type AttendanceBucket = "attended" | "absent" | "pending";
 
+/**
+ * Classifies attendance for portal display.
+ * Organizers of a finished meeting count as attended unless explicitly declined/absent —
+ * Graph often never writes JOINED for the organizer even when the meeting ran.
+ */
 export function classifyAttendance(
   attendanceStatus: string | null | undefined,
   meetingStatus: string,
+  participantType?: string | null,
 ): AttendanceBucket {
   const status = (attendanceStatus || "UNKNOWN").toUpperCase();
+  const type = (participantType || "").toUpperCase();
   if (ATTENDED.has(status)) return "attended";
   if (EXPLICIT_ABSENT.has(status)) return "absent";
+  if (type === "ORGANIZER" && MEETING_ENDED.has(meetingStatus.toUpperCase())) {
+    return "attended";
+  }
   // After the meeting ends, invite/accept without a join counts as no-show.
   if (MEETING_ENDED.has(meetingStatus.toUpperCase())) return "absent";
   return "pending";
@@ -31,7 +41,7 @@ export function ParticipantAttendanceRow({
   const p = participant;
   const name = p.displayName?.trim() || p.email || "—";
   const showEmail = Boolean(p.email) && p.email.trim().toLowerCase() !== name.toLowerCase();
-  const bucket = classifyAttendance(p.attendanceStatus, meetingStatus);
+  const bucket = classifyAttendance(p.attendanceStatus, meetingStatus, p.participantType);
 
   const attendanceLabel =
     bucket === "attended"

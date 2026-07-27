@@ -15,13 +15,13 @@ export function MinutesAttendanceBanner({
   if (!participants.length) return null;
 
   const attended = participants.filter(
-    (p) => classifyAttendance(p.attendanceStatus, meetingStatus) === "attended",
+    (p) => classifyAttendance(p.attendanceStatus, meetingStatus, p.participantType) === "attended",
   );
   const absent = participants.filter(
-    (p) => classifyAttendance(p.attendanceStatus, meetingStatus) === "absent",
+    (p) => classifyAttendance(p.attendanceStatus, meetingStatus, p.participantType) === "absent",
   );
   const pending = participants.filter(
-    (p) => classifyAttendance(p.attendanceStatus, meetingStatus) === "pending",
+    (p) => classifyAttendance(p.attendanceStatus, meetingStatus, p.participantType) === "pending",
   );
 
   return (

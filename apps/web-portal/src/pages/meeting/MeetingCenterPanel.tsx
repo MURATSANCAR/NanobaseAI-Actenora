@@ -90,6 +90,26 @@ export function MeetingCenterPanel({
       }
       return { prev };
     },
+    onSuccess: (updated) => {
+      qc.setQueryData<MeetingDetailResponse>(queryKeys.meetingDetail(meetingId), (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          notes: prev.notes.map((n) =>
+            n.id === updated.id
+              ? {
+                  ...n,
+                  body: updated.body,
+                  version: updated.version,
+                  updatedAt: updated.updatedAt,
+                  approvalStatus: updated.approvalStatus,
+                  draft: updated.draft,
+                }
+              : n,
+          ),
+        };
+      });
+    },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(queryKeys.meetingDetail(meetingId), ctx.prev);
     },
