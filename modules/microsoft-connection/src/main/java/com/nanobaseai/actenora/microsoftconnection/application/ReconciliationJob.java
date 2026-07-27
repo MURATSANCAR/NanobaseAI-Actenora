@@ -1,7 +1,6 @@
 package com.nanobaseai.actenora.microsoftconnection.application;
 
 import com.nanobaseai.actenora.microsoftconnection.application.model.CalendarEvent;
-import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
