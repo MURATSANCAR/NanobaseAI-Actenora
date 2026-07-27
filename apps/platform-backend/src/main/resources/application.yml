@@ -142,6 +142,20 @@ actenora:
       enabled: ${ACTENORA_AI_ROUTING_ENABLED:true}
       # champion/challenger shadow; never replaces the production result, consensus stays OFF
       shadow-execution-enabled: ${ACTENORA_AI_ROUTING_SHADOW_ENABLED:false}
+  meeting:
+    signal-gate:
+      enabled: ${ACTENORA_MEETING_SIGNAL_GATE_ENABLED:true}
+      mode: ${ACTENORA_MEETING_SIGNAL_GATE_MODE:adaptive}
+      threshold: ${ACTENORA_MEETING_SIGNAL_GATE_THRESHOLD:4.5}
+      continuation-aware: ${ACTENORA_MEETING_SIGNAL_GATE_CONTINUATION_AWARE:true}
+      semantic-repetition-enabled: ${ACTENORA_MEETING_SIGNAL_GATE_SEMANTIC_REPETITION:true}
+      hard-marker-shortcut-enabled: ${ACTENORA_MEETING_SIGNAL_GATE_HARD_MARKER:true}
+      shadow-mode: ${ACTENORA_MEETING_SIGNAL_GATE_SHADOW_MODE:false}
+      classifier-enabled: ${ACTENORA_MEETING_SIGNAL_GATE_CLASSIFIER_ENABLED:true}
+      uncertain-band: ${ACTENORA_MEETING_SIGNAL_GATE_UNCERTAIN_BAND:2.0}
+      policy-version: ${ACTENORA_MEETING_SIGNAL_GATE_POLICY_VERSION:adaptive-gate-v3}
+    speech-signals:
+      dictionary-version: ${ACTENORA_MEETING_SPEECH_DICTIONARY_VERSION:tr-en-v1}
   knowledge:
     embedding:
       # hash = offline deterministic vectors; openai-compatible = POST /v1/embeddings

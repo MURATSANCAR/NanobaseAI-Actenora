@@ -110,7 +110,12 @@ import java.util.UUID;
  */
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties({LocalProviderProperties.class, AiRoutingProperties.class, AiPipelineProperties.class})
+@EnableConfigurationProperties({
+        LocalProviderProperties.class,
+        AiRoutingProperties.class,
+        AiPipelineProperties.class,
+        MeetingSignalGateProperties.class
+})
 public class AiProcessingPlatformConfiguration {
 
     /**
@@ -280,11 +285,38 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
+    com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService(
+            MeetingSignalGateProperties signalGateProperties,
+            MetricRecorder metricRecorder
+    ) {
+        return com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService.create(
+                signalGateProperties.toConfig(),
+                new MetricRecorderChunkGateListener(metricRecorder)
+        );
+    }
+
+    @Bean
     ExtractionPipelineService extractionPipelineService(
             PromptRegistryPort promptRegistry,
-            ModelRuntimePort modelRuntime
+            ModelRuntimePort modelRuntime,
+            com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService
     ) {
-        return ExtractionPipelineService.create(promptRegistry, modelRuntime);
+        return new ExtractionPipelineService(
+                promptRegistry,
+                modelRuntime,
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentNormalizer(),
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunker(),
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard(),
+                new com.nanobaseai.actenora.aiprocessing.infrastructure.json.LimitedJsonRepair(),
+                new com.nanobaseai.actenora.aiprocessing.infrastructure.json.ExtractionJsonSchemaValidator(),
+                new com.nanobaseai.actenora.aiprocessing.infrastructure.json.ExtractionBundleMapper(),
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.DeterministicExtractionValidator(),
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionMerger(),
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteAssembler(),
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.RetryClassifier(),
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.PromptInjectionGuard(),
+                chunkExtractionService
+        );
     }
 
     @Bean

@@ -94,6 +94,22 @@ public final class DefaultStageExecutors {
             MeetingNoteHandoffPort noteHandoff,
             ApprovedKnowledgeIndexPort knowledgeIndex
     ) {
+        return createAll(
+                prompts, modelRuntime, segments, artifacts, priorContext, noteHandoff, knowledgeIndex,
+                ChunkExtractionService.createDefault()
+        );
+    }
+
+    public static Map<ProcessingStage, StageExecutor> createAll(
+            PromptRegistryPort prompts,
+            ModelRuntimePort modelRuntime,
+            TranscriptSegmentSourcePort segments,
+            ProcessingArtifactRepository artifacts,
+            PriorMeetingContextPort priorContext,
+            MeetingNoteHandoffPort noteHandoff,
+            ApprovedKnowledgeIndexPort knowledgeIndex,
+            ChunkExtractionService chunkExtraction
+    ) {
         SegmentNormalizer normalizer = new SegmentNormalizer();
         TranscriptChunker chunker = new TranscriptChunker();
         ContextWindowGuard guard = new ContextWindowGuard();
@@ -103,7 +119,9 @@ public final class DefaultStageExecutors {
         DeterministicExtractionValidator validator = new DeterministicExtractionValidator();
         ExtractionMerger merger = new ExtractionMerger();
         FinalNoteAssembler noteAssembler = new FinalNoteAssembler();
-        ChunkExtractionService chunkExtraction = ChunkExtractionService.createDefault();
+        ChunkExtractionService extraction = chunkExtraction == null
+                ? ChunkExtractionService.createDefault()
+                : chunkExtraction;
 
         return Map.of(
                 ProcessingStage.NORMALIZE, new NormalizeExecutor(segments, normalizer, artifacts),
@@ -111,7 +129,7 @@ public final class DefaultStageExecutors {
                 ProcessingStage.CHUNK, new ChunkPlanExecutor(segments, normalizer, chunker, guard, modelRuntime, artifacts),
                 ProcessingStage.EXTRACT, new ExtractChunkExecutor(
                         prompts, modelRuntime, segments, normalizer, chunker, guard, repair, schema, bundleMapper,
-                        validator, artifacts, chunkExtraction),
+                        validator, artifacts, extraction),
                 ProcessingStage.MERGE, new MergeExecutor(modelRuntime, prompts, artifacts, merger, repair, schema, bundleMapper),
                 ProcessingStage.VALIDATE, new ValidateExecutor(artifacts, validator, segments, normalizer),
                 ProcessingStage.MINUTES, new MinutesExecutor(
@@ -437,11 +455,17 @@ public final class DefaultStageExecutors {
                 }
                 TranscriptChunk chunk = chunks.get(index);
                 ChunkSignalSummary previous = ChunkSignalSummary.empty();
+                ChunkSignalSummary next = null;
                 if (index > 0) {
-                    ChunkContext prevCtx = ChunkContext.of(signalGateConfig);
+                    ChunkContext prevCtx = ChunkContext.of(signalGateConfig, job.language());
                     previous = signalFeatures.extract(chunks.get(index - 1), prevCtx).toSummary();
                 }
-                ChunkContext context = ChunkContext.withPrevious(signalGateConfig, previous);
+                if (index + 1 < chunks.size()) {
+                    ChunkContext nextCtx = ChunkContext.of(signalGateConfig, job.language());
+                    next = signalFeatures.extract(chunks.get(index + 1), nextCtx).toSummary();
+                }
+                ChunkContext context = ChunkContext.withNeighbors(
+                        signalGateConfig, job.language(), previous, next);
                 int[] tokens = new int[]{0, 0};
                 ChunkExtractionResult result = chunkExtraction.extract(chunk, context, c -> {
                     PublishedPrompt prompt = prompts.requirePublished(
@@ -483,14 +507,47 @@ public final class DefaultStageExecutors {
                     );
                     return bundle;
                 });
-                // Keep merge-compatible extraction schema; gate metadata lives in qualityFlags.
-                JsonNode outNode = MAPPER.valueToTree(result.bundle());
+                // Keep merge-compatible extraction schema; gate metadata lives in qualityFlags + chunk-gate artifact.
+                List<String> flags = new ArrayList<>(result.bundle().qualityFlags());
+                flags.add("GATE_OUTCOME:" + result.gateDecision().outcome().name());
+                flags.add("GATE_POLICY:" + result.gateDecision().policyVersion());
+                flags.add("GATE_SCORE:" + result.gateDecision().score());
+                ExtractionBundle flagged = new ExtractionBundle(
+                        result.bundle().topics(),
+                        result.bundle().decisions(),
+                        result.bundle().actionItems(),
+                        result.bundle().risks(),
+                        result.bundle().openQuestions(),
+                        result.bundle().commitments(),
+                        result.bundle().issues(),
+                        result.bundle().proposals(),
+                        result.bundle().importantFacts(),
+                        flags,
+                        result.bundle().evidenceSegmentIds(),
+                        result.bundle().confidence()
+                );
+                JsonNode outNode = MAPPER.valueToTree(flagged);
                 String out = MAPPER.writeValueAsString(outNode);
                 try {
                     schema.parseAndValidate(out);
                 } catch (RuntimeException schemaEx) {
-                    out = emptyExtractionJson(result.bundle().qualityFlags());
+                    out = emptyExtractionJson(flags);
                 }
+                ObjectNode gateNode = MAPPER.createObjectNode();
+                gateNode.put("outcome", result.gateDecision().outcome().name());
+                gateNode.put("score", result.gateDecision().score());
+                gateNode.put("policyVersion", result.gateDecision().policyVersion());
+                gateNode.put("estimatedTokensSaved", result.gateDecision().estimatedTokensSaved());
+                gateNode.put("skippedWithoutInfer", result.skippedWithoutInfer());
+                gateNode.set("reasons", MAPPER.valueToTree(result.gateDecision().reasons()));
+                artifacts.save(ProcessingArtifact.inlineJson(
+                        job.tenantId(),
+                        job.id(),
+                        job.meetingOccurrenceId(),
+                        "chunk-gate-" + index,
+                        MAPPER.writeValueAsString(gateNode),
+                        now
+                ));
                 return StageExecutionResult.success(
                         job, "chunk-extraction-" + index, out,
                         tokens[0], tokens[1],

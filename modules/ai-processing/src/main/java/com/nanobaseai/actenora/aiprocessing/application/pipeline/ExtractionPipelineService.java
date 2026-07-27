@@ -269,13 +269,14 @@ public final class ExtractionPipelineService {
         if (chunks.isEmpty()) {
             return List.of();
         }
-        List<ChunkSignalSummary> summaries = precomputeSummaries(chunks);
+        List<ChunkSignalSummary> summaries = precomputeSummaries(chunks, language);
         if (chunks.size() == 1 || parallelChunkLimit <= 1) {
             List<ExtractionBundle> sequential = new ArrayList<>(chunks.size());
             for (int i = 0; i < chunks.size(); i++) {
                 metrics.incrementChunkCount();
                 sequential.add(extractChunkWithRetry(
-                        prompt, descriptor, chunks.get(i), previousSummary(summaries, i),
+                        prompt, descriptor, chunks.get(i),
+                        previousSummary(summaries, i), nextSummary(summaries, i),
                         corpus, meetingTitle, language, timeoutSeconds, metrics));
             }
             return sequential;
@@ -293,11 +294,13 @@ public final class ExtractionPipelineService {
             for (int i = 0; i < chunks.size(); i++) {
                 TranscriptChunk chunk = chunks.get(i);
                 ChunkSignalSummary previous = previousSummary(summaries, i);
+                ChunkSignalSummary next = nextSummary(summaries, i);
+                String lang = language;
                 futures[i] = CompletableFuture.supplyAsync(() -> {
                     metrics.incrementChunkCount();
                     return extractChunkWithRetry(
-                            prompt, descriptor, chunk, previous,
-                            corpus, meetingTitle, language, timeoutSeconds, metrics);
+                            prompt, descriptor, chunk, previous, next,
+                            corpus, meetingTitle, lang, timeoutSeconds, metrics);
                 }, pool);
             }
             CompletableFuture.allOf(futures).join();
@@ -335,11 +338,12 @@ public final class ExtractionPipelineService {
         }
     }
 
-    private List<ChunkSignalSummary> precomputeSummaries(List<TranscriptChunk> chunks) {
+    private List<ChunkSignalSummary> precomputeSummaries(List<TranscriptChunk> chunks, String language) {
         List<ChunkSignalSummary> summaries = new ArrayList<>(chunks.size());
         ChunkSignalSummary previous = ChunkSignalSummary.empty();
         for (TranscriptChunk chunk : chunks) {
-            ChunkContext ctx = ChunkContext.withPrevious(signalGateConfig, previous);
+            ChunkContext ctx = ChunkContext.withNeighbors(
+                    signalGateConfig, language, previous, null);
             ChunkSignalSummary summary = signalFeatureExtractor.extract(chunk, ctx).toSummary();
             summaries.add(summary);
             previous = summary;
@@ -351,18 +355,24 @@ public final class ExtractionPipelineService {
         return index <= 0 ? ChunkSignalSummary.empty() : summaries.get(index - 1);
     }
 
+    private static ChunkSignalSummary nextSummary(List<ChunkSignalSummary> summaries, int index) {
+        return index + 1 >= summaries.size() ? null : summaries.get(index + 1);
+    }
+
     private ExtractionBundle extractChunkWithRetry(
             PublishedPrompt prompt,
             ModelDescriptor descriptor,
             TranscriptChunk chunk,
             ChunkSignalSummary previous,
+            ChunkSignalSummary next,
             String fullCorpus,
             String meetingTitle,
             String language,
             int timeoutSeconds,
             PipelineRunMetrics metrics
     ) {
-        ChunkContext context = ChunkContext.withPrevious(signalGateConfig, previous);
+        ChunkContext context = ChunkContext.withNeighbors(
+                signalGateConfig, language, previous, next);
         ChunkExtractionResult gated = chunkExtractionService.extract(chunk, context, c -> {
             String previousFingerprint = null;
             PipelineException last = null;

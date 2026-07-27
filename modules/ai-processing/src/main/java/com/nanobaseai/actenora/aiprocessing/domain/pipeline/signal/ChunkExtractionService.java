@@ -33,20 +33,23 @@ public final class ChunkExtractionService {
 
     public static ChunkExtractionService createDefault() {
         SignalGateConfig cfg = SignalGateConfigLoader.load();
-        return new ChunkExtractionService(
-                new ChunkSignalGate(cfg),
-                new EvidenceBundleGroundingPolicy(),
-                cfg,
-                new ChunkGateMetrics()
-        );
+        return create(cfg, ChunkGateMetricListener.NOOP);
     }
 
     public static ChunkExtractionService create(SignalGateConfig config) {
+        return create(config, ChunkGateMetricListener.NOOP);
+    }
+
+    public static ChunkExtractionService create(SignalGateConfig config, ChunkGateMetricListener listener) {
+        ChunkGateMetrics metrics = listener == null || listener == ChunkGateMetricListener.NOOP
+                ? new ChunkGateMetrics()
+                : new ChunkGateMetrics(listener);
+        metrics.setPolicyVersion(config.policyVersion());
         return new ChunkExtractionService(
                 new ChunkSignalGate(config),
                 new EvidenceBundleGroundingPolicy(),
                 config,
-                ChunkGateMetrics.NOOP
+                metrics
         );
     }
 
@@ -59,6 +62,7 @@ public final class ChunkExtractionService {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(inferencer, "inferencer");
 
+        metrics.setPolicyVersion(config.policyVersion());
         metrics.incrementTotal();
         ChunkGateDecision decision = gate.evaluate(chunk, context);
         EvidenceIndex evidence = EvidenceIndex.from(chunk);
@@ -70,8 +74,7 @@ public final class ChunkExtractionService {
                 if (hasExtractableSignal(grounded)) {
                     metrics.incrementShadowFalseNegative();
                 } else {
-                    metrics.incrementSkipped();
-                    metrics.addTokensSaved(chunk.estimatedTokens());
+                    metrics.incrementSkipped(chunk.estimatedTokens());
                 }
                 ChunkGateDecision shadow = new ChunkGateDecision(
                         GateOutcome.SHADOW_SKIP,
@@ -83,8 +86,7 @@ public final class ChunkExtractionService {
                 );
                 return ChunkExtractionResult.extracted(grounded, shadow);
             }
-            metrics.incrementSkipped();
-            metrics.addTokensSaved(chunk.estimatedTokens());
+            metrics.incrementSkipped(chunk.estimatedTokens());
             return ChunkExtractionResult.skipped(decision, emptySkippedBundle(decision));
         }
 

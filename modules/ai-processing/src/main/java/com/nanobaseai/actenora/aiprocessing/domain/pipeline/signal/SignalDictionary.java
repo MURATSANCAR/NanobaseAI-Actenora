@@ -87,6 +87,23 @@ public final class SignalDictionary {
         }
     }
 
+    /**
+     * Language-first dictionary with fallback to configured version (typically tr-en-v1).
+     */
+    public static SignalDictionary loadForLanguage(String language, String fallbackVersion) {
+        String lang = language == null ? "tr" : language.trim().toLowerCase(Locale.ROOT);
+        String primary = lang.startsWith("en") ? "en-v1" : "tr-v1";
+        try {
+            return load(primary);
+        } catch (RuntimeException primaryMiss) {
+            try {
+                return load(fallbackVersion == null || fallbackVersion.isBlank() ? "tr-en-v1" : fallbackVersion);
+            } catch (RuntimeException fallbackMiss) {
+                return load("tr-en-v1");
+            }
+        }
+    }
+
     int countHits(String haystackLower, List<String> cues) {
         int hits = 0;
         for (String cue : cues) {

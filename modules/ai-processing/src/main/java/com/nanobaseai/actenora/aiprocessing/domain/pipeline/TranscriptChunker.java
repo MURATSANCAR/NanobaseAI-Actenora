@@ -70,7 +70,7 @@ public final class TranscriptChunker {
         if (end == start) {
             end = start + 1;
         }
-        return preferMarkerBoundary(segments, start, end);
+        return preferSignalAwareBoundary(segments, start, preferMarkerBoundary(segments, start, end));
     }
 
     /**
@@ -95,6 +95,36 @@ public final class TranscriptChunker {
             if (segments.get(i).markerNear()) {
                 return i + 1;
             }
+        }
+        return end;
+    }
+
+    /**
+     * Semantic-ish cut: after a signal (marker) stretch, drop trailing non-marker filler
+     * into the next chunk so low-signal noise does not dilute EXTRACT windows.
+     */
+    private int preferSignalAwareBoundary(List<SegmentInput> segments, int start, int end) {
+        if (end - start < 4) {
+            return end;
+        }
+        int lastMarker = -1;
+        for (int i = start; i < end; i++) {
+            if (segments.get(i).markerNear()) {
+                lastMarker = i;
+            }
+        }
+        if (lastMarker < 0) {
+            return end;
+        }
+        int trailingNoise = 0;
+        for (int i = lastMarker + 1; i < end; i++) {
+            if (!segments.get(i).markerNear()) {
+                trailingNoise++;
+            }
+        }
+        // Enough filler after the last signal → cut right after last marker.
+        if (trailingNoise >= 2 && lastMarker + 1 > start) {
+            return lastMarker + 1;
         }
         return end;
     }

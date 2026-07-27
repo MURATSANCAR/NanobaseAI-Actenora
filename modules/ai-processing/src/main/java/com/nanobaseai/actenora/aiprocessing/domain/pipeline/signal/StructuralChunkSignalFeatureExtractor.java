@@ -36,21 +36,30 @@ public final class StructuralChunkSignalFeatureExtractor implements ChunkSignalF
     );
     private static final Pattern OPEN_Q = Pattern.compile("(?iu)(\\?|kim\\s+onay|açık\\s+soru|who\\s+will)");
 
-    private final SignalDictionary dictionary;
+    private final String fallbackDictionaryVersion;
+    private final java.util.concurrent.ConcurrentHashMap<String, SignalDictionary> dictionaryCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     public StructuralChunkSignalFeatureExtractor(SignalDictionary dictionary) {
-        this.dictionary = Objects.requireNonNull(dictionary, "dictionary");
+        this.fallbackDictionaryVersion = dictionary.version();
+        dictionaryCache.put(dictionary.version(), dictionary);
     }
 
     public StructuralChunkSignalFeatureExtractor(SignalGateConfig config) {
-        this(SignalDictionary.load(config.dictionaryVersion()));
+        this.fallbackDictionaryVersion = config.dictionaryVersion();
+    }
+
+    private SignalDictionary dictionaryFor(ChunkContext context) {
+        String key = context.language() + ":" + context.config().dictionaryVersion();
+        return dictionaryCache.computeIfAbsent(key, k ->
+                SignalDictionary.loadForLanguage(context.language(), context.config().dictionaryVersion()));
     }
 
     @Override
     public ChunkSignalFeatures extract(TranscriptChunk chunk, ChunkContext context) {
         Objects.requireNonNull(chunk, "chunk");
         Objects.requireNonNull(context, "context");
-
+        SignalDictionary dictionary = dictionaryFor(context);
         int decisions = 0;
         int assignments = 0;
         int commitments = 0;
@@ -131,8 +140,14 @@ public final class StructuralChunkSignalFeatureExtractor implements ChunkSignalF
             }
 
             String norm = lower.replaceAll("\\s+", " ");
-            if (prevNorm != null && jaccard(prevNorm, norm) >= 0.75d) {
-                repetitions++;
+            if (prevNorm != null) {
+                double sim = Math.max(
+                        jaccard(prevNorm, norm),
+                        LexicalSemanticSimilarity.cosine(prevNorm, norm)
+                );
+                if (sim >= 0.72d) {
+                    repetitions++;
+                }
             }
             prevNorm = norm;
 
@@ -158,6 +173,16 @@ public final class StructuralChunkSignalFeatureExtractor implements ChunkSignalF
                 continuation++;
             }
             if (prev.hasDecisionSignal() && (assignments > 0 || deadlines > 0)) {
+                continuation++;
+            }
+        }
+        if (context.config().continuationAware() && context.nextPreview().isPresent()) {
+            ChunkSignalSummary next = context.nextPreview().get();
+            // Keep risk/open-question chunk if the next window carries mitigation/answer.
+            if (risks > 0 && next.hasMitigationSignal()) {
+                continuation++;
+            }
+            if (questions > 0 && (next.hasDecisionSignal() || next.hasActionSignal())) {
                 continuation++;
             }
         }

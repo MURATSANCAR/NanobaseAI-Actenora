@@ -49,6 +49,18 @@ public final class ChunkSignalGate {
             reasons.add("CONTINUATION_FROM_PREVIOUS_CHUNK");
             return decision(GateOutcome.EXTRACT_CONTINUATION, features, reasons, 0, config);
         }
+        if (config.continuationAware() && context.nextPreview().isPresent()) {
+            ChunkSignalSummary next = context.nextPreview().get();
+            if (features.riskExpressions() > 0 && next.hasMitigationSignal()) {
+                reasons.add("NEXT_PREVIEW_MITIGATION_CONTINUATION");
+                return decision(GateOutcome.EXTRACT_CONTINUATION, features, reasons, 0, config);
+            }
+            if (features.openQuestionStructures() > 0
+                    && (next.hasDecisionSignal() || next.hasActionSignal())) {
+                reasons.add("NEXT_PREVIEW_ANSWER_CONTINUATION");
+                return decision(GateOutcome.EXTRACT_CONTINUATION, features, reasons, 0, config);
+            }
+        }
         if (config.hardMarkerShortcutEnabled()) {
             if (features.explicitDecisionMarkers() > 0
                     && (features.deadlineExpressions() > 0

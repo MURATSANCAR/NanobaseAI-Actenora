@@ -1,0 +1,28 @@
+{
+  "version": "tr-v1",
+  "decisionVerbs": [
+    "kararlaştır", "karar verdik", "onayla", "onaylandı", "kabul et", "kabul edildi",
+    "dondur", "dondurul", "kapattık", "kapatıyoruz"
+  ],
+  "assignmentCues": [
+    "sahipliğini alsın", "alsın", "yapsın", "hazırlasın", "bıraksın", "sorumlu"
+  ],
+  "commitmentCues": [
+    "yapacağım", "hazırlayacağım", "göndereceğim", "bitireceğim", "taahhüt"
+  ],
+  "deadlineCues": [
+    "cuma", "çarşamba", "pazartesi", "salı", "perşembe", "cumartesi", "pazar",
+    "gelecek hafta", "bu hafta", "öğleden sonra"
+  ],
+  "riskCues": ["risk", "gecik", "kaydır", "engel"],
+  "mitigationCues": ["önlem", "smoke", "erken smoke", "tedbir"],
+  "moneyCues": ["tl", "usd", "eur", "maliyet", "%"],
+  "openQuestionCues": ["kim onay", "açık soru", "henüz net değil"],
+  "proposalCues": ["belki", "öner", "öneri", "erteleyebiliriz", "değerlendirelim"],
+  "negatedDecisionCues": [
+    "henüz karar değil", "yeni karar yok", "yeni bir karar alınmadı", "karar alınmadı"
+  ],
+  "uiNoiseCues": [
+    "ekran", "mikrofon", "paylaşıyorum", "bağlantı", "duyabiliyor", "kayıt"
+  ]
+}

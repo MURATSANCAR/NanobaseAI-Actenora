@@ -1,0 +1,26 @@
+{
+  "version": "en-v1",
+  "decisionVerbs": [
+    "freeze", "approve", "approved", "decide", "decided", "agreed", "we will ship", "we decided"
+  ],
+  "assignmentCues": [
+    "assigned to", "will prepare", "will send", "will deliver", "owner", "owns this"
+  ],
+  "commitmentCues": [
+    "i'll", "i will", "we'll deliver", "commitment"
+  ],
+  "deadlineCues": [
+    "next week", "this week", "by friday", "eod", "eow", "monday", "tuesday", "wednesday", "thursday", "friday"
+  ],
+  "riskCues": ["risk", "delay", "slip", "blocker"],
+  "mitigationCues": ["mitigation", "smoke", "workaround", "early smoke"],
+  "moneyCues": ["usd", "eur", "cost", "%"],
+  "openQuestionCues": ["open question", "who will", "still unclear"],
+  "proposalCues": ["should", "could", "might", "perhaps", "maybe", "suggest"],
+  "negatedDecisionCues": [
+    "not a decision", "no new decision", "not changing the decision", "only sharing context"
+  ],
+  "uiNoiseCues": [
+    "sharing screen", "unmuting", "mute", "can you hear", "recording"
+  ]
+}

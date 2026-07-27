@@ -159,7 +159,8 @@ public class StagedPipelinePlatformConfiguration {
             ProcessingArtifactRepository artifacts,
             PriorMeetingContextPort priorMeetingContext,
             ObjectProvider<MeetingNoteHandoffPort> noteHandoff,
-            ApprovedKnowledgeIndexPort knowledgeIndex
+            ApprovedKnowledgeIndexPort knowledgeIndex,
+            com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService
     ) {
         return DefaultStageExecutors.createAll(
                 prompts,
@@ -170,7 +171,8 @@ public class StagedPipelinePlatformConfiguration {
                 noteHandoff.getIfAvailable() == null
                         ? MeetingNoteHandoffPort.noop()
                         : noteHandoff.getIfAvailable(),
-                knowledgeIndex
+                knowledgeIndex,
+                chunkExtractionService
         );
     }
 
