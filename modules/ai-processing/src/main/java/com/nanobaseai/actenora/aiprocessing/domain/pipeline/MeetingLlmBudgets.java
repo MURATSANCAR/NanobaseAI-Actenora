@@ -35,17 +35,17 @@ public final class MeetingLlmBudgets {
     /** Safety margin so prompt+chunk+output never saturates KV cache. */
     public static final int SAFETY_MARGIN_TOKENS = 1_000;
 
-    /** CHUNK_EXTRACTION generation cap (dense TR meetings need headroom above ~900). */
-    public static final int EXTRACTION_MAX_TOKENS = 1_200;
+    /** CHUNK_EXTRACTION generation cap — 1200 truncates dense TR JSON on 35B (finish_reason=length). */
+    public static final int EXTRACTION_MAX_TOKENS = 4_096;
 
     /** MEETING_TRIAGE generation cap (tiny JSON classifier). */
     public static final int TRIAGE_MAX_TOKENS = 512;
 
     /** CANDIDATE_MERGE generation cap. */
-    public static final int MERGE_MAX_TOKENS = 1_000;
+    public static final int MERGE_MAX_TOKENS = 2_048;
 
     /** FINAL_NOTE / final minutes generation cap. */
-    public static final int FINAL_MAX_TOKENS = 1_200;
+    public static final int FINAL_MAX_TOKENS = 2_048;
 
     /** Evidence-audit generation cap (smaller JSON than full minutes). */
     public static final int AUDIT_MAX_TOKENS = 800;
