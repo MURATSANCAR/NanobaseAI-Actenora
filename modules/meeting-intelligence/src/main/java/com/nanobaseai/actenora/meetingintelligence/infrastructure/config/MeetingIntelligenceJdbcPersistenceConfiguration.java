@@ -16,6 +16,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestion
 import com.nanobaseai.actenora.meetingintelligence.application.port.ProposalRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.validation.port.ManualReviewCaseRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.validation.port.ValidationRunRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.JdbcLedgerEventStore;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.JdbcLedgerProjectionRepository;
@@ -29,6 +30,7 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.Jd
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcMeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcImportantFactRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcIssueRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcManualReviewCaseRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcOpenQuestionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcProposalRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcQualityFlagRepository;
@@ -128,5 +130,10 @@ public class MeetingIntelligenceJdbcPersistenceConfiguration {
     @Bean
     ValidationRunRepository validationRunRepository(DataSource dataSource) {
         return new JdbcValidationRunRepository(new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    ManualReviewCaseRepository manualReviewCaseRepository(DataSource dataSource) {
+        return new JdbcManualReviewCaseRepository(new JdbcTemplate(dataSource));
     }
 }

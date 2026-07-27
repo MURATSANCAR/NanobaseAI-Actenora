@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExtractionJsonSchemaValidatorTest {
@@ -49,5 +50,27 @@ class ExtractionJsonSchemaValidatorTest {
         assertEquals("Delivery slip", node.get("risks").get(0).get("text").asText());
         assertEquals("seg-1", node.get("risks").get(0).get("evidenceSegmentIds").get(0).asText());
         assertTrue(node.get("qualityFlags").toString().contains("risks_items_coerced"));
+    }
+
+    @Test
+    void rejectsInvalidOwnerTypeEnum() {
+        String json = """
+                {
+                  "topics": [],
+                  "decisions": [],
+                  "actionItems": [{
+                    "text": "Ship it",
+                    "ownerType": "CONTRACTOR",
+                    "evidenceSegmentIds": ["seg-1"]
+                  }],
+                  "risks": [],
+                  "openQuestions": [],
+                  "commitments": [],
+                  "qualityFlags": [],
+                  "evidenceSegmentIds": ["seg-1"],
+                  "confidence": 0.8
+                }
+                """;
+        assertThrows(RuntimeException.class, () -> validator.parseAndValidate(json));
     }
 }

@@ -1,8 +1,10 @@
 package com.nanobaseai.actenora.security.observability;
 
+import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.LocalProviderModelRuntimeAdapter;
 import com.nanobaseai.actenora.observability.metrics.ActenoraMetric;
 import com.nanobaseai.actenora.observability.metrics.InMemoryMetricRecorder;
 import com.nanobaseai.actenora.observability.metrics.MetricRecorder;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -21,6 +23,9 @@ public class ObservabilityMetricsConfiguration {
     @Bean
     @ConditionalOnBean(MeterRegistry.class)
     MetricRecorder micrometerMetricRecorder(MeterRegistry registry) {
+        Gauge.builder("actenora.ai.json_schema_fallback_total", LocalProviderModelRuntimeAdapter::jsonSchemaFallbackTotal)
+                .description("Count of LLM calls that fell back from json_schema to json_object")
+                .register(registry);
         return new MicrometerMetricRecorder(registry);
     }
 

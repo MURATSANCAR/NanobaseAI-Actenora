@@ -44,6 +44,7 @@ public final class ExtractionBundleMapper {
         for (JsonNode item : array) {
             list.add(new TopicCandidate(
                     item.get("text").asText(),
+                    textOrNull(item, "summary"),
                     mapStrings(item.get("evidenceSegmentIds")),
                     confidenceOrDefault(item)
             ));
@@ -60,7 +61,9 @@ public final class ExtractionBundleMapper {
             list.add(new DecisionCandidate(
                     item.get("text").asText(),
                     mapStrings(item.get("evidenceSegmentIds")),
-                    confidenceOrDefault(item)
+                    confidenceOrDefault(item),
+                    textOrNull(item, "rationale"),
+                    textOrNull(item, "status")
             ));
         }
         return list;
@@ -77,7 +80,10 @@ public final class ExtractionBundleMapper {
                     textOrNull(item, "owner"),
                     textOrNull(item, "dueDate"),
                     mapStrings(item.get("evidenceSegmentIds")),
-                    confidenceOrDefault(item)
+                    confidenceOrDefault(item),
+                    textOrNull(item, "ownerType"),
+                    textOrNull(item, "priority"),
+                    textOrNull(item, "relativeDate")
             ));
         }
         return list;
@@ -92,7 +98,9 @@ public final class ExtractionBundleMapper {
             list.add(new RiskCandidate(
                     item.get("text").asText(),
                     mapStrings(item.get("evidenceSegmentIds")),
-                    confidenceOrDefault(item)
+                    confidenceOrDefault(item),
+                    textOrNull(item, "likelihood"),
+                    textOrNull(item, "mitigation")
             ));
         }
         return list;

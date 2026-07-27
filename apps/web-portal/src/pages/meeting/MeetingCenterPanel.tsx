@@ -18,7 +18,7 @@ import type {
 import { useAuth } from "@/auth/AuthProvider";
 import { useI18n } from "@/i18n";
 import { isOptimisticSafe } from "@/lib/approval";
-import { evidenceMatchesSegment, formatEvidenceRange } from "@/lib/evidence";
+import { evidenceMatchesSegment, formatEvidenceRange, isSeekableEvidence } from "@/lib/evidence";
 import { deriveMeetingPipelineStages } from "@/lib/meetingPipeline";
 
 type InsightTab = "decisions" | "actions" | "risks" | "commitments";
@@ -47,6 +47,33 @@ export function MeetingCenterPanel({
   const stages = deriveMeetingPipelineStages(detail, hasConversation);
   const notesStageReady = stages.find((s) => s.id === "NOTES")?.state === "done" || detail.notes.length > 0;
   const showNotes = notesStageReady || detail.notes.length > 0;
+
+  const deliveryQuery = useQuery({
+    queryKey: queryKeys.meetingDelivery(meetingId),
+    queryFn: () => api.getMeetingDelivery(meetingId),
+  });
+
+  const deliveryBadge = (() => {
+    const items = deliveryQuery.data ?? [];
+    if (items.length === 0) return null;
+    const draft = items.find((d) => d.intent === "DRAFT_ORGANIZER");
+    const finalReq = items.find((d) => d.intent === "FINAL_EXTERNAL");
+    const pick = finalReq ?? draft;
+    if (!pick) return null;
+    const status = pick.status;
+    const isFinal = pick.intent === "FINAL_EXTERNAL";
+    let label: string;
+    if (status === "DELIVERED") {
+      label = t(isFinal ? "meeting.deliveryFinalSent" : "meeting.deliveryDraftSent");
+    } else if (status === "PROVIDER_ACCEPTED") {
+      label = t("meeting.deliveryAccepted");
+    } else if (status === "FAILED" || status === "DEAD") {
+      label = t("meeting.deliveryFailed");
+    } else {
+      label = t(isFinal ? "meeting.deliveryFinalQueued" : "meeting.deliveryDraftQueued");
+    }
+    return { label, status };
+  })();
 
   const noteMutation = useMutation({
     mutationFn: ({ noteId, body }: { noteId: string; body: string }) =>
@@ -103,6 +130,22 @@ export function MeetingCenterPanel({
       (n.visibility === "PRIVATE" && auth.canSeePrivateNote(n.authorId)),
   );
 
+  const primaryNoteId = editableNotes[0]?.id ?? detail.notes[0]?.id ?? null;
+  const rendersQuery = useQuery({
+    queryKey: queryKeys.noteRenders(meetingId, primaryNoteId ?? ""),
+    queryFn: () => api.getNoteRenders(meetingId, primaryNoteId!),
+    enabled: Boolean(primaryNoteId),
+  });
+  const pdfDocument =
+    rendersQuery.data?.documents.find((d) => d.format === "PDF" && d.downloadUrl) ??
+    rendersQuery.data?.documents.find((d) => d.format === "PDF") ??
+    null;
+  const pdfPending = Boolean(
+    primaryNoteId &&
+      (rendersQuery.data?.jobs.some((j) => j.format === "PDF" && (j.status === "PENDING" || j.status === "RUNNING")) ??
+        false),
+  );
+
   const canEditNotes = auth.can("meetings:edit") && mutationsEnabled;
   const templatesQuery = useQuery({
     queryKey: queryKeys.templates,
@@ -135,10 +178,27 @@ export function MeetingCenterPanel({
           <h2 className="font-display text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
             {t("meeting.minutesDocumentTitle")}
           </h2>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/80 bg-gradient-to-r from-violet-50 to-sky-50 px-3 py-1 text-[11px] font-semibold text-violet-800">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-            {auth.can("meetings:edit") ? t("meeting.editEnabled") : t("meeting.readOnly")}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {deliveryBadge ? (
+              <StatusBadge label={deliveryBadge.label} status={deliveryBadge.status} />
+            ) : null}
+            {pdfDocument?.downloadUrl ? (
+              <a
+                href={pdfDocument.downloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800"
+              >
+                {t("meeting.pdfDownload")}
+              </a>
+            ) : pdfPending ? (
+              <StatusBadge label={t("meeting.pdfPending")} status="QUEUED" />
+            ) : null}
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/80 bg-gradient-to-r from-violet-50 to-sky-50 px-3 py-1 text-[11px] font-semibold text-violet-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+              {auth.can("meetings:edit") ? t("meeting.editEnabled") : t("meeting.readOnly")}
+            </span>
+          </div>
         </div>
 
         {!showNotes ? (
@@ -360,10 +420,11 @@ function EvidenceButtons({
   jumpLabel: string;
 }) {
   const { t } = useI18n();
-  if (!evidence.length) return null;
+  const seekable = evidence.filter(isSeekableEvidence);
+  if (!seekable.length) return null;
   return (
     <div className="evidence-actions mt-2 space-y-2">
-      {evidence.map((e) => (
+      {seekable.map((e) => (
         <button
           key={`${e.segmentId}-${e.startMs}`}
           type="button"

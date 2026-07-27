@@ -17,6 +17,9 @@ public record ActionItemResponse(
         boolean requiresManualReview,
         Double aiConfidence,
         HumanApprovalStatus humanApprovalStatus,
+        String ownerType,
+        String priority,
+        String relativeDate,
         long version,
         Instant updatedAt
 ) {

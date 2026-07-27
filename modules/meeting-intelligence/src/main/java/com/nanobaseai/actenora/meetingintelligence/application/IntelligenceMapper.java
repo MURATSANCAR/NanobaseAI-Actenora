@@ -96,6 +96,8 @@ final class IntelligenceMapper {
                 decision.requiresManualReview(),
                 decision.aiConfidence(),
                 decision.humanApprovalStatus(),
+                decision.rationale(),
+                decision.decisionStatus(),
                 decision.version(),
                 decision.updatedAt()
         );
@@ -112,6 +114,9 @@ final class IntelligenceMapper {
                 item.requiresManualReview(),
                 item.aiConfidence(),
                 item.humanApprovalStatus(),
+                item.ownerType(),
+                item.priority(),
+                item.relativeDate(),
                 item.version(),
                 item.updatedAt()
         );
@@ -125,6 +130,8 @@ final class IntelligenceMapper {
                 risk.requiresManualReview(),
                 risk.aiConfidence(),
                 risk.humanApprovalStatus(),
+                risk.likelihood(),
+                risk.mitigation(),
                 risk.version(),
                 risk.updatedAt()
         );

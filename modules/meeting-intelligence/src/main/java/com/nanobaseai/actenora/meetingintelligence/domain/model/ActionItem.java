@@ -23,6 +23,9 @@ public final class ActionItem {
     private boolean requiresManualReview;
     private final Double aiConfidence;
     private HumanApprovalStatus humanApprovalStatus;
+    private final String ownerType;
+    private final String priority;
+    private final String relativeDate;
     private final Instant createdAt;
     private Instant updatedAt;
     private long version;
@@ -39,6 +42,9 @@ public final class ActionItem {
             boolean requiresManualReview,
             Double aiConfidence,
             HumanApprovalStatus humanApprovalStatus,
+            String ownerType,
+            String priority,
+            String relativeDate,
             Instant createdAt,
             Instant updatedAt,
             long version
@@ -54,6 +60,9 @@ public final class ActionItem {
         this.requiresManualReview = requiresManualReview;
         this.aiConfidence = aiConfidence;
         this.humanApprovalStatus = Objects.requireNonNull(humanApprovalStatus, "humanApprovalStatus");
+        this.ownerType = blankToNull(ownerType);
+        this.priority = blankToNull(priority);
+        this.relativeDate = blankToNull(relativeDate);
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
         this.version = version;
@@ -70,6 +79,26 @@ public final class ActionItem {
             Double aiConfidence,
             Instant now
     ) {
+        return createFromMapping(
+                tenantId, noteId, noteVersionId, text, owner, dueDate,
+                requiresManualReview, aiConfidence, null, null, null, now
+        );
+    }
+
+    public static ActionItem createFromMapping(
+            TenantId tenantId,
+            UUID noteId,
+            UUID noteVersionId,
+            String text,
+            String owner,
+            LocalDate dueDate,
+            boolean requiresManualReview,
+            Double aiConfidence,
+            String ownerType,
+            String priority,
+            String relativeDate,
+            Instant now
+    ) {
         return new ActionItem(
                 UUID.randomUUID(),
                 tenantId,
@@ -82,6 +111,9 @@ public final class ActionItem {
                 requiresManualReview,
                 aiConfidence,
                 HumanApprovalStatus.NONE,
+                ownerType,
+                priority,
+                relativeDate,
                 now,
                 now,
                 0L
@@ -100,6 +132,9 @@ public final class ActionItem {
             boolean requiresManualReview,
             Double aiConfidence,
             HumanApprovalStatus humanApprovalStatus,
+            String ownerType,
+            String priority,
+            String relativeDate,
             Instant createdAt,
             Instant updatedAt,
             long version
@@ -179,6 +214,9 @@ public final class ActionItem {
     public boolean requiresManualReview() { return requiresManualReview; }
     public Double aiConfidence() { return aiConfidence; }
     public HumanApprovalStatus humanApprovalStatus() { return humanApprovalStatus; }
+    public String ownerType() { return ownerType; }
+    public String priority() { return priority; }
+    public String relativeDate() { return relativeDate; }
     public Instant createdAt() { return createdAt; }
     public Instant updatedAt() { return updatedAt; }
     public long version() { return version; }

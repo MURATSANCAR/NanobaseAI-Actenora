@@ -14,7 +14,7 @@ const toneMap: Record<Tone, string> = {
 
 export function statusTone(status?: string): Tone {
   const s = (status || "").toLowerCase().trim();
-  if (["ok", "passed", "complete", "completed", "approved", "ready", "healthy"].includes(s)) {
+  if (["ok", "passed", "complete", "completed", "approved", "ready", "healthy", "delivered", "provider_accepted"].includes(s)) {
     return "ok";
   }
   if (["running", "started", "in_progress", "generating", "processing"].includes(s)) {

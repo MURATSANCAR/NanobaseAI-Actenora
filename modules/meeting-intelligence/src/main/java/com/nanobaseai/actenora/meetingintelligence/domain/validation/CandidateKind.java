@@ -7,5 +7,8 @@ public enum CandidateKind {
     RISK,
     OPEN_QUESTION,
     COMMITMENT,
+    ISSUE,
+    PROPOSAL,
+    IMPORTANT_FACT,
     SUGGESTION
 }

@@ -55,7 +55,13 @@ public final class FinalNoteDraftMapper {
     }
 
     private static DecisionCandidateInput decision(DecisionCandidate candidate) {
-        return new DecisionCandidateInput(candidate.text(), candidate.evidenceSegmentIds(), clamp(candidate.confidence()));
+        return new DecisionCandidateInput(
+                candidate.text(),
+                candidate.evidenceSegmentIds(),
+                clamp(candidate.confidence()),
+                candidate.rationale(),
+                candidate.status()
+        );
     }
 
     private static ActionItemCandidateInput actionItem(ActionItemCandidate candidate) {
@@ -64,12 +70,21 @@ public final class FinalNoteDraftMapper {
                 candidate.owner(),
                 candidate.dueDate(),
                 candidate.evidenceSegmentIds(),
-                clamp(candidate.confidence())
+                clamp(candidate.confidence()),
+                candidate.ownerType(),
+                candidate.priority(),
+                candidate.relativeDate()
         );
     }
 
     private static RiskCandidateInput risk(RiskCandidate candidate) {
-        return new RiskCandidateInput(candidate.text(), candidate.evidenceSegmentIds(), clamp(candidate.confidence()));
+        return new RiskCandidateInput(
+                candidate.text(),
+                candidate.evidenceSegmentIds(),
+                clamp(candidate.confidence()),
+                candidate.likelihood(),
+                candidate.mitigation()
+        );
     }
 
     private static OpenQuestionCandidateInput openQuestion(OpenQuestionCandidate candidate) {

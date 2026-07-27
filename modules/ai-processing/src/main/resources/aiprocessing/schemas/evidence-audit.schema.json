@@ -15,7 +15,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["DECISION", "ACTION_ITEM", "RISK", "COMMITMENT", "OPEN_QUESTION", "TOPIC"]
+            "enum": ["DECISION", "ACTION_ITEM", "RISK", "COMMITMENT", "OPEN_QUESTION", "TOPIC", "ISSUE", "PROPOSAL", "IMPORTANT_FACT"]
           },
           "text": { "type": "string", "minLength": 1 },
           "verdict": {

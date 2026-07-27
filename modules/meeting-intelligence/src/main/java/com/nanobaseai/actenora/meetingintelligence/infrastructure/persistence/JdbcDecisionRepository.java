@@ -25,6 +25,8 @@ public final class JdbcDecisionRepository implements DecisionRepository {
             rs.getBoolean("requires_manual_review"),
             (Double) rs.getObject("ai_confidence"),
             HumanApprovalStatus.valueOf(rs.getString("human_approval_status")),
+            rs.getString("rationale"),
+            rs.getString("status"),
             JdbcInstant.get(rs, "created_at"),
             JdbcInstant.get(rs, "updated_at"),
             rs.getLong("version")
@@ -43,14 +45,17 @@ public final class JdbcDecisionRepository implements DecisionRepository {
                     id, tenant_id, note_id, note_version_id, text,
                     supersedes_decision_id, superseded_by_decision_id,
                     requires_manual_review, ai_confidence, human_approval_status,
+                    rationale, status,
                     created_at, updated_at, version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     text = EXCLUDED.text,
                     supersedes_decision_id = EXCLUDED.supersedes_decision_id,
                     superseded_by_decision_id = EXCLUDED.superseded_by_decision_id,
                     requires_manual_review = EXCLUDED.requires_manual_review,
                     human_approval_status = EXCLUDED.human_approval_status,
+                    rationale = EXCLUDED.rationale,
+                    status = EXCLUDED.status,
                     updated_at = EXCLUDED.updated_at,
                     version = EXCLUDED.version
                 """;
@@ -65,6 +70,8 @@ public final class JdbcDecisionRepository implements DecisionRepository {
                 decision.requiresManualReview(),
                 decision.aiConfidence(),
                 decision.humanApprovalStatus().name(),
+                decision.rationale(),
+                decision.decisionStatus(),
                 JdbcInstant.toTimestamp(decision.createdAt()),
                 JdbcInstant.toTimestamp(decision.updatedAt()),
                 decision.version()
@@ -78,6 +85,7 @@ public final class JdbcDecisionRepository implements DecisionRepository {
                 SELECT id, tenant_id, note_id, note_version_id, text,
                        supersedes_decision_id, superseded_by_decision_id,
                        requires_manual_review, ai_confidence, human_approval_status,
+                       rationale, status,
                        created_at, updated_at, version
                 FROM meetingintelligence.decisions
                 WHERE id = ? AND tenant_id = ?
@@ -91,6 +99,7 @@ public final class JdbcDecisionRepository implements DecisionRepository {
                 SELECT id, tenant_id, note_id, note_version_id, text,
                        supersedes_decision_id, superseded_by_decision_id,
                        requires_manual_review, ai_confidence, human_approval_status,
+                       rationale, status,
                        created_at, updated_at, version
                 FROM meetingintelligence.decisions
                 WHERE note_id = ? AND tenant_id = ?

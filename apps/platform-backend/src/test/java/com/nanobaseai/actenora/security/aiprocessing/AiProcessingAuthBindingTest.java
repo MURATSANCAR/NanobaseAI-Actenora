@@ -168,7 +168,7 @@ class AiProcessingAuthBindingTest {
 
         IdentityApi identityApi = stubIdentityApi();
         controller = new AiProcessingController(
-                aiProcessingApi, multiModelRoutingApi, executor, tenantAiPolicy, identityApi, null);
+                aiProcessingApi, multiModelRoutingApi, executor, tenantAiPolicy, identityApi, null, null, null);
     }
 
     @AfterEach

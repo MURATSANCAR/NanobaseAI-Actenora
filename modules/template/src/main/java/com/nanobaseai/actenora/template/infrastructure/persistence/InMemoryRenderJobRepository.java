@@ -54,6 +54,14 @@ public final class InMemoryRenderJobRepository implements RenderJobRepository {
         return pending;
     }
 
+    @Override
+    public List<RenderJob> findByNoteId(TenantId tenantId, java.util.UUID noteId) {
+        return byId.values().stream()
+                .filter(job -> job.tenantId().equals(tenantId) && job.noteId().equals(noteId))
+                .sorted(Comparator.comparing(RenderJob::createdAt).reversed())
+                .toList();
+    }
+
     private static String key(TenantId tenantId, RenderJobId id) {
         return tenantId.value() + ":" + id.value();
     }

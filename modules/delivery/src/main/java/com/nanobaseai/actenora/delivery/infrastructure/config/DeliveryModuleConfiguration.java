@@ -21,11 +21,14 @@ import com.nanobaseai.actenora.delivery.infrastructure.mail.MailHogMailProvider;
 import com.nanobaseai.actenora.delivery.infrastructure.mail.MicrosoftGraphMailProvider;
 import com.nanobaseai.actenora.delivery.infrastructure.mail.SmtpMailProvider;
 import com.nanobaseai.actenora.delivery.infrastructure.pdf.InMemoryPdfAttachmentPort;
+import com.nanobaseai.actenora.delivery.infrastructure.pdf.ObjectStoragePdfAttachmentPort;
 import com.nanobaseai.actenora.delivery.infrastructure.persistence.InMemoryDeliveryOrderRepository;
 import com.nanobaseai.actenora.delivery.infrastructure.persistence.InMemoryDeliveryRequestRepository;
 import com.nanobaseai.actenora.delivery.infrastructure.portal.HmacSignedPortalLinkService;
 import com.nanobaseai.actenora.delivery.infrastructure.ratelimit.FixedWindowDeliveryRateLimiter;
+import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -114,7 +117,11 @@ public class DeliveryModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    PdfAttachmentPort pdfAttachmentPort() {
+    PdfAttachmentPort pdfAttachmentPort(ObjectProvider<ObjectStorage> objectStorage) {
+        ObjectStorage storage = objectStorage.getIfAvailable();
+        if (storage != null) {
+            return new ObjectStoragePdfAttachmentPort(storage);
+        }
         return new InMemoryPdfAttachmentPort();
     }
 

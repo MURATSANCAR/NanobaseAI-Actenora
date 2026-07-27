@@ -8,6 +8,8 @@ import com.nanobaseai.actenora.approval.api.ApprovalRequestView;
 import com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.audit.api.AuditApi;
+import com.nanobaseai.actenora.delivery.api.DeliveryApi;
+import com.nanobaseai.actenora.delivery.api.DeliveryRequestStatusView;
 import com.nanobaseai.actenora.identity.api.IdentityApi;
 import com.nanobaseai.actenora.identity.api.RequiresPermission;
 import com.nanobaseai.actenora.identity.api.UserView;
@@ -45,7 +47,11 @@ import com.nanobaseai.actenora.notification.api.UserNotificationListView;
 import com.nanobaseai.actenora.notification.api.UserNotificationView;
 import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.sharedkernel.port.storage.AuthorizedUrl;
+import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
 import com.nanobaseai.actenora.template.api.MeetingTemplateId;
+import com.nanobaseai.actenora.template.api.RenderJobView;
+import com.nanobaseai.actenora.template.api.RenderedDocumentView;
 import com.nanobaseai.actenora.template.api.TemplateApi;
 import com.nanobaseai.actenora.template.api.TemplateVersionId;
 import com.nanobaseai.actenora.template.domain.DesignComponent;
@@ -119,6 +125,8 @@ public class PortalApiController {
     private final Optional<TeamsTranscriptPollScheduler> transcriptPollScheduler;
     private final Optional<NotificationApi> notificationApi;
     private final Optional<PlatformUserNotificationPublisher> notificationPublisher;
+    private final Optional<DeliveryApi> deliveryApi;
+    private final Optional<ObjectStorage> objectStorage;
 
     public PortalApiController(
             IdentityApi identityApi,
@@ -139,6 +147,8 @@ public class PortalApiController {
             ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
             ObjectProvider<NotificationApi> notificationApi,
             ObjectProvider<PlatformUserNotificationPublisher> notificationPublisher,
+            ObjectProvider<DeliveryApi> deliveryApi,
+            ObjectProvider<ObjectStorage> objectStorage,
             PortalTeamsPreferencesStore teamsPreferencesStore,
             @Value("${actenora.microsoft-graph.client-id:}") String graphClientId
     ) {
@@ -160,6 +170,8 @@ public class PortalApiController {
         this.transcriptPollScheduler = Optional.ofNullable(transcriptPollScheduler.getIfAvailable());
         this.notificationApi = Optional.ofNullable(notificationApi.getIfAvailable());
         this.notificationPublisher = Optional.ofNullable(notificationPublisher.getIfAvailable());
+        this.deliveryApi = Optional.ofNullable(deliveryApi.getIfAvailable());
+        this.objectStorage = Optional.ofNullable(objectStorage.getIfAvailable());
         this.teamsPreferencesStore = Objects.requireNonNull(teamsPreferencesStore, "teamsPreferencesStore");
         this.graphClientId = graphClientId == null ? "" : graphClientId;
     }
@@ -468,6 +480,98 @@ public class PortalApiController {
 
     private TenantId principalTenantId() {
         return TenantSecurityContext.require().tenantId();
+    }
+
+
+    @GetMapping("/meetings/{meetingId}/delivery")
+    @RequiresPermission(Permission.MEETING_READ)
+    public List<PortalDeliveryRequestView> meetingDelivery(
+            @PathVariable UUID meetingId,
+            HttpServletResponse response
+    ) {
+        require(Permission.MEETING_READ);
+        AuthenticatedPrincipal principal = TenantSecurityContext.require();
+        meetingApi.getMeeting(meetingId);
+        if (deliveryApi.isEmpty() || meetingIntelligenceApi.isEmpty()) {
+            markStub(response);
+            return List.of();
+        }
+        List<PortalDeliveryRequestView> out = new ArrayList<>();
+        java.util.Set<UUID> seen = new java.util.LinkedHashSet<>();
+        for (MeetingNoteDetailResponse note : meetingIntelligenceApi.get().listNotesForMeeting(meetingId)) {
+            if (note.currentVersion() == null) {
+                continue;
+            }
+            UUID noteVersionId = note.currentVersion().id();
+            for (DeliveryRequestStatusView req : deliveryApi.get().listByNoteVersion(
+                    principal.tenantId().value(), noteVersionId)) {
+                if (req == null || !seen.add(req.id())) {
+                    continue;
+                }
+                out.add(new PortalDeliveryRequestView(
+                        req.id(),
+                        req.noteVersionId(),
+                        req.intent(),
+                        req.status() == null ? null : req.status().name(),
+                        req.recipientEmail(),
+                        req.createdAt() == null ? null : req.createdAt().toString(),
+                        req.updatedAt() == null ? null : req.updatedAt().toString()
+                ));
+            }
+        }
+        return out;
+    }
+
+
+    @GetMapping("/meetings/{meetingId}/notes/{noteId}/renders")
+    @RequiresPermission(Permission.MEETING_READ)
+    public NoteRenderStatusView noteRenders(
+            @PathVariable UUID meetingId,
+            @PathVariable UUID noteId,
+            HttpServletResponse response
+    ) {
+        require(Permission.MEETING_READ);
+        meetingApi.getMeeting(meetingId);
+        if (templateApi.isEmpty()) {
+            markStub(response);
+            return new NoteRenderStatusView(List.of(), List.of());
+        }
+        TenantId tenantId = principalTenantId();
+        List<PortalRenderJobView> jobs = templateApi.get().listRenderJobsForNote(tenantId, noteId).stream()
+                .map(j -> new PortalRenderJobView(
+                        j.id(),
+                        j.format(),
+                        j.status(),
+                        j.renderedDocumentId().orElse(null),
+                        j.createdAt() == null ? null : j.createdAt().toString(),
+                        j.updatedAt() == null ? null : j.updatedAt().toString(),
+                        j.lastError().orElse(null)
+                ))
+                .toList();
+        List<PortalRenderedDocumentView> documents = new ArrayList<>();
+        for (RenderedDocumentView doc : templateApi.get().listRenderedDocumentsForNote(tenantId, noteId)) {
+            String downloadUrl = null;
+            String expiresAt = null;
+            if (objectStorage.isPresent()) {
+                try {
+                    AuthorizedUrl url = objectStorage.get().generateAuthorizedUrl(
+                            doc.storageKey(), java.time.Duration.ofMinutes(15));
+                    downloadUrl = url.url().toString();
+                    expiresAt = url.expiresAt().toString();
+                } catch (RuntimeException ignored) {
+                    /* storage may not support signed URLs in all envs */
+                }
+            }
+            documents.add(new PortalRenderedDocumentView(
+                    doc.id(),
+                    doc.format(),
+                    doc.sizeBytes(),
+                    downloadUrl,
+                    expiresAt,
+                    doc.createdAt() == null ? null : doc.createdAt().toString()
+            ));
+        }
+        return new NoteRenderStatusView(jobs, documents);
     }
 
     @GetMapping("/meetings/{meetingId}/transcript")
@@ -1171,9 +1275,13 @@ public class PortalApiController {
                     }
                 }
             }
-            long startMs = segment == null ? 0L : segment.startMs();
-            long endMs = segment == null ? 0L : segment.endMs();
-            String quote = segment == null || segment.text() == null ? "" : truncateQuote(segment.text());
+            if (segment == null) {
+                // Plan §7: never emit seek-to-zero placeholders for unresolved links.
+                continue;
+            }
+            long startMs = segment.startMs();
+            long endMs = segment.endMs();
+            String quote = segment.text() == null ? "" : truncateQuote(segment.text());
             bySubject.computeIfAbsent(link.subjectId(), ignored -> new ArrayList<>())
                     .add(new PortalEvidenceView(segmentId, startMs, endMs, quote));
         }
@@ -1752,6 +1860,44 @@ public class PortalApiController {
     }
 
     public record TranscriptView(List<? extends Object> segments, List<String> speakers) {
+    }
+
+    public record PortalDeliveryRequestView(
+            UUID id,
+            UUID noteVersionId,
+            String intent,
+            String status,
+            String recipientEmail,
+            String createdAt,
+            String updatedAt
+    ) {
+    }
+
+    public record PortalRenderJobView(
+            UUID id,
+            String format,
+            String status,
+            UUID renderedDocumentId,
+            String createdAt,
+            String updatedAt,
+            String lastError
+    ) {
+    }
+
+    public record PortalRenderedDocumentView(
+            UUID id,
+            String format,
+            long sizeBytes,
+            String downloadUrl,
+            String expiresAt,
+            String createdAt
+    ) {
+    }
+
+    public record NoteRenderStatusView(
+            List<PortalRenderJobView> jobs,
+            List<PortalRenderedDocumentView> documents
+    ) {
     }
 
     public record MeetingNoteView(

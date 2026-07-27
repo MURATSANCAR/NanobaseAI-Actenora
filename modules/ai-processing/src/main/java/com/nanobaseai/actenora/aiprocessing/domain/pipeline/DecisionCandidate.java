@@ -6,8 +6,14 @@ import java.util.Objects;
 public record DecisionCandidate(
         String text,
         List<String> evidenceSegmentIds,
-        double confidence
+        double confidence,
+        String rationale,
+        String status
 ) {
+    public DecisionCandidate(String text, List<String> evidenceSegmentIds, double confidence) {
+        this(text, evidenceSegmentIds, confidence, null, null);
+    }
+
     public DecisionCandidate {
         Objects.requireNonNull(text, "text");
         evidenceSegmentIds = List.copyOf(Objects.requireNonNull(evidenceSegmentIds, "evidenceSegmentIds"));

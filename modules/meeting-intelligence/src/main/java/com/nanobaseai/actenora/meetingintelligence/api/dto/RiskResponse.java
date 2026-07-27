@@ -12,6 +12,8 @@ public record RiskResponse(
         boolean requiresManualReview,
         Double aiConfidence,
         HumanApprovalStatus humanApprovalStatus,
+        String likelihood,
+        String mitigation,
         long version,
         Instant updatedAt
 ) {

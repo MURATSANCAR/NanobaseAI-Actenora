@@ -134,7 +134,8 @@ public final class MapAiCandidatesToNoteService {
             boolean missing = candidate.evidenceSegmentIds().isEmpty();
             anyMissingEvidence |= missing;
             Decision decision = Decision.createFromMapping(
-                    tenantId, note.id(), version.id(), candidate.text(), missing, candidate.confidence(), now
+                    tenantId, note.id(), version.id(), candidate.text(), missing, candidate.confidence(),
+                    candidate.rationale(), candidate.status(), now
             );
             decisionRepository.save(decision);
             linkEvidence(tenantId, note.id(), version.id(), EvidenceSubjectType.DECISION, decision.id(),
@@ -153,7 +154,8 @@ public final class MapAiCandidatesToNoteService {
             LocalDate due = parseDueDate(candidate.dueDate());
             ActionItem item = ActionItem.createFromMapping(
                     tenantId, note.id(), version.id(), candidate.text(), candidate.owner(), due,
-                    missing, candidate.confidence(), now
+                    missing, candidate.confidence(),
+                    candidate.ownerType(), candidate.priority(), candidate.relativeDate(), now
             );
             actionItemRepository.save(item);
             linkEvidence(tenantId, note.id(), version.id(), EvidenceSubjectType.ACTION_ITEM, item.id(),
@@ -170,7 +172,8 @@ public final class MapAiCandidatesToNoteService {
             boolean missing = candidate.evidenceSegmentIds().isEmpty();
             anyMissingEvidence |= missing;
             Risk risk = Risk.createFromMapping(
-                    tenantId, note.id(), version.id(), candidate.text(), missing, candidate.confidence(), now
+                    tenantId, note.id(), version.id(), candidate.text(), missing, candidate.confidence(),
+                    candidate.likelihood(), candidate.mitigation(), now
             );
             riskRepository.save(risk);
             linkEvidence(tenantId, note.id(), version.id(), EvidenceSubjectType.RISK, risk.id(),

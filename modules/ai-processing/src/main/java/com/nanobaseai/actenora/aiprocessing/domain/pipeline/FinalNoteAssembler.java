@@ -57,14 +57,16 @@ public final class FinalNoteAssembler {
         boolean en = "en".equals(language);
         StringBuilder sb = new StringBuilder();
         if (!bundle.topics().isEmpty()) {
-            sb.append(en ? "Topics: " : "Konular: ");
-            sb.append(bundle.topics().getFirst().text());
-            if (bundle.topics().size() > 1) {
-                sb.append(en
-                        ? " (+" + (bundle.topics().size() - 1) + " more)"
-                        : " (+" + (bundle.topics().size() - 1) + " daha)");
+            sb.append(en ? "Agenda: " : "Gündem: ");
+            List<String> topicLines = new ArrayList<>();
+            for (TopicCandidate topic : bundle.topics()) {
+                if (topic.summary() != null && !topic.summary().isBlank()) {
+                    topicLines.add(topic.text() + " — " + topic.summary());
+                } else {
+                    topicLines.add(topic.text());
+                }
             }
-            sb.append('.');
+            sb.append(String.join("; ", topicLines)).append('.');
         }
         if (!bundle.decisions().isEmpty()) {
             if (!sb.isEmpty()) {

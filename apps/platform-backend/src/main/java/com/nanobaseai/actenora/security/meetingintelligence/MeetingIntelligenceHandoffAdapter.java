@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffP
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.delivery.api.DeliveryApi;
+import com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
@@ -42,6 +43,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final NoteArtifactStoragePort noteArtifactStorage;
     private final Optional<PlatformUserNotificationPublisher> notificationPublisher;
     private final Optional<DeliveryApi> deliveryApi;
+    private final Optional<DeliveryWorker> deliveryWorker;
 
     public MeetingIntelligenceHandoffAdapter(
             MeetingIntelligenceApi meetingIntelligenceApi,
@@ -57,6 +59,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 Optional.empty(),
                 Optional.empty(),
                 NoteArtifactStoragePort.noop(),
+                Optional.empty(),
                 Optional.empty(),
                 Optional.empty()
         );
@@ -79,6 +82,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 meetingApi,
                 NoteArtifactStoragePort.noop(),
                 Optional.empty(),
+                Optional.empty(),
                 Optional.empty()
         );
     }
@@ -100,6 +104,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 draftMailNotifier,
                 meetingApi,
                 noteArtifactStorage,
+                Optional.empty(),
                 Optional.empty(),
                 Optional.empty()
         );
@@ -124,6 +129,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 meetingApi,
                 noteArtifactStorage,
                 notificationPublisher,
+                Optional.empty(),
                 Optional.empty()
         );
     }
@@ -139,6 +145,32 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             Optional<PlatformUserNotificationPublisher> notificationPublisher,
             Optional<DeliveryApi> deliveryApi
     ) {
+        this(
+                meetingIntelligenceApi,
+                evidenceValidationApi,
+                segmentSource,
+                auditPort,
+                draftMailNotifier,
+                meetingApi,
+                noteArtifactStorage,
+                notificationPublisher,
+                deliveryApi,
+                Optional.empty()
+        );
+    }
+
+    public MeetingIntelligenceHandoffAdapter(
+            MeetingIntelligenceApi meetingIntelligenceApi,
+            EvidenceValidationApi evidenceValidationApi,
+            TranscriptSegmentSourcePort segmentSource,
+            MeetingIntelligenceAuditPort auditPort,
+            Optional<DraftMinutesMailNotifier> draftMailNotifier,
+            Optional<MeetingApi> meetingApi,
+            NoteArtifactStoragePort noteArtifactStorage,
+            Optional<PlatformUserNotificationPublisher> notificationPublisher,
+            Optional<DeliveryApi> deliveryApi,
+            Optional<DeliveryWorker> deliveryWorker
+    ) {
         this.meetingIntelligenceApi = Objects.requireNonNull(meetingIntelligenceApi, "meetingIntelligenceApi");
         this.evidenceValidationApi = Objects.requireNonNull(evidenceValidationApi, "evidenceValidationApi");
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
@@ -148,6 +180,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         this.noteArtifactStorage = Objects.requireNonNull(noteArtifactStorage, "noteArtifactStorage");
         this.notificationPublisher = notificationPublisher == null ? Optional.empty() : notificationPublisher;
         this.deliveryApi = deliveryApi == null ? Optional.empty() : deliveryApi;
+        this.deliveryWorker = deliveryWorker == null ? Optional.empty() : deliveryWorker;
     }
 
     @Override
@@ -263,6 +296,13 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                         subject,
                         body
                 );
+                deliveryWorker.ifPresent(worker -> {
+                    try {
+                        worker.pollOnce();
+                    } catch (RuntimeException ignored) {
+                        /* scheduled worker will retry */
+                    }
+                });
                 return;
             }
             if (draftMailNotifier.isPresent()) {

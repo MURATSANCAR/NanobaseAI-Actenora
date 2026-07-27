@@ -157,24 +157,28 @@ class PortalApiBindingTest {
         ObjectProvider<TranscriptApi> transcriptProvider = beanFactory.getBeanProvider(TranscriptApi.class);
 
         InMemoryMeetingTemplateRepository templateRepo = new InMemoryMeetingTemplateRepository();
+        InMemoryNoteTemplateLockRepository templateLocks = new InMemoryNoteTemplateLockRepository();
+        InMemoryRenderJobRepository renderJobs = new InMemoryRenderJobRepository();
+        InMemoryRenderedDocumentRepository renderedDocuments = new InMemoryRenderedDocumentRepository();
         InstantClock templateClock = new InstantClock(Clock.systemUTC());
         TemplateStudioService templateStudio = new TemplateStudioService(
                 templateRepo,
-                new InMemoryNoteTemplateLockRepository(),
+                templateLocks,
                 new SchemaJsonParser(new ObjectMapper()),
                 templateClock
         );
         DocumentRenderService renderService = new DocumentRenderService(
                 templateRepo,
-                new InMemoryNoteTemplateLockRepository(),
-                new InMemoryRenderJobRepository(),
-                new InMemoryRenderedDocumentRepository(),
+                templateLocks,
+                renderJobs,
+                renderedDocuments,
                 templateClock
         );
         TemplateApi templateApi = new TemplateApiFacade(
                 templateStudio,
                 renderService,
-                new InMemoryRenderedDocumentRepository()
+                renderedDocuments,
+                renderJobs
         );
 
         StaticListableBeanFactory optionalBeans = new StaticListableBeanFactory();
@@ -211,6 +215,8 @@ class PortalApiBindingTest {
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.notification.api.NotificationApi.class),
                 optionalBeans.getBeanProvider(
                         com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher.class),
+                optionalBeans.getBeanProvider(com.nanobaseai.actenora.delivery.api.DeliveryApi.class),
+                optionalBeans.getBeanProvider(com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage.class),
                 new PortalTeamsPreferencesStore(),
                 "test-graph-client-id"
         );

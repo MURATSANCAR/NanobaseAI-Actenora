@@ -47,6 +47,11 @@ public final class ExtractionJsonSchemaValidator {
             "importantFacts"
     );
 
+    private static final Set<String> OWNER_TYPES = Set.of("PERSON", "TEAM", "ROLE", "UNKNOWN");
+    private static final Set<String> PRIORITIES = Set.of("HIGH", "MEDIUM", "LOW");
+    private static final Set<String> LIKELIHOODS = Set.of("HIGH", "MEDIUM", "LOW");
+    private static final Set<String> DECISION_STATUSES = Set.of("DECIDED", "PROPOSED", "DEFERRED");
+
     private final ObjectMapper objectMapper;
     private final JsonNode schemaRoot;
 
@@ -269,17 +274,17 @@ public final class ExtractionJsonSchemaValidator {
         }
         if ("decisions".equals(field)) {
             assertNullOrText(item, "rationale");
-            assertNullOrText(item, "status");
+            assertNullOrEnum(item, "status", DECISION_STATUSES);
         }
         if ("actionItems".equals(field)) {
             assertNullOrText(item, "owner");
-            assertNullOrText(item, "ownerType");
+            assertNullOrEnum(item, "ownerType", OWNER_TYPES);
             assertNullOrText(item, "dueDate");
             assertNullOrText(item, "relativeDate");
-            assertNullOrText(item, "priority");
+            assertNullOrEnum(item, "priority", PRIORITIES);
         }
         if ("risks".equals(field)) {
-            assertNullOrText(item, "likelihood");
+            assertNullOrEnum(item, "likelihood", LIKELIHOODS);
             assertNullOrText(item, "mitigation");
         }
         if ("commitments".equals(field)) {
@@ -294,6 +299,26 @@ public final class ExtractionJsonSchemaValidator {
         JsonNode value = item.get(field);
         if (!(value.isNull() || value.isTextual())) {
             throw schemaViolation(field + " must be string or null");
+        }
+    }
+
+    private void assertNullOrEnum(JsonNode item, String field, Set<String> allowed) {
+        if (!item.has(field)) {
+            return;
+        }
+        JsonNode value = item.get(field);
+        if (value.isNull()) {
+            return;
+        }
+        if (!value.isTextual()) {
+            throw schemaViolation(field + " must be string or null");
+        }
+        String text = value.asText().trim();
+        if (text.isEmpty()) {
+            return;
+        }
+        if (!allowed.contains(text)) {
+            throw schemaViolation(field + " must be one of " + allowed + " (got '" + text + "')");
         }
     }
 

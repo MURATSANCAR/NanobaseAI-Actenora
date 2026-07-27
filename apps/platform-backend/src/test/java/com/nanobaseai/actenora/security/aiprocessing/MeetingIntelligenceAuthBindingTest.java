@@ -206,7 +206,7 @@ class MeetingIntelligenceAuthBindingTest {
         validationController = new EvidenceValidationAuthController(
                 evidenceValidationApi, reviews, identityApi);
         aiController = new AiProcessingController(
-                aiProcessingApi, multiModelRoutingApi, executor, tenantAiPolicy, identityApi, null);
+                aiProcessingApi, multiModelRoutingApi, executor, tenantAiPolicy, identityApi, null, null, null);
     }
 
     @AfterEach

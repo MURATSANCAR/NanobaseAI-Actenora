@@ -336,9 +336,19 @@ public final class MinutesSynthesisAndAudit {
 
     private ObjectNode toCandidateNode(ExtractionBundle bundle) {
         ObjectNode root = objectMapper.createObjectNode();
-        root.set("topics", texts(bundle.topics().stream().map(TopicCandidate::text).toList(),
-                bundle.topics().stream().map(TopicCandidate::evidenceSegmentIds).toList(),
-                bundle.topics().stream().map(TopicCandidate::confidence).toList()));
+        ArrayNode topics = root.putArray("topics");
+        for (TopicCandidate topic : bundle.topics()) {
+            ObjectNode n = topics.addObject();
+            n.put("text", topic.text());
+            if (topic.summary() == null) {
+                n.putNull("summary");
+            } else {
+                n.put("summary", topic.summary());
+            }
+            ArrayNode ev = n.putArray("evidenceSegmentIds");
+            topic.evidenceSegmentIds().forEach(ev::add);
+            n.put("confidence", topic.confidence());
+        }
         root.set("decisions", texts(bundle.decisions().stream().map(DecisionCandidate::text).toList(),
                 bundle.decisions().stream().map(DecisionCandidate::evidenceSegmentIds).toList(),
                 bundle.decisions().stream().map(DecisionCandidate::confidence).toList()));

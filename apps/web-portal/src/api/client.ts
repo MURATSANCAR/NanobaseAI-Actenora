@@ -101,6 +101,9 @@ function createHttpApiClient(baseUrl: string): ApiClient {
       httpJson(baseUrl, "/api/v1/portal/notifications/read-all", { method: "POST" }),
     listMeetings: (params) => httpJson(baseUrl, `/api/v1/portal/meetings${q(params)}`),
     getMeetingDetail: (id) => httpJson(baseUrl, `/api/v1/portal/meetings/${id}`),
+    getMeetingDelivery: (id) => httpJson(baseUrl, `/api/v1/portal/meetings/${id}/delivery`),
+    getNoteRenders: (meetingId, noteId) =>
+      httpJson(baseUrl, `/api/v1/portal/meetings/${meetingId}/notes/${noteId}/renders`),
     getMeetingTranscript: (id, params) =>
       httpJson(baseUrl, `/api/v1/portal/meetings/${id}/transcript${q(params)}`),
     updateMeetingNote: (meetingId, noteId, body) =>
@@ -224,6 +227,8 @@ export const queryKeys = {
   approvalsPending: ["approvals-pending"] as const,
   meetings: (params: object) => ["meetings", params] as const,
   meetingDetail: (id: string) => ["meeting", id] as const,
+  meetingDelivery: (id: string) => ["meeting-delivery", id] as const,
+  noteRenders: (meetingId: string, noteId: string) => ["note-renders", meetingId, noteId] as const,
   transcript: (id: string, params: object) => ["transcript", id, params] as const,
   decisions: (params: object) => ["decisions", params] as const,
   actions: (params: object) => ["actions", params] as const,

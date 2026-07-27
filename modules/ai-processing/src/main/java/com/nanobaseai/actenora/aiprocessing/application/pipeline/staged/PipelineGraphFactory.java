@@ -70,12 +70,34 @@ public final class PipelineGraphFactory {
             Instant now,
             Duration deadline
     ) {
-        String rootKey = "meeting:" + meetingOccurrenceId + ":root:" + transcriptHash + ":pv:v2";
-        Optional<AiJob> existing = jobs.findByIdempotencyKey(tenantId, rootKey);
-        if (existing.isPresent()) {
+        return admitFromTranscriptReady(
+                tenantId, meetingOccurrenceId, transcriptId, transcriptHash,
+                priority, language, contextSize, correlationId, now, deadline, false
+        );
+    }
+
+    public GraphAdmission admitFromTranscriptReady(
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            UUID transcriptId,
+            String transcriptHash,
+            JobPriority priority,
+            String language,
+            int contextSize,
+            UUID correlationId,
+            Instant now,
+            Duration deadline,
+            boolean forceReprocess
+    ) {
+        String baseKey = "meeting:" + meetingOccurrenceId + ":root:" + transcriptHash + ":pv:v2";
+        Optional<AiJob> existing = jobs.findByIdempotencyKey(tenantId, baseKey);
+        if (existing.isPresent() && !forceReprocess) {
             AiJob root = existing.get();
             return new GraphAdmission(root, null, null, false);
         }
+        String rootKey = forceReprocess
+                ? baseKey + ":force:" + UUID.randomUUID()
+                : baseKey;
 
         Instant deadlineAt = now.plus(deadline == null ? Duration.ofHours(1) : deadline);
         AiJob root = AiJob.enqueueStaged(
@@ -95,7 +117,7 @@ public final class PipelineGraphFactory {
                 AiCapability.TRANSCRIPT_EXTRACTION,
                 PROMPT_NORMALIZE, SCHEMA_EXTRACTION, language, contextSize, true,
                 now, deadlineAt, correlationId, root.id(),
-                "meeting:" + meetingOccurrenceId + ":normalize:" + transcriptHash + ":pv:v2",
+                (forceReprocess ? rootKey : "meeting:" + meetingOccurrenceId + ":normalize:" + transcriptHash + ":pv:v2"),
                 null
         );
         applySyntheticRoute(normalize, now);
@@ -107,7 +129,7 @@ public final class PipelineGraphFactory {
                 AiCapability.TRANSCRIPT_EXTRACTION,
                 PROMPT_TRIAGE, SCHEMA_TRIAGE, language, contextSize, true,
                 now, deadlineAt, correlationId, root.id(),
-                "meeting:" + meetingOccurrenceId + ":triage:" + transcriptHash + ":pv:v2",
+                (forceReprocess ? rootKey + ":triage" : "meeting:" + meetingOccurrenceId + ":triage:" + transcriptHash + ":pv:v2"),
                 null
         );
         applySyntheticRoute(triage, now);

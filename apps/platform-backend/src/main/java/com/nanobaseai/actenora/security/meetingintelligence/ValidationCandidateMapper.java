@@ -4,7 +4,10 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ImportantFactCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.IssueCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ProposalCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
@@ -96,6 +99,18 @@ public final class ValidationCandidateMapper {
         for (CommitmentCandidate commitment : draft.commitments()) {
             candidates.add(build("commitment-" + (++i), CandidateKind.COMMITMENT, commitment.text(),
                     commitment.evidenceSegmentIds(), commitment.confidence(), commitment.owner(), null, false));
+        }
+        for (IssueCandidate issue : draft.issues()) {
+            candidates.add(build("issue-" + (++i), CandidateKind.ISSUE, issue.text(),
+                    issue.evidenceSegmentIds(), issue.confidence(), null, null, false));
+        }
+        for (ProposalCandidate proposal : draft.proposals()) {
+            candidates.add(build("proposal-" + (++i), CandidateKind.PROPOSAL, proposal.text(),
+                    proposal.evidenceSegmentIds(), proposal.confidence(), null, null, false));
+        }
+        for (ImportantFactCandidate fact : draft.importantFacts()) {
+            candidates.add(build("fact-" + (++i), CandidateKind.IMPORTANT_FACT, fact.text(),
+                    fact.evidenceSegmentIds(), fact.confidence(), null, null, false));
         }
         return List.copyOf(candidates);
     }

@@ -160,6 +160,40 @@ export interface MeetingDetailResponse {
   partial: boolean;
 }
 
+export interface MeetingDeliveryRequest {
+  id: string;
+  noteVersionId: string;
+  intent: string;
+  status: string;
+  recipientEmail: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface NoteRenderJob {
+  id: string;
+  format: string;
+  status: string;
+  renderedDocumentId: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  lastError: string | null;
+}
+
+export interface NoteRenderedDocument {
+  id: string;
+  format: string;
+  sizeBytes: number;
+  downloadUrl: string | null;
+  expiresAt: string | null;
+  createdAt: string | null;
+}
+
+export interface NoteRenderStatus {
+  jobs: NoteRenderJob[];
+  documents: NoteRenderedDocument[];
+}
+
 export interface TranscriptSegment {
   id: string;
   speaker: string;
@@ -362,6 +396,8 @@ export interface ApiClient {
   markAllNotificationsRead(): Promise<void>;
   listMeetings(params?: ListMeetingsParams): Promise<CursorPage<MeetingSummary>>;
   getMeetingDetail(meetingId: string): Promise<MeetingDetailResponse>;
+  getMeetingDelivery(meetingId: string): Promise<MeetingDeliveryRequest[]>;
+  getNoteRenders(meetingId: string, noteId: string): Promise<NoteRenderStatus>;
   getMeetingTranscript(
     meetingId: string,
     params?: { speaker?: string; q?: string },

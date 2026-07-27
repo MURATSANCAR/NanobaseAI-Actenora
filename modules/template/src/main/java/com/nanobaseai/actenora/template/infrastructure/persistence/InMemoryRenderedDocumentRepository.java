@@ -35,6 +35,14 @@ public final class InMemoryRenderedDocumentRepository implements RenderedDocumen
         return Optional.ofNullable(byId.get(idKey));
     }
 
+    @Override
+    public java.util.List<RenderedDocument> findByNoteId(TenantId tenantId, java.util.UUID noteId) {
+        return byId.values().stream()
+                .filter(doc -> doc.tenantId().equals(tenantId) && doc.noteId().equals(noteId))
+                .sorted(java.util.Comparator.comparing(RenderedDocument::createdAt).reversed())
+                .toList();
+    }
+
     private static String key(TenantId tenantId, RenderedDocumentId id) {
         return tenantId.value() + ":" + id.value();
     }

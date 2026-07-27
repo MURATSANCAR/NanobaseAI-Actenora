@@ -22,7 +22,10 @@ public final class JdbcProposalRepository implements ProposalRepository {
             rs.getString("text"),
             rs.getBoolean("requires_manual_review"),
             (Double) rs.getObject("ai_confidence"),
-            HumanApprovalStatus.valueOf(rs.getString("human_approval_status")),
+            HumanApprovalStatus.valueOf(
+                    "PENDING".equals(rs.getString("human_approval_status"))
+                            ? "NONE"
+                            : rs.getString("human_approval_status")),
             JdbcInstant.get(rs, "created_at"),
             JdbcInstant.get(rs, "updated_at"),
             rs.getLong("version")

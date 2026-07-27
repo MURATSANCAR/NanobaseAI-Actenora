@@ -5,6 +5,8 @@ import com.nanobaseai.actenora.aiprocessing.api.AiProcessingProblemDetails;
 import com.nanobaseai.actenora.aiprocessing.api.MultiModelRoutingApi;
 import com.nanobaseai.actenora.aiprocessing.api.MultiModelRoutingDtos;
 import com.nanobaseai.actenora.aiprocessing.application.execution.AiJobInferenceExecutor;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.PipelineGraphFactory;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.PipelineMode;
 import com.nanobaseai.actenora.aiprocessing.application.port.AdmissionController;
 import com.nanobaseai.actenora.aiprocessing.application.port.JobScheduler;
 import com.nanobaseai.actenora.aiprocessing.application.port.TenantAiPolicyPort;
@@ -21,6 +23,7 @@ import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
 import com.nanobaseai.actenora.sharedkernel.coordination.JobProgressCache;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -56,6 +59,8 @@ public class AiProcessingController {
     private final TenantAiPolicyPort tenantAiPolicy;
     private final IdentityApi identityApi;
     private final JobProgressCache jobProgressCache;
+    private final ObjectProvider<PipelineGraphFactory> pipelineGraphFactory;
+    private final ObjectProvider<AiPipelineProperties> pipelineProperties;
 
     public AiProcessingController(
             AiProcessingApi aiProcessingApi,
@@ -63,7 +68,9 @@ public class AiProcessingController {
             AiJobInferenceExecutor inferenceExecutor,
             TenantAiPolicyPort tenantAiPolicy,
             IdentityApi identityApi,
-            @Autowired(required = false) JobProgressCache jobProgressCache
+            @Autowired(required = false) JobProgressCache jobProgressCache,
+            ObjectProvider<PipelineGraphFactory> pipelineGraphFactory,
+            ObjectProvider<AiPipelineProperties> pipelineProperties
     ) {
         this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
         this.multiModelRoutingApi = Objects.requireNonNull(multiModelRoutingApi, "multiModelRoutingApi");
@@ -71,6 +78,8 @@ public class AiProcessingController {
         this.tenantAiPolicy = Objects.requireNonNull(tenantAiPolicy, "tenantAiPolicy");
         this.identityApi = Objects.requireNonNull(identityApi, "identityApi");
         this.jobProgressCache = jobProgressCache;
+        this.pipelineGraphFactory = pipelineGraphFactory;
+        this.pipelineProperties = pipelineProperties;
     }
 
     @PostMapping("/ai-jobs")
@@ -79,6 +88,37 @@ public class AiProcessingController {
         AuthenticatedPrincipal principal = TenantSecurityContext.require();
         identityApi.requirePermission(principal, Permission.MEETING_WRITE);
         Instant now = Instant.now();
+        boolean forceReprocess = Boolean.TRUE.equals(body.forceReprocess());
+        AiPipelineProperties props = pipelineProperties == null ? null : pipelineProperties.getIfAvailable();
+        PipelineGraphFactory graph = pipelineGraphFactory == null ? null : pipelineGraphFactory.getIfAvailable();
+        if (forceReprocess
+                && graph != null
+                && props != null
+                && props.resolvedMode() == PipelineMode.STAGED) {
+            JobPriority priority = body.priority() == null ? JobPriority.NORMAL : body.priority();
+            Duration deadline = priority == JobPriority.BULK ? Duration.ofHours(4) : Duration.ofHours(1);
+            String language = body.language() == null || body.language().isBlank() ? "tr" : body.language();
+            UUID correlation = body.correlationId() == null ? body.transcriptId() : body.correlationId();
+            PipelineGraphFactory.GraphAdmission admission = graph.admitFromTranscriptReady(
+                    principal.tenantId().value(),
+                    body.meetingOccurrenceId(),
+                    body.transcriptId(),
+                    body.transcriptId().toString(),
+                    priority,
+                    language,
+                    body.contextSize(),
+                    correlation,
+                    now,
+                    deadline,
+                    true
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(new AdmissionResponse(
+                    true,
+                    AiJobView.from(admission.root()),
+                    0L,
+                    null
+            ));
+        }
         AdmissionController.SubmitAiJobCommand command = new AdmissionController.SubmitAiJobCommand(
                 principal.tenantId().value(),
                 body.meetingOccurrenceId(),
@@ -93,7 +133,7 @@ public class AiProcessingController {
                 body.fallbackPermittedOverride(),
                 body.correlationId() == null ? body.transcriptId() : body.correlationId(),
                 now,
-                Boolean.TRUE.equals(body.forceReprocess())
+                forceReprocess
         );
         AdmissionController.AdmissionDecision decision = aiProcessingApi.submitJob(command);
         if (!decision.admitted()) {

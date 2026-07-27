@@ -48,6 +48,12 @@ class PipelineGraphFactoryTest {
                 UUID.randomUUID(), now, Duration.ofHours(1));
         assertFalse(second.created());
         assertEquals(first.root().id(), second.root().id());
+
+        PipelineGraphFactory.GraphAdmission forced = factory.admitFromTranscriptReady(
+                tenant, meeting, transcript, "hash-1", JobPriority.NORMAL, "tr", 10,
+                UUID.randomUUID(), now, Duration.ofHours(1), true);
+        assertTrue(forced.created());
+        assertTrue(!forced.root().id().equals(first.root().id()));
     }
 
     @Test

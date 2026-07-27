@@ -41,4 +41,8 @@ public interface TemplateApi {
     RenderJobId enqueueRender(TenantId tenantId, UUID noteId, TemplateVersionId versionId, String contentJson, String format);
 
     Optional<RenderedDocumentId> findRenderedDocument(TenantId tenantId, RenderJobId jobId);
+
+    java.util.List<RenderJobView> listRenderJobsForNote(TenantId tenantId, UUID noteId);
+
+    java.util.List<RenderedDocumentView> listRenderedDocumentsForNote(TenantId tenantId, UUID noteId);
 }

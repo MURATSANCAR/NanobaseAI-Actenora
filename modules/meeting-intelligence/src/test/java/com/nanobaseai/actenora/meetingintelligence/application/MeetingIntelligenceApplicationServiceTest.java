@@ -37,7 +37,10 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.In
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryEvidenceLinkRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryIssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryOpenQuestionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryProposalRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryQualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryRiskRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.StaticTenantContextPort;
@@ -72,6 +75,9 @@ class MeetingIntelligenceApplicationServiceTest {
     private InMemoryRiskRepository risks;
     private InMemoryCommitmentRepository commitments;
     private InMemoryOpenQuestionRepository openQuestions;
+    private InMemoryIssueRepository issues;
+    private InMemoryProposalRepository proposals;
+    private InMemoryImportantFactRepository importantFacts;
     private InMemoryEvidenceLinkRepository evidenceLinks;
     private InMemoryQualityFlagRepository qualityFlags;
     private StaticTenantContextPort tenantContext;
@@ -86,6 +92,9 @@ class MeetingIntelligenceApplicationServiceTest {
         risks = new InMemoryRiskRepository();
         commitments = new InMemoryCommitmentRepository();
         openQuestions = new InMemoryOpenQuestionRepository();
+        issues = new InMemoryIssueRepository();
+        proposals = new InMemoryProposalRepository();
+        importantFacts = new InMemoryImportantFactRepository();
         evidenceLinks = new InMemoryEvidenceLinkRepository();
         qualityFlags = new InMemoryQualityFlagRepository();
         tenantContext = new StaticTenantContextPort(TenantId.of(tenantA), actor);
@@ -93,11 +102,11 @@ class MeetingIntelligenceApplicationServiceTest {
         FixedClockPort clockPort = new FixedClockPort(clock);
         MapAiCandidatesToNoteService mapping = new MapAiCandidatesToNoteService(
                 notes, versions, decisions, actionItems, risks, commitments,
-                openQuestions, evidenceLinks, qualityFlags, clockPort
+                openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags, clockPort
         );
         service = new MeetingIntelligenceApplicationService(
                 tenantContext, clockPort, mapping, notes, versions, decisions, actionItems,
-                risks, commitments, openQuestions, evidenceLinks, qualityFlags
+                risks, commitments, openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags
         );
     }
 
@@ -134,11 +143,7 @@ class MeetingIntelligenceApplicationServiceTest {
                         List.of(),
                         List.of(),
                         List.of(),
-                        List.of(),
-                        List.of(),
-                        List.of(),
-                        0.8
-                ),
+                        List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0.8),
                 "model-qwen",
                 "prompt-v3",
                 "schema-v1",
@@ -230,10 +235,10 @@ class MeetingIntelligenceApplicationServiceTest {
                 tenantContext, clockPort,
                 new MapAiCandidatesToNoteService(
                         notes, versions, decisions, actionItems, risks, commitments,
-                        openQuestions, evidenceLinks, qualityFlags, clockPort
+                        openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags, clockPort
                 ),
                 notes, versions, decisions, actionItems, risks, commitments,
-                openQuestions, evidenceLinks, qualityFlags
+                openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags
         );
 
         assertThrows(com.nanobaseai.actenora.meetingintelligence.domain.exception.MeetingNoteNotFoundException.class,
@@ -282,6 +287,30 @@ class MeetingIntelligenceApplicationServiceTest {
         assertEquals(1L, updated.version());
     }
 
+    @Test
+    void mappedChildrenSurviveSharedStoreReload() {
+        MeetingNoteDetailResponse created = mapFullyEvidencedNote();
+        UUID noteId = created.id();
+
+        FixedClockPort clockPort = new FixedClockPort(clock);
+        MapAiCandidatesToNoteService mapping = new MapAiCandidatesToNoteService(
+                notes, versions, decisions, actionItems, risks, commitments,
+                openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags, clockPort
+        );
+        MeetingIntelligenceApplicationService reloaded = new MeetingIntelligenceApplicationService(
+                tenantContext, clockPort, mapping, notes, versions, decisions, actionItems,
+                risks, commitments, openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags
+        );
+
+        MeetingNoteDetailResponse detail = reloaded.getNoteDetail(noteId);
+        assertEquals(1, detail.decisions().size());
+        assertEquals(1, detail.actionItems().size());
+        assertEquals(1, detail.risks().size());
+        assertEquals(1, detail.commitments().size());
+        assertEquals(1, detail.openQuestions().size());
+        assertEquals("Approve budget", detail.decisions().getFirst().text());
+    }
+
     private MeetingNoteDetailResponse mapFullyEvidencedNote() {
         return service.mapAiCandidates(new MapAiCandidatesCommand(
                 tenantA,
@@ -292,11 +321,7 @@ class MeetingIntelligenceApplicationServiceTest {
                         List.of(new ActionItemCandidateInput("Draft plan", "alice", "2026-08-01", List.of("seg-2"), 0.8)),
                         List.of(new RiskCandidateInput("Vendor delay", List.of("seg-3"), 0.7)),
                         List.of(new OpenQuestionCandidateInput("Who owns QA?", List.of("seg-4"), 0.6)),
-                        List.of(new CommitmentCandidateInput("Deliver by Friday", "bob", List.of("seg-5"), 0.85)),
-                        List.of("LOW_CONFIDENCE"),
-                        List.of("seg-root"),
-                        0.88
-                ),
+                        List.of(new CommitmentCandidateInput("Deliver by Friday", "bob", List.of("seg-5"), 0.85)), List.of(), List.of(), List.of(), List.of("LOW_CONFIDENCE"), List.of("seg-root"), 0.88),
                 "model-qwen",
                 "prompt-v3",
                 "schema-v1",

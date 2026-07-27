@@ -21,6 +21,8 @@ public final class Decision {
     private boolean requiresManualReview;
     private final Double aiConfidence;
     private HumanApprovalStatus humanApprovalStatus;
+    private final String rationale;
+    private final String decisionStatus;
     private final Instant createdAt;
     private Instant updatedAt;
     private long version;
@@ -36,6 +38,8 @@ public final class Decision {
             boolean requiresManualReview,
             Double aiConfidence,
             HumanApprovalStatus humanApprovalStatus,
+            String rationale,
+            String decisionStatus,
             Instant createdAt,
             Instant updatedAt,
             long version
@@ -50,6 +54,8 @@ public final class Decision {
         this.requiresManualReview = requiresManualReview;
         this.aiConfidence = aiConfidence;
         this.humanApprovalStatus = Objects.requireNonNull(humanApprovalStatus, "humanApprovalStatus");
+        this.rationale = blankToNull(rationale);
+        this.decisionStatus = blankToNull(decisionStatus);
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
         this.version = version;
@@ -64,6 +70,20 @@ public final class Decision {
             Double aiConfidence,
             Instant now
     ) {
+        return createFromMapping(tenantId, noteId, noteVersionId, text, requiresManualReview, aiConfidence, null, null, now);
+    }
+
+    public static Decision createFromMapping(
+            TenantId tenantId,
+            UUID noteId,
+            UUID noteVersionId,
+            String text,
+            boolean requiresManualReview,
+            Double aiConfidence,
+            String rationale,
+            String decisionStatus,
+            Instant now
+    ) {
         return new Decision(
                 UUID.randomUUID(),
                 tenantId,
@@ -75,6 +95,8 @@ public final class Decision {
                 requiresManualReview,
                 aiConfidence,
                 HumanApprovalStatus.NONE,
+                rationale,
+                decisionStatus,
                 now,
                 now,
                 0L
@@ -92,13 +114,16 @@ public final class Decision {
             boolean requiresManualReview,
             Double aiConfidence,
             HumanApprovalStatus humanApprovalStatus,
+            String rationale,
+            String decisionStatus,
             Instant createdAt,
             Instant updatedAt,
             long version
     ) {
         return new Decision(
                 id, tenantId, noteId, noteVersionId, text, supersedesDecisionId, supersededByDecisionId,
-                requiresManualReview, aiConfidence, humanApprovalStatus, createdAt, updatedAt, version
+                requiresManualReview, aiConfidence, humanApprovalStatus, rationale, decisionStatus,
+                createdAt, updatedAt, version
         );
     }
 
@@ -163,6 +188,13 @@ public final class Decision {
         this.version = expectedVersion + 1;
     }
 
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
     private static String requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " is required");
@@ -180,6 +212,8 @@ public final class Decision {
     public boolean requiresManualReview() { return requiresManualReview; }
     public Double aiConfidence() { return aiConfidence; }
     public HumanApprovalStatus humanApprovalStatus() { return humanApprovalStatus; }
+    public String rationale() { return rationale; }
+    public String decisionStatus() { return decisionStatus; }
     public Instant createdAt() { return createdAt; }
     public Instant updatedAt() { return updatedAt; }
     public long version() { return version; }

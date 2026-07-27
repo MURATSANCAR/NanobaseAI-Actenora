@@ -14,6 +14,8 @@ public record DecisionResponse(
         boolean requiresManualReview,
         Double aiConfidence,
         HumanApprovalStatus humanApprovalStatus,
+        String rationale,
+        String decisionStatus,
         long version,
         Instant updatedAt
 ) {

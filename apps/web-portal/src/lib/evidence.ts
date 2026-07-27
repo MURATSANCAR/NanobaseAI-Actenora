@@ -51,6 +51,14 @@ export function findArtifactsForSegment(
   return linked;
 }
 
+export function isSeekableEvidence(evidence: EvidenceRef): boolean {
+  return Boolean(evidence?.segmentId)
+    && Number.isFinite(evidence.startMs)
+    && Number.isFinite(evidence.endMs)
+    && evidence.endMs >= evidence.startMs
+    && !(evidence.startMs === 0 && evidence.endMs === 0 && !(evidence.quote && evidence.quote.trim()));
+}
+
 export function formatEvidenceRange(startMs: number, endMs: number): string {
   return `${formatMs(startMs)}–${formatMs(endMs)}`;
 }

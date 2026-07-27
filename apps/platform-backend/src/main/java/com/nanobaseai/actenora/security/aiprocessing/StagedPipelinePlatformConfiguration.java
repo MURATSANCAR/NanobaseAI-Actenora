@@ -62,6 +62,7 @@ public class StagedPipelinePlatformConfiguration {
     }
 
     @Bean
+    @org.springframework.context.annotation.Lazy
     StageCommandPublisher stageCommandPublisher(ObjectProvider<OutboxStore> outboxStore) {
         OutboxStore store = outboxStore.getIfAvailable();
         if (store == null) {

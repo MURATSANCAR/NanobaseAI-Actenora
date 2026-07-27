@@ -30,6 +30,9 @@ public final class JdbcActionItemRepository implements ActionItemRepository {
                 rs.getBoolean("requires_manual_review"),
                 (Double) rs.getObject("ai_confidence"),
                 HumanApprovalStatus.valueOf(rs.getString("human_approval_status")),
+                rs.getString("owner_type"),
+                rs.getString("priority"),
+                rs.getString("relative_date"),
                 JdbcInstant.get(rs, "created_at"),
                 JdbcInstant.get(rs, "updated_at"),
                 rs.getLong("version")
@@ -48,8 +51,9 @@ public final class JdbcActionItemRepository implements ActionItemRepository {
                 INSERT INTO meetingintelligence.action_items (
                     id, tenant_id, note_id, note_version_id, text, owner, due_date, status,
                     requires_manual_review, ai_confidence, human_approval_status,
+                    owner_type, priority, relative_date,
                     created_at, updated_at, version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     text = EXCLUDED.text,
                     owner = EXCLUDED.owner,
@@ -57,6 +61,9 @@ public final class JdbcActionItemRepository implements ActionItemRepository {
                     status = EXCLUDED.status,
                     requires_manual_review = EXCLUDED.requires_manual_review,
                     human_approval_status = EXCLUDED.human_approval_status,
+                    owner_type = EXCLUDED.owner_type,
+                    priority = EXCLUDED.priority,
+                    relative_date = EXCLUDED.relative_date,
                     updated_at = EXCLUDED.updated_at,
                     version = EXCLUDED.version
                 """;
@@ -72,6 +79,9 @@ public final class JdbcActionItemRepository implements ActionItemRepository {
                 item.requiresManualReview(),
                 item.aiConfidence(),
                 item.humanApprovalStatus().name(),
+                item.ownerType(),
+                item.priority(),
+                item.relativeDate(),
                 JdbcInstant.toTimestamp(item.createdAt()),
                 JdbcInstant.toTimestamp(item.updatedAt()),
                 item.version()
@@ -84,6 +94,7 @@ public final class JdbcActionItemRepository implements ActionItemRepository {
         String sql = """
                 SELECT id, tenant_id, note_id, note_version_id, text, owner, due_date, status,
                        requires_manual_review, ai_confidence, human_approval_status,
+                       owner_type, priority, relative_date,
                        created_at, updated_at, version
                 FROM meetingintelligence.action_items
                 WHERE id = ? AND tenant_id = ?
@@ -96,6 +107,7 @@ public final class JdbcActionItemRepository implements ActionItemRepository {
         String sql = """
                 SELECT id, tenant_id, note_id, note_version_id, text, owner, due_date, status,
                        requires_manual_review, ai_confidence, human_approval_status,
+                       owner_type, priority, relative_date,
                        created_at, updated_at, version
                 FROM meetingintelligence.action_items
                 WHERE note_id = ? AND tenant_id = ?
@@ -109,6 +121,7 @@ public final class JdbcActionItemRepository implements ActionItemRepository {
         String sql = """
                 SELECT id, tenant_id, note_id, note_version_id, text, owner, due_date, status,
                        requires_manual_review, ai_confidence, human_approval_status,
+                       owner_type, priority, relative_date,
                        created_at, updated_at, version
                 FROM meetingintelligence.action_items
                 WHERE tenant_id = ?

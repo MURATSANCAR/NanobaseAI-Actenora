@@ -29,6 +29,7 @@ import {
   evidenceMatchesSegment,
   findArtifactsForSegment,
   formatEvidenceRange,
+  isSeekableEvidence,
 } from "./lib/evidence.ts";
 import { dueDateTone, isOverdue } from "./lib/dueDates.ts";
 import { mergeSearchResults, searchMeetings } from "./lib/globalSearch.ts";
@@ -294,6 +295,8 @@ test("approver role can decide approvals", () => {
 test("evidence helpers link segments and format ranges", () => {
   assert.equal(evidenceMatchesSegment({ segmentId: "s1", startMs: 0, endMs: 1, quote: "hi" }, "s1"), true);
   assert.equal(formatEvidenceRange(65000, 72000), "1:05–1:12");
+  assert.equal(isSeekableEvidence({ segmentId: "s1", startMs: 0, endMs: 1000, quote: "yes" }), true);
+  assert.equal(isSeekableEvidence({ segmentId: "s1", startMs: 0, endMs: 0, quote: "" }), false);
   const detail = {
     meeting: { id: "m1", title: "T", status: "READY" as const, scheduledStartAt: "", participantCount: 0 },
     participants: [],

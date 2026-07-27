@@ -23,6 +23,8 @@ public final class JdbcRiskRepository implements RiskRepository {
             rs.getBoolean("requires_manual_review"),
             (Double) rs.getObject("ai_confidence"),
             HumanApprovalStatus.valueOf(rs.getString("human_approval_status")),
+            rs.getString("likelihood"),
+            rs.getString("mitigation"),
             JdbcInstant.get(rs, "created_at"),
             JdbcInstant.get(rs, "updated_at"),
             rs.getLong("version")
@@ -40,12 +42,15 @@ public final class JdbcRiskRepository implements RiskRepository {
                 INSERT INTO meetingintelligence.risks (
                     id, tenant_id, note_id, note_version_id, text,
                     requires_manual_review, ai_confidence, human_approval_status,
+                    likelihood, mitigation,
                     created_at, updated_at, version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     text = EXCLUDED.text,
                     requires_manual_review = EXCLUDED.requires_manual_review,
                     human_approval_status = EXCLUDED.human_approval_status,
+                    likelihood = EXCLUDED.likelihood,
+                    mitigation = EXCLUDED.mitigation,
                     updated_at = EXCLUDED.updated_at,
                     version = EXCLUDED.version
                 """;
@@ -58,6 +63,8 @@ public final class JdbcRiskRepository implements RiskRepository {
                 risk.requiresManualReview(),
                 risk.aiConfidence(),
                 risk.humanApprovalStatus().name(),
+                risk.likelihood(),
+                risk.mitigation(),
                 JdbcInstant.toTimestamp(risk.createdAt()),
                 JdbcInstant.toTimestamp(risk.updatedAt()),
                 risk.version()
@@ -70,6 +77,7 @@ public final class JdbcRiskRepository implements RiskRepository {
         String sql = """
                 SELECT id, tenant_id, note_id, note_version_id, text,
                        requires_manual_review, ai_confidence, human_approval_status,
+                       likelihood, mitigation,
                        created_at, updated_at, version
                 FROM meetingintelligence.risks
                 WHERE id = ? AND tenant_id = ?
@@ -82,6 +90,7 @@ public final class JdbcRiskRepository implements RiskRepository {
         String sql = """
                 SELECT id, tenant_id, note_id, note_version_id, text,
                        requires_manual_review, ai_confidence, human_approval_status,
+                       likelihood, mitigation,
                        created_at, updated_at, version
                 FROM meetingintelligence.risks
                 WHERE note_id = ? AND tenant_id = ?

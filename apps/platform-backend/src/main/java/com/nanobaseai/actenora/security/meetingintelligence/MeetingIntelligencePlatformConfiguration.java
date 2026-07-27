@@ -251,12 +251,14 @@ public class MeetingIntelligencePlatformConfiguration {
         return new MeetingIntelligenceApiFacade(service);
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(ValidationRunRepository.class)
     @Bean
     public ValidationRunRepository inMemoryValidationRunRepository() {
         return new InMemoryValidationRunRepository();
     }
 
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(ManualReviewCaseRepository.class)
     @Bean
     public ManualReviewCaseRepository inMemoryManualReviewCaseRepository() {
@@ -300,6 +302,7 @@ public class MeetingIntelligencePlatformConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(com.nanobaseai.actenora.delivery.api.DeliveryApi.class)
     public DraftMinutesMailNotifier draftMinutesMailNotifier(
             ObjectProvider<JavaMailSender> mailSender,
             @Value("${actenora.delivery.mail.from:noreply@actenora.local}") String fromAddress,
@@ -315,22 +318,24 @@ public class MeetingIntelligencePlatformConfiguration {
             EvidenceValidationApi evidenceValidationApi,
             TranscriptSegmentSourcePort segmentSource,
             MeetingIntelligenceAuditPort auditPort,
-            DraftMinutesMailNotifier draftMinutesMailNotifier,
+            ObjectProvider<DraftMinutesMailNotifier> draftMinutesMailNotifier,
             MeetingApi meetingApi,
             NoteArtifactStoragePort noteArtifactStorage,
             ObjectProvider<PlatformUserNotificationPublisher> notificationPublisher,
-            ObjectProvider<com.nanobaseai.actenora.delivery.api.DeliveryApi> deliveryApi
+            ObjectProvider<com.nanobaseai.actenora.delivery.api.DeliveryApi> deliveryApi,
+            ObjectProvider<com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker> deliveryWorker
     ) {
         return new MeetingIntelligenceHandoffAdapter(
                 meetingIntelligenceApi,
                 evidenceValidationApi,
                 segmentSource,
                 auditPort,
-                Optional.of(draftMinutesMailNotifier),
+                Optional.ofNullable(draftMinutesMailNotifier.getIfAvailable()),
                 Optional.of(meetingApi),
                 noteArtifactStorage,
                 Optional.ofNullable(notificationPublisher.getIfAvailable()),
-                Optional.ofNullable(deliveryApi.getIfAvailable())
+                Optional.ofNullable(deliveryApi.getIfAvailable()),
+                Optional.ofNullable(deliveryWorker.getIfAvailable())
         );
     }
 
@@ -486,8 +491,8 @@ public class MeetingIntelligencePlatformConfiguration {
                 new CompositeApprovedNoteLedgerAdapter(
                         approvedNoteLedgerWriter,
                         knowledgeIndexer,
-                        pipelineGraphFactory.getIfAvailable(),
-                        pipelineProperties.getIfAvailable()
+                        pipelineGraphFactory,
+                        pipelineProperties
                 )
         );
     }

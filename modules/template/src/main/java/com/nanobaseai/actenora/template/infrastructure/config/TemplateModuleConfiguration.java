@@ -66,24 +66,28 @@ public class TemplateModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(MeetingTemplateRepository.class)
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     MeetingTemplateRepository meetingTemplateRepository() {
         return new InMemoryMeetingTemplateRepository();
     }
 
     @Bean
     @ConditionalOnMissingBean(NoteTemplateLockRepository.class)
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     NoteTemplateLockRepository noteTemplateLockRepository() {
         return new InMemoryNoteTemplateLockRepository();
     }
 
     @Bean
     @ConditionalOnMissingBean(RenderJobRepository.class)
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     RenderJobRepository renderJobRepository() {
         return new InMemoryRenderJobRepository();
     }
 
     @Bean
     @ConditionalOnMissingBean(RenderedDocumentRepository.class)
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     RenderedDocumentRepository renderedDocumentRepository() {
         return new InMemoryRenderedDocumentRepository();
     }
@@ -134,8 +138,9 @@ public class TemplateModuleConfiguration {
     TemplateApi templateApi(
             TemplateStudioService studioService,
             DocumentRenderService renderService,
-            RenderedDocumentRepository documentRepository) {
-        return new TemplateApiFacade(studioService, renderService, documentRepository);
+            RenderedDocumentRepository documentRepository,
+            RenderJobRepository jobRepository) {
+        return new TemplateApiFacade(studioService, renderService, documentRepository, jobRepository);
     }
 
     @Bean
