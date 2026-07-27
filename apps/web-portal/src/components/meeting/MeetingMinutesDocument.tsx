@@ -1,6 +1,7 @@
 import { FileText, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Participant } from "@/api/types";
+import { HighlightPersonNames } from "@/components/meeting/HighlightPersonNames";
 import { MinutesAttendanceBanner } from "@/components/meeting/MinutesAttendanceBanner";
 import { classifyAttendance } from "@/components/meeting/ParticipantAttendanceRow";
 import { TemplateBrandFooter } from "@/components/template/TemplateBrandBanner";
@@ -15,6 +16,7 @@ import {
   type MinutesSection,
 } from "@/lib/minutesDocument";
 import { minutesSectionTheme } from "@/lib/minutesSectionTheme";
+import { collectPersonNames } from "@/lib/personNames";
 import type { TemplateComponentType } from "@/types/template";
 
 export function MeetingMinutesDocument({
@@ -43,6 +45,21 @@ export function MeetingMinutesDocument({
     const parsed = parseSectionContent(section.value, section.kind);
     return !parsed.empty;
   }).length;
+
+  const personNames = useMemo(() => {
+    const sources: Array<string | null | undefined> = participants.map((p) => p.displayName);
+    for (const section of document.sections) {
+      if (section.kind !== "list") continue;
+      const parsed = parseSectionContent(section.value, "list");
+      for (const item of parsed.items) {
+        const meta = parseActionMeta(item);
+        if ("owner" in meta) sources.push(meta.owner);
+        // Also catch "Name tarafından" style phrases already inside the item text —
+        // participant list covers those; owners from meta cover Sorumlu fields.
+      }
+    }
+    return collectPersonNames(sources);
+  }, [participants, document.sections]);
 
   const attendanceCounts = useMemo(() => {
     let attended = 0;
@@ -145,6 +162,7 @@ export function MeetingMinutesDocument({
             section={section}
             index={index + 1}
             canEdit={Boolean(canEdit)}
+            personNames={personNames}
             onChange={
               onSectionChange
                 ? (value) => onSectionChange(section.type, value)
@@ -175,11 +193,13 @@ function MinutesSectionCard({
   section,
   index,
   canEdit,
+  personNames,
   onChange,
 }: {
   section: MinutesSection;
   index: number;
   canEdit: boolean;
+  personNames: string[];
   onChange?: (value: string) => void;
 }) {
   const { t, tb } = useI18n();
@@ -276,7 +296,7 @@ function MinutesSectionCard({
           </p>
         ) : section.kind === "paragraph" ? (
           <p className="whitespace-pre-wrap break-words rounded-xl bg-white/80 px-4 py-3.5 text-sm leading-relaxed text-slate-800 shadow-sm ring-1 ring-white/90 sm:text-[15px] sm:leading-7">
-            {parsed.paragraph}
+            <HighlightPersonNames text={parsed.paragraph} names={personNames} />
           </p>
         ) : (
           <ol className="space-y-2.5">
@@ -301,12 +321,15 @@ function MinutesSectionCard({
                     {i + 1}
                   </span>
                   <div className="min-w-0 flex-1 space-y-1.5">
-                    <p className="break-words [overflow-wrap:anywhere] sm:text-[15px] sm:leading-6">{meta.text}</p>
+                    <p className="break-words [overflow-wrap:anywhere] sm:text-[15px] sm:leading-6">
+                      <HighlightPersonNames text={meta.text} names={personNames} />
+                    </p>
                     {"owner" in meta && (meta.owner || meta.due) ? (
                       <div className="flex flex-wrap gap-1.5">
                         {meta.owner ? (
                           <span className="rounded-full bg-amber-100/95 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950">
-                            {t("meeting.minutesOwner")}: {meta.owner}
+                            {t("meeting.minutesOwner")}:{" "}
+                            <HighlightPersonNames text={meta.owner} names={personNames} />
                           </span>
                         ) : null}
                         {meta.due ? (

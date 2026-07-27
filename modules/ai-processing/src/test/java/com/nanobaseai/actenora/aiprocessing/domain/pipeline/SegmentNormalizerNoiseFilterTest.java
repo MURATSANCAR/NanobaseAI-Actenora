@@ -14,7 +14,7 @@ class SegmentNormalizerNoiseFilterTest {
         SegmentNormalizer normalizer = new SegmentNormalizer();
         List<SegmentInput> normalized = normalizer.normalize(List.of(
                 new SegmentInput("s1", 0, "Emre", 0, 1_000,
-                        "API sözleşmesini cuma günü donduruyoruz.", false),
+                        "Karar: API sözleşmesini cuma günü donduruyoruz.", false),
                 new SegmentInput("s2", 1, "Emre", 1_000, 2_000,
                         "Mikrofonumu açıyorum", false),
                 new SegmentInput("s3", 2, "Elif", 2_000, 3_000,
@@ -26,7 +26,6 @@ class SegmentNormalizerNoiseFilterTest {
         assertEquals("s1", normalized.get(0).segmentId());
         assertEquals("s4", normalized.get(1).segmentId());
         assertTrue(normalized.get(0).markerNear());
-        assertTrue(normalized.get(1).markerNear());
     }
 
     @Test

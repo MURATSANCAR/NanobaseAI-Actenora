@@ -34,9 +34,9 @@ public final class MeetingNoisePatterns {
 
     private static final Pattern STATUS_QUO_DECISION = Pattern.compile(
             "(?iu)("
-                    + "mevcut\\s+karar(lar)?([ıi]n[ıi]?)?\\s+de[gğ]i[sş]tir(miyoruz|meyece[gğ]iz|ilmeyecek)"
-                    + "|karar(lar)?\\s+de[gğ]i[sş]tir(miyoruz|meyece[gğ]iz|ilmeyecek).{0,40}ba[gğ]lam"
-                    + "|sadece\\s+ba[gğ]lam\\s+payla[sş]"
+                    + "mevcut\\s+karar[\\p{L}]*\\s+de[gğ]i[sş]tir(miyoruz|meyece[gğ]iz|ilmeyecek)"
+                    + "|karar[\\p{L}]*\\s+de[gğ]i[sş]tir(miyoruz|meyece[gğ]iz|ilmeyecek).{0,40}ba[gğ]lam"
+                    + "|sadece\\s+ba[gğ]lam(\\s+payla[sş][\\p{L}]*)?"
                     + "|yeni\\s+karar\\s+yok"
                     + "|not\\s+changing\\s+(the\\s+)?(existing\\s+)?decision"
                     + "|only\\s+(sharing\\s+)?context"

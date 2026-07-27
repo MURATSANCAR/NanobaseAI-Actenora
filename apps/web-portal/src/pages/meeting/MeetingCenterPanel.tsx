@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { FileText, ListChecks, ShieldAlert, Target, Zap } from "lucide-react";
+import { HighlightPersonNames } from "@/components/meeting/HighlightPersonNames";
 import { MeetingNoteEditor } from "@/components/meeting/MeetingNoteEditor";
 import { MeetingReviewPanel } from "@/components/meeting/MeetingReviewPanel";
 import { StatusBadge } from "@/components/qa/StatusBadge";
@@ -20,6 +21,7 @@ import { useI18n } from "@/i18n";
 import { isOptimisticSafe } from "@/lib/approval";
 import { evidenceMatchesSegment, formatEvidenceRange, isSeekableEvidence } from "@/lib/evidence";
 import { deriveMeetingPipelineStages } from "@/lib/meetingPipeline";
+import { collectPersonNames } from "@/lib/personNames";
 
 type InsightTab = "decisions" | "actions" | "risks" | "commitments";
 

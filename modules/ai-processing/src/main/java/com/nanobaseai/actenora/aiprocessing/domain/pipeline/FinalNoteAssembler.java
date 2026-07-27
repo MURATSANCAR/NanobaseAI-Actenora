@@ -34,21 +34,22 @@ public final class FinalNoteAssembler {
         if (manual && flags.stream().noneMatch(f -> f.equalsIgnoreCase("LOW_CONFIDENCE"))) {
             flags.add("LOW_CONFIDENCE");
         }
-        String summary = buildSummary(bundle, lang);
+        ExtractionBundle cleaned = MeetingNoisePatterns.stripStatusQuoDecisions(bundle);
+        String summary = buildSummary(cleaned, lang);
         return new FinalNoteDraft(
                 summary,
-                bundle.decisions(),
-                bundle.actionItems(),
-                bundle.risks(),
-                bundle.openQuestions(),
-                bundle.commitments(),
-                bundle.topics(),
-                bundle.issues(),
-                bundle.proposals(),
-                bundle.importantFacts(),
+                cleaned.decisions(),
+                cleaned.actionItems(),
+                cleaned.risks(),
+                cleaned.openQuestions(),
+                cleaned.commitments(),
+                cleaned.topics(),
+                cleaned.issues(),
+                cleaned.proposals(),
+                cleaned.importantFacts(),
                 flags,
-                bundle.evidenceSegmentIds(),
-                bundle.confidence(),
+                cleaned.evidenceSegmentIds(),
+                cleaned.confidence(),
                 manual
         );
     }
