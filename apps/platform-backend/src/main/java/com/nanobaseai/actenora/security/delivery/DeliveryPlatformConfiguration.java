@@ -1,7 +1,10 @@
 package com.nanobaseai.actenora.security.delivery;
 
 import com.nanobaseai.actenora.audit.api.AuditApi;
+import com.nanobaseai.actenora.delivery.api.DeliveryApi;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryAuditPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteFinalDeliveryPort;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -30,5 +33,11 @@ public class DeliveryPlatformConfiguration {
                         metadata == null ? Map.of() : metadata,
                         occurredAt
                 );
+    }
+
+    @Bean
+    @ConditionalOnBean(DeliveryApi.class)
+    public ApprovedNoteFinalDeliveryPort approvedNoteFinalDeliveryPort(DeliveryApi deliveryApi) {
+        return new PlatformApprovedNoteFinalDeliveryAdapter(deliveryApi);
     }
 }
