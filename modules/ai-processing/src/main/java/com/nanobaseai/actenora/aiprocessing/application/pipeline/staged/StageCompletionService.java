@@ -90,12 +90,13 @@ public final class StageCompletionService {
         }
 
         if (result.artifactJson() != null && result.artifactType() != null) {
+            String payload = sanitizeArtifactJson(result.artifactJson());
             artifacts.save(ProcessingArtifact.inlineJson(
                     job.tenantId(),
                     job.id(),
                     job.meetingOccurrenceId(),
                     result.artifactType(),
-                    result.artifactJson(),
+                    payload,
                     now
             ));
         }
@@ -187,6 +188,27 @@ public final class StageCompletionService {
             return 1;
         }
     }
+
+    /** Ensure artifact payloads are valid JSON so PG jsonb inserts never leave jobs RUNNING. */
+    private static String sanitizeArtifactJson(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "{}";
+        }
+        String trimmed = raw.trim();
+        try {
+            MAPPER.readTree(trimmed);
+            return trimmed;
+        } catch (Exception ignored) {
+            // fall through
+        }
+        com.fasterxml.jackson.databind.node.ObjectNode wrapper = MAPPER.createObjectNode();
+        wrapper.put("truncated", true);
+        wrapper.put("raw", trimmed.length() > 8_000 ? trimmed.substring(0, 8_000) : trimmed);
+        return wrapper.toString();
+    }
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
+            new com.fasterxml.jackson.databind.ObjectMapper();
 
     @FunctionalInterface
     public interface TranscriptHashResolver {

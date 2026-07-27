@@ -224,7 +224,7 @@ public final class DefaultStageExecutors {
                         MeetingLlmBudgets.TRIAGE_MAX_TOKENS,
                         120
                 ));
-                String json = response.rawText() == null ? "{}" : response.rawText().trim();
+                String json = sanitizeTriageJson(response.rawText());
                 boolean early = isInformationalEarlyExit(json);
                 long latency = (System.nanoTime() - t0) / 1_000_000L;
                 int inTok = clampTokens(response.inputTokens());
@@ -237,12 +237,62 @@ public final class DefaultStageExecutors {
                         job, "triage", json, inTok, outTok, latency, now);
             } catch (RuntimeException ex) {
                 // Fail open to full path on triage errors.
-                String fallback = """
-                        {"containsDecisions":true,"containsActions":true,"containsRisks":true,"meetingType":"MIXED","fallback":true}
-                        """.trim();
+                String fallback = triageFallbackJson();
                 return StageExecutionResult.success(
                         job, "triage", fallback, 0, 0, (System.nanoTime() - t0) / 1_000_000L, now);
             }
+        }
+
+        private static String sanitizeTriageJson(String raw) {
+            if (raw == null || raw.isBlank()) {
+                return triageFallbackJson();
+            }
+            String trimmed = raw.trim();
+            if (trimmed.startsWith("```")) {
+                trimmed = trimmed.replaceFirst("^```(?:json)?\\s*", "");
+                int close = trimmed.lastIndexOf("```");
+                if (close >= 0) {
+                    trimmed = trimmed.substring(0, close).trim();
+                }
+            }
+            int start = trimmed.indexOf('{');
+            int end = trimmed.lastIndexOf('}');
+            if (start >= 0 && end > start) {
+                trimmed = trimmed.substring(start, end + 1);
+            }
+            try {
+                JsonNode node = MAPPER.readTree(trimmed);
+                if (!node.isObject()) {
+                    return triageFallbackJson();
+                }
+                // Keep only the classifier fields — models often dump full extraction JSON.
+                ObjectNode out = MAPPER.createObjectNode();
+                out.put("containsDecisions", boolOrTrue(node, "containsDecisions"));
+                out.put("containsActions", boolOrTrue(node, "containsActions"));
+                out.put("containsRisks", boolOrTrue(node, "containsRisks"));
+                String meetingType = node.path("meetingType").asText("MIXED");
+                if (meetingType.isBlank()) {
+                    meetingType = "MIXED";
+                }
+                out.put("meetingType", meetingType);
+                return out.toString();
+            } catch (Exception ex) {
+                return triageFallbackJson();
+            }
+        }
+
+        private static boolean boolOrTrue(JsonNode node, String field) {
+            JsonNode value = node.get(field);
+            if (value == null || value.isNull() || !value.isBoolean()) {
+                return true;
+            }
+            return value.asBoolean();
+        }
+
+        private static String triageFallbackJson() {
+            return """
+                    {"containsDecisions":true,"containsActions":true,"containsRisks":true,"meetingType":"MIXED","fallback":true}
+                    """.trim();
         }
 
         private static boolean isInformationalEarlyExit(String json) {
