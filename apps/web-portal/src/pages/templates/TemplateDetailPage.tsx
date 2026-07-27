@@ -108,6 +108,7 @@ export function TemplateDetailPage() {
   }
 
   function openCompare() {
+    if (versions.length < 2) return;
     const pair = defaultComparePair(versions, activeVersionNumber);
     setCompareLeft(pair.left);
     setCompareRight(pair.right);
@@ -242,7 +243,7 @@ export function TemplateDetailPage() {
               onPublish={() => publishMutation.mutate()}
               onCreateDraft={mutationsEnabled ? () => createDraftMutation.mutate() : undefined}
               creatingDraft={createDraftMutation.isPending}
-              onCompare={detail.versions.length >= 2 ? openCompare : undefined}
+              onCompare={openCompare}
             />
           )
         ) : null}
