@@ -65,6 +65,7 @@ import com.nanobaseai.actenora.modelmanagement.domain.ModelDeployment;
 import com.nanobaseai.actenora.modelmanagement.domain.ModelStatus;
 import com.nanobaseai.actenora.observability.metrics.MetricRecorder;
 import com.nanobaseai.actenora.sharedkernel.coordination.DistributedLock;
+import com.nanobaseai.actenora.sharedkernel.coordination.FixedWindowRateLimiter;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -111,10 +112,19 @@ public class AiProcessingPlatformConfiguration {
     SwappableLocalModelProvider swappableLocalModelProvider(
             LocalProviderProperties properties,
             Environment environment,
-            MetricRecorder metricRecorder
+            MetricRecorder metricRecorder,
+            FixedWindowRateLimiter fixedWindowRateLimiter,
+            @Value("${actenora.ai.provider.rate-limit-per-minute:60}") int rateLimitPerMinute
     ) {
         LocalModelProvider initial = LocalProviderFactory.create(properties, ActenoraProfiles.isStrictProduction(environment));
-        return new SwappableLocalModelProvider(new MetricsRecordingLocalModelProvider(initial, metricRecorder));
+        LocalModelProvider metered = new MetricsRecordingLocalModelProvider(initial, metricRecorder);
+        LocalModelProvider limited = new RateLimitedLocalModelProvider(
+                metered,
+                fixedWindowRateLimiter,
+                Math.max(1, rateLimitPerMinute),
+                Duration.ofMinutes(1)
+        );
+        return new SwappableLocalModelProvider(limited);
     }
 
     @Bean
@@ -137,13 +147,19 @@ public class AiProcessingPlatformConfiguration {
             SwappableLocalModelProvider swappable,
             LocalProviderProperties properties,
             Environment environment,
-            NanobaseAiModelRegistrySync modelRegistrySync
+            NanobaseAiModelRegistrySync modelRegistrySync,
+            MetricRecorder metricRecorder,
+            FixedWindowRateLimiter fixedWindowRateLimiter,
+            @Value("${actenora.ai.provider.rate-limit-per-minute:60}") int rateLimitPerMinute
     ) {
         return new NanobaseAiConnectionService(
                 swappable,
                 properties,
                 ActenoraProfiles.isStrictProduction(environment),
-                modelRegistrySync
+                modelRegistrySync,
+                metricRecorder,
+                fixedWindowRateLimiter,
+                rateLimitPerMinute
         );
     }
 

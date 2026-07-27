@@ -118,6 +118,7 @@ actenora:
       max-concurrency: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY:4}
       max-concurrency-extraction: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_EXTRACTION:2}
       max-concurrency-final: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_FINAL:1}
+      rate-limit-per-minute: ${ACTENORA_AI_PROVIDER_RATE_LIMIT_PER_MINUTE:60}
       streaming-enabled: ${ACTENORA_AI_PROVIDER_STREAMING_ENABLED:true}
       served-model-ids: ${ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS:nanobaseai-primary,nanobaseai-local}
       max-attempts: ${ACTENORA_AI_PROVIDER_MAX_ATTEMPTS:5}

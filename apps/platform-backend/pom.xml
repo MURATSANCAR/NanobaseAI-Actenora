@@ -21,6 +21,10 @@
     </dependency>
     <dependency>
       <groupId>ai.nanobase.actenora</groupId>
+      <artifactId>observability</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ai.nanobase.actenora</groupId>
       <artifactId>identity</artifactId>
     </dependency>
     <dependency>

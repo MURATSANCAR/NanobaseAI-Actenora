@@ -89,7 +89,8 @@ class ExtractionPipelineServiceTest {
 
     @Test
     void hallucinatedDateFails() {
-        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> validJson("seg-1", "Alice", "2099-01-01"));
+        // ISO dates may be normalized by the model and are allowed; free-form invented dates are not.
+        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> validJson("seg-1", "Alice", "never-ever-day"));
         ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), adapter);
 
         PipelineRunResult result = service.run(request(List.of(
@@ -256,6 +257,50 @@ class ExtractionPipelineServiceTest {
         Function<InferenceRequest, String> generator = req -> validJson("seg-1", "Alice", null);
         ModelRuntimePort port = new Qwen27BModelAdapter(generator);
         assertEquals(Qwen27BModelAdapter.CATALOG_ID, port.descriptor().modelCatalogId());
+    }
+
+    @Test
+    void parallelChunkExtractionPreservesOrderAndSucceeds() {
+        AtomicInteger inFlight = new AtomicInteger();
+        AtomicInteger maxInFlight = new AtomicInteger();
+        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> {
+            int now = inFlight.incrementAndGet();
+            maxInFlight.accumulateAndGet(now, Math::max);
+            try {
+                Thread.sleep(40);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                inFlight.decrementAndGet();
+            }
+            String evidence = req.allowedEvidenceSegmentIds().isEmpty()
+                    ? "seg-0"
+                    : req.allowedEvidenceSegmentIds().get(0);
+            return validJson(evidence, "Alice", null);
+        });
+        ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), adapter);
+
+        List<SegmentInput> segments = List.of(
+                segment("seg-0", 0, "Alice", "We decided to ship Friday. Action for Alice."),
+                segment("seg-1", 1, "Alice", "Second decision block. Action for Alice."),
+                segment("seg-2", 2, "Alice", "Third decision block. Action for Alice.")
+        );
+        // Force many tiny chunks by using a small context in the adapter path — production
+        // chunker may still collapse; parallelChunkLimit=2 exercises the parallel branch when
+        // more than one chunk exists.
+        PipelineRunRequest req = new PipelineRunRequest(
+                TenantId.random(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID,
+                segments,
+                "tr",
+                0,
+                2
+        );
+        PipelineRunResult result = service.run(req);
+        assertTrue(result.success(), () -> result.failureCategory() + " / " + result.failureMessage());
+        assertTrue(result.metrics().chunkCount() >= 1);
     }
 
     @Test

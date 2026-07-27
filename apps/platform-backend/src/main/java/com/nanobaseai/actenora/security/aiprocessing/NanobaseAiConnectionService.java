@@ -5,6 +5,10 @@ import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.llm.LocalProviderConfig;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.llm.MockLocalProvider;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.llm.OpenAiCompatibleLocalProvider;
+import com.nanobaseai.actenora.observability.metrics.InMemoryMetricRecorder;
+import com.nanobaseai.actenora.observability.metrics.MetricRecorder;
+import com.nanobaseai.actenora.sharedkernel.coordination.FixedWindowRateLimiter;
+import com.nanobaseai.actenora.sharedkernel.coordination.InMemoryFixedWindowRateLimiter;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,13 +36,16 @@ public final class NanobaseAiConnectionService {
     private final boolean production;
     private final AtomicReference<Settings> settings;
     private final NanobaseAiModelRegistrySync modelRegistrySync;
+    private final MetricRecorder metricRecorder;
+    private final FixedWindowRateLimiter rateLimiter;
+    private final int rateLimitPerMinute;
 
     public NanobaseAiConnectionService(
             SwappableLocalModelProvider swappable,
             LocalProviderProperties initial,
             boolean production
     ) {
-        this(swappable, initial, production, null);
+        this(swappable, initial, production, null, new InMemoryMetricRecorder(), new InMemoryFixedWindowRateLimiter(), 60);
     }
 
     public NanobaseAiConnectionService(
@@ -47,11 +54,36 @@ public final class NanobaseAiConnectionService {
             boolean production,
             NanobaseAiModelRegistrySync modelRegistrySync
     ) {
+        this(swappable, initial, production, modelRegistrySync, new InMemoryMetricRecorder(), new InMemoryFixedWindowRateLimiter(), 60);
+    }
+
+    public NanobaseAiConnectionService(
+            SwappableLocalModelProvider swappable,
+            LocalProviderProperties initial,
+            boolean production,
+            NanobaseAiModelRegistrySync modelRegistrySync,
+            MetricRecorder metricRecorder
+    ) {
+        this(swappable, initial, production, modelRegistrySync, metricRecorder, new InMemoryFixedWindowRateLimiter(), 60);
+    }
+
+    public NanobaseAiConnectionService(
+            SwappableLocalModelProvider swappable,
+            LocalProviderProperties initial,
+            boolean production,
+            NanobaseAiModelRegistrySync modelRegistrySync,
+            MetricRecorder metricRecorder,
+            FixedWindowRateLimiter rateLimiter,
+            int rateLimitPerMinute
+    ) {
         this.swappable = Objects.requireNonNull(swappable, "swappable");
         this.production = production;
         LocalProviderProperties props = Objects.requireNonNull(initial, "initial");
         this.settings = new AtomicReference<>(Settings.fromProperties(props));
         this.modelRegistrySync = modelRegistrySync;
+        this.metricRecorder = Objects.requireNonNull(metricRecorder, "metricRecorder");
+        this.rateLimiter = Objects.requireNonNull(rateLimiter, "rateLimiter");
+        this.rateLimitPerMinute = Math.max(1, rateLimitPerMinute);
     }
 
     public ConnectionView current() {
@@ -130,7 +162,12 @@ public final class NanobaseAiConnectionService {
     }
 
     private void apply(Settings next) {
-        LocalModelProvider provider = buildProvider(next);
+        LocalModelProvider provider = new RateLimitedLocalModelProvider(
+                new MetricsRecordingLocalModelProvider(buildProvider(next), metricRecorder),
+                rateLimiter,
+                rateLimitPerMinute,
+                Duration.ofMinutes(1)
+        );
         swappable.replace(provider);
         log.info("NanobaseAI Intelligence endpoint updated host={} enabled={}",
                 next.baseUrl().getHost(), next.enabled());
