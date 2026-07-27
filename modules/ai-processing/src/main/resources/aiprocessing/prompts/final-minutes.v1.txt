@@ -17,7 +17,7 @@ GÖREVLER
 4. purpose ve executiveSummary dahil tüm metin alanlarını {{outputLanguage}} dilinde yaz; özet en fazla 150 kelime; kabul edilmemiş öneriyi karar gibi sunma. Kullanıcı dilinin dışında meta/İngilizce cümle üretme.
 5. agendaTopics / nextSteps üret; kanıtsız öğeleri çıkar.
 6. Adaylardaki commitments, actionItems, risks ve openQuestions boş kalmasın: özet içinde geçen taahhüt/aksiyon/risk/açık soruları ilgili dizilere taşı (yalnızca CANDIDATE_JSON + ALLOWED_EVIDENCE_IDS üzerinden).
-7. PRIOR_MEETING_CONTEXT içindeki açık görev/risk/soruları nextSteps veya openQuestions ile ilişkilendir; kanıt yoksa yeni karar üretme.
+7. PRIOR_MEETING_CONTEXT içindeki açık görev/risk/soruları nextSteps veya openQuestions ile ilişkilendir; kanıt yoksa yeni karar üretme. RELATED_KNOWLEDGE yalnızca süreklilik ipucu olarak kullan.
 8. reviewRequired=true yalnızca belirsiz/eksik kritik alan varsa.
 
 Yalnızca şu JSON'u döndür:

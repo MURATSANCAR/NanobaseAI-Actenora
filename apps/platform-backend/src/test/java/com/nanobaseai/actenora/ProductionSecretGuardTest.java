@@ -30,7 +30,9 @@ class ProductionSecretGuardTest {
                 "jdbc-rabbit",
                 "CLIENT_SECRET",
                 "",
-                ""
+                "",
+                "openai-compatible",
+                "http://embeddings.internal"
         );
 
         IllegalStateException ex = assertThrows(
@@ -63,7 +65,9 @@ class ProductionSecretGuardTest {
                 "jdbc-rabbit",
                 "CERTIFICATE",
                 "/run/secrets/graph.crt",
-                "/run/secrets/graph.key"
+                "/run/secrets/graph.key",
+                "openai-compatible",
+                "http://embeddings.internal"
         );
 
         assertDoesNotThrow(() -> guard.run(new DefaultApplicationArguments()));
@@ -89,7 +93,9 @@ class ProductionSecretGuardTest {
                 "jdbc-rabbit",
                 "CLIENT_SECRET",
                 "",
-                ""
+                "",
+                "openai-compatible",
+                "http://embeddings.internal"
         );
 
         assertDoesNotThrow(() -> guard.run(new DefaultApplicationArguments()));
@@ -115,6 +121,8 @@ class ProductionSecretGuardTest {
                 "inmemory",
                 "CLIENT_SECRET",
                 "",
+                "",
+                "hash",
                 ""
         );
 
@@ -140,7 +148,9 @@ class ProductionSecretGuardTest {
                 "inmemory",
                 "CLIENT_SECRET",
                 "",
-                ""
+                "",
+                "openai-compatible",
+                "http://embeddings.internal"
         );
 
         IllegalStateException ex = assertThrows(
@@ -169,7 +179,9 @@ class ProductionSecretGuardTest {
                 "jdbc-rabbit",
                 "CLIENT_SECRET",
                 "",
-                ""
+                "",
+                "openai-compatible",
+                "http://embeddings.internal"
         );
 
         IllegalStateException ex = assertThrows(
@@ -178,5 +190,35 @@ class ProductionSecretGuardTest {
         assertTrue(ex.getMessage().contains("actenora.microsoft-graph.auth-mode"));
         assertTrue(ex.getMessage().contains("certificate-pem-path"));
         assertTrue(ex.getMessage().contains("private-key-pem-path"));
+    }
+
+    @Test
+    void prodRejectsHashEmbeddings() {
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles("prod");
+        ProductionSecretGuard guard = new ProductionSecretGuard(
+                env,
+                false,
+                "prod-db-secret-xyz",
+                "prod-rabbit-secret-xyz",
+                "prod-minio-secret-xyz",
+                "prod-graph-client-state-secret",
+                "prod-delivery-webhook-secret",
+                "prod-portal-link-hmac-secret",
+                "smtp.office365.com",
+                false,
+                "jdbc",
+                "jdbc-rabbit",
+                "CLIENT_SECRET",
+                "",
+                "",
+                "hash",
+                ""
+        );
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> guard.run(new DefaultApplicationArguments()));
+        assertTrue(ex.getMessage().contains("actenora.knowledge.embedding.mode"));
     }
 }
