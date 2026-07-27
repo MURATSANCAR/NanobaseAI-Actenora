@@ -122,8 +122,26 @@ public final class MinutesSynthesisAndAudit {
             String meetingTitle,
             String language
     ) {
+        return synthesizeAndAudit(
+                merged, deterministicDraft, allowedEvidenceIds, meetingTitle, language, PriorMeetingContext.EMPTY);
+    }
+
+    public FinalNoteDraft synthesizeAndAudit(
+            ExtractionBundle merged,
+            FinalNoteDraft deterministicDraft,
+            Set<String> allowedEvidenceIds,
+            String meetingTitle,
+            String language,
+            PriorMeetingContext priorMeetingContext
+    ) {
         FinalNoteDraft synthesized = synthesize(
-                merged, deterministicDraft, allowedEvidenceIds, meetingTitle, language);
+                merged,
+                deterministicDraft,
+                allowedEvidenceIds,
+                meetingTitle,
+                language,
+                priorMeetingContext == null ? PriorMeetingContext.EMPTY : priorMeetingContext
+        );
         return audit(synthesized, allowedEvidenceIds, language);
     }
 
@@ -132,14 +150,20 @@ public final class MinutesSynthesisAndAudit {
             FinalNoteDraft fallback,
             Set<String> allowedEvidenceIds,
             String meetingTitle,
-            String language
+            String language,
+            PriorMeetingContext priorMeetingContext
     ) {
         try {
             String candidatesJson = objectMapper.writeValueAsString(toCandidateNode(merged));
+            String priorBlock = priorMeetingContext.toPromptBlock();
             String userPrompt = ExtractionPromptRules.applyLanguage(finalMinutesTemplate, language)
                     .replace("{{meetingTitle}}", meetingTitle == null ? "" : meetingTitle)
                     .replace("{{candidatesJson}}", candidatesJson)
-                    .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds));
+                    .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds))
+                    .replace(
+                            "{{priorMeetingContext}}",
+                            priorBlock.isBlank() ? "(yok)" : priorBlock
+                    );
             InferenceResponse response = modelRuntime.infer(new InferenceRequest(
                     InferenceTaskType.FINAL_NOTE.name(),
                     "pv-meeting-final-note-v1",

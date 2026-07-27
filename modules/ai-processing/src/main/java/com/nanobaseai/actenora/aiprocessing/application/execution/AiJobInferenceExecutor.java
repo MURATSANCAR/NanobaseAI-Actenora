@@ -9,6 +9,8 @@ import com.nanobaseai.actenora.aiprocessing.application.modelworker.WorkerReques
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ExtractionPipelineService;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PipelineRunRequest;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PipelineRunResult;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingContext;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingContextPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.InferenceInputResolverPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.JobRoutingCoordinatorPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.JobRoutingCoordinatorPort.RoutedExecution;
@@ -65,6 +67,7 @@ public final class AiJobInferenceExecutor {
     private final JobRoutingCoordinatorPort routingCoordinator;
     private final MeetingNoteHandoffPort noteHandoff;
     private final PipelineQualityMetricsPort qualityMetrics;
+    private final PriorMeetingContextPort priorMeetingContext;
     private final int maxAttempts;
     private final int maxTimeoutSeconds;
 
@@ -194,6 +197,36 @@ public final class AiJobInferenceExecutor {
             int maxAttempts,
             int maxTimeoutSeconds
     ) {
+        this(
+                jobService,
+                providers,
+                inputResolver,
+                servedModels,
+                extractionPipeline,
+                segmentSource,
+                routingCoordinator,
+                noteHandoff,
+                qualityMetrics,
+                PriorMeetingContextPort.noop(),
+                maxAttempts,
+                maxTimeoutSeconds
+        );
+    }
+
+    public AiJobInferenceExecutor(
+            AiJobService jobService,
+            LocalModelProviderLocator providers,
+            InferenceInputResolverPort inputResolver,
+            ServedModelResolverPort servedModels,
+            ExtractionPipelineService extractionPipeline,
+            TranscriptSegmentSourcePort segmentSource,
+            JobRoutingCoordinatorPort routingCoordinator,
+            MeetingNoteHandoffPort noteHandoff,
+            PipelineQualityMetricsPort qualityMetrics,
+            PriorMeetingContextPort priorMeetingContext,
+            int maxAttempts,
+            int maxTimeoutSeconds
+    ) {
         this.jobService = Objects.requireNonNull(jobService, "jobService");
         this.providers = Objects.requireNonNull(providers, "providers");
         this.inputResolver = Objects.requireNonNull(inputResolver, "inputResolver");
@@ -203,6 +236,9 @@ public final class AiJobInferenceExecutor {
         this.routingCoordinator = routingCoordinator;
         this.noteHandoff = noteHandoff;
         this.qualityMetrics = qualityMetrics == null ? PipelineQualityMetricsPort.noop() : qualityMetrics;
+        this.priorMeetingContext = priorMeetingContext == null
+                ? PriorMeetingContextPort.noop()
+                : priorMeetingContext;
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
@@ -327,6 +363,10 @@ public final class AiJobInferenceExecutor {
 
         String promptId = resolveExtractionPromptId(job);
 
+        PriorMeetingContext prior = priorMeetingContext
+                .load(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
+                .orElse(PriorMeetingContext.EMPTY);
+
         PipelineRunResult result = extractionPipeline.run(new PipelineRunRequest(
                 TenantId.of(job.tenantId()),
                 job.transcriptId(),
@@ -334,7 +374,9 @@ public final class AiJobInferenceExecutor {
                 promptId,
                 segments,
                 job.language(),
-                timeoutSecondsFor(job, now)
+                timeoutSecondsFor(job, now),
+                PipelineRunRequest.DEFAULT_PARALLEL_CHUNK_LIMIT,
+                prior
         ));
 
         if (result.success()) {

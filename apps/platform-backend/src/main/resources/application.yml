@@ -134,6 +134,13 @@ actenora:
       enabled: ${ACTENORA_AI_ROUTING_ENABLED:true}
       # champion/challenger shadow; never replaces the production result, consensus stays OFF
       shadow-execution-enabled: ${ACTENORA_AI_ROUTING_SHADOW_ENABLED:false}
+  knowledge:
+    embedding:
+      # hash = offline deterministic vectors; openai-compatible = POST /v1/embeddings
+      mode: ${ACTENORA_KNOWLEDGE_EMBEDDING_MODE:hash}
+      dimensions: ${ACTENORA_KNOWLEDGE_EMBEDDING_DIMENSIONS:1024}
+      base-url: ${ACTENORA_KNOWLEDGE_EMBEDDING_BASE_URL:}
+      model-id: ${ACTENORA_KNOWLEDGE_EMBEDDING_MODEL_ID:}
   delivery:
     webhook:
       # Shared secret for provider delivery confirmation callbacks (FAZ 30)

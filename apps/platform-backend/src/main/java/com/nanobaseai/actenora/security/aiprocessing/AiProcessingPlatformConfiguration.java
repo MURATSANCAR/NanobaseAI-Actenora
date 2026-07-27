@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.aiprocessing.application.execution.MultiModelRout
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ExtractionPipelineFacade;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ExtractionPipelineService;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelRuntimePort;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingContextPort;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PromptRegistryPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.AdmissionController;
 import com.nanobaseai.actenora.aiprocessing.application.port.AiAttemptRepository;
@@ -70,6 +71,8 @@ import com.nanobaseai.actenora.sharedkernel.coordination.FixedWindowRateLimiter;
 import com.nanobaseai.actenora.sharedkernel.coordination.JobProgressCache;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegmentRepository;
+import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerApi;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -306,7 +309,8 @@ public class AiProcessingPlatformConfiguration {
             AiRoutingProperties routingProperties,
             MeetingNoteHandoffPort noteHandoff,
             LocalProviderProperties properties,
-            PipelineQualityMetricsPort pipelineQualityMetrics
+            PipelineQualityMetricsPort pipelineQualityMetrics,
+            PriorMeetingContextPort priorMeetingContext
     ) {
         return new AiJobInferenceExecutor(
                 aiJobService,
@@ -318,9 +322,19 @@ public class AiProcessingPlatformConfiguration {
                 routingProperties.isEnabled() ? routingCoordinator : null,
                 noteHandoff,
                 pipelineQualityMetrics,
+                priorMeetingContext,
                 properties.getMaxAttempts(),
                 (int) Math.max(1, properties.getReadTimeout().toSeconds())
         );
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(PriorMeetingContextPort.class)
+    PriorMeetingContextPort priorMeetingContextPort(
+            ObjectProvider<ContinuityLedgerApi> continuityLedgerApi
+    ) {
+        ContinuityLedgerApi api = continuityLedgerApi.getIfAvailable();
+        return api == null ? PriorMeetingContextPort.noop() : new LedgerPriorMeetingContextAdapter(api);
     }
 
     @Bean

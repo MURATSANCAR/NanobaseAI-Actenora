@@ -10,18 +10,25 @@ import com.nanobaseai.actenora.meetingintelligence.application.MeetingIntelligen
 import com.nanobaseai.actenora.meetingintelligence.application.MeetingIntelligenceApplicationService;
 import com.nanobaseai.actenora.meetingintelligence.application.mapping.MapAiCandidatesToNoteService;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ActionItemRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedKnowledgeIndexerPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteLedgerPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.ArtifactMetadataStorePort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ClockPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.CommitmentRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.DecisionRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.EmbeddingPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.EvidenceLinkRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.HybridKnowledgeSearchPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
+import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingKnowledgeStorePort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.TenantContextPort;
+import com.nanobaseai.actenora.meetingintelligence.application.knowledge.ApprovedKnowledgeIndexer;
+import com.nanobaseai.actenora.meetingintelligence.application.knowledge.HybridKnowledgeSearchService;
 import com.nanobaseai.actenora.meetingintelligence.application.validation.DefaultEvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.application.validation.EvidenceValidationService;
 import com.nanobaseai.actenora.meetingintelligence.application.validation.port.ManualReviewCaseRepository;
@@ -32,12 +39,16 @@ import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerAp
 import com.nanobaseai.actenora.meetingintelligence.application.ledger.ContinuityLedgerService;
 import com.nanobaseai.actenora.meetingintelligence.application.ledger.port.LedgerEventStore;
 import com.nanobaseai.actenora.meetingintelligence.application.ledger.port.LedgerProjectionRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.embedding.HashEmbeddingPort;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.embedding.OpenAiCompatibleEmbeddingPort;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.InMemoryLedgerEventStore;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.ledger.InMemoryLedgerProjectionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryActionItemRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryArtifactMetadataStore;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryCommitmentRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryDecisionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryEvidenceLinkRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingKnowledgeStore;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryOpenQuestionRepository;
@@ -318,6 +329,74 @@ public class MeetingIntelligencePlatformConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(ApprovedKnowledgeIndexerPort.class)
+    public ApprovedKnowledgeIndexerPort approvedKnowledgeIndexerPort(
+            DecisionRepository decisions,
+            ActionItemRepository actionItems,
+            CommitmentRepository commitments,
+            RiskRepository risks,
+            OpenQuestionRepository openQuestions,
+            MeetingKnowledgeStorePort knowledgeStore,
+            EmbeddingPort embeddingPort
+    ) {
+        return new ApprovedKnowledgeIndexer(
+                decisions,
+                actionItems,
+                commitments,
+                risks,
+                openQuestions,
+                knowledgeStore,
+                embeddingPort,
+                Clock.systemUTC()
+        );
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(MeetingKnowledgeStorePort.class)
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
+    public MeetingKnowledgeStorePort inMemoryMeetingKnowledgeStore() {
+        return new InMemoryMeetingKnowledgeStore();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(ArtifactMetadataStorePort.class)
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
+    public ArtifactMetadataStorePort inMemoryArtifactMetadataStore() {
+        return new InMemoryArtifactMetadataStore();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EmbeddingPort.class)
+    public EmbeddingPort embeddingPort(
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.dimensions:1024}") int dimensions,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.mode:hash}") String mode,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.base-url:}") String baseUrl,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.model-id:}") String modelId
+    ) {
+        if ("openai-compatible".equalsIgnoreCase(mode) && baseUrl != null && !baseUrl.isBlank()) {
+            return new OpenAiCompatibleEmbeddingPort(
+                    java.net.URI.create(baseUrl),
+                    modelId == null || modelId.isBlank() ? "embedding" : modelId,
+                    dimensions,
+                    java.time.Duration.ofSeconds(30)
+            );
+        }
+        return new HashEmbeddingPort(dimensions);
+    }
+
+    @Bean
+    public HybridKnowledgeSearchPort hybridKnowledgeSearchPort(
+            MeetingKnowledgeStorePort knowledgeStore,
+            EmbeddingPort embeddingPort
+    ) {
+        return new HybridKnowledgeSearchService(knowledgeStore, embeddingPort);
+    }
+
+    @Bean
     @Primary
     public ApprovedNoteLedgerPort approvedNoteLedgerPort(OutboxPublisher outboxPublisher) {
         return new OutboxApprovedNoteLedgerAdapter(outboxPublisher, "meeting-intelligence");
@@ -325,8 +404,11 @@ public class MeetingIntelligencePlatformConfiguration {
 
     @Bean
     public NoteApprovedForLedgerHandler noteApprovedForLedgerHandler(
-            ApprovedNoteLedgerAdapter approvedNoteLedgerWriter
+            ApprovedNoteLedgerAdapter approvedNoteLedgerWriter,
+            ApprovedKnowledgeIndexerPort knowledgeIndexer
     ) {
-        return new NoteApprovedForLedgerHandler(approvedNoteLedgerWriter);
+        return new NoteApprovedForLedgerHandler(
+                new CompositeApprovedNoteLedgerAdapter(approvedNoteLedgerWriter, knowledgeIndexer)
+        );
     }
 }

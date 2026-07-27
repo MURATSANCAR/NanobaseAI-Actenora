@@ -14,7 +14,7 @@ migrations when the legacy band is tight.
 | transcript | 150–159 | — | |
 | modelmanagement | 160–169 | — | |
 | aiprocessing | 170–179 | — | |
-| meetingintelligence | 180–189 | **240–259** | legacy nearly full; use 240+ next |
+| meetingintelligence | 180–189 | **240–259** | legacy nearly full; use 240+ next (V240 knowledge + V241 artifact_metadata) |
 | approval | 190–199 | — | |
 | template | 200–209 | — | |
 | delivery | 210–219 | — | |

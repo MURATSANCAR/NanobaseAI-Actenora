@@ -160,7 +160,14 @@ public final class ExtractionPipelineService {
 
             FinalNoteDraft deterministic = finalNoteAssembler.assemble(merged, language);
             FinalNoteDraft note = new MinutesSynthesisAndAudit(modelRuntime, timeoutSeconds)
-                    .synthesizeAndAudit(merged, deterministic, allowed, meetingTitle, language);
+                    .synthesizeAndAudit(
+                            merged,
+                            deterministic,
+                            allowed,
+                            meetingTitle,
+                            language,
+                            request.priorMeetingContext()
+                    );
             metrics.addDurationMs((System.nanoTime() - pipelineStarted) / 1_000_000L);
             return PipelineRunResult.succeeded(promptVersionId, modelVersion, note, metrics);
         } catch (PipelineException ex) {
