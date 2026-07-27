@@ -169,7 +169,11 @@ public class StagedPipelinePlatformConfiguration {
                 DefaultModelRoleBootstrap.QWEN27_FINAL_MODEL_ID,
                 timeoutSeconds
         );
-        return new RoleAwareModelRuntimePort(fast, fin, TenantRoutingPolicy::defaults);
+        return new RoleAwareModelRuntimePort(
+                fast,
+                fin,
+                () -> TenantRoutingPolicy.defaults(java.util.UUID.fromString("00000000-0000-4000-8000-000000000099"))
+        );
     }
 
     private static LocalProviderProperties copyWithBase(LocalProviderProperties source, java.net.URI baseUrl) {

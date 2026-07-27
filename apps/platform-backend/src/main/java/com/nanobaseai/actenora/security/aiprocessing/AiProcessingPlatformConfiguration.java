@@ -107,7 +107,7 @@ import java.util.UUID;
  */
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties({LocalProviderProperties.class, AiRoutingProperties.class})
+@EnableConfigurationProperties({LocalProviderProperties.class, AiRoutingProperties.class, AiPipelineProperties.class})
 public class AiProcessingPlatformConfiguration {
 
     /**
@@ -311,7 +311,9 @@ public class AiProcessingPlatformConfiguration {
             MeetingNoteHandoffPort noteHandoff,
             LocalProviderProperties properties,
             PipelineQualityMetricsPort pipelineQualityMetrics,
-            PriorMeetingContextPort priorMeetingContext
+            PriorMeetingContextPort priorMeetingContext,
+            ObjectProvider<com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StagedPipelineRunner> stagedRunner,
+            AiPipelineProperties pipelineProperties
     ) {
         return new AiJobInferenceExecutor(
                 aiJobService,
@@ -324,6 +326,7 @@ public class AiProcessingPlatformConfiguration {
                 noteHandoff,
                 pipelineQualityMetrics,
                 priorMeetingContext,
+                pipelineProperties.isStaged() ? stagedRunner.getIfAvailable() : null,
                 properties.getMaxAttempts(),
                 (int) Math.max(1, properties.getReadTimeout().toSeconds())
         );
@@ -382,9 +385,25 @@ public class AiProcessingPlatformConfiguration {
             AiAttemptRepository attempts,
             TenantAiPolicyPort tenantAiPolicy,
             ModelRouter modelRouter,
-            LocalProviderProperties properties
+            LocalProviderProperties properties,
+            ObjectProvider<org.springframework.transaction.PlatformTransactionManager> txManager
     ) {
-        return new FairJobScheduler(jobs, attempts, tenantAiPolicy, modelRouter, properties.getMaxAttempts());
+        org.springframework.transaction.support.TransactionTemplate tx = null;
+        org.springframework.transaction.PlatformTransactionManager manager = txManager.getIfAvailable();
+        if (manager != null) {
+            tx = new org.springframework.transaction.support.TransactionTemplate(manager);
+        }
+        return new FairJobScheduler(
+                jobs,
+                attempts,
+                tenantAiPolicy,
+                modelRouter,
+                FairJobScheduler.DEFAULT_AGING_INTERVAL,
+                FairJobScheduler.DEFAULT_AGING_BONUS,
+                FairJobScheduler.DEFAULT_AVG_JOB_DURATION,
+                properties.getMaxAttempts(),
+                tx
+        );
     }
 
     @Bean
