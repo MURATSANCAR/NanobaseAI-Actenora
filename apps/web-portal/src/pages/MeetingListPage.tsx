@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
 import type { MeetingOccurrenceStatus } from "@/api/types";
+import { MeetingSummaryList } from "@/components/meeting/MeetingSummaryList";
 import { PageShell } from "@/components/qa/PageShell";
-import { StatusBadge } from "@/components/qa/StatusBadge";
-import { AsyncState, DataTable, FilterCard, PaginationBar } from "@/components/ui/AsyncState";
+import { AsyncState, FilterCard, PaginationBar } from "@/components/ui/AsyncState";
 import { useI18n } from "@/i18n";
 
 const MEETING_STATUSES: MeetingOccurrenceStatus[] = [
@@ -99,24 +98,12 @@ export function MeetingListPage() {
         emptyTitle={t("meetings.empty")}
         emptyDescription={t("meetings.description")}
       >
-        <DataTable
-          ariaLabel={t("meetings.title")}
-          headers={[t("filter.titlePlaceholder"), t("filter.status"), t("meeting.scheduled"), ""]}
-          rows={
-            query.data?.items.map((m) => [
-              <Link key={`${m.id}-title`} to={`/meetings/${m.id}`} className="font-medium text-violet-800 hover:underline">
-                {m.title}
-              </Link>,
-              <StatusBadge key={`${m.id}-status`} label={tb("meetingStatus", m.status)} status={m.status} />,
-              <span key={`${m.id}-date`} className="text-slate-500">
-                {new Date(m.scheduledStartAt).toLocaleString()}
-              </span>,
-              <span key={`${m.id}-people`} className="text-slate-500">
-                {m.participantCount} {t("common.people")}
-              </span>,
-            ]) ?? []
-          }
-        />
+        <section className="dashboard-meetings" aria-label={t("meetings.title")}>
+          <MeetingSummaryList
+            meetings={query.data?.items ?? []}
+            ariaLabel={t("meetings.title")}
+          />
+        </section>
         <PaginationBar
           nextCursor={query.data?.nextCursor}
           onNext={() => setCursor(query.data?.nextCursor ?? undefined)}
