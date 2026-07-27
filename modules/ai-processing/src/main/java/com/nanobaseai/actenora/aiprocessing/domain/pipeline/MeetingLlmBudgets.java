@@ -1,21 +1,20 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
 /**
- * Production token budgets for the meeting-minutes pipeline on Qwen3-8B (CPU).
+ * Production token budgets for the meeting-minutes pipeline on Qwen3.6-35B-A3B (CPU).
  *
- * <p>Qwen3-8B native context is 32_768 tokens. Operational llama-server
- * {@code --ctx-size} is intentionally {@link #OPERATIONAL_CTX_SIZE} (16_384):
- * long context on CPU is slow and unnecessary for meeting notes.
+ * <p>Server {@code --ctx-size} is typically 32_768. Pipeline chunking still uses
+ * {@link #OPERATIONAL_CTX_SIZE} (16_384) so prompt+chunk+output stay well under KV.
  *
  * <p>Critical distinction:
  * <ul>
- *   <li>{@code max_tokens} / stage max output = generation cap (keep low on 8B)</li>
+ *   <li>{@code max_tokens} / stage max output = generation cap</li>
  *   <li>chunk target/max = transcript input slice size per LLM call</li>
  * </ul>
  */
 public final class MeetingLlmBudgets {
 
-    /** llama-server --ctx-size for nanobase-meeting-8b. */
+    /** Operational context budget used for chunking (server may advertise 32k). */
     public static final int OPERATIONAL_CTX_SIZE = 16_384;
 
     /** Preferred transcript tokens per extraction call. */

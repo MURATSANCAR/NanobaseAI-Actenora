@@ -195,10 +195,10 @@ public class StagedPipelinePlatformConfiguration {
         int timeoutSeconds = (int) Math.max(1, properties.getReadTimeout().toSeconds());
         String fastServed = properties.hasFastExtractionServedModelId()
                 ? properties.getFastExtractionServedModelId()
-                : "nanobase-meeting-8b";
+                : "nanobase-qwen36-35b-a3b-mtp";
         String finalServed = properties.hasFinalServedModelId()
                 ? properties.getFinalServedModelId()
-                : "nanobase-meeting-8b";
+                : "nanobase-qwen36-35b-a3b-mtp";
 
         LocalModelProvider fastProvider = primaryProvider;
         LocalModelProvider finalProvider = primaryProvider;
