@@ -13,7 +13,8 @@ x-local-credentials-warning: &local-only
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector-enabled Postgres 16 (required for meeting_knowledge_item embeddings)
+    image: pgvector/pgvector:pg16
     container_name: actenora-postgres
     environment:
       <<: *local-only

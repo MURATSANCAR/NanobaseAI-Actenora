@@ -6,6 +6,8 @@
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
+-- Hybrid knowledge search (FTS + cosine). Requires pgvector-capable Postgres image.
+CREATE EXTENSION IF NOT EXISTS "vector" WITH SCHEMA extensions;
 
 DO $bootstrap$
 BEGIN
