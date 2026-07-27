@@ -12,10 +12,21 @@ const STAGE_PAD_X = 32;
 const MAX_SCALE = 1.15;
 
 /** Isolated fullscreen A4 preview — scaled to fit stage width, content never clipped. */
-export function TemplateDocumentPreviewStage({ components }: { components: DesignComponent[] }) {
+export function TemplateDocumentPreviewStage({
+  components,
+  title,
+  compact = false,
+}: {
+  components: DesignComponent[];
+  /** Optional header title override (e.g. version label in compare mode). */
+  title?: string;
+  /** Shorter stage height for side-by-side compare panels. */
+  compact?: boolean;
+}) {
   const { t } = useI18n();
   const stageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const maxScale = compact ? 1 : MAX_SCALE;
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -26,7 +37,7 @@ export function TemplateDocumentPreviewStage({ components }: { components: Desig
       if (w <= 0) return;
       // Fill stage width; page may scroll vertically inside the stage.
       const fit = w / A4_PAGE_WIDTH_PX;
-      setScale(Math.max(0.35, Math.min(fit, MAX_SCALE)));
+      setScale(Math.max(0.35, Math.min(fit, maxScale)));
     };
 
     update();
@@ -37,19 +48,23 @@ export function TemplateDocumentPreviewStage({ components }: { components: Desig
       ro.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [components.length]);
+  }, [components.length, maxScale]);
 
   const scaledW = A4_PAGE_WIDTH_PX * scale;
   const scaledH = A4_PAGE_HEIGHT_PX * scale;
+  const heading = title ?? t("templates.preview.title");
 
   return (
     <section
-      className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-2xl border border-slate-300/80 bg-slate-400/30 shadow-inner"
-      aria-label={t("templates.preview.title")}
+      className={[
+        "flex flex-col overflow-hidden rounded-2xl border border-slate-300/80 bg-slate-400/30 shadow-inner",
+        compact ? "min-h-[28rem]" : "min-h-[calc(100dvh-11rem)]",
+      ].join(" ")}
+      aria-label={heading}
     >
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-300/60 bg-slate-900/90 px-4 py-2.5 text-white backdrop-blur">
         <div>
-          <h3 className="text-sm font-bold tracking-tight">{t("templates.preview.title")}</h3>
+          <h3 className="text-sm font-bold tracking-tight">{heading}</h3>
           <p className="text-[11px] text-white/60">{t("templates.preview.hint")}</p>
         </div>
         <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80 ring-1 ring-white/20">
