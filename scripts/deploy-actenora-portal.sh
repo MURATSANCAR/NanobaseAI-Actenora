@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Actenora web-portal and install under portal.nanobase.ai/actenora/
+# Build EasyMeeting web-portal and install under portal.nanobase.ai/easymeeting/
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -7,9 +7,9 @@ source "${SCRIPT_DIR}/lib/common.sh"
 ensure_path_tools
 
 SSH_HOST="${ACTENORA_PORTAL_SSH_HOST:-nanobase}"
-INSTALL_DIR="${ACTENORA_PORTAL_INSTALL_DIR:-/data/nanobaseai-mobile/portal/dist/actenora}"
-PORTAL_BASE="${ACTENORA_PORTAL_BASE:-/actenora/}"
-PUBLIC_URL="${ACTENORA_PORTAL_PUBLIC_URL:-https://portal.nanobase.ai/actenora/}"
+INSTALL_DIR="${ACTENORA_PORTAL_INSTALL_DIR:-/data/nanobaseai-mobile/portal/dist/easymeeting}"
+PORTAL_BASE="${ACTENORA_PORTAL_BASE:-/easymeeting/}"
+PUBLIC_URL="${ACTENORA_PORTAL_PUBLIC_URL:-https://portal.nanobase.ai/easymeeting/}"
 
 require_cmd pnpm
 require_cmd rsync
@@ -49,7 +49,7 @@ EOF
 if ssh "${SSH_HOST}" "curl -sf -o /dev/null -w '%{http_code}' '${PUBLIC_URL}'" | grep -q '^200$'; then
   log "Health check OK: ${PUBLIC_URL}"
 else
-  warn "Health check did not return 200 for ${PUBLIC_URL} — verify nginx location ^~ /actenora/"
+  warn "Health check did not return 200 for ${PUBLIC_URL} — verify nginx location ^~ /easymeeting/"
 fi
 
-log "Actenora portal deploy complete → ${PUBLIC_URL}"
+log "EasyMeeting portal deploy complete → ${PUBLIC_URL}"

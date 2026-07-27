@@ -117,8 +117,8 @@ fi
 if grep -q 'upstream actenora_platform_backend' "\$SITE" 2>/dev/null \
    && grep -q 'location /api/v1/portal/' "\$SITE" 2>/dev/null \
    && grep -q 'location /api/v1/microsoft/' "\$SITE" 2>/dev/null \
-   && grep -q 'location ^~ /actenora/' "\$SITE" 2>/dev/null; then
-  echo "nginx already configured for Actenora BFF + SPA"
+   && grep -q 'location ^~ /easymeeting/' "\$SITE" 2>/dev/null; then
+  echo "nginx already configured for Actenora BFF + EasyMeeting SPA"
   sudo nginx -t
   exit 0
 fi
@@ -166,7 +166,7 @@ if ! grep -q 'location /api/v1/microsoft/' "\$SITE"; then
   need_reload=1
 fi
 
-if ! grep -q 'location ^~ /actenora/' "\$SITE"; then
+if ! grep -q 'location ^~ /easymeeting/' "\$SITE"; then
   sudo awk -v spa="\$SPA" '
     /location = \\/index.html/ && !done {
       while ((getline line < spa) > 0) print line

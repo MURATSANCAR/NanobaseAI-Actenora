@@ -130,7 +130,7 @@ public final class MeetingNoteBrandedTemplates {
                   %s
                   %s
                   %s
-                  <div class="footer">%s · portal.nanobase.ai/actenora · Gizli / Kurum İçi</div>
+                  <div class="footer">%s · portal.nanobase.ai/easymeeting · Gizli / Kurum İçi</div>
                 </body>
                 </html>
                 """.formatted(
@@ -166,7 +166,7 @@ public final class MeetingNoteBrandedTemplates {
         return """
                 <tr><td style="background:#f8fafc;padding:18px 36px;border-top:1px solid #e2e8f0;">
                   <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;">
-                    © Nanobase · <a href="https://portal.nanobase.ai/actenora/" style="color:#6d28d9;text-decoration:none;">portal.nanobase.ai</a>
+                    © Nanobase · <a href="https://portal.nanobase.ai/easymeeting/" style="color:#6d28d9;text-decoration:none;">portal.nanobase.ai</a>
                   </p>
                 </td></tr>
                 """;

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full portal.nanobase.ai deploy: QA hub (mobile-qa) + Actenora SPA under /actenora/
+# Full portal.nanobase.ai deploy: QA hub (mobile-qa) + EasyMeeting SPA under /easymeeting/
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -11,7 +11,7 @@ SKIP_QA_PORTAL="${SKIP_QA_PORTAL_DEPLOY:-0}"
 SKIP_PORTAL_E2E="${SKIP_PORTAL_E2E:-1}"
 
 patch_qa_portal_rsync() {
-  log "Ensuring QA portal deploy preserves /actenora/ (rsync exclude)"
+  log "Ensuring QA portal deploy preserves /easymeeting/ (rsync exclude)"
   ssh "${SSH_HOST}" bash -s <<EOF
 set -euo pipefail
 DEPLOY="${MOBILE_QA_ROOT}/scripts/server/deploy-qa-portal.sh"
@@ -19,11 +19,16 @@ if [[ ! -f "\$DEPLOY" ]]; then
   echo "WARN: \$DEPLOY not found — skipping rsync exclude patch"
   exit 0
 fi
-if grep -q "exclude 'actenora/'" "\$DEPLOY"; then
-  echo "QA deploy script already excludes actenora/"
+if grep -q "exclude 'easymeeting/'" "\$DEPLOY"; then
+  echo "QA deploy script already excludes easymeeting/"
 else
-  sed -i "s|--exclude 'config.json'|--exclude 'config.json' --exclude 'actenora/'|g" "\$DEPLOY"
-  echo "Patched \$DEPLOY to exclude actenora/"
+  # Keep legacy actenora/ exclude if present; always preserve easymeeting/.
+  if grep -q "exclude 'actenora/'" "\$DEPLOY"; then
+    sed -i "s|--exclude 'actenora/'|--exclude 'actenora/' --exclude 'easymeeting/'|g" "\$DEPLOY"
+  else
+    sed -i "s|--exclude 'config.json'|--exclude 'config.json' --exclude 'easymeeting/'|g" "\$DEPLOY"
+  fi
+  echo "Patched \$DEPLOY to exclude easymeeting/"
 fi
 EOF
 }
@@ -41,7 +46,7 @@ main() {
     log "Skipping QA portal deploy (SKIP_QA_PORTAL_DEPLOY=1)"
   fi
   bash "${SCRIPT_DIR}/deploy-actenora-portal.sh"
-  log "Production portal deploy finished: https://portal.nanobase.ai/ (+ /actenora/)"
+  log "Production portal deploy finished: https://portal.nanobase.ai/ (+ /easymeeting/)"
 }
 
 main "$@"

@@ -154,7 +154,7 @@ actenora:
       secret: ${ACTENORA_DELIVERY_WEBHOOK_SECRET:local-delivery-webhook-secret}
     portal-link:
       secret: ${ACTENORA_PORTAL_LINK_SECRET:actenora-local-portal-secret}
-      base-url: ${ACTENORA_PORTAL_LINK_BASE_URL:https://portal.nanobase.ai/actenora}
+      base-url: ${ACTENORA_PORTAL_LINK_BASE_URL:https://portal.nanobase.ai/easymeeting}
     mail:
       # mailhog (local) | microsoft-graph (prod CERTIFICATE path)
       provider: ${ACTENORA_DELIVERY_MAIL_PROVIDER:mailhog}

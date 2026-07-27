@@ -9,7 +9,7 @@ export interface FamilyProduct {
 
 const DEFAULT_QA_URL = "https://portal.nanobase.ai";
 const DEFAULT_BI_URL = "https://bi.nanobase.ai";
-const DEFAULT_ACTENORA_URL = "https://portal.nanobase.ai/actenora/";
+const DEFAULT_ACTENORA_URL = "https://portal.nanobase.ai/easymeeting/";
 
 function env(): Partial<ImportMetaEnv> | undefined {
   try {
