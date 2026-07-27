@@ -1,0 +1,93 @@
+{
+  "version": "signal-gate-eval-v1",
+  "description": "Anonymized structural EVAL cases for gate/classifier tuning (no real personas).",
+  "cases": [
+    {
+      "id": "A-oov-close-topic",
+      "expectExtract": true,
+      "kind": "decision",
+      "segments": [
+        "Bu noktayı artık kapatıyoruz; API yapısı cuma itibarıyla değişmeyecek."
+      ]
+    },
+    {
+      "id": "B-assignment-deadline",
+      "expectExtract": true,
+      "kind": "action",
+      "segments": [
+        "Can bunun sahipliğini alsın ve cuma günü paketi kanala bıraksın."
+      ]
+    },
+    {
+      "id": "C-ui-decision-word",
+      "expectExtract": false,
+      "kind": "noise",
+      "segments": [
+        "Karar ekranını şimdi açıyorum.",
+        "Mevcut kararları tekrar okuyacağım.",
+        "Yeni bir karar alınmadı."
+      ]
+    },
+    {
+      "id": "D-mixed-proposal-decision",
+      "expectExtract": true,
+      "kind": "decision",
+      "segments": [
+        "Belki erteleyebiliriz.",
+        "Henüz karar değil.",
+        "Bu konuyu kapattık; cuma donduruyoruz."
+      ]
+    },
+    {
+      "id": "E-long-single-decision",
+      "expectExtract": true,
+      "kind": "decision",
+      "segments": [
+        "Genel durum güncellemesi devam ediyor, ek bir madde yok. Genel durum güncellemesi devam ediyor, ek bir madde yok. Genel durum güncellemesi devam ediyor, ek bir madde yok. Bu noktayı kapatıyoruz; API yapısı cuma itibarıyla değişmeyecek."
+      ]
+    },
+    {
+      "id": "F-mitigation-continuation",
+      "expectExtract": true,
+      "kind": "mitigation",
+      "previousHasRisk": true,
+      "segments": [
+        "Bunun önlemi olarak erken smoke uygulayacağız."
+      ]
+    },
+    {
+      "id": "G-pure-filler",
+      "expectExtract": false,
+      "kind": "noise",
+      "segments": [
+        "Mikrofonumu açıyorum.",
+        "Ekranı paylaşıyorum.",
+        "Anladım, teşekkürler."
+      ]
+    },
+    {
+      "id": "H-risk-money",
+      "expectExtract": true,
+      "kind": "risk",
+      "segments": [
+        "Deploy gecikmesi teslimi kaydırabilir; tahmini maliyet 15.000 TL."
+      ]
+    },
+    {
+      "id": "I-open-question",
+      "expectExtract": true,
+      "kind": "question",
+      "segments": [
+        "Nihai onayı kim verecek? Bu hâlâ açık soru."
+      ]
+    },
+    {
+      "id": "J-status-quo-filler",
+      "expectExtract": false,
+      "kind": "noise",
+      "segments": [
+        "Mevcut kararı değiştirmiyoruz, sadece bağlam paylaşımı."
+      ]
+    }
+  ]
+}

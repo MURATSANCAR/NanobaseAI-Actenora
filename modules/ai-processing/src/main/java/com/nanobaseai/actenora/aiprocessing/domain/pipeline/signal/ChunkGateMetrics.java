@@ -18,6 +18,8 @@ public final class ChunkGateMetrics {
     private final AtomicLong tokensSaved = new AtomicLong();
     private final AtomicLong decisionUnsupported = new AtomicLong();
 
+    private final AtomicLong classifierExtract = new AtomicLong();
+
     public ChunkGateMetrics() {
         this(false);
     }
@@ -47,6 +49,12 @@ public final class ChunkGateMetrics {
     public void incrementContinuation() {
         if (!noop) {
             continuation.incrementAndGet();
+        }
+    }
+
+    public void incrementClassifierExtract() {
+        if (!noop) {
+            classifierExtract.incrementAndGet();
         }
     }
 
@@ -82,6 +90,10 @@ public final class ChunkGateMetrics {
 
     public long continuation() {
         return continuation.get();
+    }
+
+    public long classifierExtract() {
+        return classifierExtract.get();
     }
 
     public long shadowFalseNegative() {

@@ -90,6 +90,9 @@ public final class ChunkExtractionService {
 
         if (decision.outcome() == GateOutcome.EXTRACT_CONTINUATION) {
             metrics.incrementContinuation();
+        } else if (decision.outcome() == GateOutcome.EXTRACT_CLASSIFIER) {
+            metrics.incrementClassifierExtract();
+            metrics.incrementExtracted();
         } else {
             metrics.incrementExtracted();
         }

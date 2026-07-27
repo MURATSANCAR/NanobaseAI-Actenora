@@ -29,6 +29,7 @@ public record ChunkGateDecision(
         return outcome == GateOutcome.EXTRACT_STRONG_SIGNAL
                 || outcome == GateOutcome.EXTRACT_COMPOSITE_SIGNAL
                 || outcome == GateOutcome.EXTRACT_CONTINUATION
+                || outcome == GateOutcome.EXTRACT_CLASSIFIER
                 || outcome == GateOutcome.SHADOW_SKIP;
     }
 }

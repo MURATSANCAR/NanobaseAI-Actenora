@@ -7,19 +7,21 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Adaptive two-stage gate: strong structural shortcuts, then composite score.
+ * Adaptive gate: strong structural shortcuts → composite score → uncertain-band classifier (Faz 2).
  * Dictionaries never alone decide skip/extract.
  */
 public final class ChunkSignalGate {
 
     private final ChunkSignalFeatureExtractor featureExtractor;
+    private final ChunkSignalClassifier classifier;
 
-    public ChunkSignalGate(ChunkSignalFeatureExtractor featureExtractor) {
+    public ChunkSignalGate(ChunkSignalFeatureExtractor featureExtractor, ChunkSignalClassifier classifier) {
         this.featureExtractor = Objects.requireNonNull(featureExtractor, "featureExtractor");
+        this.classifier = Objects.requireNonNull(classifier, "classifier");
     }
 
     public ChunkSignalGate(SignalGateConfig config) {
-        this(new StructuralChunkSignalFeatureExtractor(config));
+        this(new StructuralChunkSignalFeatureExtractor(config), new HeuristicChunkSignalClassifier());
     }
 
     public ChunkGateDecision evaluate(TranscriptChunk chunk, ChunkContext context) {
@@ -80,7 +82,7 @@ public final class ChunkSignalGate {
             }
         }
 
-        // Stage 2 — composite score (density is supportive via meaningfulSegmentCount)
+        // Stage 2 — composite score
         double positive =
                 features.explicitDecisionMarkers() * 5.0d
                         + features.assignmentStructures() * 4.0d
@@ -121,9 +123,25 @@ public final class ChunkSignalGate {
             reasons.add("HIGH_SEMANTIC_REPETITION");
         }
 
-        if (normalized >= config.threshold() || finalScore >= config.threshold()) {
+        boolean above = normalized >= config.threshold() || finalScore >= config.threshold();
+        if (above) {
             reasons.add("COMPOSITE_SCORE_ABOVE_THRESHOLD");
             return decision(GateOutcome.EXTRACT_COMPOSITE_SIGNAL, features, reasons, 0, config, normalized);
+        }
+
+        // Stage 3 — Faz 2: uncertain band → local classifier only
+        double floor = config.uncertainFloor();
+        boolean uncertain = config.classifierEnabled()
+                && (normalized >= floor || finalScore >= floor);
+        if (uncertain) {
+            reasons.add("UNCERTAIN_BAND_CLASSIFIER");
+            SignalStrength strength = classifier.classify(chunk, context, features, normalized);
+            reasons.add("CLASSIFIER_" + strength.name());
+            if (strength == SignalStrength.LOW_SIGNAL) {
+                reasons.add("CLASSIFIER_SKIP");
+                return decision(GateOutcome.SKIP_LOW_SIGNAL, features, reasons, tokens, config, normalized);
+            }
+            return decision(GateOutcome.EXTRACT_CLASSIFIER, features, reasons, 0, config, normalized);
         }
 
         reasons.add("LOW_COMPOSITE_SIGNAL");

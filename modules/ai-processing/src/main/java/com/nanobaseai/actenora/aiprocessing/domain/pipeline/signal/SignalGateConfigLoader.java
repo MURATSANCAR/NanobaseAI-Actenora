@@ -24,10 +24,13 @@ public final class SignalGateConfigLoader {
         boolean semantic = bool("meeting.signal-gate.semantic-repetition-enabled", defaults.semanticRepetitionEnabled());
         boolean hardMarker = bool("meeting.signal-gate.hard-marker-shortcut-enabled", defaults.hardMarkerShortcutEnabled());
         boolean shadow = bool("meeting.signal-gate.shadow-mode", defaults.shadowMode());
+        boolean classifier = bool("meeting.signal-gate.classifier-enabled", defaults.classifierEnabled());
+        double uncertainBand = dbl("meeting.signal-gate.uncertain-band", defaults.uncertainBand());
         String policy = str("meeting.signal-gate.policy-version", defaults.policyVersion());
         String dictionary = str("meeting.speech-signals.dictionary-version", defaults.dictionaryVersion());
         return new SignalGateConfig(
-                enabled, mode, threshold, continuation, semantic, hardMarker, shadow, policy, dictionary
+                enabled, mode, threshold, continuation, semantic, hardMarker, shadow,
+                classifier, uncertainBand, policy, dictionary
         );
     }
 

@@ -8,7 +8,10 @@ meeting:
     continuation-aware: true
     semantic-repetition-enabled: true
     hard-marker-shortcut-enabled: true
-    shadow-mode: true
-    policy-version: adaptive-gate-v1
+    # Hard skip on: filler chunks do not call EXTRACT LLM (Faz 3 targets met).
+    shadow-mode: false
+    classifier-enabled: true
+    uncertain-band: 2.0
+    policy-version: adaptive-gate-v3
   speech-signals:
     dictionary-version: tr-en-v1

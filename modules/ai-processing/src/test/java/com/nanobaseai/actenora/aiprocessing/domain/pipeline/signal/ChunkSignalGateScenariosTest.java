@@ -23,7 +23,7 @@ class ChunkSignalGateScenariosTest {
 
     @BeforeEach
     void setUp() {
-        hardSkipConfig = SignalGateConfig.productionDefaults().withShadowMode(false);
+        hardSkipConfig = SignalGateConfig.productionDefaults();
         gate = new ChunkSignalGate(hardSkipConfig);
         extraction = ChunkExtractionService.create(hardSkipConfig);
     }
