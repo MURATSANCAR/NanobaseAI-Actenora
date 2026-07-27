@@ -91,8 +91,9 @@ public class AiProcessingController {
                 body.language(),
                 body.contextSize(),
                 body.fallbackPermittedOverride(),
-                body.correlationId() == null ? UUID.randomUUID() : body.correlationId(),
-                now
+                body.correlationId() == null ? body.transcriptId() : body.correlationId(),
+                now,
+                Boolean.TRUE.equals(body.forceReprocess())
         );
         AdmissionController.AdmissionDecision decision = aiProcessingApi.submitJob(command);
         if (!decision.admitted()) {
@@ -266,7 +267,8 @@ public class AiProcessingController {
             String language,
             int contextSize,
             Boolean fallbackPermittedOverride,
-            UUID correlationId
+            UUID correlationId,
+            Boolean forceReprocess
     ) {
     }
 

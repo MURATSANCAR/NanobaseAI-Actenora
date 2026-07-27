@@ -233,7 +233,7 @@ public final class TranscriptReadyAiAdmissionHandler {
         UUID transcriptId = UUID.fromString(requireField(TRANSCRIPT_ID, payloadJson, "transcriptId"));
         UUID meetingOccurrenceId =
                 UUID.fromString(requireField(MEETING_OCCURRENCE_ID, payloadJson, "meetingOccurrenceId"));
-        UUID eventId = UUID.randomUUID();
+        UUID eventId = null;
         Instant occurredAt = Instant.now();
         int segmentCount = 0;
         String language = null;
@@ -244,6 +244,10 @@ public final class TranscriptReadyAiAdmissionHandler {
         Matcher eventIdMatcher = Pattern.compile("\"eventId\"\\s*:\\s*\"([^\"]+)\"").matcher(payloadJson);
         if (eventIdMatcher.find()) {
             eventId = UUID.fromString(eventIdMatcher.group(1));
+        }
+        // Deterministic correlation when eventId absent — never invent a random admit key.
+        if (eventId == null) {
+            eventId = transcriptId;
         }
         Matcher occurredMatcher = Pattern.compile("\"occurredAt\"\\s*:\\s*\"([^\"]+)\"").matcher(payloadJson);
         if (occurredMatcher.find()) {
