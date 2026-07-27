@@ -131,6 +131,142 @@
       "durable": true,
       "auto_delete": false,
       "arguments": {}
+    },
+    {
+      "name": "actenora.ai.normalize",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "ai.normalize.dlq"
+      }
+    },
+    {
+      "name": "actenora.ai.normalize.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.ai.triage",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "ai.triage.dlq"
+      }
+    },
+    {
+      "name": "actenora.ai.triage.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.ai.chunk",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "ai.chunk.dlq"
+      }
+    },
+    {
+      "name": "actenora.ai.chunk.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.ai.extract",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "ai.extract.dlq"
+      }
+    },
+    {
+      "name": "actenora.ai.extract.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.ai.merge",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "ai.merge.dlq"
+      }
+    },
+    {
+      "name": "actenora.ai.merge.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.ai.validate",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "ai.validate.dlq"
+      }
+    },
+    {
+      "name": "actenora.ai.validate.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.ai.minutes",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "ai.minutes.dlq"
+      }
+    },
+    {
+      "name": "actenora.ai.minutes.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.ai.embed",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actenora.dlx",
+        "x-dead-letter-routing-key": "ai.embed.dlq"
+      }
+    },
+    {
+      "name": "actenora.ai.embed.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
     }
   ],
   "exchanges": [
@@ -154,6 +290,15 @@
     },
     {
       "name": "actenora.dlx",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "actenora.ai.pipeline",
       "vhost": "/",
       "type": "topic",
       "durable": true,
@@ -313,6 +458,198 @@
       "destination": "actenora.dlq",
       "destination_type": "queue",
       "routing_key": "#",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.ai.normalize",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.normalize.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.ai.pipeline",
+      "vhost": "/",
+      "destination": "actenora.ai.normalize",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.normalize.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.dlx",
+      "vhost": "/",
+      "destination": "actenora.ai.normalize.dlq",
+      "destination_type": "queue",
+      "routing_key": "ai.normalize.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.ai.triage",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.triage.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.ai.pipeline",
+      "vhost": "/",
+      "destination": "actenora.ai.triage",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.triage.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.dlx",
+      "vhost": "/",
+      "destination": "actenora.ai.triage.dlq",
+      "destination_type": "queue",
+      "routing_key": "ai.triage.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.ai.chunk",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.chunk.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.ai.pipeline",
+      "vhost": "/",
+      "destination": "actenora.ai.chunk",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.chunk.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.dlx",
+      "vhost": "/",
+      "destination": "actenora.ai.chunk.dlq",
+      "destination_type": "queue",
+      "routing_key": "ai.chunk.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.ai.extract",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.extract.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.ai.pipeline",
+      "vhost": "/",
+      "destination": "actenora.ai.extract",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.extract.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.dlx",
+      "vhost": "/",
+      "destination": "actenora.ai.extract.dlq",
+      "destination_type": "queue",
+      "routing_key": "ai.extract.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.ai.merge",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.merge.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.ai.pipeline",
+      "vhost": "/",
+      "destination": "actenora.ai.merge",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.merge.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.dlx",
+      "vhost": "/",
+      "destination": "actenora.ai.merge.dlq",
+      "destination_type": "queue",
+      "routing_key": "ai.merge.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.ai.validate",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.validate.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.ai.pipeline",
+      "vhost": "/",
+      "destination": "actenora.ai.validate",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.validate.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.dlx",
+      "vhost": "/",
+      "destination": "actenora.ai.validate.dlq",
+      "destination_type": "queue",
+      "routing_key": "ai.validate.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.ai.minutes",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.minutes.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.ai.pipeline",
+      "vhost": "/",
+      "destination": "actenora.ai.minutes",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.minutes.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.dlx",
+      "vhost": "/",
+      "destination": "actenora.ai.minutes.dlq",
+      "destination_type": "queue",
+      "routing_key": "ai.minutes.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.domain",
+      "vhost": "/",
+      "destination": "actenora.ai.embed",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.embed.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.ai.pipeline",
+      "vhost": "/",
+      "destination": "actenora.ai.embed",
+      "destination_type": "queue",
+      "routing_key": "ai.pipeline.embed.v1",
+      "arguments": {}
+    },
+    {
+      "source": "actenora.dlx",
+      "vhost": "/",
+      "destination": "actenora.ai.embed.dlq",
+      "destination_type": "queue",
+      "routing_key": "ai.embed.dlq",
       "arguments": {}
     }
   ]

@@ -324,6 +324,28 @@
     @apply bg-amber-50 text-amber-900 ring-1 ring-amber-200/80;
   }
 
+  .nav-approval-badge {
+    @apply relative inline-flex shrink-0 items-center justify-center;
+  }
+
+  .nav-approval-badge-ping {
+    @apply absolute inset-0 rounded-full bg-amber-400/70;
+    animation: navApprovalPing 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  .nav-approval-badge-count {
+    @apply relative z-10 inline-flex min-h-[1.35rem] min-w-[1.35rem] items-center justify-center rounded-full bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 px-1.5 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_rgba(255,255,255,0.85),0_6px_16px_-4px_rgba(234,88,12,0.75)];
+    animation: navApprovalGlow 1.6s ease-in-out infinite;
+  }
+
+  .nav-approval-badge--on-active .nav-approval-badge-count {
+    @apply shadow-[0_0_0_2px_rgba(255,255,255,0.95),0_6px_16px_-4px_rgba(251,191,36,0.9)];
+  }
+
+  .nav-approval-badge--on-active .nav-approval-badge-ping {
+    @apply bg-amber-200/80;
+  }
+
   @media (max-width: 639px) {
     .dashboard-metric:hover {
       transform: none;
@@ -679,6 +701,30 @@
   }
 }
 
+@keyframes navApprovalPing {
+  0% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  75%,
+  100% {
+    transform: scale(2.15);
+    opacity: 0;
+  }
+}
+
+@keyframes navApprovalGlow {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.08);
+    filter: brightness(1.12);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stagger-children > *,
   .module-hero-live-dot,
@@ -704,7 +750,9 @@
   .meeting-detail-card,
   .meeting-detail-pulse,
   .meeting-detail-pulse-border,
-  .meeting-insight-count--pulse {
+  .meeting-insight-count--pulse,
+  .nav-approval-badge-ping,
+  .nav-approval-badge-count {
     animation: none !important;
   }
 }

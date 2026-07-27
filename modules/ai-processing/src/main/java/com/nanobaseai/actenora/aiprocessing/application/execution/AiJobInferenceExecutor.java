@@ -21,7 +21,9 @@ import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffP
 import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ServedModelResolverPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
-import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StageExecutionResult;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StagedPipelineRunner;
+import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobException;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
@@ -68,6 +70,7 @@ public final class AiJobInferenceExecutor {
     private final MeetingNoteHandoffPort noteHandoff;
     private final PipelineQualityMetricsPort qualityMetrics;
     private final PriorMeetingContextPort priorMeetingContext;
+    private final StagedPipelineRunner stagedPipelineRunner;
     private final int maxAttempts;
     private final int maxTimeoutSeconds;
 
@@ -227,6 +230,38 @@ public final class AiJobInferenceExecutor {
             int maxAttempts,
             int maxTimeoutSeconds
     ) {
+        this(
+                jobService,
+                providers,
+                inputResolver,
+                servedModels,
+                extractionPipeline,
+                segmentSource,
+                routingCoordinator,
+                noteHandoff,
+                qualityMetrics,
+                priorMeetingContext,
+                null,
+                maxAttempts,
+                maxTimeoutSeconds
+        );
+    }
+
+    public AiJobInferenceExecutor(
+            AiJobService jobService,
+            LocalModelProviderLocator providers,
+            InferenceInputResolverPort inputResolver,
+            ServedModelResolverPort servedModels,
+            ExtractionPipelineService extractionPipeline,
+            TranscriptSegmentSourcePort segmentSource,
+            JobRoutingCoordinatorPort routingCoordinator,
+            MeetingNoteHandoffPort noteHandoff,
+            PipelineQualityMetricsPort qualityMetrics,
+            PriorMeetingContextPort priorMeetingContext,
+            StagedPipelineRunner stagedPipelineRunner,
+            int maxAttempts,
+            int maxTimeoutSeconds
+    ) {
         this.jobService = Objects.requireNonNull(jobService, "jobService");
         this.providers = Objects.requireNonNull(providers, "providers");
         this.inputResolver = Objects.requireNonNull(inputResolver, "inputResolver");
@@ -239,6 +274,7 @@ public final class AiJobInferenceExecutor {
         this.priorMeetingContext = priorMeetingContext == null
                 ? PriorMeetingContextPort.noop()
                 : priorMeetingContext;
+        this.stagedPipelineRunner = stagedPipelineRunner;
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
@@ -271,6 +307,29 @@ public final class AiJobInferenceExecutor {
 
         AiJob job = claimed.job();
         UUID attemptId = claimed.attempt().id();
+
+        if (stagedPipelineRunner != null
+                && job.stage() != ProcessingStage.LEGACY
+                && job.stage() != ProcessingStage.ROOT) {
+            StageExecutionResult stageResult = stagedPipelineRunner.runClaimed(claimed, now);
+            if (stageResult.succeeded()) {
+                return ExecutionOutcome.succeeded(
+                        job.id(),
+                        attemptId,
+                        AiJobStatus.SUCCEEDED,
+                        stageResult.latencyMs()
+                );
+            }
+            return ExecutionOutcome.failed(
+                    job.id(),
+                    attemptId,
+                    stageResult.retryable() ? AiJobStatus.QUEUED : AiJobStatus.DEAD,
+                    stageResult.latencyMs(),
+                    ProviderFailureCategory.UNKNOWN,
+                    stageResult.retryable()
+            );
+        }
+
         InferenceTaskType taskType = taskTypeOf(job);
 
         RoutedExecution routed = routingCoordinator == null

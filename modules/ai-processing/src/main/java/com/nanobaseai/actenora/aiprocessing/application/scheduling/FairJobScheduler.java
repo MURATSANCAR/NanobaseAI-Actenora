@@ -123,9 +123,7 @@ public final class FairJobScheduler implements JobScheduler {
         return inTransaction(() -> claimNextInternal(now, null));
     }
 
-    /**
-     * Stage-scoped claim for RabbitMQ stage consumers.
-     */
+    @Override
     public Optional<ClaimedJob> claimNextForStage(
             Instant now,
             com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage stage

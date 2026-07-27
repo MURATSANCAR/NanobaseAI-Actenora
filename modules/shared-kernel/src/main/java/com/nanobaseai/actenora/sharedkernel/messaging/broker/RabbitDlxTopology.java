@@ -16,6 +16,7 @@ package com.nanobaseai.actenora.sharedkernel.messaging.broker;
 public final class RabbitDlxTopology {
 
     public static final String EVENTS_EXCHANGE = "actenora.domain";
+    public static final String PIPELINE_EXCHANGE = "actenora.ai.pipeline";
     public static final String DLX_EXCHANGE = "actenora.dlx";
     public static final String SHARED_DLQ = "actenora.dlq";
     public static final String HEADER_EVENT_ID = "x-actenora-event-id";

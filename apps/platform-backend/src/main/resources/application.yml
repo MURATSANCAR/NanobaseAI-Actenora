@@ -120,10 +120,16 @@ actenora:
       max-concurrency-final: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_FINAL:1}
       # Distinct small extractor served-model id (empty = mock FastExtraction seed)
       fast-extraction-served-model-id: ${ACTENORA_AI_PROVIDER_FAST_EXTRACTION_SERVED_MODEL_ID:}
+      fast-base-url: ${ACTENORA_AI_FAST_BASE_URL:}
+      final-base-url: ${ACTENORA_AI_FINAL_BASE_URL:}
+      final-served-model-id: ${ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID:}
       rate-limit-per-minute: ${ACTENORA_AI_PROVIDER_RATE_LIMIT_PER_MINUTE:60}
       streaming-enabled: ${ACTENORA_AI_PROVIDER_STREAMING_ENABLED:true}
       served-model-ids: ${ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS:nanobaseai-primary,nanobaseai-local}
       max-attempts: ${ACTENORA_AI_PROVIDER_MAX_ATTEMPTS:5}
+    pipeline:
+      # staged = stage queues + DAG; legacy = monolithic ExtractionPipelineService
+      mode: ${ACTENORA_AI_PIPELINE_MODE:staged}
     worker:
       enabled: ${ACTENORA_AI_WORKER_ENABLED:true}
       poll-interval: ${ACTENORA_AI_WORKER_POLL_INTERVAL:PT15S}
@@ -158,7 +164,6 @@ actenora:
     auth:
       # headers = X-Actenora-* operator identity (local); msal = Entra Bearer via SPA (prod)
       mode: ${ACTENORA_PORTAL_AUTH_MODE:headers}
-    recording-base-url: ${ACTENORA_PORTAL_RECORDING_BASE_URL:}
   microsoft-graph:
     # Bounded context + its Graph notification webhook are disabled locally by default (FAZ 32)
     enabled: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:false}

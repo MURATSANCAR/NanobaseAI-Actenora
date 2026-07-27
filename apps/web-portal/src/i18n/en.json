@@ -4,6 +4,7 @@
   "locale.switch": "Language",
   "nav.dashboard": "Dashboard",
   "nav.approvals": "Approvals inbox",
+  "nav.approvalsPending": "Approvals inbox, {count} pending",
   "nav.onboarding": "Setup checklist",
   "nav.meetings": "Meetings",
   "nav.decisions": "Decision Ledger",

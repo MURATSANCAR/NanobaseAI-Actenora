@@ -4,6 +4,7 @@
   "locale.switch": "Dil",
   "nav.dashboard": "Kontrol Paneli",
   "nav.approvals": "Onay kutusu",
+  "nav.approvalsPending": "Onay kutusu, {count} bekleyen onay",
   "nav.onboarding": "Kurulum listesi",
   "nav.meetings": "Toplantılar",
   "nav.decisions": "Karar Defteri",

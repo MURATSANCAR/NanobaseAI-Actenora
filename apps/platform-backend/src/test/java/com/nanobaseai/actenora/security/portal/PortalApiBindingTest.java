@@ -196,8 +196,7 @@ class PortalApiBindingTest {
                 optionalBeans.getBeanProvider(
                         com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler.class),
                 new PortalTeamsPreferencesStore(),
-                "test-graph-client-id",
-                ""
+                "test-graph-client-id"
         );
 
         bind(tenantId, userId, Set.of(

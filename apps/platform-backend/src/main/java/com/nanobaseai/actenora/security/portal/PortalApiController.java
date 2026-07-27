@@ -111,7 +111,6 @@ public class PortalApiController {
     private final Optional<AiProcessingApi> aiProcessingApi;
     private final Optional<AuditApi> auditApi;
     private final String graphClientId;
-    private final String recordingBaseUrl;
     private final Optional<GraphObservability> graphObservability;
     private final Optional<TeamsTranscriptPollScheduler> transcriptPollScheduler;
 
@@ -133,8 +132,7 @@ public class PortalApiController {
             ObjectProvider<GraphObservability> graphObservability,
             ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
             PortalTeamsPreferencesStore teamsPreferencesStore,
-            @Value("${actenora.microsoft-graph.client-id:}") String graphClientId,
-            @Value("${actenora.portal.recording-base-url:}") String recordingBaseUrl
+            @Value("${actenora.microsoft-graph.client-id:}") String graphClientId
     ) {
         this.identityApi = Objects.requireNonNull(identityApi, "identityApi");
         this.meetingApi = Objects.requireNonNull(meetingApi, "meetingApi");
@@ -154,7 +152,6 @@ public class PortalApiController {
         this.transcriptPollScheduler = Optional.ofNullable(transcriptPollScheduler.getIfAvailable());
         this.teamsPreferencesStore = Objects.requireNonNull(teamsPreferencesStore, "teamsPreferencesStore");
         this.graphClientId = graphClientId == null ? "" : graphClientId;
-        this.recordingBaseUrl = recordingBaseUrl == null ? "" : recordingBaseUrl;
     }
 
     @GetMapping("/me")
@@ -389,8 +386,7 @@ public class PortalApiController {
                 risks,
                 commitments,
                 List.copyOf(qualityFlags),
-                false,
-                resolveRecording(meeting)
+                false
         );
     }
 
@@ -1267,17 +1263,6 @@ public class PortalApiController {
         return active ? "active" : "expired";
     }
 
-    private RecordingView resolveRecording(MeetingResponse meeting) {
-        String url = meeting.joinWebUrl();
-        if ((url == null || url.isBlank()) && meeting.teamsMeetingId() != null && !recordingBaseUrl.isBlank()) {
-            url = recordingBaseUrl.replace("{meetingId}", meeting.teamsMeetingId());
-        }
-        if (url == null || url.isBlank()) {
-            return null;
-        }
-        return new RecordingView(url, null, null);
-    }
-
     private static TemplateSummaryView toTemplateSummary(MeetingTemplate template) {
         Optional<TemplateVersion> latest = template.versions().stream()
                 .max(Comparator.comparingInt(TemplateVersion::versionNumber));
@@ -1660,15 +1645,11 @@ public class PortalApiController {
             List<RiskItemView> risks,
             List<CommitmentItemView> commitments,
             List<String> qualityFlags,
-            boolean partial,
-            RecordingView recording
+            boolean partial
     ) {
     }
 
     public record MeetingVersionView(int version, String label, String createdAt) {
-    }
-
-    public record RecordingView(String url, String contentType, Long durationMs) {
     }
 
     public record TranscriptView(List<? extends Object> segments, List<String> speakers) {

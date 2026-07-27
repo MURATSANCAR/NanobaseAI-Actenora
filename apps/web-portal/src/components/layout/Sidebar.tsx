@@ -1,6 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { NavLink, useLocation } from "react-router-dom";
 import clsx from "clsx";
 import { LogOut, Sparkles, X } from "lucide-react";
+import { useApi } from "@/api/ApiProvider";
+import { queryKeys } from "@/api/client";
 import { AiOrb } from "@/components/qa/AiOrb";
 import { useAuth } from "@/auth/AuthProvider";
 import { useMsalAuth } from "@/auth/MsalAuthProvider";
@@ -19,25 +22,36 @@ function isLinkActive(pathname: string, to: string): boolean {
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
+function formatBadgeCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
 function NavItem({
   link,
   active,
   onClose,
   label,
+  badgeCount,
+  badgeLabel,
 }: {
   link: ActenoraNavLink;
   active: boolean;
   onClose: () => void;
   label: string;
+  badgeCount?: number;
+  badgeLabel?: string;
 }) {
   const Icon = link.icon;
+  const showBadge = typeof badgeCount === "number" && badgeCount > 0;
+
   return (
     <NavLink
       to={link.to}
       end={link.to === "/"}
       onClick={onClose}
+      aria-label={showBadge && badgeLabel ? badgeLabel : undefined}
       className={clsx(
-        "flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[15px] font-semibold leading-tight transition-all duration-200",
+        "relative flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[15px] font-semibold leading-tight transition-all duration-200",
         active
           ? "bg-violet-600 text-white shadow-lg shadow-violet-300/40"
           : "text-slate-700 hover:bg-white/80 hover:text-violet-900",
@@ -45,6 +59,12 @@ function NavItem({
     >
       <Icon className={clsx("h-5 w-5 shrink-0", active ? "text-white" : "text-violet-600")} aria-hidden />
       <span className="min-w-0 flex-1 truncate">{label}</span>
+      {showBadge ? (
+        <span className={clsx("nav-approval-badge", active && "nav-approval-badge--on-active")} aria-hidden>
+          <span className="nav-approval-badge-ping" />
+          <span className="nav-approval-badge-count">{formatBadgeCount(badgeCount)}</span>
+        </span>
+      ) : null}
     </NavLink>
   );
 }
@@ -52,8 +72,19 @@ function NavItem({
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { locale, setLocale, t, tb } = useI18n();
   const auth = useAuth();
+  const api = useApi();
   const msal = useMsalAuth();
   const { pathname } = useLocation();
+
+  const dashboardQ = useQuery({
+    queryKey: queryKeys.dashboard,
+    queryFn: () => api.getDashboard(),
+    enabled: Boolean(auth.user),
+    refetchInterval: 30_000,
+  });
+
+  const pendingApprovals =
+    auth.canApprove && auth.nav("approvals") ? (dashboardQ.data?.pendingApprovals ?? 0) : 0;
 
   const groups = ACTENORA_NAV_GROUPS.map((group) => ({
     ...group,
@@ -112,15 +143,25 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 {t(group.titleKey)}
               </p>
               <div className="space-y-1">
-                {group.links.map((link) => (
-                  <NavItem
-                    key={link.to}
-                    link={link}
-                    active={isLinkActive(pathname, link.to)}
-                    onClose={onClose}
-                    label={t(link.labelKey)}
-                  />
-                ))}
+                {group.links.map((link) => {
+                  const isApprovals = link.to === "/approvals";
+                  const badgeCount = isApprovals ? pendingApprovals : undefined;
+                  return (
+                    <NavItem
+                      key={link.to}
+                      link={link}
+                      active={isLinkActive(pathname, link.to)}
+                      onClose={onClose}
+                      label={t(link.labelKey)}
+                      badgeCount={badgeCount}
+                      badgeLabel={
+                        isApprovals && pendingApprovals > 0
+                          ? t("nav.approvalsPending", { count: pendingApprovals })
+                          : undefined
+                      }
+                    />
+                  );
+                })}
               </div>
             </div>
           ))}

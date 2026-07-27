@@ -52,12 +52,6 @@ export interface PortalUser {
   permissions: Permission[];
 }
 
-export interface MeetingRecording {
-  url: string | null;
-  contentType: string | null;
-  durationMs: number | null;
-}
-
 export interface MeetingSummary {
   id: string;
   title: string;
@@ -164,7 +158,6 @@ export interface MeetingDetailResponse {
   commitments: CommitmentItem[];
   qualityFlags: string[];
   partial: boolean;
-  recording?: MeetingRecording | null;
 }
 
 export interface TranscriptSegment {
