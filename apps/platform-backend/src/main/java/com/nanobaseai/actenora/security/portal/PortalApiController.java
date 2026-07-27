@@ -932,8 +932,9 @@ public class PortalApiController {
             return page(List.of(), cursor, limit);
         }
         UUID tenantId = TenantSecurityContext.require().tenantId().value();
+        Map<UUID, String> meetingTitles = new LinkedHashMap<>();
         List<AiJobView> items = aiProcessingApi.get().listJobsForTenant(tenantId).stream()
-                .map(PortalApiController::toAiJobView)
+                .map(job -> toAiJobView(job, resolveMeetingTitle(job.meetingOccurrenceId(), meetingTitles)))
                 .toList();
         return page(items, cursor, limit);
     }
@@ -1195,10 +1196,32 @@ public class PortalApiController {
         }
     }
 
-    private static AiJobView toAiJobView(AiJob job) {
+    private String resolveMeetingTitle(UUID meetingId, Map<UUID, String> cache) {
+        if (meetingId == null) {
+            return "";
+        }
+        String cached = cache.get(meetingId);
+        if (cached != null) {
+            return cached;
+        }
+        String title = "";
+        try {
+            MeetingResponse meeting = meetingApi.getMeeting(meetingId);
+            if (meeting.title() != null && !meeting.title().isBlank()) {
+                title = meeting.title().trim();
+            }
+        } catch (RuntimeException ignored) {
+            /* meeting may have been deleted */
+        }
+        cache.put(meetingId, title);
+        return title;
+    }
+
+    private static AiJobView toAiJobView(AiJob job, String meetingTitle) {
         return new AiJobView(
                 job.id(),
                 job.meetingOccurrenceId(),
+                meetingTitle,
                 job.status().name(),
                 job.taskType(),
                 job.startedAt().map(Instant::toString).orElse(job.queuedAt().toString()),
@@ -1874,6 +1897,7 @@ public class PortalApiController {
     public record AiJobView(
             UUID id,
             UUID meetingId,
+            String meetingTitle,
             String status,
             String stage,
             String startedAt,

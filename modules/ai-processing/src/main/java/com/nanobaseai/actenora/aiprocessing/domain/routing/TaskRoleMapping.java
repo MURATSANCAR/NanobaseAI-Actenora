@@ -14,8 +14,9 @@ public final class TaskRoleMapping {
         Objects.requireNonNull(taskType, "taskType");
         Objects.requireNonNull(policy, "policy");
         return switch (taskType) {
-            case CHUNK_EXTRACTION -> ModelRole.FAST_EXTRACTION;
+            case CHUNK_EXTRACTION, MEETING_TRIAGE -> ModelRole.FAST_EXTRACTION;
             case CANDIDATE_MERGE, FINAL_NOTE -> ModelRole.QWEN27_FINAL;
+            case NORMALIZE, CHUNK_PLAN, EMBEDDING -> ModelRole.FAST_EXTRACTION;
             case VALIDATION -> switch (policy.validationModelPreference()) {
                 case QWEN27_FINAL -> ModelRole.QWEN27_FINAL;
                 case SEPARATE_VALIDATION_MODEL -> ModelRole.VALIDATION;

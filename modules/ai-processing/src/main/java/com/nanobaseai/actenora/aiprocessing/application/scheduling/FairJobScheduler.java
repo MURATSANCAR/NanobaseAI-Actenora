@@ -18,6 +18,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
+
+import org.springframework.transaction.support.TransactionOperations;
 
 /**
  * Fair scheduler: priority aging + round-robin among tenants at equal score.
@@ -37,6 +40,7 @@ public final class FairJobScheduler implements JobScheduler {
     private final Duration averageJobDuration;
     private final Map<UUID, Long> tenantFairnessCursor = new HashMap<>();
     private final int maxAttempts;
+    private final TransactionOperations transactions;
 
     public FairJobScheduler(
             AiJobRepository jobs,
@@ -44,7 +48,7 @@ public final class FairJobScheduler implements JobScheduler {
             TenantAiPolicyPort tenantPolicy,
             ModelRouter modelRouter
     ) {
-        this(jobs, attempts, tenantPolicy, modelRouter, DEFAULT_AGING_INTERVAL, DEFAULT_AGING_BONUS, DEFAULT_AVG_JOB_DURATION, Integer.MAX_VALUE);
+        this(jobs, attempts, tenantPolicy, modelRouter, DEFAULT_AGING_INTERVAL, DEFAULT_AGING_BONUS, DEFAULT_AVG_JOB_DURATION, Integer.MAX_VALUE, null);
     }
 
     public FairJobScheduler(
@@ -54,7 +58,7 @@ public final class FairJobScheduler implements JobScheduler {
             ModelRouter modelRouter,
             int maxAttempts
     ) {
-        this(jobs, attempts, tenantPolicy, modelRouter, DEFAULT_AGING_INTERVAL, DEFAULT_AGING_BONUS, DEFAULT_AVG_JOB_DURATION, maxAttempts);
+        this(jobs, attempts, tenantPolicy, modelRouter, DEFAULT_AGING_INTERVAL, DEFAULT_AGING_BONUS, DEFAULT_AVG_JOB_DURATION, maxAttempts, null);
     }
 
     public FairJobScheduler(
@@ -66,7 +70,7 @@ public final class FairJobScheduler implements JobScheduler {
             int agingBonusPerInterval,
             Duration averageJobDuration
     ) {
-        this(jobs, attempts, tenantPolicy, modelRouter, agingInterval, agingBonusPerInterval, averageJobDuration, Integer.MAX_VALUE);
+        this(jobs, attempts, tenantPolicy, modelRouter, agingInterval, agingBonusPerInterval, averageJobDuration, Integer.MAX_VALUE, null);
     }
 
     public FairJobScheduler(
@@ -79,6 +83,20 @@ public final class FairJobScheduler implements JobScheduler {
             Duration averageJobDuration,
             int maxAttempts
     ) {
+        this(jobs, attempts, tenantPolicy, modelRouter, agingInterval, agingBonusPerInterval, averageJobDuration, maxAttempts, null);
+    }
+
+    public FairJobScheduler(
+            AiJobRepository jobs,
+            AiAttemptRepository attempts,
+            TenantAiPolicyPort tenantPolicy,
+            ModelRouter modelRouter,
+            Duration agingInterval,
+            int agingBonusPerInterval,
+            Duration averageJobDuration,
+            int maxAttempts,
+            TransactionOperations transactions
+    ) {
         this.jobs = Objects.requireNonNull(jobs, "jobs");
         this.attempts = Objects.requireNonNull(attempts, "attempts");
         this.tenantPolicy = Objects.requireNonNull(tenantPolicy, "tenantPolicy");
@@ -90,17 +108,48 @@ public final class FairJobScheduler implements JobScheduler {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
         this.maxAttempts = maxAttempts;
+        this.transactions = transactions;
+    }
+
+    private <T> T inTransaction(Supplier<T> action) {
+        if (transactions == null) {
+            return action.get();
+        }
+        return transactions.execute(status -> action.get());
     }
 
     @Override
     public Optional<ClaimedJob> claimNext(Instant now) {
+        return inTransaction(() -> claimNextInternal(now, null));
+    }
+
+    /**
+     * Stage-scoped claim for RabbitMQ stage consumers.
+     */
+    public Optional<ClaimedJob> claimNextForStage(
+            Instant now,
+            com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage stage
+    ) {
+        Objects.requireNonNull(stage, "stage");
+        return inTransaction(() -> claimNextInternal(now, stage));
+    }
+
+    private Optional<ClaimedJob> claimNextInternal(
+            Instant now,
+            com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage stageFilter
+    ) {
         Objects.requireNonNull(now, "now");
-        List<AiJob> queued = jobs.findQueuedOrdered();
-        if (queued.isEmpty()) {
+        List<AiJob> locked = stageFilter == null
+                ? jobs.lockEligibleQueued(now, 50)
+                : jobs.lockEligibleQueuedByStage(now, stageFilter, 50);
+        List<AiJob> candidates = locked.isEmpty() && stageFilter == null
+                ? jobs.findQueuedOrdered()
+                : locked;
+        if (candidates.isEmpty()) {
             return Optional.empty();
         }
 
-        List<ScoredJob> scored = queued.stream()
+        List<ScoredJob> scored = candidates.stream()
                 .map(job -> new ScoredJob(job, job.schedulingScore(now, agingInterval, agingBonusPerInterval)))
                 .sorted(this::compareFair)
                 .toList();
@@ -108,6 +157,12 @@ public final class FairJobScheduler implements JobScheduler {
         for (ScoredJob candidate : scored) {
             AiJob job = candidate.job();
             if (!job.isEligibleAt(now)) {
+                continue;
+            }
+            if (job.stage() == com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage.ROOT) {
+                continue;
+            }
+            if (stageFilter != null && job.stage() != stageFilter) {
                 continue;
             }
             int running = jobs.countByTenantAndStatus(job.tenantId(), AiJobStatus.RUNNING);

@@ -30,6 +30,11 @@ public class LocalProviderProperties {
      * may fall back along the routing chain.
      */
     private String fastExtractionServedModelId = "";
+    /** Optional dedicated base URL for FAST extract/triage (llama.cpp). Empty = use baseUrl. */
+    private URI fastBaseUrl;
+    /** Optional dedicated base URL for FINAL merge/minutes (llama.cpp). Empty = use baseUrl. */
+    private URI finalBaseUrl;
+    private String finalServedModelId = "";
     private boolean streamingEnabled = true;
     private long degradedProbeThresholdMs = 2_000L;
     private Set<String> servedModelIds = new LinkedHashSet<>(Set.of("nanobaseai-primary", "nanobaseai-local"));
@@ -105,6 +110,42 @@ public class LocalProviderProperties {
 
     public boolean hasFastExtractionServedModelId() {
         return fastExtractionServedModelId != null && !fastExtractionServedModelId.isBlank();
+    }
+
+    public URI getFastBaseUrl() {
+        return fastBaseUrl != null ? fastBaseUrl : baseUrl;
+    }
+
+    public void setFastBaseUrl(URI fastBaseUrl) {
+        this.fastBaseUrl = fastBaseUrl;
+    }
+
+    public boolean hasDistinctFastBaseUrl() {
+        return fastBaseUrl != null && !fastBaseUrl.equals(baseUrl);
+    }
+
+    public URI getFinalBaseUrl() {
+        return finalBaseUrl != null ? finalBaseUrl : baseUrl;
+    }
+
+    public void setFinalBaseUrl(URI finalBaseUrl) {
+        this.finalBaseUrl = finalBaseUrl;
+    }
+
+    public boolean hasDistinctFinalBaseUrl() {
+        return finalBaseUrl != null && !finalBaseUrl.equals(baseUrl);
+    }
+
+    public String getFinalServedModelId() {
+        return finalServedModelId;
+    }
+
+    public void setFinalServedModelId(String finalServedModelId) {
+        this.finalServedModelId = finalServedModelId == null ? "" : finalServedModelId.trim();
+    }
+
+    public boolean hasFinalServedModelId() {
+        return finalServedModelId != null && !finalServedModelId.isBlank();
     }
 
     public boolean isStreamingEnabled() {

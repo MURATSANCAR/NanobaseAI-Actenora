@@ -1946,7 +1946,7 @@ components:
           items:
             type: object
             additionalProperties: false
-            required: [id, meetingId, status, stage, startedAt, finishedAt]
+            required: [id, meetingId, meetingTitle, status, stage, startedAt, finishedAt]
             properties:
               id:
                 type: string
@@ -1954,6 +1954,8 @@ components:
               meetingId:
                 type: string
                 format: uuid
+              meetingTitle:
+                type: string
               status:
                 type: string
               stage:

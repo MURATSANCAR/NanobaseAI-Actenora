@@ -40,6 +40,22 @@ public class AiProcessingJdbcPersistenceConfiguration {
 
     @Bean
     @Primary
+    com.nanobaseai.actenora.aiprocessing.application.port.ProcessingJobDependencyRepository
+    processingJobDependencyRepository(DataSource dataSource) {
+        return new com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.JdbcProcessingJobDependencyRepository(
+                new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    @Primary
+    com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository
+    processingArtifactRepository(DataSource dataSource) {
+        return new com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.JdbcProcessingArtifactRepository(
+                new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    @Primary
     RoutingDecisionStorePort jdbcRoutingDecisionStore(DataSource dataSource) {
         return new JdbcRoutingDecisionStore(new JdbcTemplate(dataSource));
     }

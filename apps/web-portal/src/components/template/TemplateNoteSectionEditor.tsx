@@ -1,5 +1,6 @@
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { MeetingMinutesDocument } from "@/components/meeting/MeetingMinutesDocument";
+import type { Participant } from "@/api/types";
 import type { TemplateComponentType } from "@/types/template";
 import { MEETING_NOTE_EDITABLE_SECTIONS } from "@/lib/templateStandards";
 import { sectionsFromTemplateValues } from "@/lib/minutesDocument";
@@ -20,6 +21,8 @@ export function TemplateNoteSectionEditor({
   variant = "form",
   meetingTitle,
   draftBadge,
+  participants = [],
+  meetingStatus = "",
 }: {
   templateName: string;
   templateVersion: number;
@@ -34,6 +37,8 @@ export function TemplateNoteSectionEditor({
   variant?: "form" | "document";
   meetingTitle?: string;
   draftBadge?: boolean;
+  participants?: Participant[];
+  meetingStatus?: string;
 }) {
   const { t, tb } = useI18n();
   const resolvedSections = sections?.length ? sections : MEETING_NOTE_EDITABLE_SECTIONS;
@@ -59,6 +64,8 @@ export function TemplateNoteSectionEditor({
           saving={saving}
           onSave={onSave}
           onSectionChange={onSectionChange}
+          participants={participants}
+          meetingStatus={meetingStatus}
           footerExtra={
             <div className="border-t border-violet-100/80 bg-gradient-to-r from-violet-50/70 via-white to-sky-50/50 px-5 py-3 text-xs text-violet-900">
               {t("templates.note.boundTo", { name: templateName, version: templateVersion })}

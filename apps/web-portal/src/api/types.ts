@@ -302,6 +302,7 @@ export interface ModelHealthResponse extends CompositionAware {
 export interface AiJob {
   id: string;
   meetingId: string;
+  meetingTitle: string;
   status: string;
   stage: string;
   startedAt: string;

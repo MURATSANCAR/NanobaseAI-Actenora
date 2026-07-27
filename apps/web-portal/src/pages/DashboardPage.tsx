@@ -3,10 +3,12 @@ import { Link } from "react-router-dom";
 import {
   Activity,
   ArrowRight,
+  Calendar,
   CheckSquare,
   Clock,
   Handshake,
   Sparkles,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import clsx from "clsx";
@@ -18,6 +20,7 @@ import { StatusBadge } from "@/components/qa/StatusBadge";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { PRODUCT_BRAND } from "@/config/brand";
 import { useI18n } from "@/i18n";
+import type { Locale } from "@/i18n";
 import { OnboardingBanner } from "@/pages/OnboardingPage";
 
 export function DashboardPage() {
@@ -157,6 +160,25 @@ function MetricStrip({ data }: { data: DashboardResponse }) {
   );
 }
 
+function formatMeetingWhen(iso: string, locale: Locale) {
+  const parsed = Date.parse(iso);
+  if (Number.isNaN(parsed)) {
+    return { dateLabel: "—", timeLabel: "—" };
+  }
+  const start = new Date(parsed);
+  return {
+    dateLabel: start.toLocaleDateString(locale, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }),
+    timeLabel: start.toLocaleTimeString(locale, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
+}
+
 function RecentMeetings({
   meetings,
   title,
@@ -170,7 +192,7 @@ function RecentMeetings({
   viewAll: string;
   statusLabel: (status: string) => string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <section className="dashboard-meetings" aria-labelledby="dashboard-meetings-title">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -191,25 +213,40 @@ function RecentMeetings({
         </p>
       ) : (
         <ul className="dashboard-meeting-list">
-          {meetings.map((m, index) => (
-            <li key={m.id} style={{ animationDelay: `${120 + index * 50}ms` }}>
-              <Link to={`/meetings/${m.id}`} className="dashboard-meeting-row">
-                <span className="dashboard-meeting-index" aria-hidden>
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-slate-900">{m.title}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {new Date(m.scheduledStartAt).toLocaleString()}
-                    {m.participantCount > 0
-                      ? ` · ${m.participantCount} ${t("common.people")}`
-                      : null}
-                  </p>
-                </div>
-                <StatusBadge label={statusLabel(m.status)} status={m.status} />
-              </Link>
-            </li>
-          ))}
+          {meetings.map((m, index) => {
+            const { dateLabel, timeLabel } = formatMeetingWhen(m.scheduledStartAt, locale);
+            return (
+              <li key={m.id} style={{ animationDelay: `${120 + index * 50}ms` }}>
+                <Link to={`/meetings/${m.id}`} className="dashboard-meeting-row">
+                  <span className="dashboard-meeting-index" aria-hidden>
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <p className="min-w-0 flex-1 truncate font-semibold text-slate-900">{m.title}</p>
+                      <StatusBadge label={statusLabel(m.status)} status={m.status} />
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <span className="dashboard-meeting-meta dashboard-meeting-meta--date">
+                        <Calendar className="h-3.5 w-3.5" aria-hidden />
+                        <span>{dateLabel}</span>
+                      </span>
+                      <span className="dashboard-meeting-meta dashboard-meeting-meta--time">
+                        <Clock className="h-3.5 w-3.5" aria-hidden />
+                        <span>{timeLabel}</span>
+                      </span>
+                      <span className="dashboard-meeting-meta dashboard-meeting-meta--people">
+                        <Users className="h-3.5 w-3.5" aria-hidden />
+                        <span>
+                          {m.participantCount} {t("common.people")}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

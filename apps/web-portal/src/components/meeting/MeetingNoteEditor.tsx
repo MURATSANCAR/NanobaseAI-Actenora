@@ -7,7 +7,7 @@ import { TemplateBrandFooter } from "@/components/template/TemplateBrandBanner";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { queryKeys } from "@/api/client";
 import { useApi } from "@/api/ApiProvider";
-import type { DesignSchemaView, MeetingNote, TemplateSummary } from "@/api/types";
+import type { DesignSchemaView, MeetingNote, Participant, TemplateSummary } from "@/api/types";
 import type { TemplateComponentType } from "@/types/template";
 import {
   parseMinutesBody,
@@ -32,6 +32,8 @@ export function MeetingNoteEditor({
   onSave,
   meetingTitle,
   variant = "document",
+  participants = [],
+  meetingStatus = "",
 }: {
   meetingId: string;
   note: MeetingNote;
@@ -43,6 +45,8 @@ export function MeetingNoteEditor({
   onSave: () => void;
   meetingTitle?: string;
   variant?: "form" | "document";
+  participants?: Participant[];
+  meetingStatus?: string;
 }) {
   const api = useApi();
   const { t, tb } = useI18n();
@@ -195,6 +199,8 @@ export function MeetingNoteEditor({
         variant={variant}
         meetingTitle={meetingTitle}
         draftBadge={draftBadge}
+        participants={participants}
+        meetingStatus={meetingStatus}
       />
     );
   }
@@ -233,6 +239,8 @@ export function MeetingNoteEditor({
         saving={saving}
         onSave={onSave}
         footerExtra={templatePicker}
+        participants={participants}
+        meetingStatus={meetingStatus}
         onSectionChange={(type, value) => {
           const next = {
             ...minutesDoc,

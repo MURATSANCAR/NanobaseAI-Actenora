@@ -407,10 +407,10 @@ export function ModelManagementPage() {
 
       <div className="mt-8 space-y-3" data-testid="models-recent-processing">
         <div>
-          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">
             {t("models.sectionJobs")}
           </h2>
-          <p className="mt-1 text-sm text-slate-600">{t("jobs.description")}</p>
+          <p className="mt-0.5 text-sm font-medium text-teal-800">{t("jobs.description")}</p>
         </div>
         {jobsQuery.data?.compositionStub ? <StubBanner featureKey="jobs" /> : null}
         <AsyncState
@@ -420,16 +420,31 @@ export function ModelManagementPage() {
           emptyDescription={t("jobs.emptyBody")}
         >
           <div className="card-static divide-y divide-white/60">
-            {jobsQuery.data?.items.map((j) => (
-              <div key={j.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
-                <strong className="text-slate-800">{tb("aiJobStage", j.stage)}</strong>
-                <StatusBadge label={tb("aiJobStatus", j.status)} status={j.status} />
-                <span className="text-slate-500">
-                  {t("jobs.started")}{" "}
-                  {new Date(j.startedAt).toLocaleString(locale === "tr" ? "tr-TR" : "en-US")}
-                </span>
-              </div>
-            ))}
+            {jobsQuery.data?.items.map((j) => {
+              const meetingLabel = j.meetingTitle?.trim() || t("jobs.meetingUnknown");
+              return (
+                <div key={j.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-3">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      to={`/meetings/${j.meetingId}`}
+                      className="block truncate font-semibold text-slate-900 hover:text-teal-900 hover:underline"
+                    >
+                      {meetingLabel}
+                    </Link>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
+                      <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-800 ring-1 ring-violet-200/80">
+                        {tb("aiJobStage", j.stage)}
+                      </span>
+                      <StatusBadge label={tb("aiJobStatus", j.status)} status={j.status} />
+                      <span className="text-xs text-slate-500">
+                        {t("jobs.started")}{" "}
+                        {new Date(j.startedAt).toLocaleString(locale === "tr" ? "tr-TR" : "en-US")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <PaginationBar
             nextCursor={jobsQuery.data?.nextCursor}

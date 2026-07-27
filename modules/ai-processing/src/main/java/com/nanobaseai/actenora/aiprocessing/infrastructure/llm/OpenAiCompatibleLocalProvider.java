@@ -322,7 +322,8 @@ public class OpenAiCompatibleLocalProvider implements LocalModelProvider {
 
     private Semaphore taskSemaphore(InferenceTaskType taskType) {
         return switch (taskType) {
-            case CHUNK_EXTRACTION -> extractionConcurrency;
+            case CHUNK_EXTRACTION, MEETING_TRIAGE, NORMALIZE, CHUNK_PLAN, EMBEDDING
+                    -> extractionConcurrency;
             case CANDIDATE_MERGE, FINAL_NOTE, VALIDATION -> finalConcurrency;
         };
     }

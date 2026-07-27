@@ -301,11 +301,27 @@
   }
 
   .dashboard-meeting-row {
-    @apply flex items-center gap-3 rounded-2xl border border-transparent bg-white/60 px-3 py-3 transition hover:border-teal-200/70 hover:bg-teal-50/50 sm:px-4;
+    @apply flex items-start gap-3 rounded-2xl border border-transparent bg-white/60 px-3 py-3.5 transition hover:border-teal-200/70 hover:bg-teal-50/50 sm:items-center sm:px-4;
   }
 
   .dashboard-meeting-index {
-    @apply hidden font-mono text-[11px] font-medium text-teal-700/70 sm:inline;
+    @apply mt-1 hidden font-mono text-[11px] font-medium text-teal-700/70 sm:mt-0 sm:inline;
+  }
+
+  .dashboard-meeting-meta {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide;
+  }
+
+  .dashboard-meeting-meta--date {
+    @apply bg-violet-50 text-violet-800 ring-1 ring-violet-200/80;
+  }
+
+  .dashboard-meeting-meta--time {
+    @apply bg-teal-50 text-teal-800 ring-1 ring-teal-200/80;
+  }
+
+  .dashboard-meeting-meta--people {
+    @apply bg-amber-50 text-amber-900 ring-1 ring-amber-200/80;
   }
 
   @media (max-width: 639px) {

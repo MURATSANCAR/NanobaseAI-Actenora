@@ -1,9 +1,12 @@
 package com.nanobaseai.actenora.aiprocessing.infrastructure.persistence;
 
 import com.nanobaseai.actenora.aiprocessing.application.port.AiJobRepository;
+import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingJobDependencyRepository;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
+import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -15,6 +18,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class InMemoryAiJobRepository implements AiJobRepository {
 
     private final Map<UUID, AiJob> store = new ConcurrentHashMap<>();
+    private final ProcessingJobDependencyRepository dependencies;
+
+    public InMemoryAiJobRepository() {
+        this(null);
+    }
+
+    public InMemoryAiJobRepository(ProcessingJobDependencyRepository dependencies) {
+        this.dependencies = dependencies;
+    }
 
     @Override
     public void save(AiJob job) {
@@ -24,6 +36,14 @@ public final class InMemoryAiJobRepository implements AiJobRepository {
     @Override
     public Optional<AiJob> findById(UUID id) {
         return Optional.ofNullable(store.get(id));
+    }
+
+    @Override
+    public Optional<AiJob> findByIdempotencyKey(UUID tenantId, String idempotencyKey) {
+        return store.values().stream()
+                .filter(job -> job.tenantId().equals(tenantId))
+                .filter(job -> job.idempotencyKey().equals(idempotencyKey))
+                .findFirst();
     }
 
     @Override
@@ -52,6 +72,14 @@ public final class InMemoryAiJobRepository implements AiJobRepository {
     }
 
     @Override
+    public List<AiJob> findByParentJobId(UUID parentJobId) {
+        return store.values().stream()
+                .filter(job -> job.parentJobId().map(parentJobId::equals).orElse(false))
+                .sorted(Comparator.comparing(AiJob::queuedAt))
+                .toList();
+    }
+
+    @Override
     public int countByTenantAndStatus(UUID tenantId, AiJobStatus status) {
         return (int) store.values().stream()
                 .filter(job -> job.tenantId().equals(tenantId))
@@ -64,6 +92,25 @@ public final class InMemoryAiJobRepository implements AiJobRepository {
         List<AiJob> queued = new ArrayList<>(findByStatus(AiJobStatus.QUEUED));
         queued.sort(Comparator.comparing(AiJob::queuedAt));
         return queued;
+    }
+
+    @Override
+    public List<AiJob> lockEligibleQueued(Instant now, int limit) {
+        return lockEligible(now, null, limit);
+    }
+
+    @Override
+    public List<AiJob> lockEligibleQueuedByStage(Instant now, ProcessingStage stage, int limit) {
+        return lockEligible(now, stage, limit);
+    }
+
+    private List<AiJob> lockEligible(Instant now, ProcessingStage stage, int limit) {
+        return findQueuedOrdered().stream()
+                .filter(job -> job.isEligibleAt(now))
+                .filter(job -> stage == null || job.stage() == stage)
+                .filter(job -> dependencies == null || dependencies.countUnsatisfied(job.id()) == 0)
+                .limit(Math.max(1, limit))
+                .toList();
     }
 
     @Override

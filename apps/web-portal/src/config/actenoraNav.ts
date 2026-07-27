@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   CheckSquare,
   ClipboardCheck,
-  ClipboardList,
   Compass,
   FileText,
   Handshake,
@@ -30,6 +29,12 @@ export type ActenoraNavGroup = {
   links: ActenoraNavLink[];
 };
 
+export const ACTENORA_LEDGER_LINKS: ActenoraNavLink[] = [
+  { to: "/decisions", icon: Scale, labelKey: "nav.decisions" },
+  { to: "/actions", icon: CheckSquare, labelKey: "nav.actions" },
+  { to: "/commitments", icon: Handshake, labelKey: "nav.commitments" },
+];
+
 export const ACTENORA_NAV_GROUPS: ActenoraNavGroup[] = [
   {
     titleKey: "actenora.nav.workspace",
@@ -38,10 +43,11 @@ export const ACTENORA_NAV_GROUPS: ActenoraNavGroup[] = [
       { to: "/approvals", icon: ClipboardCheck, labelKey: "nav.approvals", gate: "approvals" },
       { to: "/meetings", icon: Mic, labelKey: "nav.meetings" },
       { to: "/onboarding", icon: Compass, labelKey: "nav.onboarding" },
-      { to: "/decisions", icon: Scale, labelKey: "nav.decisions" },
-      { to: "/actions", icon: CheckSquare, labelKey: "nav.actions" },
-      { to: "/commitments", icon: Handshake, labelKey: "nav.commitments" },
     ],
+  },
+  {
+    titleKey: "actenora.nav.section",
+    links: ACTENORA_LEDGER_LINKS,
   },
   {
     titleKey: "actenora.nav.administration",
@@ -57,9 +63,3 @@ export const ACTENORA_NAV_GROUPS: ActenoraNavGroup[] = [
 
 /** @deprecated use ACTENORA_NAV_GROUPS */
 export const ACTENORA_NAV_LINKS: ActenoraNavLink[] = ACTENORA_NAV_GROUPS.flatMap((g) => g.links);
-
-export const ACTENORA_LEDGER_LINKS: ActenoraNavLink[] = [
-  { to: "/decisions", icon: Scale, labelKey: "nav.decisions" },
-  { to: "/actions", icon: CheckSquare, labelKey: "nav.actions" },
-  { to: "/commitments", icon: ClipboardList, labelKey: "nav.commitments" },
-];

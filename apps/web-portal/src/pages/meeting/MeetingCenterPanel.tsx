@@ -160,6 +160,8 @@ export function MeetingCenterPanel({
                 canEdit={canEditNotes}
                 publishedTemplates={publishedTemplates}
                 meetingTitle={detail.meeting.title}
+                participants={detail.participants}
+                meetingStatus={detail.meeting.status}
                 onChange={(body) => setNoteDrafts((d) => ({ ...d, [n.id]: body }))}
                 onSave={() =>
                   noteMutation.mutate({ noteId: n.id, body: noteDrafts[n.id] ?? n.body })

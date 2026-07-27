@@ -1,5 +1,8 @@
 import { FileText, Globe2, Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import type { Participant } from "@/api/types";
+import { MinutesAttendanceBanner } from "@/components/meeting/MinutesAttendanceBanner";
+import { classifyAttendance } from "@/components/meeting/ParticipantAttendanceRow";
 import { TemplateBrandFooter } from "@/components/template/TemplateBrandBanner";
 import { PRODUCT_BRAND } from "@/config/brand";
 import { useI18n } from "@/i18n";
@@ -21,6 +24,8 @@ export function MeetingMinutesDocument({
   saving,
   draftBadge,
   footerExtra,
+  participants = [],
+  meetingStatus = "",
 }: {
   document: MinutesDocument;
   canEdit?: boolean;
@@ -29,12 +34,25 @@ export function MeetingMinutesDocument({
   saving?: boolean;
   draftBadge?: boolean;
   footerExtra?: ReactNode;
+  participants?: Participant[];
+  meetingStatus?: string;
 }) {
   const { t } = useI18n();
   const filledCount = document.sections.filter((section) => {
     const parsed = parseSectionContent(section.value, section.kind);
     return !parsed.empty;
   }).length;
+
+  const attendanceCounts = useMemo(() => {
+    let attended = 0;
+    let absent = 0;
+    for (const p of participants) {
+      const bucket = classifyAttendance(p.attendanceStatus, meetingStatus);
+      if (bucket === "attended") attended += 1;
+      else if (bucket === "absent") absent += 1;
+    }
+    return { attended, absent };
+  }, [participants, meetingStatus]);
 
   return (
     <article className="meeting-note-document">
@@ -78,6 +96,14 @@ export function MeetingMinutesDocument({
                   total: document.sections.length,
                 })}
               </span>
+              {participants.length ? (
+                <span className="rounded-full bg-emerald-300/95 px-3 py-1 text-[11px] font-bold text-emerald-950 shadow-sm">
+                  {t("meeting.attendanceSummary", {
+                    attended: attendanceCounts.attended,
+                    absent: attendanceCounts.absent,
+                  })}
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -100,9 +126,10 @@ export function MeetingMinutesDocument({
                 return (
                   <span
                     key={section.type}
-                    className={["h-2.5 w-2.5 rounded-full shadow-sm ring-1 ring-white/40", theme.swatch].join(
-                      " ",
-                    )}
+                    className={[
+                      "h-2.5 w-2.5 rounded-full shadow-sm ring-1 ring-white/40",
+                      theme.swatch,
+                    ].join(" ")}
                     title={section.type}
                   />
                 );
@@ -111,6 +138,12 @@ export function MeetingMinutesDocument({
           </div>
         </div>
       </header>
+
+      {participants.length ? (
+        <div className="relative z-10 border-b border-violet-100/70 bg-gradient-to-b from-violet-50/50 via-white to-white px-4 py-4 sm:px-6">
+          <MinutesAttendanceBanner participants={participants} meetingStatus={meetingStatus} />
+        </div>
+      ) : null}
 
       <div className="meeting-note-body">
         {document.sections.map((section, index) => (
@@ -280,7 +313,6 @@ function MinutesSectionCard({
   );
 }
 
-/** For list sections, show one item per line without numbering for easier editing. */
 function editableValue(section: MinutesSection): string {
   if (section.kind !== "list") return section.value;
   const parsed = parseSectionContent(section.value, "list");

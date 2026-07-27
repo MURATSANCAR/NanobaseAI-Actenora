@@ -7,5 +7,9 @@ public enum InferenceTaskType {
     CHUNK_EXTRACTION,
     CANDIDATE_MERGE,
     FINAL_NOTE,
-    VALIDATION
+    VALIDATION,
+    MEETING_TRIAGE,
+    EMBEDDING,
+    NORMALIZE,
+    CHUNK_PLAN
 }
