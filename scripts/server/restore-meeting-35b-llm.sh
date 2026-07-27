@@ -1,38 +1,16 @@
 #!/usr/bin/env bash
-# Restore Actenora LLM port :8010 to nanobase-qwen36-35b-a3b-mtp and remove 8B.
-# Inverse of lock-meeting-8b-llm.sh.
+# Ensure Actenora LLM port :8010 serves nanobase-qwen36-35b-a3b-mtp.
 set -euo pipefail
 
 MODEL_ID=nanobase-qwen36-35b-a3b-mtp
 UNIT=nanobase-qwen36-35b-a3b-mtp.service
 ENVF=/etc/nanobaseai/qwen36-35b-a3b-mtp.env
-EIGHT_B_UNIT=nanobase-qwen3-8b.service
 
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
     echo "Run as root on nanobase host (or: sudo $0)" >&2
     exit 1
   fi
-}
-
-stop_and_remove_8b() {
-  systemctl disable --now "${EIGHT_B_UNIT}" 2>/dev/null || true
-  if [[ -f "/etc/systemd/system/${EIGHT_B_UNIT}" && ! -L "/etc/systemd/system/${EIGHT_B_UNIT}" ]]; then
-    mv "/etc/systemd/system/${EIGHT_B_UNIT}" \
-      "/etc/systemd/system/${EIGHT_B_UNIT}.removed.$(date +%Y%m%d%H%M%S)"
-  fi
-  rm -f "/etc/systemd/system/multi-user.target.wants/${EIGHT_B_UNIT}"
-  if [[ -f /etc/nanobaseai/qwen3-8b.env ]]; then
-    mv /etc/nanobaseai/qwen3-8b.env \
-      "/etc/nanobaseai/qwen3-8b.env.removed.$(date +%Y%m%d%H%M%S)"
-  fi
-  # Remove GGUF weights (keep download.log if present for audit).
-  local gguf=/opt/nanobaseai/models/qwen3-8b/Qwen3-8B-Q5_K_M.gguf
-  if [[ -f "${gguf}" ]]; then
-    echo "removing ${gguf}"
-    rm -f "${gguf}"
-  fi
-  echo "removed ${EIGHT_B_UNIT}"
 }
 
 restore_35b_env() {
@@ -75,7 +53,7 @@ write_35b_unit() {
 Description=NanobaseAI Qwen3.6-35B-A3B MTP llama.cpp Server
 After=network-online.target
 Wants=network-online.target
-Conflicts=nanobase-qwen3-8b.service nanobase-qwen36-mtp.service nanobase-qwen36-27b.service
+Conflicts=nanobase-qwen36-mtp.service nanobase-qwen36-27b.service
 
 [Service]
 Type=simple
@@ -124,18 +102,23 @@ retarget_dependents() {
   if [[ -f "${dbgpt}" ]]; then
     cp "${dbgpt}" "${dbgpt}.bak.${ts}"
     sed -i \
-      -e "s/nanobase-qwen3-8b\\.service/${UNIT}/g" \
-      -e "s/LLM_MODEL_NAME=nanobase-meeting-8b/LLM_MODEL_NAME=${MODEL_ID}/g" \
-      "${dbgpt}"
+      -e "s/After=.*/After=network-online.target ${UNIT}/" \
+      -e "s/Wants=.*/Wants=${UNIT}/" \
+      -e "s/Requires=.*/Requires=${UNIT}/" \
+      -e "s/^Environment=LLM_MODEL_NAME=.*/Environment=LLM_MODEL_NAME=${MODEL_ID}/" \
+      "${dbgpt}" || true
+    if grep -q '^Environment=LLM_MODEL_NAME=' "${dbgpt}"; then
+      sed -i "s/^Environment=LLM_MODEL_NAME=.*/Environment=LLM_MODEL_NAME=${MODEL_ID}/" "${dbgpt}"
+    fi
   fi
 
   local toml=/data/nanobaseai/bi/frontend/backend/configs/dbgpt-openai-compat.toml
   if [[ -f "${toml}" ]]; then
     cp "${toml}" "${toml}.bak.${ts}"
     sed -i \
-      -e "s/nanobase-meeting-8b/${MODEL_ID}/g" \
       -e "s/nanobase-qwen36-mtp/${MODEL_ID}/g" \
-      "${toml}"
+      -e "s/name = \".*\"/name = \"${MODEL_ID}\"/" \
+      "${toml}" || true
   fi
 
   local envf=/data/nanobaseai/bi/frontend/backend/.env
@@ -150,7 +133,9 @@ retarget_dependents() {
   local qa=/etc/systemd/system/nanobase-qa-api.service
   if [[ -f "${qa}" ]]; then
     cp "${qa}" "${qa}.bak.${ts}"
-    sed -i "s/OLLAMA_MODEL=nanobase-meeting-8b/OLLAMA_MODEL=${MODEL_ID}/g" "${qa}"
+    if grep -q 'OLLAMA_MODEL=' "${qa}"; then
+      sed -i "s/OLLAMA_MODEL=[^ ]*/OLLAMA_MODEL=${MODEL_ID}/g" "${qa}"
+    fi
   fi
 
   local proxy
@@ -158,7 +143,11 @@ retarget_dependents() {
     local punit=/etc/systemd/system/${proxy}
     [[ -f "${punit}" ]] || continue
     cp "${punit}" "${punit}.bak.${ts}"
-    sed -i "s/nanobase-qwen3-8b\\.service/${UNIT}/g" "${punit}"
+    sed -i \
+      -e "s/After=.*/After=network-online.target ${UNIT}/" \
+      -e "s/Wants=.*/Wants=${UNIT}/" \
+      -e "s/Requires=.*/Requires=${UNIT}/" \
+      "${punit}" || true
   done
 
   local act=/etc/nanobaseai/actenora.env
@@ -183,7 +172,6 @@ retarget_dependents() {
 
 main() {
   require_root
-  stop_and_remove_8b
   restore_35b_env
   write_35b_unit
   retarget_dependents
@@ -216,7 +204,6 @@ main() {
 
   echo "Active LLM unit: $(systemctl is-active "${UNIT}")"
   echo "Served model id: ${id:-unavailable}"
-  echo "8B unit present: $(test -f /etc/systemd/system/${EIGHT_B_UNIT} && echo yes || echo no)"
   [[ "${id}" == "${MODEL_ID}" ]] || {
     echo "ERROR: expected ${MODEL_ID} on :8010" >&2
     systemctl status "${UNIT}" --no-pager -l | head -40 >&2 || true
