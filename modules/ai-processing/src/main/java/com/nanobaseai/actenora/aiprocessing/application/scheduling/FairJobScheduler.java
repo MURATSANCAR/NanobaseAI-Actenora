@@ -36,6 +36,7 @@ public final class FairJobScheduler implements JobScheduler {
     private final int agingBonusPerInterval;
     private final Duration averageJobDuration;
     private final Map<UUID, Long> tenantFairnessCursor = new HashMap<>();
+    private final int maxAttempts;
 
     public FairJobScheduler(
             AiJobRepository jobs,
@@ -43,7 +44,17 @@ public final class FairJobScheduler implements JobScheduler {
             TenantAiPolicyPort tenantPolicy,
             ModelRouter modelRouter
     ) {
-        this(jobs, attempts, tenantPolicy, modelRouter, DEFAULT_AGING_INTERVAL, DEFAULT_AGING_BONUS, DEFAULT_AVG_JOB_DURATION);
+        this(jobs, attempts, tenantPolicy, modelRouter, DEFAULT_AGING_INTERVAL, DEFAULT_AGING_BONUS, DEFAULT_AVG_JOB_DURATION, Integer.MAX_VALUE);
+    }
+
+    public FairJobScheduler(
+            AiJobRepository jobs,
+            AiAttemptRepository attempts,
+            TenantAiPolicyPort tenantPolicy,
+            ModelRouter modelRouter,
+            int maxAttempts
+    ) {
+        this(jobs, attempts, tenantPolicy, modelRouter, DEFAULT_AGING_INTERVAL, DEFAULT_AGING_BONUS, DEFAULT_AVG_JOB_DURATION, maxAttempts);
     }
 
     public FairJobScheduler(
@@ -55,6 +66,19 @@ public final class FairJobScheduler implements JobScheduler {
             int agingBonusPerInterval,
             Duration averageJobDuration
     ) {
+        this(jobs, attempts, tenantPolicy, modelRouter, agingInterval, agingBonusPerInterval, averageJobDuration, Integer.MAX_VALUE);
+    }
+
+    public FairJobScheduler(
+            AiJobRepository jobs,
+            AiAttemptRepository attempts,
+            TenantAiPolicyPort tenantPolicy,
+            ModelRouter modelRouter,
+            Duration agingInterval,
+            int agingBonusPerInterval,
+            Duration averageJobDuration,
+            int maxAttempts
+    ) {
         this.jobs = Objects.requireNonNull(jobs, "jobs");
         this.attempts = Objects.requireNonNull(attempts, "attempts");
         this.tenantPolicy = Objects.requireNonNull(tenantPolicy, "tenantPolicy");
@@ -62,6 +86,10 @@ public final class FairJobScheduler implements JobScheduler {
         this.agingInterval = Objects.requireNonNull(agingInterval, "agingInterval");
         this.agingBonusPerInterval = agingBonusPerInterval;
         this.averageJobDuration = Objects.requireNonNull(averageJobDuration, "averageJobDuration");
+        if (maxAttempts < 1) {
+            throw new IllegalArgumentException("maxAttempts must be >= 1");
+        }
+        this.maxAttempts = maxAttempts;
     }
 
     @Override
@@ -79,6 +107,9 @@ public final class FairJobScheduler implements JobScheduler {
 
         for (ScoredJob candidate : scored) {
             AiJob job = candidate.job();
+            if (!job.isEligibleAt(now)) {
+                continue;
+            }
             int running = jobs.countByTenantAndStatus(job.tenantId(), AiJobStatus.RUNNING);
             if (running >= tenantPolicy.maxConcurrentAiJobs(job.tenantId())) {
                 continue;
@@ -133,9 +164,10 @@ public final class FairJobScheduler implements JobScheduler {
     }
 
     @Override
-    public int recoverStaleRunning(Instant now, Duration staleAfter) {
+    public int recoverStaleRunning(Instant now, Duration staleAfter, int maxAttempts) {
         Objects.requireNonNull(now, "now");
         Objects.requireNonNull(staleAfter, "staleAfter");
+        int attemptCap = maxAttempts < 1 ? this.maxAttempts : maxAttempts;
         int recovered = 0;
         for (AiJob job : jobs.findByStatus(AiJobStatus.RUNNING)) {
             Instant started = job.startedAt().orElse(null);
@@ -147,7 +179,11 @@ public final class FairJobScheduler implements JobScheduler {
                     a.cancel(now);
                     attempts.save(a);
                 });
-                job.recoverStale(now);
+                if (job.attemptCount() >= attemptCap) {
+                    job.markDeadFromStale(now);
+                } else {
+                    job.recoverStale(now);
+                }
                 jobs.save(job);
                 recovered++;
             }

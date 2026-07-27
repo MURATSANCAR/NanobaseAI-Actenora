@@ -18,7 +18,11 @@ public interface JobScheduler {
 
     Duration estimateQueueWait(UUID tenantId, JobPriority priority, Instant now);
 
-    int recoverStaleRunning(Instant now, Duration staleAfter);
+    int recoverStaleRunning(Instant now, Duration staleAfter, int maxAttempts);
+
+    default int recoverStaleRunning(Instant now, Duration staleAfter) {
+        return recoverStaleRunning(now, staleAfter, Integer.MAX_VALUE);
+    }
 
     record ClaimedJob(AiJob job, AiAttempt attempt) {
     }

@@ -23,7 +23,7 @@ public final class JdbcAiJobRepository implements AiJobRepository {
             id, tenant_id, meeting_occurrence_id, transcript_id, task_type, priority, status,
             requested_capability, selected_model_id, selected_deployment_id, selected_route_reason,
             selected_route_rejects, prompt_version, schema_version, input_token_count, output_token_count,
-            queued_at, started_at, completed_at, deadline_at, correlation_id, language, context_size,
+            queued_at, started_at, completed_at, deadline_at, next_eligible_at, correlation_id, language, context_size,
             fallback_permitted, admin_override_model_id, admin_override_deployment_id, attempt_count, version
             """;
 
@@ -65,6 +65,7 @@ public final class JdbcAiJobRepository implements AiJobRepository {
                 JdbcInstant.get(rs, "started_at"),
                 JdbcInstant.get(rs, "completed_at"),
                 JdbcInstant.get(rs, "deadline_at"),
+                JdbcInstant.get(rs, "next_eligible_at"),
                 rs.getObject("correlation_id", UUID.class),
                 rs.getString("language"),
                 rs.getInt("context_size"),
@@ -95,7 +96,8 @@ public final class JdbcAiJobRepository implements AiJobRepository {
                 UPDATE aiprocessing.ai_jobs SET
                     priority = ?, status = ?, selected_model_id = ?, selected_deployment_id = ?,
                     selected_route_reason = ?, selected_route_rejects = ?, input_token_count = ?,
-                    output_token_count = ?, started_at = ?, completed_at = ?, fallback_permitted = ?,
+                    output_token_count = ?, started_at = ?, completed_at = ?, next_eligible_at = ?,
+                    fallback_permitted = ?,
                     admin_override_model_id = ?, admin_override_deployment_id = ?, attempt_count = ?,
                     version = ?
                 WHERE id = ? AND version = ?
@@ -112,6 +114,7 @@ public final class JdbcAiJobRepository implements AiJobRepository {
                 job.outputTokenCount().orElse(null),
                 job.startedAt().map(JdbcInstant::toTimestamp).orElse(null),
                 job.completedAt().map(JdbcInstant::toTimestamp).orElse(null),
+                job.nextEligibleAt().map(JdbcInstant::toTimestamp).orElse(null),
                 job.fallbackPermitted(),
                 job.adminOverrideModelId().orElse(null),
                 job.adminOverrideDeploymentId().orElse(null),
@@ -189,9 +192,9 @@ public final class JdbcAiJobRepository implements AiJobRepository {
                     id, tenant_id, meeting_occurrence_id, transcript_id, task_type, priority, status,
                     requested_capability, selected_model_id, selected_deployment_id, selected_route_reason,
                     selected_route_rejects, prompt_version, schema_version, input_token_count, output_token_count,
-                    queued_at, started_at, completed_at, deadline_at, correlation_id, language, context_size,
+                    queued_at, started_at, completed_at, deadline_at, next_eligible_at, correlation_id, language, context_size,
                     fallback_permitted, admin_override_model_id, admin_override_deployment_id, attempt_count, version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         SelectedRoute route = job.selectedRoute().orElse(null);
         jdbc.update(sql,
@@ -215,6 +218,7 @@ public final class JdbcAiJobRepository implements AiJobRepository {
                 job.startedAt().map(JdbcInstant::toTimestamp).orElse(null),
                 job.completedAt().map(JdbcInstant::toTimestamp).orElse(null),
                 JdbcInstant.toTimestamp(job.deadlineAt()),
+                job.nextEligibleAt().map(JdbcInstant::toTimestamp).orElse(null),
                 job.correlationId(),
                 job.language(),
                 job.contextSize(),

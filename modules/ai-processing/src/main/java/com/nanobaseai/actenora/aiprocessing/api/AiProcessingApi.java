@@ -35,6 +35,10 @@ public interface AiProcessingApi {
 
     int recoverStaleRunning(Instant now, Duration staleAfter);
 
+    default int recoverStaleRunning(Instant now, Duration staleAfter, int maxAttempts) {
+        return recoverStaleRunning(now, staleAfter);
+    }
+
     Optional<AiJob> findJob(UUID jobId);
 
     List<AiJob> listJobsForTenant(UUID tenantId);
@@ -80,6 +84,11 @@ public interface AiProcessingApi {
         @Override
         public int recoverStaleRunning(Instant now, Duration staleAfter) {
             return service.recoverStale(now, staleAfter);
+        }
+
+        @Override
+        public int recoverStaleRunning(Instant now, Duration staleAfter, int maxAttempts) {
+            return service.recoverStale(now, staleAfter, maxAttempts);
         }
 
         @Override

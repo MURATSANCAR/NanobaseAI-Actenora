@@ -113,6 +113,10 @@ public final class AiJobService {
         return scheduler.recoverStaleRunning(now, staleAfter);
     }
 
+    public int recoverStale(Instant now, java.time.Duration staleAfter, int maxAttempts) {
+        return scheduler.recoverStaleRunning(now, staleAfter, maxAttempts);
+    }
+
     public Optional<AiJob> find(UUID jobId) {
         return jobs.findById(jobId);
     }

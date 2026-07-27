@@ -186,7 +186,8 @@ public class AiProcessingPlatformConfiguration {
     @Bean
     ModelRuntimePort localModelRuntimePort(
             SwappableLocalModelProvider provider,
-            ModelDefinitionRepository modelDefinitions
+            ModelDefinitionRepository modelDefinitions,
+            LocalProviderProperties properties
     ) {
         var known = provider.capabilities() == null
                 ? Set.<String>of()
@@ -217,6 +218,7 @@ public class AiProcessingPlatformConfiguration {
                 .or(() -> known == null ? java.util.Optional.empty() : known.stream().filter(concreteServed).findFirst())
                 .orElse(Qwen27BModelAdapter.SERVED_MODEL_ID);
         String modelVersion = servedModelId + "@local-v1";
+        int timeoutSeconds = (int) Math.max(1, properties.getReadTimeout().toSeconds());
         return new LocalProviderModelRuntimeAdapter(
                 provider,
                 new com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelDescriptor(
@@ -226,7 +228,8 @@ public class AiProcessingPlatformConfiguration {
                         selected.map(ModelDefinition::contextWindow).orElse(Qwen27BModelAdapter.CONTEXT_WINDOW),
                         Math.max(Qwen27BModelAdapter.MAX_OUTPUT, 6000)
                 ),
-                modelDefinitionId
+                modelDefinitionId,
+                timeoutSeconds
         );
     }
 
@@ -319,9 +322,10 @@ public class AiProcessingPlatformConfiguration {
             AiJobRepository jobs,
             AiAttemptRepository attempts,
             TenantAiPolicyPort tenantAiPolicy,
-            ModelRouter modelRouter
+            ModelRouter modelRouter,
+            LocalProviderProperties properties
     ) {
-        return new FairJobScheduler(jobs, attempts, tenantAiPolicy, modelRouter);
+        return new FairJobScheduler(jobs, attempts, tenantAiPolicy, modelRouter, properties.getMaxAttempts());
     }
 
     @Bean
@@ -362,30 +366,38 @@ public class AiProcessingPlatformConfiguration {
     AiJobInferenceWorker aiJobInferenceWorker(
             AiJobInferenceExecutor inferenceExecutor,
             AiProcessingApi aiProcessingApi,
-            @Value("${actenora.ai.worker.stale-running-after:PT20M}") Duration staleRunningAfter
+            LocalProviderProperties properties,
+            @Value("${actenora.ai.worker.stale-running-after:PT45M}") Duration staleRunningAfter
     ) {
-        return new AiJobInferenceWorker(inferenceExecutor, aiProcessingApi, staleRunningAfter);
+        return new AiJobInferenceWorker(
+                inferenceExecutor, aiProcessingApi, staleRunningAfter, properties.getMaxAttempts());
     }
 
     static final class AiJobInferenceWorker {
         private final AiJobInferenceExecutor inferenceExecutor;
         private final AiProcessingApi aiProcessingApi;
         private final Duration staleRunningAfter;
+        private final int maxAttempts;
 
         AiJobInferenceWorker(
                 AiJobInferenceExecutor inferenceExecutor,
                 AiProcessingApi aiProcessingApi,
-                Duration staleRunningAfter
+                Duration staleRunningAfter,
+                int maxAttempts
         ) {
             this.inferenceExecutor = Objects.requireNonNull(inferenceExecutor, "inferenceExecutor");
             this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
             this.staleRunningAfter = Objects.requireNonNull(staleRunningAfter, "staleRunningAfter");
+            if (maxAttempts < 1) {
+                throw new IllegalArgumentException("maxAttempts must be >= 1");
+            }
+            this.maxAttempts = maxAttempts;
         }
 
         @Scheduled(fixedDelayString = "${actenora.ai.worker.poll-interval:PT15S}")
         void poll() {
             Instant now = Instant.now();
-            aiProcessingApi.recoverStaleRunning(now, staleRunningAfter);
+            aiProcessingApi.recoverStaleRunning(now, staleRunningAfter, maxAttempts);
             inferenceExecutor.executeNext(now);
         }
     }

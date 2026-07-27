@@ -168,74 +168,6 @@ public final class AiJob {
         this.attemptCount = attemptCount;
     }
 
-    // legacy constructor body removed below — keep enqueue using full ctor
-    private static void _removedCtorPlaceholder() {
-    }
-
-    @SuppressWarnings("unused")
-    private AiJob(
-            UUID id,
-            UUID tenantId,
-            UUID meetingOccurrenceId,
-            UUID transcriptId,
-            String taskType,
-            JobPriority priority,
-            AiJobStatus status,
-            AiCapability requestedCapability,
-            UUID selectedModelId,
-            UUID selectedDeploymentId,
-            SelectedRoute selectedRoute,
-            String promptVersion,
-            String schemaVersion,
-            Integer inputTokenCount,
-            Integer outputTokenCount,
-            Instant queuedAt,
-            Instant startedAt,
-            Instant completedAt,
-            Instant deadlineAt,
-            UUID correlationId,
-            String language,
-            int contextSize,
-            boolean fallbackPermitted,
-            UUID adminOverrideModelId,
-            UUID adminOverrideDeploymentId,
-            long version,
-            int attemptCount,
-            boolean ignored
-    ) {
-        this.id = Objects.requireNonNull(id, "id");
-        this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
-        this.meetingOccurrenceId = Objects.requireNonNull(meetingOccurrenceId, "meetingOccurrenceId");
-        this.transcriptId = Objects.requireNonNull(transcriptId, "transcriptId");
-        this.taskType = requireText(taskType, "taskType");
-        this.priority = Objects.requireNonNull(priority, "priority");
-        this.status = Objects.requireNonNull(status, "status");
-        this.requestedCapability = Objects.requireNonNull(requestedCapability, "requestedCapability");
-        this.selectedModelId = selectedModelId;
-        this.selectedDeploymentId = selectedDeploymentId;
-        this.selectedRoute = selectedRoute;
-        this.promptVersion = requireText(promptVersion, "promptVersion");
-        this.schemaVersion = requireText(schemaVersion, "schemaVersion");
-        this.inputTokenCount = inputTokenCount;
-        this.outputTokenCount = outputTokenCount;
-        this.queuedAt = Objects.requireNonNull(queuedAt, "queuedAt");
-        this.startedAt = startedAt;
-        this.completedAt = completedAt;
-        this.deadlineAt = Objects.requireNonNull(deadlineAt, "deadlineAt");
-        this.nextEligibleAt = null;
-        this.correlationId = Objects.requireNonNull(correlationId, "correlationId");
-        this.language = language == null || language.isBlank() ? "tr" : language.trim().toLowerCase();
-        if (contextSize < 0) {
-            throw new IllegalArgumentException("contextSize must be >= 0");
-        }
-        this.contextSize = contextSize;
-        this.fallbackPermitted = fallbackPermitted;
-        this.adminOverrideModelId = adminOverrideModelId;
-        this.adminOverrideDeploymentId = adminOverrideDeploymentId;
-        this.version = version;
-        this.attemptCount = attemptCount;
-    }
-
     public static AiJob enqueue(
             UUID tenantId,
             UUID meetingOccurrenceId,
@@ -320,6 +252,7 @@ public final class AiJob {
         }
         this.status = AiJobStatus.RUNNING;
         this.startedAt = Objects.requireNonNull(now, "now");
+        this.nextEligibleAt = null;
         this.attemptCount++;
         touch();
         return AiAttempt.start(id, attemptCount, selectedModelId, selectedDeploymentId, now);
@@ -333,6 +266,7 @@ public final class AiJob {
         this.inputTokenCount = inputTokens;
         this.outputTokenCount = outputTokens;
         this.completedAt = Objects.requireNonNull(now, "now");
+        this.nextEligibleAt = null;
         touch();
     }
 
@@ -340,12 +274,15 @@ public final class AiJob {
         if (status != AiJobStatus.RUNNING) {
             throw AiJobException.invalidTransition("Only RUNNING jobs can fail, was " + status);
         }
+        Objects.requireNonNull(now, "now");
         if (retryable) {
             this.status = AiJobStatus.QUEUED;
             this.startedAt = null;
+            this.nextEligibleAt = now.plus(retryBackoff(attemptCount));
         } else {
             this.status = AiJobStatus.DEAD;
-            this.completedAt = Objects.requireNonNull(now, "now");
+            this.completedAt = now;
+            this.nextEligibleAt = null;
         }
         touch();
     }
@@ -359,6 +296,7 @@ public final class AiJob {
         }
         this.status = AiJobStatus.CANCELLED;
         this.completedAt = Objects.requireNonNull(now, "now");
+        this.nextEligibleAt = null;
         touch();
     }
 
@@ -369,10 +307,35 @@ public final class AiJob {
         if (status != AiJobStatus.RUNNING) {
             throw AiJobException.invalidTransition("Only RUNNING jobs can be recovered, was " + status);
         }
+        Objects.requireNonNull(now, "now");
         this.status = AiJobStatus.QUEUED;
         this.startedAt = null;
+        this.nextEligibleAt = now.plus(retryBackoff(attemptCount));
         touch();
+    }
+
+    /**
+     * Marks a stale RUNNING job as permanently dead when attempt budget is exhausted.
+     */
+    public void markDeadFromStale(Instant now) {
+        if (status != AiJobStatus.RUNNING) {
+            throw AiJobException.invalidTransition("Only RUNNING jobs can be marked dead from stale, was " + status);
+        }
+        this.status = AiJobStatus.DEAD;
+        this.completedAt = Objects.requireNonNull(now, "now");
+        this.nextEligibleAt = null;
+        touch();
+    }
+
+    public boolean isEligibleAt(Instant now) {
         Objects.requireNonNull(now, "now");
+        return nextEligibleAt == null || !nextEligibleAt.isAfter(now);
+    }
+
+    public static Duration retryBackoff(int attemptCount) {
+        int cappedAttempt = Math.max(1, Math.min(attemptCount, 10));
+        long seconds = RETRY_BACKOFF_BASE.toSeconds() * (1L << (cappedAttempt - 1));
+        return Duration.ofSeconds(Math.min(seconds, RETRY_BACKOFF_CAP.toSeconds()));
     }
 
     public long schedulingScore(Instant now, Duration agingInterval, int agingBonusPerInterval) {
@@ -480,6 +443,10 @@ public final class AiJob {
 
     public Instant deadlineAt() {
         return deadlineAt;
+    }
+
+    public Optional<Instant> nextEligibleAt() {
+        return Optional.ofNullable(nextEligibleAt);
     }
 
     public UUID correlationId() {
