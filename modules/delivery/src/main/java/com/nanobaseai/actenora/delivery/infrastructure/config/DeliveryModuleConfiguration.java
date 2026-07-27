@@ -35,8 +35,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 
+import javax.sql.DataSource;
 import java.time.Clock;
 
 /**
@@ -117,10 +119,17 @@ public class DeliveryModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    PdfAttachmentPort pdfAttachmentPort(ObjectProvider<ObjectStorage> objectStorage) {
+    PdfAttachmentPort pdfAttachmentPort(
+            ObjectProvider<ObjectStorage> objectStorage,
+            ObjectProvider<DataSource> dataSource
+    ) {
         ObjectStorage storage = objectStorage.getIfAvailable();
         if (storage != null) {
-            return new ObjectStoragePdfAttachmentPort(storage);
+            DataSource ds = dataSource.getIfAvailable();
+            return new ObjectStoragePdfAttachmentPort(
+                    storage,
+                    ds == null ? null : new JdbcTemplate(ds)
+            );
         }
         return new InMemoryPdfAttachmentPort();
     }
