@@ -154,8 +154,7 @@ public class ModelManagementPlatformConfiguration {
                 }
                 List<ModelRole> roles = resolveRoles(definition);
                 for (ModelDeployment deployment : deployments.findByModelDefinitionId(definition.id())) {
-                    if (deployment.isHeartbeatTimedOut(now, healthSettings.heartbeatTimeout())) {
-                        deployment.applyHeartbeatTimeout(now, healthSettings.heartbeatTimeout());
+                    if (deployment.applyHeartbeatTimeout(now, healthSettings.heartbeatTimeout())) {
                         deployments.save(deployment);
                     }
                     // Keep unhealthy / draining deployments so FAZ 15 can fall back

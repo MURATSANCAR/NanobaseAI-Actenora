@@ -692,8 +692,7 @@ public class AiProcessingPlatformConfiguration {
                 }
                 int minContext = minContextRequired(definition);
                 for (ModelDeployment deployment : deployments.findByModelDefinitionId(definition.id())) {
-                    if (deployment.isHeartbeatTimedOut(now, healthSettings.heartbeatTimeout())) {
-                        deployment.applyHeartbeatTimeout(now, healthSettings.heartbeatTimeout());
+                    if (deployment.applyHeartbeatTimeout(now, healthSettings.heartbeatTimeout())) {
                         deployments.save(deployment);
                     }
                     candidates.add(new RoutableCandidate(

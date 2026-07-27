@@ -272,8 +272,7 @@ public final class ModelRegistryService {
             int unhealthy = 0;
             for (ModelDeployment deployment : deployments.findByModelDefinitionId(definition.id())) {
                 boolean timedOut = deployment.isHeartbeatTimedOut(now, healthSettings.heartbeatTimeout());
-                if (timedOut) {
-                    deployment.applyHeartbeatTimeout(now, healthSettings.heartbeatTimeout());
+                if (timedOut && deployment.applyHeartbeatTimeout(now, healthSettings.heartbeatTimeout())) {
                     deployments.save(deployment);
                 }
                 if (deployment.status().name().equals("HEALTHY") || deployment.status().name().equals("REGISTERED")) {
