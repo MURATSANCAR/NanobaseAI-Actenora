@@ -243,6 +243,21 @@ public final class MeetingNoteApprovalService {
         MeetingNoteVersion current = requireCurrentVersion(tid, note);
         Instant now = clock.instant();
 
+        // Heal versions left in DRAFT after submit when approval_status was not
+        // persisted (pre-fix JDBC mapping). Legal path is still DRAFT→PENDING→target.
+        if (current.approvalStatus() == MeetingNoteStatus.DRAFT) {
+            current.transitionApprovalStatus(MeetingNoteStatus.PENDING_APPROVAL);
+        }
+
+        // Validate the note transition before mutating the Approval BC so an
+        // invalid note state cannot leave a GRANTED approval orphaned.
+        MeetingNoteStatus expectedTarget = switch (decisionType) {
+            case APPROVE -> MeetingNoteStatus.APPROVED;
+            case REJECT -> MeetingNoteStatus.REJECTED;
+            case REQUEST_CHANGES -> MeetingNoteStatus.CHANGES_REQUESTED;
+        };
+        current.transitionApprovalStatus(expectedTarget);
+
         ApprovalRequestStatus status = approvalApi.decide(
                 tenantId, approvalId, actorId, decisionType, comment, expectedApprovalVersion
         );
@@ -253,7 +268,11 @@ public final class MeetingNoteApprovalService {
             case CHANGES_REQUESTED -> MeetingNoteStatus.CHANGES_REQUESTED;
             default -> throw new IllegalStateException("unexpected approval status: " + status);
         };
-        current.transitionApprovalStatus(target);
+        if (target != expectedTarget) {
+            throw new IllegalStateException(
+                    "approval decision outcome " + status + " does not match decision type " + decisionType
+            );
+        }
         versionRepository.save(current);
         bumpNoteVersion(note, expectedNoteVersion, now);
         noteRepository.save(note);
@@ -327,6 +346,12 @@ public final class MeetingNoteApprovalService {
                 .findByIdAndTenantId(approval.subjectId(), tid)
                 .orElseThrow(() -> new MeetingNoteNotFoundException(approval.subjectId()));
         MeetingNote note = requireNote(tid, version.noteId());
+        if (!approval.subjectId().equals(note.currentVersionId())) {
+            throw new ActenoraException(
+                    "APPROVAL_SUBJECT_NOT_CURRENT",
+                    "Approval subject is not the current note version; re-submit the current draft"
+            );
+        }
         long noteVersion = expectedNoteVersion == null ? note.version() : expectedNoteVersion;
         long approvalVersion = expectedApprovalVersion == null ? approval.version() : expectedApprovalVersion;
         return decideApproval(

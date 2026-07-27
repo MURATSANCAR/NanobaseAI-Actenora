@@ -51,13 +51,15 @@ public final class MeetingAttendanceSyncService {
             return 0;
         }
         if (records.isEmpty()) {
+            log.warn("Attendance report empty meetingId={} teamsMeetingId={}", meeting.id(), teamsMeetingId);
             return 0;
         }
         // Presence on the Teams attendance report means the person joined.
         List<ApplyAttendanceRequest.AttendanceRecord> attended = new ArrayList<>(records.size());
         for (ParticipantMetadata record : records) {
+            String email = record.emailOptional().orElse(record.upnOptional().orElse(null));
             attended.add(new ApplyAttendanceRequest.AttendanceRecord(
-                    record.emailOptional().orElse(null),
+                    email,
                     looksLikeGuid(record.id()) ? record.id() : null,
                     record.displayName(),
                     record.role(),

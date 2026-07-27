@@ -99,7 +99,7 @@ public final class TeamsTranscriptPollScheduler {
                 MeetingListResponse page = meetingApi.listMeetings(new CursorPageRequest(null, null, cursor, 100));
                 for (MeetingResponse meeting : page.items()) {
                     if (isReadyForTranscriptPoll(meeting, now)
-                            && !transcriptApi.hasTranscriptForMeeting(TenantId.of(tenantId), meeting.id())) {
+                            && needsPoll(meeting, TenantId.of(tenantId))) {
                         workStore.enqueue(tenantId, meeting.id(), now);
                     }
                 }
@@ -140,6 +140,37 @@ public final class TeamsTranscriptPollScheduler {
                 rescheduleOrDeadLetter(target, attempt, ex.getClass().getSimpleName(), now);
                 recordPoll("failed");
             }
+        }
+    }
+
+    /**
+     * Ended Teams meetings still need polling when transcript is missing <strong>or</strong>
+     * attendance was never applied (all invitees stuck in INVITED/ACCEPTED/TENTATIVE).
+     */
+    boolean needsPoll(MeetingResponse meeting, TenantId tenantId) {
+        if (!transcriptApi.hasTranscriptForMeeting(tenantId, meeting.id())) {
+            return true;
+        }
+        return needsAttendanceRefresh(meeting);
+    }
+
+    private boolean needsAttendanceRefresh(MeetingResponse meeting) {
+        try {
+            var participants = meetingApi.listParticipants(meeting.id());
+            if (participants.isEmpty()) {
+                return true;
+            }
+            return participants.stream().noneMatch(p -> {
+                var status = p.attendanceStatus();
+                return status != null && (
+                        "JOINED".equalsIgnoreCase(status.name())
+                                || "LEFT".equalsIgnoreCase(status.name())
+                                || "ABSENT".equalsIgnoreCase(status.name())
+                );
+            });
+        } catch (RuntimeException ex) {
+            log.debug("Attendance refresh check failed meetingId={}: {}", meeting.id(), ex.getMessage());
+            return false;
         }
     }
 

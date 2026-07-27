@@ -4,29 +4,21 @@ import { useI18n } from "@/i18n";
 
 const ATTENDED = new Set(["JOINED", "LEFT"]);
 const EXPLICIT_ABSENT = new Set(["ABSENT", "DECLINED"]);
-const MEETING_ENDED = new Set(["ENDED", "PROCESSING", "READY", "FAILED", "CANCELLED"]);
 
 export type AttendanceBucket = "attended" | "absent" | "pending";
 
 /**
- * Classifies attendance for portal display.
- * Organizers of a finished meeting count as attended unless explicitly declined/absent —
- * Graph often never writes JOINED for the organizer even when the meeting ran.
+ * Maps backend attendanceStatus only — never invents "absent" from meeting end.
+ * INVITED/ACCEPTED/TENTATIVE stay pending until Teams attendance sync writes JOINED/ABSENT.
  */
 export function classifyAttendance(
   attendanceStatus: string | null | undefined,
-  meetingStatus: string,
-  participantType?: string | null,
+  _meetingStatus?: string,
+  _participantType?: string | null,
 ): AttendanceBucket {
   const status = (attendanceStatus || "UNKNOWN").toUpperCase();
-  const type = (participantType || "").toUpperCase();
   if (ATTENDED.has(status)) return "attended";
   if (EXPLICIT_ABSENT.has(status)) return "absent";
-  if (type === "ORGANIZER" && MEETING_ENDED.has(meetingStatus.toUpperCase())) {
-    return "attended";
-  }
-  // After the meeting ends, invite/accept without a join counts as no-show.
-  if (MEETING_ENDED.has(meetingStatus.toUpperCase())) return "absent";
   return "pending";
 }
 

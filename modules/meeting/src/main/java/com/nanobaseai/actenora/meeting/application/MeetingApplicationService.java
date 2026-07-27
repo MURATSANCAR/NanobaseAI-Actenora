@@ -339,6 +339,7 @@ public final class MeetingApplicationService {
     ) {
         String email = normalizeEmail(record.email());
         String entra = normalizeId(record.entraUserId());
+        String display = normalizeDisplay(record.displayName());
         for (MeetingParticipant participant : existing) {
             if (email != null && email.equals(normalizeEmail(participant.email()))) {
                 return participant;
@@ -347,7 +348,42 @@ public final class MeetingApplicationService {
                 return participant;
             }
         }
+        // Organizer role often arrives without email; match the single ORGANIZER row by name/role.
+        if (isOrganizerRole(record.role())) {
+            List<MeetingParticipant> organizers = existing.stream()
+                    .filter(p -> p.participantType() == ParticipantType.ORGANIZER)
+                    .toList();
+            if (organizers.size() == 1) {
+                return organizers.getFirst();
+            }
+            if (display != null) {
+                for (MeetingParticipant organizer : organizers) {
+                    if (display.equals(normalizeDisplay(organizer.displayName()))) {
+                        return organizer;
+                    }
+                }
+            }
+        }
+        if (display != null) {
+            MeetingParticipant byName = null;
+            for (MeetingParticipant participant : existing) {
+                if (display.equals(normalizeDisplay(participant.displayName()))) {
+                    if (byName != null) {
+                        return null; // ambiguous
+                    }
+                    byName = participant;
+                }
+            }
+            return byName;
+        }
         return null;
+    }
+
+    private static String normalizeDisplay(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        return name.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private static MeetingParticipant createFromAttendance(

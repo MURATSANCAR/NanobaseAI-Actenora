@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence;
 
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNoteStatus;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNoteVersion;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.ModelPromptSchemaProvenance;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.NoteVersionSource;
@@ -32,6 +33,7 @@ public final class JdbcMeetingNoteVersionRepository implements MeetingNoteVersio
                     confidence
             );
         }
+        String approvalStatus = rs.getString("approval_status");
         return MeetingNoteVersion.rehydrate(
                 rs.getObject("id", UUID.class),
                 TenantId.of(rs.getObject("tenant_id", UUID.class)),
@@ -42,7 +44,10 @@ public final class JdbcMeetingNoteVersionRepository implements MeetingNoteVersio
                 provenance,
                 rs.getString("correction_reason"),
                 rs.getObject("created_by_user_id", UUID.class),
-                JdbcInstant.get(rs, "created_at")
+                JdbcInstant.get(rs, "created_at"),
+                approvalStatus == null
+                        ? MeetingNoteStatus.DRAFT
+                        : MeetingNoteStatus.valueOf(approvalStatus)
         );
     };
 
@@ -58,11 +63,12 @@ public final class JdbcMeetingNoteVersionRepository implements MeetingNoteVersio
                 INSERT INTO meetingintelligence.meeting_note_versions (
                     id, tenant_id, note_id, version_number, executive_summary, source,
                     model_id, prompt_version_id, schema_id, ai_confidence, correction_reason,
-                    created_by_user_id, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    created_by_user_id, created_at, approval_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (tenant_id, note_id, version_number) DO UPDATE SET
                     executive_summary = EXCLUDED.executive_summary,
-                    correction_reason = EXCLUDED.correction_reason
+                    correction_reason = EXCLUDED.correction_reason,
+                    approval_status = EXCLUDED.approval_status
                 """;
         ModelPromptSchemaProvenance provenance = version.provenance();
         jdbc.update(sql,
@@ -78,7 +84,8 @@ public final class JdbcMeetingNoteVersionRepository implements MeetingNoteVersio
                 provenance == null ? null : provenance.aiConfidence(),
                 version.correctionReason(),
                 version.createdByUserId(),
-                JdbcInstant.toTimestamp(version.createdAt())
+                JdbcInstant.toTimestamp(version.createdAt()),
+                version.approvalStatus().name()
         );
         return version;
     }
@@ -88,7 +95,7 @@ public final class JdbcMeetingNoteVersionRepository implements MeetingNoteVersio
         String sql = """
                 SELECT id, tenant_id, note_id, version_number, executive_summary, source,
                        model_id, prompt_version_id, schema_id, ai_confidence, correction_reason,
-                       created_by_user_id, created_at
+                       created_by_user_id, created_at, approval_status
                 FROM meetingintelligence.meeting_note_versions
                 WHERE id = ? AND tenant_id = ?
                 """;
@@ -100,7 +107,7 @@ public final class JdbcMeetingNoteVersionRepository implements MeetingNoteVersio
         String sql = """
                 SELECT id, tenant_id, note_id, version_number, executive_summary, source,
                        model_id, prompt_version_id, schema_id, ai_confidence, correction_reason,
-                       created_by_user_id, created_at
+                       created_by_user_id, created_at, approval_status
                 FROM meetingintelligence.meeting_note_versions
                 WHERE note_id = ? AND version_number = ? AND tenant_id = ?
                 """;
@@ -112,7 +119,7 @@ public final class JdbcMeetingNoteVersionRepository implements MeetingNoteVersio
         String sql = """
                 SELECT id, tenant_id, note_id, version_number, executive_summary, source,
                        model_id, prompt_version_id, schema_id, ai_confidence, correction_reason,
-                       created_by_user_id, created_at
+                       created_by_user_id, created_at, approval_status
                 FROM meetingintelligence.meeting_note_versions
                 WHERE note_id = ? AND tenant_id = ?
                 """;
