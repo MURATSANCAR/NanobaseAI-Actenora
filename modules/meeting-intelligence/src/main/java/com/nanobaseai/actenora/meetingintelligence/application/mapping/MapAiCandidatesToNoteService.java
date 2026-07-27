@@ -45,6 +45,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -274,7 +275,7 @@ public final class MapAiCandidatesToNoteService {
 
         for (String flag : candidates.qualityFlags()) {
             flags.add(QualityFlag.create(
-                    tenantId, note.id(), version.id(), QualityFlagCode.OTHER, flag, null, null, now
+                    tenantId, note.id(), version.id(), resolvePipelineQualityFlagCode(flag), flag, null, null, now
             ));
         }
 
@@ -323,5 +324,23 @@ public final class MapAiCandidatesToNoteService {
             // Relative phrases ("gelecek hafta cuma") stay in text; do not fail the mapping.
             return null;
         }
+    }
+
+    /**
+     * Maps pipeline quality-flag tokens onto durable codes so portal/ops can surface soft-degrades.
+     */
+    static QualityFlagCode resolvePipelineQualityFlagCode(String flag) {
+        if (flag == null || flag.isBlank()) {
+            return QualityFlagCode.OTHER;
+        }
+        String normalized = flag.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "SYNTHESIS_FALLBACK" -> QualityFlagCode.SYNTHESIS_FALLBACK;
+            case "AUDIT_FALLBACK" -> QualityFlagCode.AUDIT_FALLBACK;
+            case "LOW_CONFIDENCE" -> QualityFlagCode.LOW_CONFIDENCE;
+            case "MISSING_EVIDENCE" -> QualityFlagCode.MISSING_EVIDENCE;
+            case "SCHEMA_WARNING" -> QualityFlagCode.SCHEMA_WARNING;
+            default -> QualityFlagCode.OTHER;
+        };
     }
 }

@@ -108,6 +108,8 @@ public final class DefaultStageExecutors {
                         modelRuntime,
                         artifacts,
                         noteAssembler,
+                        segments,
+                        normalizer,
                         priorContext == null ? PriorMeetingContextPort.noop() : priorContext,
                         noteHandoff == null ? MeetingNoteHandoffPort.noop() : noteHandoff
                 ),
@@ -629,6 +631,8 @@ public final class DefaultStageExecutors {
         private final ModelRuntimePort modelRuntime;
         private final ProcessingArtifactRepository artifacts;
         private final FinalNoteAssembler noteAssembler;
+        private final TranscriptSegmentSourcePort segments;
+        private final SegmentNormalizer normalizer;
         private final PriorMeetingContextPort priorContext;
         private final MeetingNoteHandoffPort noteHandoff;
 
@@ -636,12 +640,16 @@ public final class DefaultStageExecutors {
                 ModelRuntimePort modelRuntime,
                 ProcessingArtifactRepository artifacts,
                 FinalNoteAssembler noteAssembler,
+                TranscriptSegmentSourcePort segments,
+                SegmentNormalizer normalizer,
                 PriorMeetingContextPort priorContext,
                 MeetingNoteHandoffPort noteHandoff
         ) {
             this.modelRuntime = modelRuntime;
             this.artifacts = artifacts;
             this.noteAssembler = noteAssembler;
+            this.segments = segments;
+            this.normalizer = normalizer;
             this.priorContext = priorContext;
             this.noteHandoff = noteHandoff;
         }
@@ -667,7 +675,11 @@ public final class DefaultStageExecutors {
                     ExtractionBundle bundle = new ExtractionBundleMapper()
                             .fromJson(new ExtractionJsonSchemaValidator().parseAndValidate(source));
                     FinalNoteDraft deterministic = noteAssembler.assemble(bundle, job.language());
-                    Set<String> allowed = Set.of();
+                    // Same allowlist as VALIDATE / legacy ExtractionPipelineService: all transcript segment ids.
+                    List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
+                    Set<String> allowed = normalized.stream()
+                            .map(SegmentInput::segmentId)
+                            .collect(Collectors.toCollection(HashSet::new));
                     PriorMeetingContext prior = priorContext
                             .load(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
                             .orElse(PriorMeetingContext.EMPTY);
@@ -691,11 +703,12 @@ public final class DefaultStageExecutors {
                         job.schemaVersion(),
                         draft
                 ));
-                String json = MAPPER.writeValueAsString(Map.of(
-                        "executiveSummary", draft.executiveSummary() == null ? "" : draft.executiveSummary(),
-                        "requiresManualReview", draft.requiresManualReview(),
-                        "meetingNoteId", noteId.map(UUID::toString).orElse("")
-                ));
+                java.util.LinkedHashMap<String, Object> payload = new java.util.LinkedHashMap<>();
+                payload.put("executiveSummary", draft.executiveSummary() == null ? "" : draft.executiveSummary());
+                payload.put("requiresManualReview", draft.requiresManualReview());
+                payload.put("meetingNoteId", noteId.map(UUID::toString).orElse(""));
+                payload.put("qualityFlags", draft.qualityFlags());
+                String json = MAPPER.writeValueAsString(payload);
                 return StageExecutionResult.success(
                         job, "final-minutes", json, inTok, outTok, (System.nanoTime() - t0) / 1_000_000L, now);
             } catch (Exception ex) {

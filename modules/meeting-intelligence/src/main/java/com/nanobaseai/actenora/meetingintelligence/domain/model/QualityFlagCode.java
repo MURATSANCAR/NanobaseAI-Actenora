@@ -5,5 +5,7 @@ public enum QualityFlagCode {
     LOW_CONFIDENCE,
     SCHEMA_WARNING,
     HUMAN_CORRECTION,
+    SYNTHESIS_FALLBACK,
+    AUDIT_FALLBACK,
     OTHER
 }

@@ -363,9 +363,17 @@ public class PortalApiController {
                 }
                 if (note.qualityFlags() != null) {
                     for (var flag : note.qualityFlags()) {
-                        if (flag != null && flag.code() != null) {
-                            qualityFlags.add(flag.code().name());
+                        if (flag == null || flag.code() == null) {
+                            continue;
                         }
+                        // Prefer durable pipeline tokens stored as OTHER.detail for pre-V244 notes.
+                        String label = flag.code().name();
+                        if (flag.code().name().equals("OTHER")
+                                && flag.detail() != null
+                                && isPipelineQualityFlagToken(flag.detail())) {
+                            label = flag.detail().trim().toUpperCase(java.util.Locale.ROOT);
+                        }
+                        qualityFlags.add(label);
                     }
                 }
                 Map<UUID, List<PortalEvidenceView>> evidenceBySubject = indexEvidence(note, segmentsById);
