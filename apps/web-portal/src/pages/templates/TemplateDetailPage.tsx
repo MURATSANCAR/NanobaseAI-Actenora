@@ -5,6 +5,7 @@ import { PageShell } from "@/components/qa/PageShell";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { TemplateEditorShell, toEditorSchema } from "@/components/template/TemplateEditorShell";
+import { TemplateVersionCompareView } from "@/components/template/TemplateVersionCompareView";
 import type { TemplateVersionRow } from "@/components/template/TemplateVersionSidebar";
 import { useApi } from "@/api/ApiProvider";
 import { portalMutationsEnabled, queryKeys, resolvePortalAuthMode } from "@/api/client";
@@ -20,6 +21,25 @@ import { designSchemaToJson } from "@/lib/templateNoteBody";
 import type { DesignSchema, TemplateComponentType } from "@/types/template";
 import { useI18n } from "@/i18n";
 import { ArrowLeft } from "lucide-react";
+
+function defaultComparePair(
+  versions: TemplateVersionDetail[],
+  activeVersionNumber: number | null,
+): { left: number; right: number } {
+  const sorted = [...versions].sort((a, b) => a.versionNumber - b.versionNumber);
+  const right =
+    activeVersionNumber ??
+    sorted[sorted.length - 1]?.versionNumber ??
+    0;
+  const leftCandidate = sorted
+    .filter((v) => v.versionNumber < right)
+    .at(-1)?.versionNumber;
+  const left =
+    leftCandidate ??
+    sorted.find((v) => v.versionNumber !== right)?.versionNumber ??
+    right;
+  return { left, right };
+}
 
 function versionRows(versions: TemplateVersionDetail[]): TemplateVersionRow[] {
   return versions.map((v) => ({
@@ -65,6 +85,9 @@ export function TemplateDetailPage() {
   const [schema, setSchema] = useState<DesignSchema>(() => buildStandardDesignSchema());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareLeft, setCompareLeft] = useState<number | null>(null);
+  const [compareRight, setCompareRight] = useState<number | null>(null);
 
   const detail = q.data;
   const versions = detail?.versions ?? [];
@@ -82,6 +105,13 @@ export function TemplateDetailPage() {
     setActiveVersionNumber(version);
     const selected = detail?.versions.find((v) => v.versionNumber === version);
     setSchema(schemaFromVersion(selected));
+  }
+
+  function openCompare() {
+    const pair = defaultComparePair(versions, activeVersionNumber);
+    setCompareLeft(pair.left);
+    setCompareRight(pair.right);
+    setCompareMode(true);
   }
 
   const validationIssues = useMemo(() => validateDesignSchema(schema), [schema]);
@@ -182,27 +212,39 @@ export function TemplateDetailPage() {
       ) : null}
       <AsyncState status={status} error={q.error}>
         {detail ? (
-          <TemplateEditorShell
-            templateName={detail.name}
-            locale={detail.locale}
-            versions={versionRows(detail.versions)}
-            activeVersionNumber={activeVersionNumber ?? 0}
-            components={toEditorSchema(schema).components}
-            selectedId={selectedId}
-            validationIssues={validationIssues}
-            canEdit={mutationsEnabled}
-            saving={saveMutation.isPending}
-            publishing={publishMutation.isPending}
-            statusMessage={statusMessage}
-            onSelectVersion={selectVersion}
-            onAddComponent={addComponent}
-            onSelectComponent={setSelectedId}
-            onRemoveComponent={removeComponent}
-            onSaveDraft={() => saveMutation.mutate()}
-            onPublish={() => publishMutation.mutate()}
-            onCreateDraft={mutationsEnabled ? () => createDraftMutation.mutate() : undefined}
-            creatingDraft={createDraftMutation.isPending}
-          />
+          compareMode && compareLeft !== null && compareRight !== null ? (
+            <TemplateVersionCompareView
+              versions={detail.versions}
+              leftVersionNumber={compareLeft}
+              rightVersionNumber={compareRight}
+              onChangeLeft={setCompareLeft}
+              onChangeRight={setCompareRight}
+              onClose={() => setCompareMode(false)}
+            />
+          ) : (
+            <TemplateEditorShell
+              templateName={detail.name}
+              locale={detail.locale}
+              versions={versionRows(detail.versions)}
+              activeVersionNumber={activeVersionNumber ?? 0}
+              components={toEditorSchema(schema).components}
+              selectedId={selectedId}
+              validationIssues={validationIssues}
+              canEdit={mutationsEnabled}
+              saving={saveMutation.isPending}
+              publishing={publishMutation.isPending}
+              statusMessage={statusMessage}
+              onSelectVersion={selectVersion}
+              onAddComponent={addComponent}
+              onSelectComponent={setSelectedId}
+              onRemoveComponent={removeComponent}
+              onSaveDraft={() => saveMutation.mutate()}
+              onPublish={() => publishMutation.mutate()}
+              onCreateDraft={mutationsEnabled ? () => createDraftMutation.mutate() : undefined}
+              creatingDraft={createDraftMutation.isPending}
+              onCompare={detail.versions.length >= 2 ? openCompare : undefined}
+            />
+          )
         ) : null}
       </AsyncState>
     </PageShell>

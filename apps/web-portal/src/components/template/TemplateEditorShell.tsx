@@ -27,6 +27,7 @@ export function TemplateEditorShell({
   onPublish,
   onCreateDraft,
   creatingDraft,
+  onCompare,
 }: {
   templateName: string;
   locale: string;
@@ -47,6 +48,7 @@ export function TemplateEditorShell({
   onPublish: () => void;
   onCreateDraft?: () => void;
   creatingDraft?: boolean;
+  onCompare?: () => void;
 }) {
   const { t } = useI18n();
   const activeVersion = versions.find((v) => v.version === activeVersionNumber);
@@ -87,6 +89,7 @@ export function TemplateEditorShell({
         onPublish={onPublish}
         onCreateDraft={onCreateDraft}
         creatingDraft={creatingDraft}
+        onCompare={onCompare}
       />
       <TemplateDocumentPreviewStage components={components} />
     </div>

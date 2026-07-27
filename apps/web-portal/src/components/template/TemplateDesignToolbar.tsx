@@ -29,6 +29,7 @@ export function TemplateDesignToolbar({
   onPublish,
   onCreateDraft,
   creatingDraft,
+  onCompare,
   showActions = true,
   actionsReadOnly = false,
 }: {
@@ -51,11 +52,13 @@ export function TemplateDesignToolbar({
   onPublish?: () => void;
   onCreateDraft?: () => void;
   creatingDraft?: boolean;
+  onCompare?: () => void;
   showActions?: boolean;
   actionsReadOnly?: boolean;
 }) {
   const { t } = useI18n();
   const versionLabel = `A4 · v${activeVersion}`;
+  const canCompare = versions.length >= 2;
 
   return (
     <div className="card-static space-y-2 p-3">
@@ -81,6 +84,17 @@ export function TemplateDesignToolbar({
         />
         {showActions && onSaveDraft && onPublish ? (
           <div className="flex flex-wrap gap-2 sm:ml-auto">
+            {onCompare ? (
+              <button
+                type="button"
+                className="btn-secondary px-3 py-1.5 text-sm"
+                disabled={!canCompare}
+                title={!canCompare ? t("templates.compare.needTwoVersions") : undefined}
+                onClick={onCompare}
+              >
+                {t("templates.compare.action")}
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn-primary px-3 py-1.5 text-sm"

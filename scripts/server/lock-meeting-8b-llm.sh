@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
+# DEPRECATED: 8B meeting lock. Prefer scripts/server/restore-meeting-35b-llm.sh
+# (nanobase-qwen36-35b-a3b-mtp on :8010). Do not re-run this on production unless
+# intentionally reverting to 8B for an experiment.
+#
 # Lock Actenora LLM port :8010 to nanobase-meeting-8b only.
 # Masks legacy Qwen units and retargets DB-GPT so it cannot revive 35B/27B/MTP.
-#
-# Meeting pipeline budgets (modules/.../MeetingLlmBudgets.java) assume:
-#   llama-server --ctx-size 16384 --parallel 1
-# Do not raise ctx-size for meeting notes on CPU; YaRN / 128k is unnecessary and slow.
 set -euo pipefail
 
 LEGACY_UNITS=(
