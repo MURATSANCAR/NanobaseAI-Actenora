@@ -17,6 +17,7 @@ import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.JdbcShado
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
@@ -26,36 +27,43 @@ import javax.sql.DataSource;
 public class AiProcessingJdbcPersistenceConfiguration {
 
     @Bean
+    @Primary
     AiJobRepository aiJobRepository(DataSource dataSource) {
         return new JdbcAiJobRepository(new JdbcTemplate(dataSource));
     }
 
     @Bean
+    @Primary
     AiAttemptRepository aiAttemptRepository(DataSource dataSource) {
         return new JdbcAiAttemptRepository(new JdbcTemplate(dataSource));
     }
 
     @Bean
+    @Primary
     RoutingDecisionStorePort jdbcRoutingDecisionStore(DataSource dataSource) {
         return new JdbcRoutingDecisionStore(new JdbcTemplate(dataSource));
     }
 
     @Bean
+    @Primary
     AttemptHistoryPort jdbcAttemptHistoryStore(DataSource dataSource) {
         return new JdbcAttemptHistoryStore(new JdbcTemplate(dataSource));
     }
 
     @Bean
+    @Primary
     ShadowExecutionStorePort jdbcShadowExecutionStore(DataSource dataSource) {
         return new JdbcShadowExecutionStore(new JdbcTemplate(dataSource));
     }
 
     @Bean
+    @Primary
     ModelQualityMetricsPort jdbcModelQualityMetricsStore(DataSource dataSource) {
         return new JdbcModelQualityMetricsStore(new JdbcTemplate(dataSource));
     }
 
     @Bean
+    @Primary
     RetryQueuePort jdbcRetryQueue(DataSource dataSource) {
         return new JdbcRetryQueue(new JdbcTemplate(dataSource));
     }
