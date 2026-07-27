@@ -12,6 +12,9 @@ import java.util.UUID;
  */
 public final class AiJob {
 
+    public static final Duration RETRY_BACKOFF_BASE = Duration.ofSeconds(30);
+    public static final Duration RETRY_BACKOFF_CAP = Duration.ofMinutes(15);
+
     private final UUID id;
     private final UUID tenantId;
     private final UUID meetingOccurrenceId;
@@ -70,6 +73,68 @@ public final class AiJob {
             long version,
             int attemptCount
     ) {
+        this(
+                id,
+                tenantId,
+                meetingOccurrenceId,
+                transcriptId,
+                taskType,
+                priority,
+                status,
+                requestedCapability,
+                selectedModelId,
+                selectedDeploymentId,
+                selectedRoute,
+                promptVersion,
+                schemaVersion,
+                inputTokenCount,
+                outputTokenCount,
+                queuedAt,
+                startedAt,
+                completedAt,
+                deadlineAt,
+                null,
+                correlationId,
+                language,
+                contextSize,
+                fallbackPermitted,
+                adminOverrideModelId,
+                adminOverrideDeploymentId,
+                version,
+                attemptCount
+        );
+    }
+
+    public AiJob(
+            UUID id,
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            UUID transcriptId,
+            String taskType,
+            JobPriority priority,
+            AiJobStatus status,
+            AiCapability requestedCapability,
+            UUID selectedModelId,
+            UUID selectedDeploymentId,
+            SelectedRoute selectedRoute,
+            String promptVersion,
+            String schemaVersion,
+            Integer inputTokenCount,
+            Integer outputTokenCount,
+            Instant queuedAt,
+            Instant startedAt,
+            Instant completedAt,
+            Instant deadlineAt,
+            Instant nextEligibleAt,
+            UUID correlationId,
+            String language,
+            int contextSize,
+            boolean fallbackPermitted,
+            UUID adminOverrideModelId,
+            UUID adminOverrideDeploymentId,
+            long version,
+            int attemptCount
+    ) {
         this.id = Objects.requireNonNull(id, "id");
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.meetingOccurrenceId = Objects.requireNonNull(meetingOccurrenceId, "meetingOccurrenceId");
@@ -89,6 +154,75 @@ public final class AiJob {
         this.startedAt = startedAt;
         this.completedAt = completedAt;
         this.deadlineAt = Objects.requireNonNull(deadlineAt, "deadlineAt");
+        this.nextEligibleAt = nextEligibleAt;
+        this.correlationId = Objects.requireNonNull(correlationId, "correlationId");
+        this.language = language == null || language.isBlank() ? "tr" : language.trim().toLowerCase();
+        if (contextSize < 0) {
+            throw new IllegalArgumentException("contextSize must be >= 0");
+        }
+        this.contextSize = contextSize;
+        this.fallbackPermitted = fallbackPermitted;
+        this.adminOverrideModelId = adminOverrideModelId;
+        this.adminOverrideDeploymentId = adminOverrideDeploymentId;
+        this.version = version;
+        this.attemptCount = attemptCount;
+    }
+
+    // legacy constructor body removed below — keep enqueue using full ctor
+    private static void _removedCtorPlaceholder() {
+    }
+
+    @SuppressWarnings("unused")
+    private AiJob(
+            UUID id,
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            UUID transcriptId,
+            String taskType,
+            JobPriority priority,
+            AiJobStatus status,
+            AiCapability requestedCapability,
+            UUID selectedModelId,
+            UUID selectedDeploymentId,
+            SelectedRoute selectedRoute,
+            String promptVersion,
+            String schemaVersion,
+            Integer inputTokenCount,
+            Integer outputTokenCount,
+            Instant queuedAt,
+            Instant startedAt,
+            Instant completedAt,
+            Instant deadlineAt,
+            UUID correlationId,
+            String language,
+            int contextSize,
+            boolean fallbackPermitted,
+            UUID adminOverrideModelId,
+            UUID adminOverrideDeploymentId,
+            long version,
+            int attemptCount,
+            boolean ignored
+    ) {
+        this.id = Objects.requireNonNull(id, "id");
+        this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
+        this.meetingOccurrenceId = Objects.requireNonNull(meetingOccurrenceId, "meetingOccurrenceId");
+        this.transcriptId = Objects.requireNonNull(transcriptId, "transcriptId");
+        this.taskType = requireText(taskType, "taskType");
+        this.priority = Objects.requireNonNull(priority, "priority");
+        this.status = Objects.requireNonNull(status, "status");
+        this.requestedCapability = Objects.requireNonNull(requestedCapability, "requestedCapability");
+        this.selectedModelId = selectedModelId;
+        this.selectedDeploymentId = selectedDeploymentId;
+        this.selectedRoute = selectedRoute;
+        this.promptVersion = requireText(promptVersion, "promptVersion");
+        this.schemaVersion = requireText(schemaVersion, "schemaVersion");
+        this.inputTokenCount = inputTokenCount;
+        this.outputTokenCount = outputTokenCount;
+        this.queuedAt = Objects.requireNonNull(queuedAt, "queuedAt");
+        this.startedAt = startedAt;
+        this.completedAt = completedAt;
+        this.deadlineAt = Objects.requireNonNull(deadlineAt, "deadlineAt");
+        this.nextEligibleAt = null;
         this.correlationId = Objects.requireNonNull(correlationId, "correlationId");
         this.language = language == null || language.isBlank() ? "tr" : language.trim().toLowerCase();
         if (contextSize < 0) {
