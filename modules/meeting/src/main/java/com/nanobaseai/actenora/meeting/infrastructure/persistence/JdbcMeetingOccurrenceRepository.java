@@ -210,6 +210,28 @@ public final class JdbcMeetingOccurrenceRepository implements MeetingOccurrenceR
         return new PageResult<>(page, next);
     }
 
+    @Override
+    public List<MeetingOccurrence> findDueForLifecycleAdvance(Instant now, int limit) {
+        if (limit < 1) {
+            return List.of();
+        }
+        String sql = "SELECT " + COLUMNS + """
+                 FROM meeting.meeting_occurrences
+                WHERE status = 'DRAFT'
+                   OR (status = 'SCHEDULED' AND scheduled_start_at <= ?)
+                   OR (status = 'IN_PROGRESS' AND scheduled_end_at <= ?)
+                ORDER BY scheduled_end_at ASC, id ASC
+                LIMIT ?
+                """;
+        return jdbc.query(
+                sql,
+                ROW_MAPPER,
+                JdbcInstant.toTimestamp(now),
+                JdbcInstant.toTimestamp(now),
+                limit
+        );
+    }
+
     private void insert(MeetingOccurrence occurrence) {
         String sql = """
                 INSERT INTO meeting.meeting_occurrences (

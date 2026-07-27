@@ -40,6 +40,17 @@ public interface MeetingApi {
 
     MeetingResponse transitionMeetingStatus(UUID meetingId, MeetingStatusTransitionRequest request);
 
+    /**
+     * Advances occurrence status from schedule/clock (and optional Graph cancel).
+     * Walks legal state-machine hops (e.g. DRAFT → SCHEDULED → IN_PROGRESS → ENDED).
+     */
+    MeetingResponse advanceMeetingLifecycle(UUID meetingId, boolean cancelled);
+
+    /**
+     * Cross-tenant candidates for scheduled lifecycle advancement.
+     */
+    List<MeetingResponse> listMeetingsDueForLifecycleAdvance(int limit);
+
     List<ParticipantResponse> listParticipants(UUID meetingId);
 
     /**

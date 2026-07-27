@@ -18,11 +18,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Upserts {@link MeetingResponse} rows from Graph {@link CalendarEvent} snapshots
  * and links continuity projections for prior-meeting carry-over.
+ *
+ * <p>Also advances occurrence lifecycle (DRAFT → SCHEDULED → … → ENDED) from schedule/clock
+ * and applies CANCELLED when Graph marks the event cancelled.
  */
 public final class CalendarMeetingUpsertAdapter {
 
@@ -60,6 +64,7 @@ public final class CalendarMeetingUpsertAdapter {
         UUID businessContextId = resolveBusinessContextId();
         for (CalendarEvent event : events) {
             if (event.cancelled()) {
+                cancelIfPresent(event);
                 continue;
             }
             upsertOne(tenantId, businessContextId, event);
@@ -76,6 +81,29 @@ public final class CalendarMeetingUpsertAdapter {
         return contexts.getFirst().id();
     }
 
+    private void cancelIfPresent(CalendarEvent event) {
+        String graphId = event.immutableIdentity().graphEventImmutableId();
+        Optional<MeetingResponse> existing = meetingApi.findByGraphEventImmutableId(graphId);
+        if (existing.isEmpty()) {
+            log.debug("Ignoring cancelled Graph event with no local meeting graphEventImmutableId={}", graphId);
+            return;
+        }
+        try {
+            MeetingResponse advanced = meetingApi.advanceMeetingLifecycle(existing.get().id(), true);
+            log.info(
+                    "Cancelled meeting from Graph calendar event meetingId={} status={}",
+                    advanced.id(),
+                    advanced.status()
+            );
+        } catch (RuntimeException ex) {
+            log.warn(
+                    "Lifecycle cancel failed for meetingId={} reason={}",
+                    existing.get().id(),
+                    ex.getMessage()
+            );
+        }
+    }
+
     private void upsertOne(TenantId tenantId, UUID businessContextId, CalendarEvent event) {
         String graphId = event.immutableIdentity().graphEventImmutableId();
         CreateMeetingRequest create = toCreateRequest(businessContextId, event);
@@ -88,7 +116,30 @@ public final class CalendarMeetingUpsertAdapter {
             meeting = meetingApi.updateMeeting(existing.id(), toUpdateRequest(event, existing.version()));
             log.debug("Updated meeting from Graph calendar event graphEventImmutableId={}", graphId);
         }
+        meeting = advanceLifecycleQuietly(meeting);
         linkContinuity(tenantId, businessContextId, meeting);
+    }
+
+    private MeetingResponse advanceLifecycleQuietly(MeetingResponse meeting) {
+        try {
+            MeetingResponse advanced = meetingApi.advanceMeetingLifecycle(meeting.id(), false);
+            if (advanced.status() != meeting.status()) {
+                log.info(
+                        "Advanced meeting lifecycle meetingId={} {} -> {}",
+                        advanced.id(),
+                        meeting.status(),
+                        advanced.status()
+                );
+            }
+            return advanced;
+        } catch (RuntimeException ex) {
+            log.warn(
+                    "Lifecycle advance failed for meetingId={} reason={}",
+                    meeting.id(),
+                    ex.getMessage()
+            );
+            return meeting;
+        }
     }
 
     private void linkContinuity(TenantId tenantId, UUID businessContextId, MeetingResponse meeting) {

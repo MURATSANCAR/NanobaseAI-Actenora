@@ -45,6 +45,12 @@ public interface MeetingOccurrenceRepository {
             int limit
     );
 
+    /**
+     * Cross-tenant candidates for automatic lifecycle advancement:
+     * DRAFT (promote to SCHEDULED / catch-up), SCHEDULED past start, IN_PROGRESS past end.
+     */
+    List<MeetingOccurrence> findDueForLifecycleAdvance(Instant now, int limit);
+
     record PageResult<T>(List<T> items, String nextCursor) {
     }
 }

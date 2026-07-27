@@ -45,7 +45,7 @@ export function App({ apiClient }: { apiClient?: ApiClient }) {
           <MsalAuthProvider>
             <AuthGate>
               <AuthProvider>
-                <BrowserRouter>
+                <BrowserRouter basename={import.meta.env.BASE_URL}>
             <Routes>
               <Route element={<Layout />}>
                 <Route index element={<DashboardPage />} />

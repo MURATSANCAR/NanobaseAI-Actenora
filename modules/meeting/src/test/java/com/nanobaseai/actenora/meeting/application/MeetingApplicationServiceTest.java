@@ -225,6 +225,38 @@ class MeetingApplicationServiceTest {
     }
 
     @Test
+    void advanceLifecycleCatchesDraftUpToEndedWhenPastEnd() {
+        Instant start = Instant.now().minusSeconds(7200);
+        Instant end = Instant.now().minusSeconds(3600);
+        UUID contextId = createContext().id();
+        MeetingResponse meeting = api.createMeeting(new CreateMeetingRequest(
+                contextId, null, null, "g-adv", "i-adv", start, null, null, null,
+                "Past meeting", null, start, end, null, List.of()
+        ));
+        assertEquals(MeetingOccurrenceStatus.DRAFT, meeting.status());
+
+        MeetingResponse advanced = api.advanceMeetingLifecycle(meeting.id(), false);
+        assertEquals(MeetingOccurrenceStatus.ENDED, advanced.status());
+        assertTrue(events.published().stream().anyMatch(MeetingIntegrationEvents.MeetingScheduled.class::isInstance));
+        assertTrue(events.published().stream().anyMatch(MeetingIntegrationEvents.MeetingStarted.class::isInstance));
+        assertTrue(events.published().stream().anyMatch(MeetingIntegrationEvents.MeetingEnded.class::isInstance));
+    }
+
+    @Test
+    void advanceLifecycleSchedulesFutureDraft() {
+        Instant start = Instant.now().plusSeconds(3600);
+        Instant end = Instant.now().plusSeconds(7200);
+        UUID contextId = createContext().id();
+        MeetingResponse meeting = api.createMeeting(new CreateMeetingRequest(
+                contextId, null, null, "g-fut", "i-fut", start, null, null, null,
+                "Future meeting", null, start, end, null, List.of()
+        ));
+
+        MeetingResponse advanced = api.advanceMeetingLifecycle(meeting.id(), false);
+        assertEquals(MeetingOccurrenceStatus.SCHEDULED, advanced.status());
+    }
+
+    @Test
     void cancelledTransitionEmitsMeetingCancelled() {
         MeetingResponse meeting = createMeeting(createContext().id(), "g-can", "i-can", Instant.parse("2026-07-25T10:00:00Z"));
         api.transitionMeetingStatus(meeting.id(),

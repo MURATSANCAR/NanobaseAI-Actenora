@@ -107,6 +107,29 @@ public final class InMemoryMeetingOccurrenceRepository implements MeetingOccurre
         return new PageResult<>(page, next);
     }
 
+    @Override
+    public List<MeetingOccurrence> findDueForLifecycleAdvance(Instant now, int limit) {
+        Objects.requireNonNull(now, "now");
+        if (limit < 1) {
+            return List.of();
+        }
+        return store.values().stream()
+                .filter(o -> isDueForLifecycleAdvance(o, now))
+                .sorted(Comparator.comparing(MeetingOccurrence::scheduledEndAt)
+                        .thenComparing(MeetingOccurrence::id))
+                .limit(limit)
+                .toList();
+    }
+
+    private static boolean isDueForLifecycleAdvance(MeetingOccurrence o, Instant now) {
+        return switch (o.status()) {
+            case DRAFT -> true;
+            case SCHEDULED -> !now.isBefore(o.scheduledStartAt());
+            case IN_PROGRESS -> !now.isBefore(o.scheduledEndAt());
+            case ENDED, CANCELLED -> false;
+        };
+    }
+
     public void clear() {
         store.clear();
     }

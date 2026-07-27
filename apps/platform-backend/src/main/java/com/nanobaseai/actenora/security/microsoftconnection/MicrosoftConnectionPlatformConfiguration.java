@@ -206,6 +206,55 @@ public class MicrosoftConnectionPlatformConfiguration {
                 UUID.randomUUID().toString());
     }
 
+    @Bean
+    @ConditionalOnProperty(name = "actenora.microsoft-graph.workers-enabled", havingValue = "true", matchIfMissing = true)
+    MeetingLifecycleAdvanceWorker meetingLifecycleAdvanceWorker(
+            MeetingApi meetingApi,
+            FixedTenantContext fixedTenantContext,
+            @Value("${actenora.microsoft-graph.lifecycle-advance-batch-size:100}") int batchSize
+    ) {
+        return new MeetingLifecycleAdvanceWorker(meetingApi, fixedTenantContext, batchSize);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "actenora.microsoft-graph.workers-enabled", havingValue = "true", matchIfMissing = true)
+    MeetingLifecycleAdvanceScheduledWorker meetingLifecycleAdvanceScheduledWorker(
+            MeetingLifecycleAdvanceWorker worker,
+            GraphWorkerLeaseStore leaseStore
+    ) {
+        return new MeetingLifecycleAdvanceScheduledWorker(worker, leaseStore, UUID.randomUUID().toString());
+    }
+
+    static final class MeetingLifecycleAdvanceScheduledWorker {
+
+        private final MeetingLifecycleAdvanceWorker worker;
+        private final GraphWorkerLeaseStore leaseStore;
+        private final String ownerId;
+
+        MeetingLifecycleAdvanceScheduledWorker(
+                MeetingLifecycleAdvanceWorker worker,
+                GraphWorkerLeaseStore leaseStore,
+                String ownerId
+        ) {
+            this.worker = Objects.requireNonNull(worker);
+            this.leaseStore = Objects.requireNonNull(leaseStore);
+            this.ownerId = Objects.requireNonNull(ownerId);
+        }
+
+        @Scheduled(fixedDelayString = "${actenora.microsoft-graph.lifecycle-advance-interval:PT2M}")
+        void advanceDue() {
+            Instant now = Instant.now();
+            if (!leaseStore.tryAcquire("meeting-lifecycle-advance", ownerId, now, Duration.ofMinutes(5))) {
+                return;
+            }
+            try {
+                worker.runOnce();
+            } finally {
+                leaseStore.release("meeting-lifecycle-advance", ownerId, Instant.now());
+            }
+        }
+    }
+
     static final class TeamsTranscriptPollScheduledWorker {
 
         private final TeamsTranscriptPollScheduler scheduler;

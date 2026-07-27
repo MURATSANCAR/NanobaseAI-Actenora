@@ -23,11 +23,13 @@ import com.nanobaseai.actenora.meeting.domain.exception.DuplicateGraphIdentityEx
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateOccurrenceIdentityException;
 import com.nanobaseai.actenora.meeting.domain.exception.MeetingNotFoundException;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrence;
+import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingParticipant;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingSeries;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingType;
 import com.nanobaseai.actenora.meeting.domain.model.ParticipantType;
 import com.nanobaseai.actenora.meeting.domain.model.ProcessingPriority;
+import com.nanobaseai.actenora.meeting.domain.service.MeetingOccurrenceLifecyclePolicy;
 import com.nanobaseai.actenora.sharedkernel.domain.DomainEvent;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
@@ -248,6 +250,36 @@ public final class MeetingApplicationService {
         auditPort.record(tenantId, actor, "MEETING_STATUS_TRANSITION", "MeetingOccurrence", saved.id(),
                 Map.of("status", saved.status().name(), "version", saved.version()));
         return MeetingMapper.toResponse(saved);
+    }
+
+    /**
+     * Applies time-based (or cancel) lifecycle hops for one occurrence.
+     * Tenant context must already match the meeting's tenant.
+     */
+    public MeetingResponse advanceLifecycle(UUID id, boolean cancelled) {
+        TenantId tenantId = tenantContext.requireTenantId();
+        MeetingOccurrence current = requireOccurrence(id, tenantId);
+        Instant now = clock.now();
+        List<MeetingOccurrenceStatus> hops = MeetingOccurrenceLifecyclePolicy.nextHops(
+                current.status(),
+                current.scheduledStartAt(),
+                current.scheduledEndAt(),
+                now,
+                cancelled
+        );
+        MeetingResponse latest = MeetingMapper.toResponse(current);
+        for (MeetingOccurrenceStatus target : hops) {
+            latest = transitionStatus(id, new MeetingStatusTransitionRequest(target, latest.version()));
+        }
+        return latest;
+    }
+
+    /**
+     * Batch catch-up for DRAFT / past-start SCHEDULED / past-end IN_PROGRESS rows.
+     * Caller must set tenant context per row via {@link #advanceLifecycleForOccurrence}.
+     */
+    public List<MeetingOccurrence> findDueForLifecycleAdvance(int limit) {
+        return occurrenceRepository.findDueForLifecycleAdvance(clock.now(), Math.max(1, limit));
     }
 
     public List<ParticipantResponse> listParticipants(UUID meetingId) {

@@ -12,6 +12,7 @@ import com.nanobaseai.actenora.meeting.api.dto.MeetingStatusTransitionRequest;
 import com.nanobaseai.actenora.meeting.api.dto.ParticipantResponse;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateBusinessContextRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
+import com.nanobaseai.actenora.meeting.application.MeetingMapper;
 
 import java.util.List;
 import java.util.Objects;
@@ -59,6 +60,18 @@ public final class MeetingApiFacade implements MeetingApi {
     @Override
     public MeetingResponse transitionMeetingStatus(UUID meetingId, MeetingStatusTransitionRequest request) {
         return meetingService.transitionStatus(meetingId, request);
+    }
+
+    @Override
+    public MeetingResponse advanceMeetingLifecycle(UUID meetingId, boolean cancelled) {
+        return meetingService.advanceLifecycle(meetingId, cancelled);
+    }
+
+    @Override
+    public List<MeetingResponse> listMeetingsDueForLifecycleAdvance(int limit) {
+        return meetingService.findDueForLifecycleAdvance(limit).stream()
+                .map(MeetingMapper::toResponse)
+                .toList();
     }
 
     @Override
