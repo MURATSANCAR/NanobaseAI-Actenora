@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.delivery;
 
+import com.nanobaseai.actenora.delivery.application.model.DraftMinutesReadyMailBody;
 import com.nanobaseai.actenora.delivery.application.model.MeetingEndedMailBody;
 import com.nanobaseai.actenora.delivery.domain.DeliveryIntent;
 import com.nanobaseai.actenora.delivery.domain.DeliveryPolicySnapshot;
