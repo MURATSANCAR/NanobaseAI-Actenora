@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingCon
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PromptRegistryPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ApprovedKnowledgeIndexPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
@@ -99,7 +100,8 @@ public final class DefaultStageExecutors {
     ) {
         return createAll(
                 prompts, modelRuntime, segments, artifacts, priorContext, noteHandoff, knowledgeIndex,
-                ChunkExtractionService.createDefault()
+                ChunkExtractionService.createDefault(),
+                PipelineQualityMetricsPort.noop()
         );
     }
 
@@ -113,6 +115,24 @@ public final class DefaultStageExecutors {
             ApprovedKnowledgeIndexPort knowledgeIndex,
             ChunkExtractionService chunkExtraction
     ) {
+        return createAll(
+                prompts, modelRuntime, segments, artifacts, priorContext, noteHandoff, knowledgeIndex,
+                chunkExtraction,
+                PipelineQualityMetricsPort.noop()
+        );
+    }
+
+    public static Map<ProcessingStage, StageExecutor> createAll(
+            PromptRegistryPort prompts,
+            ModelRuntimePort modelRuntime,
+            TranscriptSegmentSourcePort segments,
+            ProcessingArtifactRepository artifacts,
+            PriorMeetingContextPort priorContext,
+            MeetingNoteHandoffPort noteHandoff,
+            ApprovedKnowledgeIndexPort knowledgeIndex,
+            ChunkExtractionService chunkExtraction,
+            PipelineQualityMetricsPort qualityMetrics
+    ) {
         SegmentNormalizer normalizer = new SegmentNormalizer();
         TranscriptChunker chunker = new TranscriptChunker();
         ContextWindowGuard guard = new ContextWindowGuard();
@@ -125,6 +145,9 @@ public final class DefaultStageExecutors {
         ChunkExtractionService extraction = chunkExtraction == null
                 ? ChunkExtractionService.createDefault()
                 : chunkExtraction;
+        PipelineQualityMetricsPort metrics = qualityMetrics == null
+                ? PipelineQualityMetricsPort.noop()
+                : qualityMetrics;
 
         return Map.of(
                 ProcessingStage.NORMALIZE, new NormalizeExecutor(segments, normalizer, artifacts),
@@ -142,7 +165,8 @@ public final class DefaultStageExecutors {
                         segments,
                         normalizer,
                         priorContext == null ? PriorMeetingContextPort.noop() : priorContext,
-                        noteHandoff == null ? MeetingNoteHandoffPort.noop() : noteHandoff
+                        noteHandoff == null ? MeetingNoteHandoffPort.noop() : noteHandoff,
+                        metrics
                 ),
                 ProcessingStage.EMBEDDING, new EmbeddingExecutor(
                         knowledgeIndex == null ? ApprovedKnowledgeIndexPort.noop() : knowledgeIndex
@@ -757,6 +781,7 @@ public final class DefaultStageExecutors {
         private final SegmentNormalizer normalizer;
         private final PriorMeetingContextPort priorContext;
         private final MeetingNoteHandoffPort noteHandoff;
+        private final PipelineQualityMetricsPort qualityMetrics;
 
         MinutesExecutor(
                 ModelRuntimePort modelRuntime,
@@ -765,7 +790,8 @@ public final class DefaultStageExecutors {
                 TranscriptSegmentSourcePort segments,
                 SegmentNormalizer normalizer,
                 PriorMeetingContextPort priorContext,
-                MeetingNoteHandoffPort noteHandoff
+                MeetingNoteHandoffPort noteHandoff,
+                PipelineQualityMetricsPort qualityMetrics
         ) {
             this.modelRuntime = modelRuntime;
             this.artifacts = artifacts;
@@ -774,6 +800,7 @@ public final class DefaultStageExecutors {
             this.normalizer = normalizer;
             this.priorContext = priorContext;
             this.noteHandoff = noteHandoff;
+            this.qualityMetrics = qualityMetrics == null ? PipelineQualityMetricsPort.noop() : qualityMetrics;
         }
 
         @Override

@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.aiprocessing.application.pipeline;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
@@ -81,6 +82,7 @@ public final class ExtractionPipelineService {
     private final SignalGateConfig signalGateConfig;
     private final EvidenceReferenceScrubber evidenceScrubber;
     private final PartialExtractionJsonRecovery partialJsonRecovery;
+    private final PipelineQualityMetricsPort qualityMetrics;
 
     public ExtractionPipelineService(
             PromptRegistryPort promptRegistry,
@@ -111,7 +113,8 @@ public final class ExtractionPipelineService {
                 finalNoteAssembler,
                 retryClassifier,
                 promptInjectionGuard,
-                ChunkExtractionService.createDefault()
+                ChunkExtractionService.createDefault(),
+                PipelineQualityMetricsPort.noop()
         );
     }
 
@@ -131,6 +134,42 @@ public final class ExtractionPipelineService {
             PromptInjectionGuard promptInjectionGuard,
             ChunkExtractionService chunkExtractionService
     ) {
+        this(
+                promptRegistry,
+                modelRuntime,
+                normalizer,
+                chunker,
+                contextWindowGuard,
+                jsonRepair,
+                schemaValidator,
+                bundleMapper,
+                deterministicValidator,
+                merger,
+                finalNoteAssembler,
+                retryClassifier,
+                promptInjectionGuard,
+                chunkExtractionService,
+                PipelineQualityMetricsPort.noop()
+        );
+    }
+
+    public ExtractionPipelineService(
+            PromptRegistryPort promptRegistry,
+            ModelRuntimePort modelRuntime,
+            SegmentNormalizer normalizer,
+            TranscriptChunker chunker,
+            ContextWindowGuard contextWindowGuard,
+            LimitedJsonRepair jsonRepair,
+            ExtractionJsonSchemaValidator schemaValidator,
+            ExtractionBundleMapper bundleMapper,
+            DeterministicExtractionValidator deterministicValidator,
+            ExtractionMerger merger,
+            FinalNoteAssembler finalNoteAssembler,
+            RetryClassifier retryClassifier,
+            PromptInjectionGuard promptInjectionGuard,
+            ChunkExtractionService chunkExtractionService,
+            PipelineQualityMetricsPort qualityMetrics
+    ) {
         this.promptRegistry = Objects.requireNonNull(promptRegistry, "promptRegistry");
         this.modelRuntime = Objects.requireNonNull(modelRuntime, "modelRuntime");
         this.normalizer = Objects.requireNonNull(normalizer, "normalizer");
@@ -149,6 +188,7 @@ public final class ExtractionPipelineService {
         this.signalFeatureExtractor = new StructuralChunkSignalFeatureExtractor(signalGateConfig);
         this.evidenceScrubber = new EvidenceReferenceScrubber(EvidenceNearMissConfig.load());
         this.partialJsonRecovery = new PartialExtractionJsonRecovery();
+        this.qualityMetrics = qualityMetrics == null ? PipelineQualityMetricsPort.noop() : qualityMetrics;
     }
 
     public static ExtractionPipelineService create(
@@ -226,7 +266,7 @@ public final class ExtractionPipelineService {
             deterministicValidator.validate(merged, allowed, corpus);
 
             FinalNoteDraft deterministic = finalNoteAssembler.assemble(merged, language);
-            FinalNoteDraft note = new MinutesSynthesisAndAudit(modelRuntime, timeoutSeconds)
+            FinalNoteDraft note = new MinutesSynthesisAndAudit(modelRuntime, timeoutSeconds, qualityMetrics)
                     .synthesizeAndAudit(
                             merged,
                             deterministic,
