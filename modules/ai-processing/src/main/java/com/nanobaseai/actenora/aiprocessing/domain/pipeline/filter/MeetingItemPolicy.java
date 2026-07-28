@@ -37,19 +37,7 @@ public final class MeetingItemPolicy {
                 case STATUS_QUO -> PolicyAction.KEEP; // do not blind-drop; "mevcut X güncelle" is valid
                 default -> PolicyAction.KEEP;
             };
-            case DECISION -> {
-                if (act == MeetingSpeechAct.EXPLICIT_DECISION) {
-                    yield PolicyAction.KEEP;
-                }
-                if (act == MeetingSpeechAct.STATUS_QUO
-                        || act == MeetingSpeechAct.DISCUSSION_PROMPT
-                        || act == MeetingSpeechAct.PROPOSAL_CUE
-                        || act == MeetingSpeechAct.NOTE_INSTRUCTION
-                        || act == MeetingSpeechAct.CLOSING_META) {
-                    yield PolicyAction.DROP;
-                }
-                yield PolicyAction.KEEP;
-            };
+            case DECISION -> decideDecision(act);
             case PROPOSAL -> act == MeetingSpeechAct.DISCUSSION_PROMPT
                     || act == MeetingSpeechAct.STATUS_QUO
                     || act == MeetingSpeechAct.CLOSING_META
@@ -57,6 +45,20 @@ public final class MeetingItemPolicy {
                     : PolicyAction.KEEP;
             case ISSUE, RISK -> PolicyAction.KEEP;
         };
+    }
+
+    private static PolicyAction decideDecision(MeetingSpeechAct act) {
+        if (act == MeetingSpeechAct.EXPLICIT_DECISION) {
+            return PolicyAction.KEEP;
+        }
+        if (act == MeetingSpeechAct.STATUS_QUO
+                || act == MeetingSpeechAct.DISCUSSION_PROMPT
+                || act == MeetingSpeechAct.PROPOSAL_CUE
+                || act == MeetingSpeechAct.NOTE_INSTRUCTION
+                || act == MeetingSpeechAct.CLOSING_META) {
+            return PolicyAction.DROP;
+        }
+        return PolicyAction.KEEP;
     }
 
     private static boolean isVagueDiscussion(String text) {
