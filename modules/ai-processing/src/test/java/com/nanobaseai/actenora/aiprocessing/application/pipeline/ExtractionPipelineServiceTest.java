@@ -183,7 +183,38 @@ class ExtractionPipelineServiceTest {
     }
 
     @Test
-    void evidenceMissingFails() {
+    void unknownEvidenceSoftDropsItemAndSucceeds() {
+        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> """
+                {
+                  "topics": [],
+                  "decisions": [
+                    {"text":"Ship","evidenceSegmentIds":["unknown-id"],"confidence":0.9},
+                    {"text":"Keep","evidenceSegmentIds":["seg-1"],"confidence":0.9}
+                  ],
+                  "actionItems": [],
+                  "risks": [],
+                  "openQuestions": [],
+                  "commitments": [],
+                  "qualityFlags": [],
+                  "evidenceSegmentIds": ["seg-1"],
+                  "confidence": 0.9
+                }
+                """);
+        ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), adapter);
+
+        PipelineRunResult result = service.run(request(List.of(
+                segment("seg-1", 0, "Alice", "We decided to ship. We decided to keep the plan.")
+        )));
+
+        assertTrue(result.success(), () -> result.failureCategory() + " / " + result.failureMessage());
+        assertEquals(1, result.finalNote().decisions().size());
+        assertEquals("Keep", result.finalNote().decisions().get(0).text());
+        assertTrue(result.metrics().evidenceItemsDropped() >= 1
+                || result.metrics().evidenceRefsDropped() >= 1);
+    }
+
+    @Test
+    void emptyEvidenceSoftDropsWithoutKillingJob() {
         Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> """
                 {
                   "topics": [],
@@ -205,8 +236,126 @@ class ExtractionPipelineServiceTest {
                 segment("seg-1", 0, "Alice", "We decided to ship.")
         )));
 
+        assertTrue(result.success(), () -> result.failureCategory() + " / " + result.failureMessage());
+        assertTrue(result.finalNote().decisions().isEmpty());
+    }
+
+    @Test
+    void truncatedJsonRecoversClosedDecisions() {
+        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> """
+                {
+                  "topics": [],
+                  "decisions": [
+                    {"text":"Ship Friday","evidenceSegmentIds":["seg-1"],"confidence":0.9},
+                    {"text":"Half
+                """);
+        ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), adapter);
+
+        PipelineRunResult result = service.run(request(List.of(
+                segment("seg-1", 0, "Alice", "We decided to ship Friday.")
+        )));
+
+        assertTrue(result.success(), () -> result.failureCategory() + " / " + result.failureMessage());
+        assertTrue(result.metrics().partialJsonRecoveries() >= 1);
+        assertFalse(result.finalNote().decisions().isEmpty());
+    }
+
+    @Test
+    void singleChunkFailMergesSurvivingChunks() {
+        AtomicInteger calls = new AtomicInteger();
+        ModelRuntimePort runtime = new ModelRuntimePort() {
+            @Override
+            public ModelDescriptor descriptor() {
+                // Tiny window forces many chunks from padded segments.
+                return new ModelDescriptor("local.test", "tiny", "tiny@1", 9_000, 512);
+            }
+
+            @Override
+            public InferenceResponse infer(InferenceRequest request) {
+                calls.incrementAndGet();
+                String prompt = request.userPrompt();
+                if (prompt.contains("POISON_CHUNK")) {
+                    return new InferenceResponse("NOT_JSON", 10, 10, 1, "tiny@1");
+                }
+                String evidence = request.allowedEvidenceSegmentIds().isEmpty()
+                        ? "seg-0"
+                        : request.allowedEvidenceSegmentIds().get(0);
+                return new InferenceResponse(
+                        validJson(evidence, "Alice", null), 10, 20, 1, "tiny@1");
+            }
+
+            @Override
+            public boolean healthy() {
+                return true;
+            }
+        };
+        ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), runtime);
+
+        List<SegmentInput> segments = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            String poison = (i >= 10 && i < 14) ? " POISON_CHUNK." : "";
+            segments.add(segment(
+                    "seg-" + i,
+                    i,
+                    "Alice",
+                    "We decided to ship Friday. Action for Alice." + poison + " " + "word ".repeat(120)
+            ));
+        }
+
+        PipelineRunResult result = service.run(new PipelineRunRequest(
+                TenantId.random(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID,
+                segments,
+                "tr",
+                0,
+                1
+        ));
+
+        assertTrue(result.success(), () -> result.failureCategory() + " / " + result.failureMessage());
+        assertTrue(result.metrics().failedChunkCount() >= 1);
+        assertTrue(result.metrics().chunkCount() > result.metrics().failedChunkCount());
+    }
+
+    @Test
+    void allChunksFailCausesJobFail() {
+        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> "NOT_JSON");
+        ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), adapter);
+
+        PipelineRunResult result = service.run(request(List.of(
+                segment("seg-1", 0, "Alice", "Hello"),
+                segment("seg-2", 1, "Alice", "World")
+        )));
+
         assertFalse(result.success());
-        assertEquals(FailureCategory.EVIDENCE_MISSING, result.failureCategory());
+        assertEquals(FailureCategory.INVALID_JSON, result.failureCategory());
+        assertTrue(result.permanentFailure());
+    }
+
+    @Test
+    void invalidJsonRetryChangesParameters() {
+        List<Integer> maxTokens = new ArrayList<>();
+        List<Integer> evidenceCounts = new ArrayList<>();
+        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> {
+            maxTokens.add(req.maxOutputTokens());
+            evidenceCounts.add(req.allowedEvidenceSegmentIds().size());
+            return "NOT_JSON";
+        });
+        ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), adapter);
+
+        PipelineRunResult result = service.run(request(List.of(
+                segment("seg-1", 0, "Alice", "We decided to ship Friday. Action for Alice."),
+                segment("seg-2", 1, "Alice", "Second block. We decided again. Action for Alice.")
+        )));
+
+        assertFalse(result.success());
+        assertEquals(FailureCategory.INVALID_JSON, result.failureCategory());
+        assertTrue(maxTokens.size() >= 2, "expected at least one retry call");
+        boolean changed = !maxTokens.get(0).equals(maxTokens.get(1))
+                || !evidenceCounts.get(0).equals(evidenceCounts.get(1));
+        assertTrue(changed, "retry must not repeat identical parameters");
+        assertTrue(result.metrics().invalidJsonRetries() >= 1);
     }
 
     @Test

@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceNearMissConfig;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceReferenceScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ImportantFactCandidate;
@@ -483,100 +485,9 @@ public final class MinutesSynthesisAndAudit {
     }
 
     private static ExtractionBundle stripUnknownEvidence(ExtractionBundle bundle, Set<String> allowed) {
-        Objects.requireNonNull(bundle, "bundle");
-        Objects.requireNonNull(allowed, "allowed");
-        List<String> flags = new ArrayList<>(bundle.qualityFlags());
-        List<TopicCandidate> topics = new ArrayList<>();
-        for (TopicCandidate topic : bundle.topics()) {
-            List<String> ev = keepAllowed(topic.evidenceSegmentIds(), allowed);
-            if (!ev.isEmpty()) {
-                topics.add(new TopicCandidate(topic.text(), topic.summary(), ev, topic.confidence()));
-            } else {
-                addFlag(flags, "UNRESOLVED_EVIDENCE");
-            }
-        }
-        List<DecisionCandidate> decisions = new ArrayList<>();
-        for (DecisionCandidate decision : bundle.decisions()) {
-            List<String> ev = keepAllowed(decision.evidenceSegmentIds(), allowed);
-            if (!ev.isEmpty()) {
-                decisions.add(new DecisionCandidate(
-                        decision.text(), ev, decision.confidence(), decision.rationale(), decision.status()));
-            } else {
-                addFlag(flags, "UNRESOLVED_EVIDENCE");
-            }
-        }
-        List<ActionItemCandidate> actions = new ArrayList<>();
-        for (ActionItemCandidate item : bundle.actionItems()) {
-            List<String> ev = keepAllowed(item.evidenceSegmentIds(), allowed);
-            if (!ev.isEmpty()) {
-                actions.add(new ActionItemCandidate(
-                        item.text(), item.owner(), item.dueDate(), ev, item.confidence(),
-                        item.ownerType(), item.priority(), item.relativeDate()));
-            } else {
-                addFlag(flags, "UNRESOLVED_EVIDENCE");
-            }
-        }
-        List<RiskCandidate> risks = new ArrayList<>();
-        for (RiskCandidate risk : bundle.risks()) {
-            List<String> ev = keepAllowed(risk.evidenceSegmentIds(), allowed);
-            if (!ev.isEmpty()) {
-                risks.add(new RiskCandidate(
-                        risk.text(), ev, risk.confidence(), risk.likelihood(), risk.mitigation()));
-            } else {
-                addFlag(flags, "UNRESOLVED_EVIDENCE");
-            }
-        }
-        List<OpenQuestionCandidate> questions = new ArrayList<>();
-        for (OpenQuestionCandidate question : bundle.openQuestions()) {
-            List<String> ev = keepAllowed(question.evidenceSegmentIds(), allowed);
-            if (!ev.isEmpty()) {
-                questions.add(new OpenQuestionCandidate(question.text(), ev, question.confidence()));
-            } else {
-                addFlag(flags, "UNRESOLVED_EVIDENCE");
-            }
-        }
-        List<CommitmentCandidate> commitments = new ArrayList<>();
-        for (CommitmentCandidate commitment : bundle.commitments()) {
-            List<String> ev = keepAllowed(commitment.evidenceSegmentIds(), allowed);
-            if (!ev.isEmpty()) {
-                commitments.add(new CommitmentCandidate(
-                        commitment.text(), commitment.owner(), ev, commitment.confidence()));
-            } else {
-                addFlag(flags, "UNRESOLVED_EVIDENCE");
-            }
-        }
-        List<IssueCandidate> issues = new ArrayList<>();
-        for (IssueCandidate issue : bundle.issues()) {
-            List<String> ev = keepAllowed(issue.evidenceSegmentIds(), allowed);
-            if (!ev.isEmpty()) {
-                issues.add(new IssueCandidate(issue.text(), ev, issue.confidence()));
-            } else {
-                addFlag(flags, "UNRESOLVED_EVIDENCE");
-            }
-        }
-        List<ProposalCandidate> proposals = new ArrayList<>();
-        for (ProposalCandidate proposal : bundle.proposals()) {
-            List<String> ev = keepAllowed(proposal.evidenceSegmentIds(), allowed);
-            if (!ev.isEmpty()) {
-                proposals.add(new ProposalCandidate(proposal.text(), ev, proposal.confidence()));
-            } else {
-                addFlag(flags, "UNRESOLVED_EVIDENCE");
-            }
-        }
-        List<ImportantFactCandidate> facts = new ArrayList<>();
-        for (ImportantFactCandidate fact : bundle.importantFacts()) {
-            List<String> ev = keepAllowed(fact.evidenceSegmentIds(), allowed);
-            if (!ev.isEmpty()) {
-                facts.add(new ImportantFactCandidate(fact.text(), ev, fact.confidence()));
-            } else {
-                addFlag(flags, "UNRESOLVED_EVIDENCE");
-            }
-        }
-        List<String> rootEvidence = keepAllowed(bundle.evidenceSegmentIds(), allowed);
-        return new ExtractionBundle(
-                topics, decisions, actions, risks, questions, commitments,
-                issues, proposals, facts, flags, rootEvidence, bundle.confidence()
-        );
+        return new EvidenceReferenceScrubber(EvidenceNearMissConfig.disabled())
+                .scrub(bundle, allowed)
+                .bundle();
     }
 
     private static FinalNoteDraft scrubDraftEvidence(FinalNoteDraft draft, Set<String> allowed) {
@@ -610,25 +521,6 @@ public final class MinutesSynthesisAndAudit {
                 scrubbed.confidence(),
                 draft.requiresManualReview()
         );
-    }
-
-    private static List<String> keepAllowed(List<String> evidenceIds, Set<String> allowed) {
-        if (evidenceIds == null || evidenceIds.isEmpty()) {
-            return List.of();
-        }
-        List<String> kept = new ArrayList<>(evidenceIds.size());
-        for (String id : evidenceIds) {
-            if (id != null && allowed.contains(id)) {
-                kept.add(id);
-            }
-        }
-        return kept;
-    }
-
-    private static void addFlag(List<String> flags, String flag) {
-        if (!flags.contains(flag)) {
-            flags.add(flag);
-        }
     }
 
     private static String textOr(String value, String fallback) {

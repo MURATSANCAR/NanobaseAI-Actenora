@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DeterministicExtractionValidator;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceNearMissConfig;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceReferenceScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionMerger;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FailureCategory;
@@ -33,17 +35,20 @@ import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.json.ExtractionBundleMapper;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.json.ExtractionJsonSchemaValidator;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.json.LimitedJsonRepair;
+import com.nanobaseai.actenora.aiprocessing.infrastructure.json.PartialExtractionJsonRecovery;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -52,6 +57,8 @@ import java.util.stream.Collectors;
  * Model identity stays behind {@link ModelRuntimePort}; no cloud fallback.
  */
 public final class ExtractionPipelineService {
+
+    private static final Logger LOG = Logger.getLogger(ExtractionPipelineService.class.getName());
 
     private final PromptRegistryPort promptRegistry;
     private final ModelRuntimePort modelRuntime;
@@ -69,6 +76,8 @@ public final class ExtractionPipelineService {
     private final ChunkExtractionService chunkExtractionService;
     private final ChunkSignalFeatureExtractor signalFeatureExtractor;
     private final SignalGateConfig signalGateConfig;
+    private final EvidenceReferenceScrubber evidenceScrubber;
+    private final PartialExtractionJsonRecovery partialJsonRecovery;
 
     public ExtractionPipelineService(
             PromptRegistryPort promptRegistry,
@@ -135,12 +144,16 @@ public final class ExtractionPipelineService {
         this.chunkExtractionService = Objects.requireNonNull(chunkExtractionService, "chunkExtractionService");
         this.signalGateConfig = chunkExtractionService.config();
         this.signalFeatureExtractor = new StructuralChunkSignalFeatureExtractor(signalGateConfig);
+        this.evidenceScrubber = new EvidenceReferenceScrubber(EvidenceNearMissConfig.load());
+        this.partialJsonRecovery = new PartialExtractionJsonRecovery();
     }
 
     public static ExtractionPipelineService create(
             PromptRegistryPort promptRegistry,
             ModelRuntimePort modelRuntime
     ) {
+        // Gate disabled: unit tests assert extraction/validation behaviour on short fixtures.
+        // Production Spring wiring uses ChunkExtractionService.createDefault() (gate on).
         return new ExtractionPipelineService(
                 promptRegistry,
                 modelRuntime,
@@ -154,7 +167,8 @@ public final class ExtractionPipelineService {
                 new ExtractionMerger(),
                 new FinalNoteAssembler(),
                 new RetryClassifier(),
-                new PromptInjectionGuard()
+                new PromptInjectionGuard(),
+                ChunkExtractionService.create(SignalGateConfig.productionDefaults().withEnabled(false))
         );
     }
 
@@ -251,9 +265,9 @@ public final class ExtractionPipelineService {
     }
 
     /**
-     * Extract chunks with a merge barrier. Parallelism is bounded by {@code parallelChunkLimit}
-     * and further constrained by provider extraction semaphores. Merge/final stay single-threaded
-     * after this method returns.
+     * Extract chunks with a merge barrier. Permanent per-chunk failures are isolated:
+     * surviving chunks still merge. The run fails only when every chunk fails
+     * (or {@link FailureCategory#MODEL_UNAVAILABLE} aborts the job).
      */
     private List<ExtractionBundle> extractChunks(
             List<TranscriptChunk> chunks,
@@ -271,13 +285,35 @@ public final class ExtractionPipelineService {
         }
         List<ChunkSignalSummary> summaries = precomputeSummaries(chunks, language);
         if (chunks.size() == 1 || parallelChunkLimit <= 1) {
-            List<ExtractionBundle> sequential = new ArrayList<>(chunks.size());
+            List<ExtractionBundle> sequential = new ArrayList<>();
+            PipelineException lastPermanent = null;
             for (int i = 0; i < chunks.size(); i++) {
                 metrics.incrementChunkCount();
-                sequential.add(extractChunkWithRetry(
-                        prompt, descriptor, chunks.get(i),
-                        previousSummary(summaries, i), nextSummary(summaries, i),
-                        corpus, meetingTitle, language, timeoutSeconds, metrics));
+                TranscriptChunk chunk = chunks.get(i);
+                try {
+                    sequential.add(extractChunkWithRetry(
+                            prompt, descriptor, chunk,
+                            previousSummary(summaries, i), nextSummary(summaries, i),
+                            corpus, meetingTitle, language, timeoutSeconds, metrics));
+                } catch (PipelineException ex) {
+                    if (ex.category() == FailureCategory.MODEL_UNAVAILABLE) {
+                        throw ex;
+                    }
+                    lastPermanent = ex;
+                    metrics.incrementFailedChunkCount();
+                    int chunkIndex = chunk.index();
+                    LOG.warning(() -> "extraction.chunk.failed index=" + chunkIndex
+                            + " category=" + ex.category() + " message=" + ex.getMessage());
+                }
+            }
+            if (sequential.isEmpty()) {
+                throw lastPermanent != null
+                        ? lastPermanent
+                        : new PipelineException(
+                                FailureCategory.UNKNOWN,
+                                PipelineStage.EXTRACT,
+                                "All chunks failed without exception"
+                        );
             }
             return sequential;
         }
@@ -290,7 +326,7 @@ public final class ExtractionPipelineService {
         });
         try {
             @SuppressWarnings("unchecked")
-            CompletableFuture<ExtractionBundle>[] futures = new CompletableFuture[chunks.size()];
+            CompletableFuture<ChunkAttempt>[] futures = new CompletableFuture[chunks.size()];
             for (int i = 0; i < chunks.size(); i++) {
                 TranscriptChunk chunk = chunks.get(i);
                 ChunkSignalSummary previous = previousSummary(summaries, i);
@@ -298,15 +334,40 @@ public final class ExtractionPipelineService {
                 String lang = language;
                 futures[i] = CompletableFuture.supplyAsync(() -> {
                     metrics.incrementChunkCount();
-                    return extractChunkWithRetry(
-                            prompt, descriptor, chunk, previous, next,
-                            corpus, meetingTitle, lang, timeoutSeconds, metrics);
+                    try {
+                        return ChunkAttempt.ok(extractChunkWithRetry(
+                                prompt, descriptor, chunk, previous, next,
+                                corpus, meetingTitle, lang, timeoutSeconds, metrics));
+                    } catch (PipelineException ex) {
+                        if (ex.category() == FailureCategory.MODEL_UNAVAILABLE) {
+                            throw ex;
+                        }
+                        metrics.incrementFailedChunkCount();
+                        LOG.warning(() -> "extraction.chunk.failed index=" + chunk.index()
+                                + " category=" + ex.category() + " message=" + ex.getMessage());
+                        return ChunkAttempt.failed(ex);
+                    }
                 }, pool);
             }
             CompletableFuture.allOf(futures).join();
-            List<ExtractionBundle> ordered = new ArrayList<>(chunks.size());
-            for (CompletableFuture<ExtractionBundle> future : futures) {
-                ordered.add(future.join());
+            List<ExtractionBundle> ordered = new ArrayList<>();
+            PipelineException lastPermanent = null;
+            for (CompletableFuture<ChunkAttempt> future : futures) {
+                ChunkAttempt attempt = future.join();
+                if (attempt.bundle() != null) {
+                    ordered.add(attempt.bundle());
+                } else {
+                    lastPermanent = attempt.failure();
+                }
+            }
+            if (ordered.isEmpty()) {
+                throw lastPermanent != null
+                        ? lastPermanent
+                        : new PipelineException(
+                                FailureCategory.UNKNOWN,
+                                PipelineStage.EXTRACT,
+                                "All chunks failed without exception"
+                        );
             }
             return ordered;
         } catch (CompletionException ex) {
@@ -335,6 +396,16 @@ public final class ExtractionPipelineService {
                 pool.shutdownNow();
                 Thread.currentThread().interrupt();
             }
+        }
+    }
+
+    private record ChunkAttempt(ExtractionBundle bundle, PipelineException failure) {
+        static ChunkAttempt ok(ExtractionBundle bundle) {
+            return new ChunkAttempt(bundle, null);
+        }
+
+        static ChunkAttempt failed(PipelineException failure) {
+            return new ChunkAttempt(null, failure);
         }
     }
 
@@ -374,42 +445,130 @@ public final class ExtractionPipelineService {
         ChunkContext context = ChunkContext.withNeighbors(
                 signalGateConfig, language, previous, next);
         ChunkExtractionResult gated = chunkExtractionService.extract(chunk, context, c -> {
-            String previousFingerprint = null;
-            PipelineException last = null;
-            for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                return inferChunkOnce(
+                        prompt, descriptor, c, fullCorpus, meetingTitle, language,
+                        timeoutSeconds, metrics, MeetingLlmBudgets.EXTRACTION_MAX_TOKENS);
+            } catch (PipelineException first) {
+                if (first.category() == FailureCategory.MODEL_UNAVAILABLE) {
+                    return retryModelUnavailableOnce(
+                            prompt, descriptor, c, fullCorpus, meetingTitle, language,
+                            timeoutSeconds, metrics, first);
+                }
+                if (first.category() != FailureCategory.INVALID_JSON) {
+                    throw first;
+                }
+
+                // Attempt 2: reduced context + lower output budget (not a blind repeat).
+                metrics.incrementInvalidJsonRetry();
+                LOG.info("INVALID_JSON_RETRY_REDUCED_CONTEXT chunk=" + c.index());
+                TranscriptChunk reduced = reduceChunkContext(c);
                 try {
                     return inferChunkOnce(
-                            prompt, descriptor, c, fullCorpus, meetingTitle, language, timeoutSeconds, metrics);
-                } catch (PipelineException ex) {
-                    last = ex;
-                    RetryDecision decision = retryClassifier.classify(ex, previousFingerprint);
-                    if (decision == RetryDecision.PERMANENT_FAILURE) {
-                        throw ex;
+                            prompt, descriptor, reduced, fullCorpus, meetingTitle, language,
+                            timeoutSeconds, metrics, MeetingLlmBudgets.EXTRACTION_MAX_TOKENS / 2);
+                } catch (PipelineException second) {
+                    if (second.category() != FailureCategory.INVALID_JSON) {
+                        throw second;
                     }
-                    previousFingerprint = ex.fingerprint();
-                } catch (ModelUnavailableException ex) {
-                    PipelineException wrapped = new PipelineException(
-                            FailureCategory.MODEL_UNAVAILABLE,
-                            PipelineStage.EXTRACT,
-                            ex.getMessage()
-                    );
-                    last = wrapped;
-                    RetryDecision decision = retryClassifier.classify(wrapped, previousFingerprint);
-                    if (decision == RetryDecision.PERMANENT_FAILURE) {
-                        throw wrapped;
-                    }
-                    previousFingerprint = wrapped.fingerprint();
                 }
+
+                // Attempt 3: split into child chunks when possible.
+                if (c.segments().size() >= 2) {
+                    metrics.incrementInvalidJsonRetry();
+                    LOG.info("INVALID_JSON_RETRY_SPLIT_CHUNK chunk=" + c.index());
+                    return inferSplitChunk(
+                            prompt, descriptor, c, fullCorpus, meetingTitle, language,
+                            timeoutSeconds, metrics);
+                }
+                throw first;
+            } catch (ModelUnavailableException ex) {
+                PipelineException wrapped = new PipelineException(
+                        FailureCategory.MODEL_UNAVAILABLE,
+                        PipelineStage.EXTRACT,
+                        ex.getMessage()
+                );
+                return retryModelUnavailableOnce(
+                        prompt, descriptor, c, fullCorpus, meetingTitle, language,
+                        timeoutSeconds, metrics, wrapped);
             }
-            throw last != null
-                    ? last
-                    : new PipelineException(
-                            FailureCategory.UNKNOWN,
-                            PipelineStage.EXTRACT,
-                            "Extraction failed without exception"
-                    );
         });
         return gated.bundle();
+    }
+
+    private ExtractionBundle retryModelUnavailableOnce(
+            PublishedPrompt prompt,
+            ModelDescriptor descriptor,
+            TranscriptChunk chunk,
+            String fullCorpus,
+            String meetingTitle,
+            String language,
+            int timeoutSeconds,
+            PipelineRunMetrics metrics,
+            PipelineException first
+    ) {
+        RetryDecision decision = retryClassifier.classify(first, null);
+        if (decision == RetryDecision.PERMANENT_FAILURE) {
+            throw first;
+        }
+        try {
+            return inferChunkOnce(
+                    prompt, descriptor, chunk, fullCorpus, meetingTitle, language,
+                    timeoutSeconds, metrics, MeetingLlmBudgets.EXTRACTION_MAX_TOKENS);
+        } catch (PipelineException second) {
+            if (retryClassifier.classify(second, first.fingerprint()) == RetryDecision.PERMANENT_FAILURE) {
+                throw second;
+            }
+            throw second;
+        } catch (ModelUnavailableException ex) {
+            throw new PipelineException(
+                    FailureCategory.MODEL_UNAVAILABLE,
+                    PipelineStage.EXTRACT,
+                    ex.getMessage()
+            );
+        }
+    }
+
+    private static TranscriptChunk reduceChunkContext(TranscriptChunk chunk) {
+        List<SegmentInput> segments = chunk.segments();
+        if (segments.size() <= 1) {
+            return chunk;
+        }
+        int keep = Math.max(1, segments.size() / 2);
+        List<SegmentInput> reduced = segments.subList(0, keep);
+        int tokens = Math.max(1, chunk.estimatedTokens() * keep / segments.size());
+        return new TranscriptChunk(chunk.index(), reduced, tokens);
+    }
+
+    private ExtractionBundle inferSplitChunk(
+            PublishedPrompt prompt,
+            ModelDescriptor descriptor,
+            TranscriptChunk chunk,
+            String fullCorpus,
+            String meetingTitle,
+            String language,
+            int timeoutSeconds,
+            PipelineRunMetrics metrics
+    ) {
+        List<SegmentInput> segments = chunk.segments();
+        int mid = segments.size() / 2;
+        TranscriptChunk left = new TranscriptChunk(
+                chunk.index(),
+                segments.subList(0, mid),
+                Math.max(1, chunk.estimatedTokens() / 2)
+        );
+        TranscriptChunk right = new TranscriptChunk(
+                chunk.index(),
+                segments.subList(mid, segments.size()),
+                Math.max(1, chunk.estimatedTokens() - left.estimatedTokens())
+        );
+        ExtractionBundle leftBundle = inferChunkOnce(
+                prompt, descriptor, left, fullCorpus, meetingTitle, language,
+                timeoutSeconds, metrics, MeetingLlmBudgets.EXTRACTION_MAX_TOKENS);
+        ExtractionBundle rightBundle = inferChunkOnce(
+                prompt, descriptor, right, fullCorpus, meetingTitle, language,
+                timeoutSeconds, metrics, MeetingLlmBudgets.EXTRACTION_MAX_TOKENS);
+        return merger.merge(List.of(leftBundle, rightBundle));
     }
 
     private ExtractionBundle inferChunkOnce(
@@ -420,7 +579,8 @@ public final class ExtractionPipelineService {
             String meetingTitle,
             String language,
             int timeoutSeconds,
-            PipelineRunMetrics metrics
+            PipelineRunMetrics metrics,
+            int maxOutputTokens
     ) {
         List<String> evidenceIds = chunk.segmentIds();
         String userPrompt = renderPrompt(prompt.template(), chunk, evidenceIds, meetingTitle, language);
@@ -429,7 +589,7 @@ public final class ExtractionPipelineService {
         contextWindowGuard.assertFits(
                 systemPrompt + "\n" + userPrompt,
                 descriptor.contextWindowTokens(),
-                MeetingLlmBudgets.EXTRACTION_MAX_TOKENS
+                maxOutputTokens
         );
 
         InferenceRequest inferenceRequest = new InferenceRequest(
@@ -439,7 +599,7 @@ public final class ExtractionPipelineService {
                 systemPrompt,
                 userPrompt,
                 evidenceIds,
-                MeetingLlmBudgets.EXTRACTION_MAX_TOKENS,
+                maxOutputTokens,
                 timeoutSeconds
         );
 
@@ -450,21 +610,55 @@ public final class ExtractionPipelineService {
 
         promptInjectionGuard.assertClean(response.rawText());
 
-        String json = response.rawText();
-        if (jsonRepair.needsRepair(json)) {
-            json = jsonRepair.repairOrThrow(json);
-            metrics.incrementRepairCount();
-        } else {
-            json = json.trim();
-        }
-
-        JsonNode node = schemaValidator.parseAndValidate(json);
+        JsonNode node = parseExtractionJson(response.rawText(), metrics);
         ExtractionBundle bundle = bundleMapper.fromJson(node);
 
+        // Scrub / ground evidence BEFORE hard validation so unknown IDs soft-drop items.
         Set<String> allowed = new HashSet<>(evidenceIds);
+        EvidenceReferenceScrubber.Outcome scrub = evidenceScrubber.scrub(bundle, allowed);
+        metrics.addEvidenceScrub(scrub.droppedRefs(), scrub.correctedRefs(), scrub.droppedItems());
+        if (scrub.droppedRefs() > 0 || scrub.correctedRefs() > 0 || scrub.droppedItems() > 0) {
+            LOG.info(() -> "evidence.scrub chunk=" + chunk.index()
+                    + " droppedRefs=" + scrub.droppedRefs()
+                    + " correctedRefs=" + scrub.correctedRefs()
+                    + " droppedItems=" + scrub.droppedItems());
+        }
+
         String groundingCorpus = chunk.joinedContent() + "\n" + fullCorpus;
-        deterministicValidator.validate(bundle, allowed, groundingCorpus);
-        return bundle;
+        deterministicValidator.validate(scrub.bundle(), allowed, groundingCorpus);
+        return scrub.bundle();
+    }
+
+    private JsonNode parseExtractionJson(String raw, PipelineRunMetrics metrics) {
+        String json = raw;
+        try {
+            if (jsonRepair.needsRepair(json)) {
+                json = jsonRepair.repairOrThrow(json);
+                metrics.incrementRepairCount();
+            } else {
+                json = json.trim();
+            }
+            return schemaValidator.parseAndValidate(json);
+        } catch (PipelineException ex) {
+            if (ex.category() != FailureCategory.INVALID_JSON
+                    && ex.category() != FailureCategory.SCHEMA_VIOLATION) {
+                throw ex;
+            }
+            Optional<String> recovered = partialJsonRecovery.recover(raw);
+            if (recovered.isEmpty()) {
+                if (ex.category() == FailureCategory.INVALID_JSON) {
+                    throw ex;
+                }
+                throw new PipelineException(
+                        FailureCategory.INVALID_JSON,
+                        PipelineStage.EXTRACT,
+                        "Unable to repair model JSON"
+                );
+            }
+            metrics.incrementPartialJsonRecovery();
+            metrics.incrementRepairCount();
+            return schemaValidator.parseAndValidate(recovered.get());
+        }
     }
 
     private static String renderPrompt(
