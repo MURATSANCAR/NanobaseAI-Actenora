@@ -31,6 +31,17 @@ class LimitedJsonRepairTest {
     }
 
     @Test
+    void closesTruncatedObjectAndArray() {
+        String repaired = repair.repairOrThrow("{\"decisions\":[{\"text\":\"A\"");
+        assertEquals("{\"decisions\":[{\"text\":\"A\"}]}", repaired);
+    }
+
+    @Test
+    void needsRepairWhenBracketsUnbalancedEvenIfEndsWithBrace() {
+        assertTrue(repair.needsRepair("{\"a\":[1,2}}"));
+    }
+
+    @Test
     void schemaValidatorRejectsInvalidEnum() {
         ExtractionJsonSchemaValidator validator = new ExtractionJsonSchemaValidator();
         PipelineException ex = assertThrows(

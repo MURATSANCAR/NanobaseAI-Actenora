@@ -156,7 +156,9 @@ public final class DefaultStageExecutors {
                 ProcessingStage.EXTRACT, new ExtractChunkExecutor(
                         prompts, modelRuntime, segments, normalizer, chunker, guard, repair, schema, bundleMapper,
                         validator, artifacts, extraction),
-                ProcessingStage.MERGE, new MergeExecutor(modelRuntime, prompts, artifacts, merger, repair, schema, bundleMapper),
+                ProcessingStage.MERGE, new MergeExecutor(
+                        modelRuntime, prompts, artifacts, merger, repair, schema, bundleMapper,
+                        segments, normalizer),
                 ProcessingStage.VALIDATE, new ValidateExecutor(artifacts, validator, segments, normalizer),
                 ProcessingStage.MINUTES, new MinutesExecutor(
                         modelRuntime,
@@ -527,7 +529,7 @@ public final class DefaultStageExecutors {
                     }
                     JsonNode node = schema.parseAndValidate(json);
                     ExtractionBundle bundle = ProposalCuePostProcessor.productionDefaults()
-                            .process(bundleMapper.fromJson(node));
+                            .process(bundleMapper.fromJson(node), c.segments());
                     validator.validate(
                             bundle,
                             new HashSet<>(c.segmentIds()),
@@ -626,6 +628,8 @@ public final class DefaultStageExecutors {
         private final LimitedJsonRepair repair;
         private final ExtractionJsonSchemaValidator schema;
         private final ExtractionBundleMapper bundleMapper;
+        private final TranscriptSegmentSourcePort segments;
+        private final SegmentNormalizer normalizer;
 
         MergeExecutor(
                 ModelRuntimePort modelRuntime,
@@ -634,7 +638,9 @@ public final class DefaultStageExecutors {
                 ExtractionMerger merger,
                 LimitedJsonRepair repair,
                 ExtractionJsonSchemaValidator schema,
-                ExtractionBundleMapper bundleMapper
+                ExtractionBundleMapper bundleMapper,
+                TranscriptSegmentSourcePort segments,
+                SegmentNormalizer normalizer
         ) {
             this.modelRuntime = modelRuntime;
             this.prompts = prompts;
@@ -643,6 +649,8 @@ public final class DefaultStageExecutors {
             this.repair = repair;
             this.schema = schema;
             this.bundleMapper = bundleMapper;
+            this.segments = segments;
+            this.normalizer = normalizer;
         }
 
         @Override
@@ -679,8 +687,9 @@ public final class DefaultStageExecutors {
                             job, false, "NO_CHUNK_BUNDLES", "no chunk extraction artifacts",
                             (System.nanoTime() - t0) / 1_000_000L, now);
                 }
+                List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
                 ExtractionBundle merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
-                        ProposalCuePostProcessor.productionDefaults().process(merger.merge(bundles)));
+                        ProposalCuePostProcessor.productionDefaults().process(merger.merge(bundles), normalized));
                 String cleanedJson = MAPPER.writeValueAsString(MAPPER.valueToTree(merged));
                 String deterministicJson = MAPPER.writeValueAsString(Map.of(
                         "mergedDeterministic", true,
@@ -711,7 +720,8 @@ public final class DefaultStageExecutors {
                 try {
                     JsonNode llmNode = schema.parseAndValidate(json);
                     ExtractionBundle llmBundle = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
-                            ProposalCuePostProcessor.productionDefaults().process(bundleMapper.fromJson(llmNode)));
+                            ProposalCuePostProcessor.productionDefaults().process(
+                                    bundleMapper.fromJson(llmNode), normalized));
                     json = MAPPER.writeValueAsString(MAPPER.valueToTree(llmBundle));
                 } catch (RuntimeException ex) {
                     json = cleanedJson;
@@ -823,11 +833,11 @@ public final class DefaultStageExecutors {
                 } else {
                     ExtractionBundle bundle = new ExtractionBundleMapper()
                             .fromJson(new ExtractionJsonSchemaValidator().parseAndValidate(source));
+                    List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
                     bundle = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
-                            ProposalCuePostProcessor.productionDefaults().process(bundle));
+                            ProposalCuePostProcessor.productionDefaults().process(bundle, normalized));
                     FinalNoteDraft deterministic = noteAssembler.assemble(bundle, job.language());
                     // Same allowlist as VALIDATE / legacy ExtractionPipelineService: all transcript segment ids.
-                    List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
                     Set<String> allowed = normalized.stream()
                             .map(SegmentInput::segmentId)
                             .collect(Collectors.toCollection(HashSet::new));

@@ -22,7 +22,7 @@
     {
       "id": "tr-proposal-002",
       "speechAct": "PROPOSAL_CUE",
-      "pattern": "(?iu)\\b(öneri(m|yi)?\\s+(olarak\\s+)?not\\s+ediyorum|öneriyorum|de[gğ]erlendirmeye\\s+alal[ıi]m)\\b",
+      "pattern": "(?iu)(?<!\\p{L})(öneriyi\\s+not\\s+ediyorum|önerim[,:]|öneriyorum|de[gğ]erlendirmeye\\s+alal[ıi]m)(?!\\p{L})",
       "confidence": 0.95
     },
     {

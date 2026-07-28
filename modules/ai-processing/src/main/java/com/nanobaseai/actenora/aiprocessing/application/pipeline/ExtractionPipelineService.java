@@ -258,7 +258,7 @@ public final class ExtractionPipelineService {
             );
 
             ExtractionBundle merged = merger.merge(perChunk);
-            merged = ProposalCuePostProcessor.productionDefaults().process(merged);
+            merged = ProposalCuePostProcessor.productionDefaults().process(merged, normalized);
             merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(merged);
             Set<String> allowed = normalized.stream()
                     .map(SegmentInput::segmentId)
@@ -672,7 +672,7 @@ public final class ExtractionPipelineService {
 
         String groundingCorpus = chunk.joinedContent() + "\n" + fullCorpus;
         deterministicValidator.validate(scrub.bundle(), allowed, groundingCorpus);
-        return ProposalCuePostProcessor.productionDefaults().process(scrub.bundle());
+        return ProposalCuePostProcessor.productionDefaults().process(scrub.bundle(), chunk.segments());
     }
 
     private JsonNode parseExtractionJson(String raw, PipelineRunMetrics metrics) {

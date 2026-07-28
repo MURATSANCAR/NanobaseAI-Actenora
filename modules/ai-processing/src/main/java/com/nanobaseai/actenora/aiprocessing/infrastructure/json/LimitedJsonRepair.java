@@ -103,8 +103,8 @@ public final class LimitedJsonRepair {
         StringBuilder out = new StringBuilder(text);
         boolean inString = false;
         boolean escape = false;
-        int brace = 0;
-        int bracket = 0;
+        // Track openers in order so we close LIFO (} before ] when object is inside array).
+        StringBuilder openers = new StringBuilder();
         for (int i = 0; i < out.length(); i++) {
             char c = out.charAt(i);
             if (inString) {
@@ -120,13 +120,17 @@ public final class LimitedJsonRepair {
             if (c == '"') {
                 inString = true;
             } else if (c == '{') {
-                brace++;
+                openers.append('{');
             } else if (c == '}') {
-                brace = Math.max(0, brace - 1);
+                if (!openers.isEmpty() && openers.charAt(openers.length() - 1) == '{') {
+                    openers.deleteCharAt(openers.length() - 1);
+                }
             } else if (c == '[') {
-                bracket++;
+                openers.append('[');
             } else if (c == ']') {
-                bracket = Math.max(0, bracket - 1);
+                if (!openers.isEmpty() && openers.charAt(openers.length() - 1) == '[') {
+                    openers.deleteCharAt(openers.length() - 1);
+                }
             }
         }
         if (inString) {
@@ -140,11 +144,9 @@ public final class LimitedJsonRepair {
         if (end >= 0 && out.charAt(end) == ',') {
             out.deleteCharAt(end);
         }
-        for (int i = 0; i < bracket; i++) {
-            out.append(']');
-        }
-        for (int i = 0; i < brace; i++) {
-            out.append('}');
+        for (int i = openers.length() - 1; i >= 0; i--) {
+            char opener = openers.charAt(i);
+            out.append(opener == '{' ? '}' : ']');
         }
         return out.toString();
     }
@@ -165,7 +167,8 @@ public final class LimitedJsonRepair {
         if (!(text.startsWith("{") && text.endsWith("}"))) {
             return false;
         }
-        int depth = 0;
+        int brace = 0;
+        int bracket = 0;
         boolean inString = false;
         boolean escape = false;
         for (int i = 0; i < text.length(); i++) {
@@ -183,14 +186,21 @@ public final class LimitedJsonRepair {
             if (c == '"') {
                 inString = true;
             } else if (c == '{') {
-                depth++;
+                brace++;
             } else if (c == '}') {
-                depth--;
-                if (depth < 0) {
+                brace--;
+                if (brace < 0) {
+                    return false;
+                }
+            } else if (c == '[') {
+                bracket++;
+            } else if (c == ']') {
+                bracket--;
+                if (bracket < 0) {
                     return false;
                 }
             }
         }
-        return depth == 0 && !inString;
+        return brace == 0 && bracket == 0 && !inString;
     }
 }

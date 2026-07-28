@@ -5,6 +5,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ImportantFactCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ProposalCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.speechact.DeterministicSpeechActMatcher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.speechact.HybridSpeechActClassifier;
@@ -13,15 +14,20 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.speechact.SpeechActR
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
- * Recovers explicit proposal cues that landed in the wrong extraction bucket.
+ * Recovers explicit proposal cues that landed in the wrong extraction bucket,
+ * and seeds proposals from transcript segments when the model dropped them.
  */
 public final class ProposalCuePostProcessor {
+
+    private static final double SEEDED_CONFIDENCE = 0.92d;
 
     private final HybridSpeechActClassifier classifier;
     private final DeterministicSpeechActMatcher matcher;
@@ -36,17 +42,21 @@ public final class ProposalCuePostProcessor {
     }
 
     public ExtractionBundle process(ExtractionBundle bundle) {
+        return process(bundle, List.of());
+    }
+
+    public ExtractionBundle process(ExtractionBundle bundle, List<SegmentInput> segments) {
         Objects.requireNonNull(bundle, "bundle");
         Map<String, ProposalCandidate> proposals = new LinkedHashMap<>();
         for (ProposalCandidate proposal : bundle.proposals()) {
-            proposals.putIfAbsent(norm(proposal.text()), proposal);
+            putProposal(proposals, proposal);
         }
 
         List<DecisionCandidate> decisions = new ArrayList<>();
         for (DecisionCandidate decision : bundle.decisions()) {
             if (shouldBecomeProposal(decision.text()) && !matcher.hasExplicitDecisionCue(decision.text())) {
-                proposals.putIfAbsent(norm(decision.text()),
-                        new ProposalCandidate(decision.text(), decision.evidenceSegmentIds(), decision.confidence()));
+                putProposal(proposals, new ProposalCandidate(
+                        decision.text(), decision.evidenceSegmentIds(), decision.confidence()));
             } else {
                 decisions.add(decision);
             }
@@ -55,8 +65,8 @@ public final class ProposalCuePostProcessor {
         List<ImportantFactCandidate> facts = new ArrayList<>();
         for (ImportantFactCandidate fact : bundle.importantFacts()) {
             if (shouldBecomeProposal(fact.text())) {
-                proposals.putIfAbsent(norm(fact.text()),
-                        new ProposalCandidate(fact.text(), fact.evidenceSegmentIds(), fact.confidence()));
+                putProposal(proposals, new ProposalCandidate(
+                        fact.text(), fact.evidenceSegmentIds(), fact.confidence()));
             } else {
                 facts.add(fact);
             }
@@ -65,8 +75,8 @@ public final class ProposalCuePostProcessor {
         List<TopicCandidate> topics = new ArrayList<>();
         for (TopicCandidate topic : bundle.topics()) {
             if (shouldBecomeProposal(topic.text())) {
-                proposals.putIfAbsent(norm(topic.text()),
-                        new ProposalCandidate(topic.text(), topic.evidenceSegmentIds(), topic.confidence()));
+                putProposal(proposals, new ProposalCandidate(
+                        topic.text(), topic.evidenceSegmentIds(), topic.confidence()));
             } else {
                 topics.add(topic);
             }
@@ -75,12 +85,14 @@ public final class ProposalCuePostProcessor {
         List<OpenQuestionCandidate> questions = new ArrayList<>();
         for (OpenQuestionCandidate question : bundle.openQuestions()) {
             if (shouldBecomeProposal(question.text())) {
-                proposals.putIfAbsent(norm(question.text()),
-                        new ProposalCandidate(question.text(), question.evidenceSegmentIds(), question.confidence()));
+                putProposal(proposals, new ProposalCandidate(
+                        question.text(), question.evidenceSegmentIds(), question.confidence()));
             } else {
                 questions.add(question);
             }
         }
+
+        seedFromSegments(proposals, segments == null ? List.of() : segments);
 
         return new ExtractionBundle(
                 topics,
@@ -98,6 +110,41 @@ public final class ProposalCuePostProcessor {
         );
     }
 
+    private void seedFromSegments(Map<String, ProposalCandidate> proposals, List<SegmentInput> segments) {
+        Set<String> coveredEvidence = new LinkedHashSet<>();
+        for (ProposalCandidate existing : proposals.values()) {
+            coveredEvidence.addAll(existing.evidenceSegmentIds());
+        }
+        for (SegmentInput segment : segments) {
+            if (segment == null || segment.content() == null || segment.content().isBlank()) {
+                continue;
+            }
+            if (coveredEvidence.contains(segment.segmentId())) {
+                continue;
+            }
+            String text = segment.content().strip();
+            if (!isSeedableProposal(text)) {
+                continue;
+            }
+            // Keep one proposal per cue segment so repeated "henüz karar değil" lines survive.
+            String key = "seed|" + segment.segmentId();
+            proposals.putIfAbsent(key, new ProposalCandidate(
+                    text, List.of(segment.segmentId()), SEEDED_CONFIDENCE));
+            coveredEvidence.add(segment.segmentId());
+        }
+    }
+
+    private boolean isSeedableProposal(String text) {
+        if (!matcher.hasProposalCue(text) || matcher.hasExplicitDecisionCue(text)) {
+            return false;
+        }
+        SpeechActResult act = classifier.classify(text);
+        return act.speechAct() != MeetingSpeechAct.DISCUSSION_PROMPT
+                && act.speechAct() != MeetingSpeechAct.STATUS_QUO
+                && act.speechAct() != MeetingSpeechAct.CLOSING_META
+                && act.speechAct() != MeetingSpeechAct.NOTE_INSTRUCTION;
+    }
+
     private boolean shouldBecomeProposal(String text) {
         if (text == null || text.isBlank()) {
             return false;
@@ -110,6 +157,22 @@ public final class ProposalCuePostProcessor {
             return false;
         }
         return matcher.hasProposalCue(text) && !matcher.hasExplicitDecisionCue(text);
+    }
+
+    private static void putProposal(Map<String, ProposalCandidate> proposals, ProposalCandidate proposal) {
+        String key = norm(proposal.text());
+        ProposalCandidate prior = proposals.get(key);
+        if (prior == null) {
+            proposals.put(key, proposal);
+            return;
+        }
+        LinkedHashSet<String> evidence = new LinkedHashSet<>(prior.evidenceSegmentIds());
+        evidence.addAll(proposal.evidenceSegmentIds());
+        proposals.put(key, new ProposalCandidate(
+                prior.text(),
+                List.copyOf(evidence),
+                Math.max(prior.confidence(), proposal.confidence())
+        ));
     }
 
     private static String norm(String text) {

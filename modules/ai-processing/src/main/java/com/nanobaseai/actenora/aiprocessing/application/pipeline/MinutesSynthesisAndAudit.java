@@ -224,11 +224,7 @@ public final class MinutesSynthesisAndAudit {
                     MeetingLlmBudgets.FINAL_MAX_TOKENS,
                     timeoutSeconds
             ));
-            String json = response.rawText();
-            if (jsonRepair.needsRepair(json)) {
-                json = jsonRepair.repairOrThrow(json);
-            }
-            JsonNode node = schemaValidator.parseAndValidate(json);
+            JsonNode node = parseSynthesisJson(response.rawText());
             ExtractionBundle bundle = stripUnknownEvidence(bundleMapper.fromJson(node), allowedEvidenceIds);
             String summary = OutputLanguagePolicy.sanitizeUserFacingText(
                     textOr(node.path("executiveSummary").asText(null), fallback.executiveSummary()),
@@ -308,11 +304,7 @@ public final class MinutesSynthesisAndAudit {
                     MeetingLlmBudgets.AUDIT_MAX_TOKENS,
                     timeoutSeconds
             ));
-            String json = response.rawText();
-            if (jsonRepair.needsRepair(json)) {
-                json = jsonRepair.repairOrThrow(json);
-            }
-            JsonNode root = objectMapper.readTree(json);
+            JsonNode root = parseAuditJson(response.rawText());
             Set<String> unsupported = new HashSet<>();
             Set<String> partial = new HashSet<>();
             JsonNode audits = root.path("audits");
@@ -418,6 +410,32 @@ public final class MinutesSynthesisAndAudit {
 
     public static long auditFallbackCount() {
         return AUDIT_FALLBACKS.get();
+    }
+
+    private JsonNode parseSynthesisJson(String raw) {
+        String json = raw == null ? "" : raw.trim();
+        try {
+            if (jsonRepair.needsRepair(json)) {
+                json = jsonRepair.repairOrThrow(json);
+            }
+            return schemaValidator.parseAndValidate(json);
+        } catch (RuntimeException first) {
+            String repaired = jsonRepair.repairOrThrow(raw == null ? "" : raw);
+            return schemaValidator.parseAndValidate(repaired);
+        }
+    }
+
+    private JsonNode parseAuditJson(String raw) throws IOException {
+        String json = raw == null ? "" : raw.trim();
+        try {
+            if (jsonRepair.needsRepair(json)) {
+                json = jsonRepair.repairOrThrow(json);
+            }
+            return objectMapper.readTree(json);
+        } catch (RuntimeException | IOException first) {
+            String repaired = jsonRepair.repairOrThrow(raw == null ? "" : raw);
+            return objectMapper.readTree(repaired);
+        }
     }
 
     private ObjectNode toCandidateNode(ExtractionBundle bundle) {
