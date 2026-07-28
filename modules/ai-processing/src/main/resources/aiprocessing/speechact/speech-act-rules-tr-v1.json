@@ -1,0 +1,65 @@
+{
+  "version": "tr-v1",
+  "rules": [
+    {
+      "id": "tr-decision-001",
+      "speechAct": "EXPLICIT_DECISION",
+      "pattern": "(?iu)\\b(karar\\s+verildi|kararla[sş]t[ıi]r[ıi]ld[ıi]|kararla[sş]t[ıi]rd[ıi]k|karar\\s+verdi)\\b",
+      "confidence": 0.99
+    },
+    {
+      "id": "tr-decision-002",
+      "speechAct": "EXPLICIT_DECISION",
+      "pattern": "(?iu)\\b(de[gğ]i[sş]tirmemeye\\s+karar\\s+verdi|karar\\s+ald[ıi]|onayland[ıi])\\b",
+      "confidence": 0.98
+    },
+    {
+      "id": "tr-proposal-001",
+      "speechAct": "PROPOSAL_CUE",
+      "pattern": "(?iu)\\bhen[uü]z\\s+karar\\s+de[gğ]il\\b",
+      "confidence": 0.99
+    },
+    {
+      "id": "tr-proposal-002",
+      "speechAct": "PROPOSAL_CUE",
+      "pattern": "(?iu)\\b(öneri(m|yi)?\\s+(olarak\\s+)?not\\s+ediyorum|öneriyorum|de[gğ]erlendirmeye\\s+alal[ıi]m)\\b",
+      "confidence": 0.95
+    },
+    {
+      "id": "tr-status-001",
+      "speechAct": "STATUS_QUO",
+      "pattern": "(?iu)\\bmevcut\\s+karar[\\p{L}]*\\s+de[gğ]i[sş]tir(miyoruz|meyece[gğ]iz|ilmeyecek)\\b",
+      "confidence": 0.99
+    },
+    {
+      "id": "tr-status-002",
+      "speechAct": "STATUS_QUO",
+      "pattern": "(?iu)\\b(yeni\\s+karar\\s+yok|sadece\\s+ba[gğ]lam(\\s+payla[sş][\\p{L}]*)?)\\b",
+      "confidence": 0.98
+    },
+    {
+      "id": "tr-discuss-001",
+      "speechAct": "DISCUSSION_PROMPT",
+      "pattern": "(?iu)\\b(bu\\s+noktay[ıi]\\s+biraz\\s+a[cç]mam[ıi]z\\s+[iı]yi\\s+olur|bu\\s+konuyu\\s+biraz\\s+a[cç]al[ıi]m|buray[ıi]\\s+a[cç]mam[ıi]z\\s+gerekiyor|bu\\s+noktay[ıi]\\s+a[cç]al[ıi]m)\\b",
+      "confidence": 0.97
+    },
+    {
+      "id": "tr-note-001",
+      "speechAct": "NOTE_INSTRUCTION",
+      "pattern": "(?iu)\\b(notlara\\s+ekle|tutan(aga|a[gğ]a)\\s+ta[sş][ıi]|uydurma\\s+madde\\s+ekleme)\\b",
+      "confidence": 0.97
+    },
+    {
+      "id": "tr-close-001",
+      "speechAct": "CLOSING_META",
+      "pattern": "(?iu)\\b(toplant[ıi]y[ıi]\\s+kapat|kapan[ıi][sş]|yönetici\\s+özeti\\s+i[cç]in)\\b",
+      "confidence": 0.95
+    },
+    {
+      "id": "tr-action-001",
+      "speechAct": "ACTION_REQUEST",
+      "pattern": "(?iu)\\b(haz[ıi]rlas[ıi]n|güncelle|bitir|kanala\\s+yazs[ıi]n|teslim\\s+etsin)\\b",
+      "confidence": 0.90
+    }
+  ]
+}

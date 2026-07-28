@@ -25,7 +25,12 @@ public final class MeetingNoisePatterns {
                     + "|yeni\\s+karar\\s+yok"
                     + "|ekrandaki\\s+madde\\s+listesini\\s+senkronize(\\s+ediyorum)?"
                     + "|mevcut\\s+karar[ıi]?\\s+de[gğ]i[sş]tirmiyoruz"
-                    + "|sadece\\s+ba[gğ]lam\\s+payla[sş]([ıi]m[ıi]|ımı)?"
+                    + "|sadece\\s+ba[gğ]lam\\s+payla[sş]"
+                    + "([ıi]yorum|[ıi]yoruz|[ıi]m[ıi]|ımı)?"
+                    + "|bu\\s+noktay[ıi]\\s+biraz\\s+a[cç]mam[ıi]z\\s+[iı]yi\\s+olur"
+                    + "|bu\\s+konuyu\\s+biraz\\s+a[cç]al[ıi]m"
+                    + "|buray[ıi]\\s+a[cç]mam[ıi]z\\s+gerekiyor"
+                    + "|ayn[ıi]\\s+[sş]ekilde\\s+devam"
                     + "|this\\s+point\\s+needs\\s+more\\s+discussion"
                     + "|sharing\\s+(my\\s+)?screen"
                     + "|unmuting(\\s+myself)?"
@@ -74,6 +79,10 @@ public final class MeetingNoisePatterns {
         return STATUS_QUO_DECISION.matcher(text.strip()).find();
     }
 
+    /**
+     * @deprecated Prefer {@code CrossTypeMeetingItemScrubber}; retained for legacy tests.
+     */
+    @Deprecated(forRemoval = false)
     public static ExtractionBundle stripStatusQuoDecisions(ExtractionBundle bundle) {
         List<DecisionCandidate> kept = new ArrayList<>(bundle.decisions().size());
         for (DecisionCandidate decision : bundle.decisions()) {

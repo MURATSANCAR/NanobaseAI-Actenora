@@ -37,4 +37,20 @@ class SegmentNormalizerNoiseFilterTest {
         ));
         assertEquals(2, normalized.size());
     }
+
+    @Test
+    void stripsAttributionThenDropsStatusQuoFiller() {
+        SegmentNormalizer normalizer = new SegmentNormalizer();
+        List<SegmentInput> normalized = normalizer.normalize(List.of(
+                new SegmentInput("s1", 0, "Can", 0, 1_000,
+                        "Can olarak ekliyorum: mevcut kararı değiştirmiyoruz, sadece bağlam paylaşıyorum.",
+                        false),
+                new SegmentInput("s2", 1, "Elif", 1_000, 2_000,
+                        "Kararlaştırdık: API sözleşmesini cuma günü donduruyoruz.", false),
+                new SegmentInput("s3", 2, "Selin", 2_000, 3_000,
+                        "Bu noktayı biraz açmamız iyi olur.", false)
+        ));
+        assertEquals(1, normalized.size());
+        assertEquals("s2", normalized.getFirst().segmentId());
+    }
 }

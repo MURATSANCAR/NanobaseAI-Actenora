@@ -1,5 +1,7 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.InContentAttributionStripper;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -17,11 +19,21 @@ public final class SegmentNormalizer {
     );
     private static final Pattern CUE_MARKUP = Pattern.compile("</?v(?:\\s+[^>]*)?>|</?c(?:\\.[^>]*)?>|</?b>|</?i>|</?u>");
 
+    private final InContentAttributionStripper attributionStripper;
+
+    public SegmentNormalizer() {
+        this(new InContentAttributionStripper());
+    }
+
+    public SegmentNormalizer(InContentAttributionStripper attributionStripper) {
+        this.attributionStripper = Objects.requireNonNull(attributionStripper, "attributionStripper");
+    }
+
     public List<SegmentInput> normalize(List<SegmentInput> raw) {
         Objects.requireNonNull(raw, "raw");
         List<SegmentInput> out = new ArrayList<>(raw.size());
         for (SegmentInput segment : raw) {
-            String cleaned = collapseWhitespace(stripCueMarkup(segment.content()));
+            String cleaned = prepareContent(segment.content());
             if (MeetingNoisePatterns.isLowSignalSegment(cleaned)) {
                 // Drop ops/UI filler before chunking so it cannot saturate ctx or invent decisions.
                 continue;
@@ -32,13 +44,17 @@ public final class SegmentNormalizer {
         // Never empty the transcript entirely (pathological all-noise input).
         if (out.isEmpty() && !raw.isEmpty()) {
             for (SegmentInput segment : raw) {
-                String cleaned = collapseWhitespace(stripCueMarkup(segment.content()));
+                String cleaned = prepareContent(segment.content());
                 if (!cleaned.isBlank()) {
                     out.add(segment.withContent(cleaned).withMarker(true));
                 }
             }
         }
         return List.copyOf(out);
+    }
+
+    private String prepareContent(String content) {
+        return collapseWhitespace(attributionStripper.strip(stripCueMarkup(content)));
     }
 
     private static String stripCueMarkup(String content) {

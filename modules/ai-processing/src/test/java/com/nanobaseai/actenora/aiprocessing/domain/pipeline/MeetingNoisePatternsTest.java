@@ -18,6 +18,10 @@ class MeetingNoisePatternsTest {
                 "Bu arada ekrandaki madde listesini senkronize ediyorum, yeni karar yok."));
         assertTrue(MeetingNoisePatterns.isLowSignalSegment(
                 "Mevcut kararı değiştirmiyoruz, sadece bağlam paylaşımı."));
+        assertTrue(MeetingNoisePatterns.isLowSignalSegment(
+                "mevcut kararı değiştirmiyoruz, sadece bağlam paylaşıyorum."));
+        assertTrue(MeetingNoisePatterns.isLowSignalSegment("Bu noktayı biraz açmamız iyi olur."));
+        assertTrue(MeetingNoisePatterns.isLowSignalSegment("Bu konuyu biraz açalım."));
         assertTrue(MeetingNoisePatterns.isLowSignalSegment("Anladım, teşekkürler"));
         assertFalse(MeetingNoisePatterns.isLowSignalSegment(
                 "API sözleşmesini cuma günü donduruyoruz, Can VTT paketini gelecek hafta Cuma'ya kadar bitirecek."));
