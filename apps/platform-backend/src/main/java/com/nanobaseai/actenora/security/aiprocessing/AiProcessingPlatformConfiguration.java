@@ -45,6 +45,7 @@ import com.nanobaseai.actenora.aiprocessing.application.routing.CapabilityModelR
 import com.nanobaseai.actenora.aiprocessing.application.scheduling.FairJobScheduler;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingQualityProperties;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.MultiModelRouter;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.LocalProviderModelRuntimeAdapter;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.adapter.Qwen27BModelAdapter;
@@ -296,14 +297,21 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
+    MeetingQualityProperties meetingQualityProperties(MeetingSignalGateProperties meetingSignalGateProperties) {
+        MeetingQualityProperties properties = meetingSignalGateProperties.toMeetingQualityProperties();
+        MeetingQualityProperties.install(properties);
+        return properties;
+    }
+
+    @Bean
     ExtractionPipelineService extractionPipelineService(
             PromptRegistryPort promptRegistry,
             ModelRuntimePort modelRuntime,
             com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService,
             PipelineQualityMetricsPort pipelineQualityMetrics,
-            MeetingSignalGateProperties meetingSignalGateProperties
+            MeetingQualityProperties meetingQualityProperties
     ) {
-        MeetingQualityProperties.install(meetingSignalGateProperties.toMeetingQualityProperties());
+        MeetingQualityProperties.install(meetingQualityProperties);
         return new ExtractionPipelineService(
                 promptRegistry,
                 modelRuntime,

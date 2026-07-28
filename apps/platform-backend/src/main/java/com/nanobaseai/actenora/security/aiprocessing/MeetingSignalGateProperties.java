@@ -1,16 +1,19 @@
 package com.nanobaseai.actenora.security.aiprocessing;
 
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingQualityProperties;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.SignalGateConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Binds {@code actenora.meeting.signal-gate.*} and {@code actenora.meeting.speech-signals.*}.
+ * Binds {@code actenora.meeting.signal-gate.*}, {@code actenora.meeting.speech-signals.*},
+ * and {@code actenora.meeting.quality.*}.
  */
 @ConfigurationProperties(prefix = "actenora.meeting")
 public class MeetingSignalGateProperties {
 
     private final SignalGate signalGate = new SignalGate();
     private final SpeechSignals speechSignals = new SpeechSignals();
+    private final Quality quality = new Quality();
 
     public SignalGate getSignalGate() {
         return signalGate;
@@ -18,6 +21,10 @@ public class MeetingSignalGateProperties {
 
     public SpeechSignals getSpeechSignals() {
         return speechSignals;
+    }
+
+    public Quality getQuality() {
+        return quality;
     }
 
     public SignalGateConfig toConfig() {
@@ -34,6 +41,31 @@ public class MeetingSignalGateProperties {
                 signalGate.getUncertainBand() >= 0 ? signalGate.getUncertainBand() : defaults.uncertainBand(),
                 blankTo(signalGate.getPolicyVersion(), defaults.policyVersion()),
                 blankTo(speechSignals.getDictionaryVersion(), defaults.dictionaryVersion())
+        );
+    }
+
+    public MeetingQualityProperties toMeetingQualityProperties() {
+        MeetingQualityProperties defaults = MeetingQualityProperties.defaults();
+        return new MeetingQualityProperties(
+                quality.getSynthesisFallbackConfidenceCap() > 0
+                        ? quality.getSynthesisFallbackConfidenceCap()
+                        : defaults.synthesisFallbackConfidenceCap(),
+                quality.getAuditFallbackConfidenceCap() > 0
+                        ? quality.getAuditFallbackConfidenceCap()
+                        : defaults.auditFallbackConfidenceCap(),
+                quality.getDoubleFallbackConfidenceCap() > 0
+                        ? quality.getDoubleFallbackConfidenceCap()
+                        : defaults.doubleFallbackConfidenceCap(),
+                quality.isManualReviewOnAnyFallback(),
+                quality.getSemanticApplyMinConfidence() > 0
+                        ? quality.getSemanticApplyMinConfidence()
+                        : defaults.semanticApplyMinConfidence(),
+                quality.getSemanticReviewMinConfidence() > 0
+                        ? quality.getSemanticReviewMinConfidence()
+                        : defaults.semanticReviewMinConfidence(),
+                quality.getDeterministicApplyMinConfidence() > 0
+                        ? quality.getDeterministicApplyMinConfidence()
+                        : defaults.deterministicApplyMinConfidence()
         );
     }
 
@@ -84,5 +116,44 @@ public class MeetingSignalGateProperties {
 
         public String getDictionaryVersion() { return dictionaryVersion; }
         public void setDictionaryVersion(String dictionaryVersion) { this.dictionaryVersion = dictionaryVersion; }
+    }
+
+    public static class Quality {
+        private double synthesisFallbackConfidenceCap = 0.65d;
+        private double auditFallbackConfidenceCap = 0.55d;
+        private double doubleFallbackConfidenceCap = 0.45d;
+        private boolean manualReviewOnAnyFallback = true;
+        private double semanticApplyMinConfidence = 0.90d;
+        private double semanticReviewMinConfidence = 0.65d;
+        private double deterministicApplyMinConfidence = 0.90d;
+
+        public double getSynthesisFallbackConfidenceCap() { return synthesisFallbackConfidenceCap; }
+        public void setSynthesisFallbackConfidenceCap(double synthesisFallbackConfidenceCap) {
+            this.synthesisFallbackConfidenceCap = synthesisFallbackConfidenceCap;
+        }
+        public double getAuditFallbackConfidenceCap() { return auditFallbackConfidenceCap; }
+        public void setAuditFallbackConfidenceCap(double auditFallbackConfidenceCap) {
+            this.auditFallbackConfidenceCap = auditFallbackConfidenceCap;
+        }
+        public double getDoubleFallbackConfidenceCap() { return doubleFallbackConfidenceCap; }
+        public void setDoubleFallbackConfidenceCap(double doubleFallbackConfidenceCap) {
+            this.doubleFallbackConfidenceCap = doubleFallbackConfidenceCap;
+        }
+        public boolean isManualReviewOnAnyFallback() { return manualReviewOnAnyFallback; }
+        public void setManualReviewOnAnyFallback(boolean manualReviewOnAnyFallback) {
+            this.manualReviewOnAnyFallback = manualReviewOnAnyFallback;
+        }
+        public double getSemanticApplyMinConfidence() { return semanticApplyMinConfidence; }
+        public void setSemanticApplyMinConfidence(double semanticApplyMinConfidence) {
+            this.semanticApplyMinConfidence = semanticApplyMinConfidence;
+        }
+        public double getSemanticReviewMinConfidence() { return semanticReviewMinConfidence; }
+        public void setSemanticReviewMinConfidence(double semanticReviewMinConfidence) {
+            this.semanticReviewMinConfidence = semanticReviewMinConfidence;
+        }
+        public double getDeterministicApplyMinConfidence() { return deterministicApplyMinConfidence; }
+        public void setDeterministicApplyMinConfidence(double deterministicApplyMinConfidence) {
+            this.deterministicApplyMinConfidence = deterministicApplyMinConfidence;
+        }
     }
 }
