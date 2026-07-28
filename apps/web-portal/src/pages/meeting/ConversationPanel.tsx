@@ -186,7 +186,7 @@ export function ConversationPanel({
 
       <div
         ref={parentRef}
-        className="conversation-scroll min-h-[20rem] flex-1 overflow-x-hidden overflow-y-auto rounded-2xl border border-white/70 bg-gradient-to-b from-white/70 to-violet-50/20 p-3"
+        className="conversation-scroll h-[min(32rem,calc(100dvh-16rem))] min-h-[20rem] shrink-0 overflow-x-hidden overflow-y-auto rounded-2xl border border-white/70 bg-gradient-to-b from-white/70 to-violet-50/20 p-3"
         role="list"
       >
         <div style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
