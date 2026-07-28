@@ -78,7 +78,7 @@ public final class FinalNoteAssembler {
                 sb.append(i++).append(". ").append(item.text().strip()).append('\n');
             }
         }
-        if (!bundle.commitments().isEmpty() && bundle.decisions().isEmpty() && bundle.actionItems().isEmpty()) {
+        if (!bundle.commitments().isEmpty()) {
             if (!sb.isEmpty()) {
                 sb.append('\n');
             }
@@ -96,6 +96,13 @@ public final class FinalNoteAssembler {
             int i = 1;
             for (RiskCandidate risk : bundle.risks()) {
                 sb.append(i++).append(". ").append(risk.text().strip()).append('\n');
+            }
+        }
+        if (sb.isEmpty() && !bundle.importantFacts().isEmpty()) {
+            sb.append(en ? "Facts" : "Önemli noktalar").append('\n');
+            int i = 1;
+            for (ImportantFactCandidate fact : bundle.importantFacts()) {
+                sb.append(i++).append(". ").append(fact.text().strip()).append('\n');
             }
         }
         if (sb.isEmpty() && !bundle.openQuestions().isEmpty()) {

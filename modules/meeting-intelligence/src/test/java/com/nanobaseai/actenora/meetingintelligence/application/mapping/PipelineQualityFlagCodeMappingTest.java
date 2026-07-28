@@ -18,6 +18,10 @@ class PipelineQualityFlagCodeMappingTest {
                 MapAiCandidatesToNoteService.resolvePipelineQualityFlagCode("audit_fallback")
         );
         assertEquals(
+                QualityFlagCode.TYPE_LAUNDER_DROPPED,
+                MapAiCandidatesToNoteService.resolvePipelineQualityFlagCode("TYPE_LAUNDER_DROPPED")
+        );
+        assertEquals(
                 QualityFlagCode.OTHER,
                 MapAiCandidatesToNoteService.resolvePipelineQualityFlagCode("LLM_SYNTHESIZED")
         );

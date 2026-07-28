@@ -29,8 +29,9 @@ class DeterministicSpeechActMatcherTest {
     void classifiesNoteAndClosing() {
         assertEquals(MeetingSpeechAct.NOTE_INSTRUCTION,
                 matcher.classify("Alınan kararları tutanağa taşıyoruz.").speechAct());
-        assertTrue(matcher.classify("Teşekkürler, toplantıyı kapatıyorum.").speechAct() == MeetingSpeechAct.CLOSING_META
-                || matcher.classify("Yönetici özeti için bugünkü ana sonuçları kısa tutalım.").speechAct()
-                == MeetingSpeechAct.CLOSING_META);
+        assertEquals(MeetingSpeechAct.CLOSING_META,
+                matcher.classify("Teşekkürler, toplantıyı kapatıyorum.").speechAct());
+        assertEquals(MeetingSpeechAct.CLOSING_META,
+                matcher.classify("Yönetici özeti için bugünkü ana sonuçları kısa tutalım.").speechAct());
     }
 }

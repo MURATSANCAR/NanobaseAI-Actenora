@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.aiprocessing.application.pipeline;
 
+import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -57,12 +58,21 @@ public final class MinutesSynthesisAndAudit {
     private final String finalMinutesTemplate;
     private final String evidenceAuditTemplate;
     private final int timeoutSeconds;
+    private final PipelineQualityMetricsPort qualityMetrics;
 
     public MinutesSynthesisAndAudit(ModelRuntimePort modelRuntime) {
         this(modelRuntime, 0);
     }
 
     public MinutesSynthesisAndAudit(ModelRuntimePort modelRuntime, int timeoutSeconds) {
+        this(modelRuntime, timeoutSeconds, PipelineQualityMetricsPort.noop());
+    }
+
+    public MinutesSynthesisAndAudit(
+            ModelRuntimePort modelRuntime,
+            int timeoutSeconds,
+            PipelineQualityMetricsPort qualityMetrics
+    ) {
         this(
                 modelRuntime,
                 new LimitedJsonRepair(),
@@ -71,7 +81,8 @@ public final class MinutesSynthesisAndAudit {
                 new ObjectMapper(),
                 loadTemplate("/aiprocessing/prompts/final-minutes.v1.txt"),
                 loadTemplate("/aiprocessing/prompts/evidence-audit.v1.txt"),
-                timeoutSeconds
+                timeoutSeconds,
+                qualityMetrics
         );
     }
 
@@ -92,7 +103,8 @@ public final class MinutesSynthesisAndAudit {
                 objectMapper,
                 finalMinutesTemplate,
                 evidenceAuditTemplate,
-                0
+                0,
+                PipelineQualityMetricsPort.noop()
         );
     }
 
@@ -106,6 +118,30 @@ public final class MinutesSynthesisAndAudit {
             String evidenceAuditTemplate,
             int timeoutSeconds
     ) {
+        this(
+                modelRuntime,
+                jsonRepair,
+                schemaValidator,
+                bundleMapper,
+                objectMapper,
+                finalMinutesTemplate,
+                evidenceAuditTemplate,
+                timeoutSeconds,
+                PipelineQualityMetricsPort.noop()
+        );
+    }
+
+    MinutesSynthesisAndAudit(
+            ModelRuntimePort modelRuntime,
+            LimitedJsonRepair jsonRepair,
+            ExtractionJsonSchemaValidator schemaValidator,
+            ExtractionBundleMapper bundleMapper,
+            ObjectMapper objectMapper,
+            String finalMinutesTemplate,
+            String evidenceAuditTemplate,
+            int timeoutSeconds,
+            PipelineQualityMetricsPort qualityMetrics
+    ) {
         this.modelRuntime = Objects.requireNonNull(modelRuntime, "modelRuntime");
         this.jsonRepair = Objects.requireNonNull(jsonRepair, "jsonRepair");
         this.schemaValidator = Objects.requireNonNull(schemaValidator, "schemaValidator");
@@ -117,6 +153,7 @@ public final class MinutesSynthesisAndAudit {
             throw new IllegalArgumentException("timeoutSeconds must be >= 0");
         }
         this.timeoutSeconds = timeoutSeconds;
+        this.qualityMetrics = qualityMetrics == null ? PipelineQualityMetricsPort.noop() : qualityMetrics;
     }
 
     public FinalNoteDraft synthesizeAndAudit(
@@ -228,6 +265,7 @@ public final class MinutesSynthesisAndAudit {
             );
         } catch (RuntimeException | IOException ex) {
             SYNTHESIS_FALLBACKS.incrementAndGet();
+            qualityMetrics.recordFallback("synthesis", ex.getClass().getSimpleName());
             LOG.log(Level.SEVERE,
                     () -> "Pipeline stage failed; fallback activated. stage=SYNTHESIS meetingTitle="
                             + meetingTitle
@@ -347,6 +385,7 @@ public final class MinutesSynthesisAndAudit {
             );
         } catch (RuntimeException | IOException ex) {
             AUDIT_FALLBACKS.incrementAndGet();
+            qualityMetrics.recordFallback("audit", ex.getClass().getSimpleName());
             LOG.log(Level.SEVERE,
                     () -> "Pipeline stage failed; fallback activated. stage=AUDIT reason="
                             + ex.getClass().getSimpleName());

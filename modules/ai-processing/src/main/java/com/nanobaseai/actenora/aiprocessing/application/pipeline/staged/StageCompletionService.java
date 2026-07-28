@@ -70,7 +70,8 @@ public final class StageCompletionService {
 
     public void complete(StageExecutionResult result) {
         Objects.requireNonNull(result, "result");
-        Instant now = result.completedAt();
+        // Prefer wall-clock end over claim Instant so completed_at > started_at when latency > 0.
+        Instant now = Instant.now();
         AiJob job = result.job();
 
         if (!result.succeeded()) {
@@ -110,7 +111,7 @@ public final class StageCompletionService {
                 result.latencyMs(),
                 result.inputTokens(),
                 result.outputTokens(),
-                Instant.now());
+                now);
         dependencies.markSatisfiedForCompletedDependency(job.id());
 
         String hash = transcriptHashResolver.hashFor(job.tenantId(), job.transcriptId());

@@ -36,4 +36,15 @@ final class MetricRecorderPipelineQualityMetrics implements PipelineQualityMetri
             }
         }
     }
+
+    @Override
+    public void recordFallback(String stage, String reason) {
+        metrics.increment(
+                ActenoraMetric.MEETING_PIPELINE_FALLBACK,
+                Map.of(
+                        "stage", stage == null ? "unknown" : stage,
+                        "reason", reason == null ? "unknown" : reason
+                )
+        );
+    }
 }

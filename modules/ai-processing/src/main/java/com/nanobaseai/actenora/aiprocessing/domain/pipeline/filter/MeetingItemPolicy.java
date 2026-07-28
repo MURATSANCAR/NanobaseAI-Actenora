@@ -80,8 +80,11 @@ public final class MeetingItemPolicy {
         String t = text.toLowerCase(Locale.ROOT).strip();
         return t.contains("bağlam paylaş")
                 || t.contains("noktanın açıl")
-                || t.contains("detaylandırılması")
+                || t.contains("noktayı aç")
+                || t.contains("detaylandır")
                 || t.contains("kapanış")
+                || t.contains("açmamız")
+                || t.contains("açalım")
                 || t.length() < 8;
     }
 }

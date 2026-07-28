@@ -29,6 +29,7 @@ public enum ActenoraMetric {
     MEETING_CHUNK_GATE_SHADOW_FN("actenora.meeting.chunk_gate_shadow_false_negative_total"),
     MEETING_CHUNK_GATE_TOKENS_SAVED("actenora.meeting.chunk_gate_tokens_saved_total"),
     MEETING_CHUNK_GATE_UNSUPPORTED_DECISION("actenora.meeting.chunk_gate_unsupported_decision_total"),
+    MEETING_PIPELINE_FALLBACK("actenora.meeting.pipeline.fallback"),
     TOKENS("actenora.inference.tokens"),
     INVALID_JSON("actenora.validation.invalid_json"),
     EVIDENCE_FAILURE("actenora.validation.evidence_failure"),

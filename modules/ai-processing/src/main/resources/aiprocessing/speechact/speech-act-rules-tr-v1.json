@@ -40,19 +40,19 @@
     {
       "id": "tr-discuss-001",
       "speechAct": "DISCUSSION_PROMPT",
-      "pattern": "(?iu)\\b(bu\\s+noktay[ıi]\\s+biraz\\s+a[cç]mam[ıi]z\\s+[iı]yi\\s+olur|bu\\s+konuyu\\s+biraz\\s+a[cç]al[ıi]m|buray[ıi]\\s+a[cç]mam[ıi]z\\s+gerekiyor|bu\\s+noktay[ıi]\\s+a[cç]al[ıi]m)\\b",
+      "pattern": "(?iu)\\b(bu\\s+noktay[ıi]\\s+(biraz\\s+)?a[cç]mam[ıi]z\\s+[iı]yi\\s+olur|bu\\s+noktay[ıi]\\s+a[cç]al[ıi]m|bu\\s+konuyu\\s+biraz\\s+a[cç]al[ıi]m|buray[ıi]\\s+a[cç]mam[ıi]z\\s+gerekiyor)\\b",
       "confidence": 0.97
     },
     {
       "id": "tr-note-001",
       "speechAct": "NOTE_INSTRUCTION",
-      "pattern": "(?iu)\\b(notlara\\s+ekle|tutan(aga|a[gğ]a)\\s+ta[sş]|uydurma\\s+madde\\s+ekleme)\\b",
+      "pattern": "(?iu)(notlara\\s+ekle|tutan(aga|a[gğ]a)\\s+ta[sş][\\p{L}]*|uydurma\\s+madde\\s+ekleme)",
       "confidence": 0.97
     },
     {
       "id": "tr-close-001",
       "speechAct": "CLOSING_META",
-      "pattern": "(?iu)\\b(toplant[ıi]y[ıi]\\s+kapat|kapan[ıi][sş]|yönetici\\s+özeti\\s+i[cç]in)\\b",
+      "pattern": "(?iu)(toplant[ıi]y[ıi]\\s+kapat|\\bkapan[ıi][sş]\\b|yönetici\\s+özeti\\s+i[cç]in)",
       "confidence": 0.95
     },
     {

@@ -466,7 +466,7 @@ public final class AiJobInferenceExecutor {
                 result.failureCategory(),
                 result.failureMessage() == null ? result.failureCategory().name() : result.failureMessage(),
                 result.permanentFailure(),
-                now
+                java.time.Instant.now()
         );
     }
 
@@ -514,10 +514,12 @@ public final class AiJobInferenceExecutor {
             return ExecutionOutcome.succeeded(
                     completed.id(), attemptId, completed.status(), result.latencyMs(), null);
         } catch (LocalModelProviderException ex) {
-            return fail(job, attemptId, elapsedMs(startedNanos), ex.category(), ex.retryable(), ex.getMessage(), now);
+            return fail(job, attemptId, elapsedMs(startedNanos), ex.category(), ex.retryable(), ex.getMessage(),
+                    java.time.Instant.now());
         } catch (RuntimeException ex) {
             return fail(job, attemptId, elapsedMs(startedNanos),
-                    ProviderFailureCategory.UNKNOWN, false, ex.getClass().getSimpleName(), now);
+                    ProviderFailureCategory.UNKNOWN, false, ex.getClass().getSimpleName(),
+                    java.time.Instant.now());
         }
     }
 

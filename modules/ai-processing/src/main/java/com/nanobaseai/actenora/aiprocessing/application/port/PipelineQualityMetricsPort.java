@@ -9,9 +9,16 @@ public interface PipelineQualityMetricsPort {
 
     void recordFailure(FailureCategory category);
 
+    default void recordFallback(String stage, String reason) {
+        // optional; adapters may override
+    }
+
     static PipelineQualityMetricsPort noop() {
-        return category -> {
-            // intentionally empty
+        return new PipelineQualityMetricsPort() {
+            @Override
+            public void recordFailure(FailureCategory category) {
+                // intentionally empty
+            }
         };
     }
 }
