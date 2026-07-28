@@ -4,7 +4,7 @@ import { TemplateDocumentPreviewStage } from "@/components/template/TemplateDocu
 import type { TemplateVersionDetail } from "@/api/types";
 import type { DesignComponent, TemplateComponentType } from "@/types/template";
 import { buildStandardDesignSchema } from "@/lib/templateStandards";
-import { diffDesignSchemas, meaningfulDiffEntries } from "@/lib/templateSchemaDiff";
+import { diffDesignSchemas, meaningfulDiffEntries, type MeaningfulSchemaDiffKind } from "@/lib/templateSchemaDiff";
 import { useI18n } from "@/i18n";
 import type { MessageKey } from "@/i18n";
 
@@ -20,14 +20,14 @@ function schemaComponents(version: TemplateVersionDetail | undefined): DesignCom
   return buildStandardDesignSchema().components;
 }
 
-const DIFF_KIND_KEY: Record<"added" | "removed" | "moved" | "changed", MessageKey> = {
+const DIFF_KIND_KEY: Record<MeaningfulSchemaDiffKind, MessageKey> = {
   added: "templates.compare.diff.added",
   removed: "templates.compare.diff.removed",
   moved: "templates.compare.diff.moved",
   changed: "templates.compare.diff.changed",
 };
 
-const DIFF_KIND_STYLE: Record<"added" | "removed" | "moved" | "changed", string> = {
+const DIFF_KIND_STYLE: Record<MeaningfulSchemaDiffKind, string> = {
   added: "border-emerald-200 bg-emerald-50 text-emerald-900",
   removed: "border-rose-200 bg-rose-50 text-rose-900",
   moved: "border-sky-200 bg-sky-50 text-sky-900",

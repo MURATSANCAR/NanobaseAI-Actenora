@@ -1,6 +1,7 @@
 import type { DesignComponent } from "@/types/template";
 
 export type SchemaDiffKind = "added" | "removed" | "moved" | "changed" | "unchanged";
+export type MeaningfulSchemaDiffKind = Exclude<SchemaDiffKind, "unchanged">;
 
 export interface SchemaDiffEntry {
   id: string;
@@ -11,6 +12,8 @@ export interface SchemaDiffEntry {
   /** Order in the right schema (or left when removed). */
   order: number;
 }
+
+export type MeaningfulSchemaDiffEntry = SchemaDiffEntry & { kind: MeaningfulSchemaDiffKind };
 
 function propsEqual(a: Record<string, string>, b: Record<string, string>): boolean {
   const aKeys = Object.keys(a);
@@ -70,6 +73,6 @@ export function diffDesignSchemas(
 }
 
 /** Entries that represent an actual difference (excludes unchanged). */
-export function meaningfulDiffEntries(entries: SchemaDiffEntry[]): SchemaDiffEntry[] {
-  return entries.filter((e) => e.kind !== "unchanged");
+export function meaningfulDiffEntries(entries: SchemaDiffEntry[]): MeaningfulSchemaDiffEntry[] {
+  return entries.filter((e): e is MeaningfulSchemaDiffEntry => e.kind !== "unchanged");
 }
