@@ -46,6 +46,8 @@
   .conversation-scroll {
     scrollbar-gutter: stable;
     scrollbar-width: thin;
+    /* Prevent browser scroll anchoring from nudging the thumb while rows remount. */
+    overflow-anchor: none;
   }
 }
 

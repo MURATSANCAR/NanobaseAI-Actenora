@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Download } from "lucide-react";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
-import type { EvidenceRef } from "@/api/types";
+import type { EvidenceRef, MeetingDetailResponse } from "@/api/types";
 import { MeetingHeaderBar } from "@/components/meeting/MeetingHeaderBar";
 import { MeetingProgressPipeline } from "@/components/meeting/MeetingProgressPipeline";
 import { PageShell } from "@/components/qa/PageShell";
@@ -26,6 +26,7 @@ export function MeetingDetailPage() {
   const [highlight, setHighlight] = useState<EvidenceRef | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | undefined>();
+  const detailRef = useRef<MeetingDetailResponse | undefined>(undefined);
 
   const detailQ = useQuery({
     queryKey: queryKeys.meetingDetail(meetingId),
@@ -35,20 +36,25 @@ export function MeetingDetailPage() {
       meetingNeedsProcessingPoll(query.state.data) ? MEETING_PROCESSING_POLL_MS : false,
   });
 
+  detailRef.current = detailQ.data;
+
   useEffect(() => {
     if (detailQ.dataUpdatedAt && meetingNeedsProcessingPoll(detailQ.data)) {
       setLastUpdated(new Date(detailQ.dataUpdatedAt));
     }
   }, [detailQ.dataUpdatedAt, detailQ.data]);
 
+  // Only when the selected segment changes — not on processing poll refreshes of detail.
   useEffect(() => {
-    if (!selectedSegmentId || !detailQ.data) return;
-    const linked = findArtifactsForSegment(detailQ.data, selectedSegmentId);
+    if (!selectedSegmentId) return;
+    const detail = detailRef.current;
+    if (!detail) return;
+    const linked = findArtifactsForSegment(detail, selectedSegmentId);
     const first = linked[0];
     if (!first) return;
     const id = `artifact-${first.kind}-${first.item.id}`;
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [selectedSegmentId, detailQ.data]);
+  }, [selectedSegmentId]);
 
   const conversationParams = useMemo(() => ({}), []);
   const conversationQ = useQuery({
