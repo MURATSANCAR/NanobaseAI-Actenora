@@ -107,8 +107,9 @@ export function ConversationPanel({
     if (scrolledHighlightRef.current === highlightSegmentId) return;
     scrolledHighlightRef.current = highlightSegmentId;
     // Defer until layout settles so we do not fight measureElement resize loops.
+    // Use instant scroll — smooth + remasure fights and makes the thumb crawl.
     const frame = requestAnimationFrame(() => {
-      virtualizer.scrollToIndex(idx, { align: "center", behavior: "smooth" });
+      virtualizer.scrollToIndex(idx, { align: "center", behavior: "auto" });
     });
     return () => cancelAnimationFrame(frame);
   }, [highlightSegmentId, filtered, segments, virtualizer]);
