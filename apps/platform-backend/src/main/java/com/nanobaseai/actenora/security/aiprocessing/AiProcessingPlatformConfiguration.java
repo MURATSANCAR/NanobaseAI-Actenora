@@ -299,8 +299,11 @@ public class AiProcessingPlatformConfiguration {
     ExtractionPipelineService extractionPipelineService(
             PromptRegistryPort promptRegistry,
             ModelRuntimePort modelRuntime,
-            com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService
+            com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService,
+            PipelineQualityMetricsPort pipelineQualityMetrics,
+            MeetingSignalGateProperties meetingSignalGateProperties
     ) {
+        MeetingQualityProperties.install(meetingSignalGateProperties.toMeetingQualityProperties());
         return new ExtractionPipelineService(
                 promptRegistry,
                 modelRuntime,
@@ -315,7 +318,8 @@ public class AiProcessingPlatformConfiguration {
                 new com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteAssembler(),
                 new com.nanobaseai.actenora.aiprocessing.domain.pipeline.RetryClassifier(),
                 new com.nanobaseai.actenora.aiprocessing.domain.pipeline.PromptInjectionGuard(),
-                chunkExtractionService
+                chunkExtractionService,
+                pipelineQualityMetrics
         );
     }
 

@@ -834,7 +834,7 @@ public final class DefaultStageExecutors {
                     PriorMeetingContext prior = priorContext
                             .load(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
                             .orElse(PriorMeetingContext.EMPTY);
-                    draft = new MinutesSynthesisAndAudit(modelRuntime, 1800)
+                    draft = new MinutesSynthesisAndAudit(modelRuntime, 1800, qualityMetrics)
                             .synthesizeAndAudit(
                                     bundle,
                                     deterministic,
