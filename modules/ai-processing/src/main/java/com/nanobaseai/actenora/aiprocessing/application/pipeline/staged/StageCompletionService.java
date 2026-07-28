@@ -105,7 +105,12 @@ public final class StageCompletionService {
         long queueWaitMs = Math.max(0L, java.time.Duration.between(job.queuedAt(), now).toMillis() - result.latencyMs());
         metrics.recordQueueWait(job.stage(), queueWaitMs);
 
-        jobService.completeAttempt(job.id(), result.latencyMs(), result.inputTokens(), result.outputTokens(), now);
+        jobService.completeAttempt(
+                job.id(),
+                result.latencyMs(),
+                result.inputTokens(),
+                result.outputTokens(),
+                Instant.now());
         dependencies.markSatisfiedForCompletedDependency(job.id());
 
         String hash = transcriptHashResolver.hashFor(job.tenantId(), job.transcriptId());

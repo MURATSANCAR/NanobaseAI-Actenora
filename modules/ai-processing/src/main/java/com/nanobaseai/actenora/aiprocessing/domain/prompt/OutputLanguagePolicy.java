@@ -42,6 +42,12 @@ public final class OutputLanguagePolicy {
                 : "Çıkarım tamamlandı; birincil konu/karar bulunamadı. Manuel inceleme önerilir.";
     }
 
+    public static String unreliableSummary(String language) {
+        return "en".equals(normalize(language))
+                ? "A reliable executive summary could not be produced from this meeting."
+                : "Toplantıdan güvenilir bir yönetici özeti üretilemedi.";
+    }
+
     /**
      * If the model returns a known empty/meta sentence in the wrong language, replace it.
      */

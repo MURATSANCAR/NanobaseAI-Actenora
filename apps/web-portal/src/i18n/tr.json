@@ -485,6 +485,7 @@
   "backend.qualityFlag.LOW_CONFIDENCE": "Düşük güven",
   "backend.qualityFlag.SYNTHESIS_FALLBACK": "AI sentezi yedek taslağa düştü",
   "backend.qualityFlag.AUDIT_FALLBACK": "AI kanıt denetimi yedek moda düştü",
+  "backend.qualityFlag.TYPE_LAUNDER_DROPPED": "Karar dışı gürültü alanlar arası temizlendi",
   "backend.qualityFlag.REQUIRES_MANUAL_REVIEW": "Manuel inceleme gerekli",
   "backend.qualityFlag.MISSING_EVIDENCE": "Kanıt eksik",
   "backend.qualityFlag.PARTIAL_EVIDENCE_NEEDS_REVIEW": "Kısmi kanıt — inceleme gerekli",

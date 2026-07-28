@@ -13,7 +13,8 @@ ALLOWED_EVIDENCE_IDS: {{evidenceSegmentIds}}
 GÖREVLER
 1. Tekrarları birleştir; candidateId çakışmalarını çöz.
 2. Öneri/karar ayrımını koru (proposals ≠ decisions). Status-quo dolgu (“mevcut kararı değiştirmiyoruz”,
-   “yeni karar yok”, “sadece bağlam”) decisions'tan çıkar.
+   “yeni karar yok”, “sadece bağlam”), discussion prompt ve kapanış meta içeriğini decisions,
+   importantFacts, openQuestions, topics veya commitments’e taşıma — tamamen çıkar.
 3. confidence < 0.75 olan kritik öğeleri qualityFlags içine NEEDS_REVIEW olarak işaretle.
 4. purpose ve executiveSummary dahil tüm metin alanlarını {{outputLanguage}} dilinde yaz; özet en fazla 150 kelime;
    kabul edilmemiş öneriyi karar gibi sunma. Özeti gerçek karar/aksiyon/risk sinyallerine ağırlık ver;

@@ -485,6 +485,7 @@
   "backend.qualityFlag.LOW_CONFIDENCE": "Low confidence",
   "backend.qualityFlag.SYNTHESIS_FALLBACK": "AI synthesis used a fallback draft",
   "backend.qualityFlag.AUDIT_FALLBACK": "AI evidence audit used a fallback",
+  "backend.qualityFlag.TYPE_LAUNDER_DROPPED": "Non-decision filler dropped across note fields",
   "backend.qualityFlag.REQUIRES_MANUAL_REVIEW": "Requires manual review",
   "backend.qualityFlag.MISSING_EVIDENCE": "Missing evidence",
   "backend.qualityFlag.PARTIAL_EVIDENCE_NEEDS_REVIEW": "Partial evidence — needs review",

@@ -35,12 +35,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Call-2 synthesizer + Call-3 evidence audit for the evidence-based minutes pipeline.
  * Falls back to the provided deterministic draft when LLM synthesis/audit fails.
  */
 public final class MinutesSynthesisAndAudit {
+
+    private static final Logger LOG = Logger.getLogger(MinutesSynthesisAndAudit.class.getName());
+    private static final AtomicLong SYNTHESIS_FALLBACKS = new AtomicLong();
+    private static final AtomicLong AUDIT_FALLBACKS = new AtomicLong();
 
     private final ModelRuntimePort modelRuntime;
     private final LimitedJsonRepair jsonRepair;
@@ -220,6 +227,12 @@ public final class MinutesSynthesisAndAudit {
                     manual
             );
         } catch (RuntimeException | IOException ex) {
+            SYNTHESIS_FALLBACKS.incrementAndGet();
+            LOG.log(Level.SEVERE,
+                    () -> "Pipeline stage failed; fallback activated. stage=SYNTHESIS meetingTitle="
+                            + meetingTitle
+                            + " reason=" + ex.getClass().getSimpleName());
+            LOG.log(Level.SEVERE, "SYNTHESIS fallback detail", ex);
             List<String> flags = new ArrayList<>(fallback.qualityFlags());
             flags.add("SYNTHESIS_FALLBACK");
             return new FinalNoteDraft(
@@ -301,6 +314,12 @@ public final class MinutesSynthesisAndAudit {
             List<OpenQuestionCandidate> questions = draft.openQuestions().stream()
                     .filter(q -> !unsupported.contains(q.text().trim().toLowerCase(Locale.ROOT)))
                     .toList();
+            List<ImportantFactCandidate> facts = draft.importantFacts().stream()
+                    .filter(f -> !unsupported.contains(f.text().trim().toLowerCase(Locale.ROOT)))
+                    .toList();
+            List<TopicCandidate> topics = draft.topics().stream()
+                    .filter(t -> !unsupported.contains(t.text().trim().toLowerCase(Locale.ROOT)))
+                    .toList();
             List<String> flags = new ArrayList<>(draft.qualityFlags());
             flags.add("LLM_AUDITED");
             if (!leaked.isEmpty()) {
@@ -317,16 +336,21 @@ public final class MinutesSynthesisAndAudit {
                     risks,
                     questions,
                     commitments,
-                    draft.topics(),
+                    topics,
                     draft.issues(),
                     draft.proposals(),
-                    draft.importantFacts(),
+                    facts,
                     flags,
                     draft.evidenceSegmentIds(),
                     draft.confidence(),
                     manual
             );
         } catch (RuntimeException | IOException ex) {
+            AUDIT_FALLBACKS.incrementAndGet();
+            LOG.log(Level.SEVERE,
+                    () -> "Pipeline stage failed; fallback activated. stage=AUDIT reason="
+                            + ex.getClass().getSimpleName());
+            LOG.log(Level.SEVERE, "AUDIT fallback detail", ex);
             List<String> flags = new ArrayList<>(draft.qualityFlags());
             flags.add("AUDIT_FALLBACK");
             return new FinalNoteDraft(
@@ -346,6 +370,15 @@ public final class MinutesSynthesisAndAudit {
                     draft.requiresManualReview()
             );
         }
+    }
+
+    /** Test/ops visibility for fallback counters. */
+    public static long synthesisFallbackCount() {
+        return SYNTHESIS_FALLBACKS.get();
+    }
+
+    public static long auditFallbackCount() {
+        return AUDIT_FALLBACKS.get();
     }
 
     private ObjectNode toCandidateNode(ExtractionBundle bundle) {

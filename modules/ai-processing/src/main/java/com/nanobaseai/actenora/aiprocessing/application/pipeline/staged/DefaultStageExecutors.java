@@ -20,7 +20,9 @@ import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSo
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingArtifact;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
-import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DeterministicExtractionValidator;
@@ -499,7 +501,8 @@ public final class DefaultStageExecutors {
                         json = repair.repairOrThrow(json);
                     }
                     JsonNode node = schema.parseAndValidate(json);
-                    ExtractionBundle bundle = bundleMapper.fromJson(node);
+                    ExtractionBundle bundle = ProposalCuePostProcessor.productionDefaults()
+                            .process(bundleMapper.fromJson(node));
                     validator.validate(
                             bundle,
                             new HashSet<>(c.segmentIds()),
@@ -651,7 +654,9 @@ public final class DefaultStageExecutors {
                             job, false, "NO_CHUNK_BUNDLES", "no chunk extraction artifacts",
                             (System.nanoTime() - t0) / 1_000_000L, now);
                 }
-                ExtractionBundle merged = merger.merge(bundles);
+                ExtractionBundle merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
+                        ProposalCuePostProcessor.productionDefaults().process(merger.merge(bundles)));
+                String cleanedJson = MAPPER.writeValueAsString(MAPPER.valueToTree(merged));
                 String deterministicJson = MAPPER.writeValueAsString(Map.of(
                         "mergedDeterministic", true,
                         "topicCount", merged.topics() == null ? 0 : merged.topics().size()
@@ -677,15 +682,14 @@ public final class DefaultStageExecutors {
                 if (repair.needsRepair(json)) {
                     json = repair.repairOrThrow(json);
                 }
-                // Prefer LLM output when schema-valid; else keep deterministic bundle serialized via last chunk style
+                // Prefer LLM output when schema-valid; else keep scrubbed deterministic merge.
                 try {
-                    schema.parseAndValidate(json);
+                    JsonNode llmNode = schema.parseAndValidate(json);
+                    ExtractionBundle llmBundle = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
+                            ProposalCuePostProcessor.productionDefaults().process(bundleMapper.fromJson(llmNode)));
+                    json = MAPPER.writeValueAsString(MAPPER.valueToTree(llmBundle));
                 } catch (RuntimeException ex) {
-                    json = bundles.isEmpty() ? deterministicJson
-                            : artifacts.findLatestByMeetingAndType(
-                                    job.tenantId(), job.meetingOccurrenceId(), "chunk-extraction-0")
-                            .flatMap(ProcessingArtifact::payloadJson)
-                            .orElse(deterministicJson);
+                    json = cleanedJson;
                 }
                 return StageExecutionResult.success(
                         job, "merged-bundle", json,
@@ -791,6 +795,8 @@ public final class DefaultStageExecutors {
                 } else {
                     ExtractionBundle bundle = new ExtractionBundleMapper()
                             .fromJson(new ExtractionJsonSchemaValidator().parseAndValidate(source));
+                    bundle = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
+                            ProposalCuePostProcessor.productionDefaults().process(bundle));
                     FinalNoteDraft deterministic = noteAssembler.assemble(bundle, job.language());
                     // Same allowlist as VALIDATE / legacy ExtractionPipelineService: all transcript segment ids.
                     List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
@@ -809,6 +815,7 @@ public final class DefaultStageExecutors {
                                     job.language(),
                                     prior
                             );
+                    draft = FinalNoteConfidencePolicy.productionDefaults().apply(draft);
                 }
                 Optional<UUID> noteId = noteHandoff.handoff(new MeetingNoteHandoffPort.HandoffCommand(
                         job.tenantId(),

@@ -143,6 +143,11 @@ actenora:
       # champion/challenger shadow; never replaces the production result, consensus stays OFF
       shadow-execution-enabled: ${ACTENORA_AI_ROUTING_SHADOW_ENABLED:false}
   meeting:
+    quality:
+      synthesis-fallback-confidence-cap: ${ACTENORA_MEETING_QUALITY_SYNTHESIS_FALLBACK_CAP:0.65}
+      audit-fallback-confidence-cap: ${ACTENORA_MEETING_QUALITY_AUDIT_FALLBACK_CAP:0.55}
+      double-fallback-confidence-cap: ${ACTENORA_MEETING_QUALITY_DOUBLE_FALLBACK_CAP:0.45}
+      manual-review-on-any-fallback: ${ACTENORA_MEETING_QUALITY_MANUAL_REVIEW_ON_FALLBACK:true}
     signal-gate:
       enabled: ${ACTENORA_MEETING_SIGNAL_GATE_ENABLED:true}
       mode: ${ACTENORA_MEETING_SIGNAL_GATE_MODE:adaptive}

@@ -12,8 +12,10 @@ TEMEL KURALLAR
 7. “Yapabiliriz/bakalım/değerlendirelim” kesin görev veya karar değildir.
 8. “Yapacağım/hazırlayacağım/göndereceğim” commitment olabilir.
 9. Owner veya dueDate açık değilse null bırak; konuşmacıyı otomatik owner sayma.
-10. Status-quo / dolgu karar değildir: “mevcut kararı değiştirmiyoruz”, “yeni karar yok”, “sadece bağlam”,
-    ekran paylaşımı / mikrofon / liste senkronu cümlelerini Decision olarak yazma.
+10. Status-quo / dolgu hiçbir çıktı kategorisine eklenmez: “mevcut kararı değiştirmiyoruz”, “yeni karar yok”,
+    “sadece bağlam”, ekran/mikrofon/liste senkronu, “bu noktayı açalım”, not alma talimatı, kapanış meta.
+    Bunları decisions, importantFacts, openQuestions, topics, commitments, actions veya proposals’a yazma; tamamen at.
+10b. “Henüz karar değil” / açık öneri → proposals. Yalnız konuşmayı sürdürme ifadesi → at (proposal değil).
 11. Risk mitigation/likelihood konuşulduysa koru; sentez aşamasında düşürme.
 12. Tüm kullanıcıya görünen metin alanlarını (purpose, executiveSummary, topics, decisions, actionItems, risks, commitments, openQuestions ve benzeri) YALNIZCA {{outputLanguage}} dilinde yaz (dil kodu: {{outputLanguageCode}}). Kullanıcı dilinin dışında hiçbir ifade, meta cümle veya boş-özet metni üretme.
 12b. Çok maddeli metinlerde okunabilirlik: maddeleri `;` ile tek satırda birleştirme; her maddeyi `1. ` / `2. ` ile yeni satıra yaz; sıra numarası metinden ayrılıp alt satıra düşmesin.

@@ -1,7 +1,9 @@
 package com.nanobaseai.actenora.aiprocessing.application.pipeline;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DeterministicExtractionValidator;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceNearMissConfig;
@@ -215,6 +217,8 @@ public final class ExtractionPipelineService {
             );
 
             ExtractionBundle merged = merger.merge(perChunk);
+            merged = ProposalCuePostProcessor.productionDefaults().process(merged);
+            merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(merged);
             Set<String> allowed = normalized.stream()
                     .map(SegmentInput::segmentId)
                     .collect(Collectors.toCollection(HashSet::new));
@@ -230,6 +234,7 @@ public final class ExtractionPipelineService {
                             language,
                             request.priorMeetingContext()
                     );
+            note = FinalNoteConfidencePolicy.productionDefaults().apply(note);
             metrics.addDurationMs((System.nanoTime() - pipelineStarted) / 1_000_000L);
             return PipelineRunResult.succeeded(promptVersionId, modelVersion, note, metrics);
         } catch (PipelineException ex) {
@@ -626,7 +631,7 @@ public final class ExtractionPipelineService {
 
         String groundingCorpus = chunk.joinedContent() + "\n" + fullCorpus;
         deterministicValidator.validate(scrub.bundle(), allowed, groundingCorpus);
-        return scrub.bundle();
+        return ProposalCuePostProcessor.productionDefaults().process(scrub.bundle());
     }
 
     private JsonNode parseExtractionJson(String raw, PipelineRunMetrics metrics) {

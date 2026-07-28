@@ -446,7 +446,7 @@ public final class AiJobInferenceExecutor {
                     ? result.metrics().durationMs()
                     : elapsedMs(startedNanos);
             AiJob completed = jobService.completeAttempt(
-                    job.id(), latencyMs, inputTokens, outputTokens, now);
+                    job.id(), latencyMs, inputTokens, outputTokens, java.time.Instant.now());
             UUID meetingNoteId = null;
             try {
                 meetingNoteId = handoffFinalNote(job, result).orElse(null);
@@ -509,7 +509,7 @@ public final class AiJobInferenceExecutor {
                     result.latencyMs(),
                     result.tokenUsage().inputTokens(),
                     result.tokenUsage().outputTokens(),
-                    now
+                    java.time.Instant.now()
             );
             return ExecutionOutcome.succeeded(
                     completed.id(), attemptId, completed.status(), result.latencyMs(), null);

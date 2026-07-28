@@ -286,7 +286,14 @@ public final class MapAiCandidatesToNoteService {
             ));
         }
 
-        if (anyMissingEvidence) {
+        if (anyMissingEvidence
+                || candidates.qualityFlags().stream().anyMatch(f ->
+                f != null && (
+                        f.equalsIgnoreCase("REQUIRES_MANUAL_REVIEW")
+                                || f.equalsIgnoreCase("SYNTHESIS_FALLBACK")
+                                || f.equalsIgnoreCase("AUDIT_FALLBACK")
+                                || f.toUpperCase(Locale.ROOT).contains("FALLBACK")
+                ))) {
             note.markManualReviewWithoutLock(now);
         }
 
@@ -340,6 +347,7 @@ public final class MapAiCandidatesToNoteService {
             case "LOW_CONFIDENCE" -> QualityFlagCode.LOW_CONFIDENCE;
             case "MISSING_EVIDENCE" -> QualityFlagCode.MISSING_EVIDENCE;
             case "SCHEMA_WARNING" -> QualityFlagCode.SCHEMA_WARNING;
+            case "TYPE_LAUNDER_DROPPED" -> QualityFlagCode.TYPE_LAUNDER_DROPPED;
             default -> QualityFlagCode.OTHER;
         };
     }

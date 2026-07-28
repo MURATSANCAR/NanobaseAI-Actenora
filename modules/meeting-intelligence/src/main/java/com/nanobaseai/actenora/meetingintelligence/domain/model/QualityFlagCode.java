@@ -7,5 +7,6 @@ public enum QualityFlagCode {
     HUMAN_CORRECTION,
     SYNTHESIS_FALLBACK,
     AUDIT_FALLBACK,
+    TYPE_LAUNDER_DROPPED,
     OTHER
 }

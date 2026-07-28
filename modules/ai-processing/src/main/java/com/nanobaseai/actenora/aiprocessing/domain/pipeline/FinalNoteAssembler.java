@@ -5,6 +5,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.prompt.OutputLanguagePolicy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -54,46 +55,87 @@ public final class FinalNoteAssembler {
     }
 
     /**
-     * Builds a scannable executive summary: numbered agenda lines, then count lines —
-     * never a single semicolon-joined paragraph.
+     * Decision/action-first executive summary — never a topic dump with counters.
      */
     private static String buildSummary(ExtractionBundle bundle, String language) {
         boolean en = "en".equals(language);
         StringBuilder sb = new StringBuilder();
-        if (!bundle.topics().isEmpty()) {
-            sb.append(en ? "Agenda:" : "Gündem:").append('\n');
+
+        if (!bundle.decisions().isEmpty()) {
+            sb.append(en ? "Decisions" : "Kararlar").append('\n');
             int i = 1;
-            for (TopicCandidate topic : bundle.topics()) {
-                String line;
-                if (topic.summary() != null && !topic.summary().isBlank()) {
-                    line = topic.text() + " — " + topic.summary();
-                } else {
-                    line = topic.text();
-                }
-                sb.append(i++).append(". ").append(line).append('\n');
+            for (DecisionCandidate decision : bundle.decisions()) {
+                sb.append(i++).append(". ").append(decision.text().strip()).append('\n');
             }
         }
-        List<String> stats = new ArrayList<>(3);
-        if (!bundle.decisions().isEmpty()) {
-            stats.add(bundle.decisions().size() + (en ? " decision(s) recorded." : " karar kaydedildi."));
-        }
         if (!bundle.actionItems().isEmpty()) {
-            stats.add(bundle.actionItems().size() + (en ? " action item(s)." : " aksiyon maddesi."));
-        }
-        if (!bundle.risks().isEmpty()) {
-            stats.add(bundle.risks().size() + (en ? " risk(s)." : " risk."));
-        }
-        if (!stats.isEmpty()) {
             if (!sb.isEmpty()) {
                 sb.append('\n');
             }
-            for (String stat : stats) {
-                sb.append(stat).append('\n');
+            sb.append(en ? "Actions" : "Aksiyonlar").append('\n');
+            int i = 1;
+            for (ActionItemCandidate item : bundle.actionItems()) {
+                sb.append(i++).append(". ").append(item.text().strip()).append('\n');
+            }
+        }
+        if (!bundle.commitments().isEmpty() && bundle.decisions().isEmpty() && bundle.actionItems().isEmpty()) {
+            if (!sb.isEmpty()) {
+                sb.append('\n');
+            }
+            sb.append(en ? "Commitments" : "Taahhütler").append('\n');
+            int i = 1;
+            for (CommitmentCandidate item : bundle.commitments()) {
+                sb.append(i++).append(". ").append(item.text().strip()).append('\n');
+            }
+        }
+        if (!bundle.risks().isEmpty()) {
+            if (!sb.isEmpty()) {
+                sb.append('\n');
+            }
+            sb.append(en ? "Risks" : "Riskler").append('\n');
+            int i = 1;
+            for (RiskCandidate risk : bundle.risks()) {
+                sb.append(i++).append(". ").append(risk.text().strip()).append('\n');
+            }
+        }
+        if (sb.isEmpty() && !bundle.openQuestions().isEmpty()) {
+            sb.append(en ? "Open questions" : "Açık konular").append('\n');
+            int i = 1;
+            for (OpenQuestionCandidate question : bundle.openQuestions()) {
+                sb.append(i++).append(". ").append(question.text().strip()).append('\n');
             }
         }
         if (sb.isEmpty()) {
-            return OutputLanguagePolicy.emptySummary(language);
+            List<TopicCandidate> usableTopics = bundle.topics().stream()
+                    .filter(FinalNoteAssembler::isUsableTopic)
+                    .toList();
+            if (!usableTopics.isEmpty()) {
+                sb.append(en ? "Agenda:" : "Gündem:").append('\n');
+                int i = 1;
+                for (TopicCandidate topic : usableTopics) {
+                    sb.append(i++).append(". ").append(topic.text().strip()).append('\n');
+                }
+            }
+        }
+        if (sb.isEmpty()) {
+            return OutputLanguagePolicy.unreliableSummary(language);
         }
         return sb.toString().trim();
+    }
+
+    private static boolean isUsableTopic(TopicCandidate topic) {
+        if (topic == null || topic.text() == null || topic.text().isBlank()) {
+            return false;
+        }
+        if (topic.evidenceSegmentIds() == null || topic.evidenceSegmentIds().isEmpty()) {
+            return false;
+        }
+        String t = topic.text().toLowerCase(Locale.ROOT);
+        return !(t.contains("bağlam")
+                || t.contains("nokta")
+                || t.contains("detaylandır")
+                || t.contains("kapanış")
+                || t.contains("açmamız")
+                || t.length() < 12);
     }
 }
