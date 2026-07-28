@@ -23,7 +23,7 @@ public final class StructuralChunkSignalFeatureExtractor implements ChunkSignalF
             "(?iu)\\b\\d{1,3}([.,]\\d{3})*([.,]\\d+)?\\s*(tl|usd|eur|₺)\\b|%\\s*\\d+|\\d+\\s*%"
     );
     private static final Pattern PERSON_TASK = Pattern.compile(
-            "(?iu)\\b([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,})\\b.{0,40}\\b(alsın|yapsın|hazırlasın|bıraksın|bitirsin|göndersin)\\b"
+            "(?iu)\\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,24}\\b(?:\\s+\\S+){0,6}\\s+\\b(alsın|yapsın|hazırlasın|bıraksın|bitirsin|göndersin)\\b"
     );
     private static final Pattern CLOSE_TOPIC = Pattern.compile(
             "(?iu)(bu\\s+nokta(yı)?\\s+.*(kapat|kapan)|konuyu\\s+kapattık|değişmeyecek|donduruyoruz|dondurulacak)"
@@ -217,8 +217,18 @@ public final class StructuralChunkSignalFeatureExtractor implements ChunkSignalF
     }
 
     private static double jaccard(String a, String b) {
-        Set<String> sa = Set.of(a.split(" "));
-        Set<String> sb = Set.of(b.split(" "));
+        Set<String> sa = new HashSet<>();
+        Set<String> sb = new HashSet<>();
+        for (String t : a.split(" ")) {
+            if (!t.isBlank()) {
+                sa.add(t);
+            }
+        }
+        for (String t : b.split(" ")) {
+            if (!t.isBlank()) {
+                sb.add(t);
+            }
+        }
         if (sa.isEmpty() && sb.isEmpty()) {
             return 1.0d;
         }

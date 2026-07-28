@@ -45,10 +45,12 @@ public final class TranscriptChunker {
             if (end >= segments.size()) {
                 break;
             }
-            start = nextStart(segments, tokenWeights, start, end, overlap);
-            if (start >= end) {
-                start = end;
+            int next = nextStart(segments, tokenWeights, start, end, overlap);
+            // Overlap must never rewind to the same start — that allocates forever.
+            if (next <= start) {
+                next = end;
             }
+            start = next;
         }
         return List.copyOf(chunks);
     }
@@ -122,8 +124,9 @@ public final class TranscriptChunker {
                 trailingNoise++;
             }
         }
-        // Enough filler after the last signal → cut right after last marker.
-        if (trailingNoise >= 2 && lastMarker + 1 > start) {
+        // Enough filler after the last signal → cut right after last marker,
+        // but only when the retained window is still substantial (avoids 10× tiny chunks).
+        if (trailingNoise >= 2 && lastMarker + 1 > start && (lastMarker + 1 - start) >= 12) {
             return lastMarker + 1;
         }
         return end;
@@ -145,13 +148,16 @@ public final class TranscriptChunker {
             idx--;
             acc += weights.get(idx);
         }
-        // Prefer overlapping onto a marker when present in the overlap window.
-        for (int i = idx; i < previousEnd; i++) {
+        // Prefer overlapping onto a marker in the overlap window, but never return
+        // previousStart: marker-at-chunk-head would otherwise infinite-loop the outer loop.
+        int candidate = idx;
+        for (int i = Math.max(idx, previousStart + 1); i < previousEnd; i++) {
             if (segments.get(i).markerNear()) {
-                return i;
+                candidate = i;
+                break;
             }
         }
-        return idx;
+        return candidate <= previousStart ? previousEnd : candidate;
     }
 
     private static int sum(List<Integer> weights, int start, int end) {

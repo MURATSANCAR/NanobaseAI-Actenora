@@ -12,8 +12,11 @@ public final class LexicalSemanticSimilarity {
         if (a == null || b == null || a.isBlank() || b.isBlank()) {
             return 0.0d;
         }
-        String[] ta = tokenize(a);
-        String[] tb = tokenize(b);
+        // Bound work for pathological long segments (gate must stay cheap).
+        String left = a.length() > 2_000 ? a.substring(0, 2_000) : a;
+        String right = b.length() > 2_000 ? b.substring(0, 2_000) : b;
+        String[] ta = tokenize(left);
+        String[] tb = tokenize(right);
         if (ta.length == 0 || tb.length == 0) {
             return 0.0d;
         }

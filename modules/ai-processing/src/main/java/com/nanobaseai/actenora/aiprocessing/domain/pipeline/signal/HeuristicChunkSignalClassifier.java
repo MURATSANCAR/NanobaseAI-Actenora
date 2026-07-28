@@ -16,9 +16,7 @@ public final class HeuristicChunkSignalClassifier implements ChunkSignalClassifi
             "(?iu)\\b(api|sözleşme|filtre|deploy|sprint|paket|kanal|smoke|maliyet|onay|teslim|"
                     + "release|contract|backlog|regresyon|vtt)\\b"
     );
-    private static final Pattern FUTURE_OR_IMPERATIVE = Pattern.compile(
-            "(?iu)\\b(\\w+(acağız|eceğiz|acak|ecek|alsın|yapsın|bitirsin)|we\\s+will|i'll|shall)\\b"
-    );
+    private static final Pattern EN_FUTURE = Pattern.compile("(?iu)\\b(we\\s+will|i'll|shall)\\b");
 
     @Override
     public SignalStrength classify(
@@ -43,7 +41,8 @@ public final class HeuristicChunkSignalClassifier implements ChunkSignalClassifi
                         + (features.moneyExpressions() > 0 ? 1 : 0);
 
         boolean hasBusinessObject = BUSINESS_OBJECT.matcher(lower).find();
-        boolean hasFuture = FUTURE_OR_IMPERATIVE.matcher(lower).find();
+        // Token suffix scan — never use \\w+(suffix) regex (catastrophic backtracking on TR text).
+        boolean hasFuture = EN_FUTURE.matcher(lower).find() || hasTurkishFutureOrImperative(lower);
         boolean noiseDominant = features.uiNoiseCount() >= Math.max(2, features.meaningfulSegmentCount())
                 && positiveAxes == 0;
         boolean metaOnly = features.negatedDecisionExpressions() > 0
@@ -63,5 +62,20 @@ public final class HeuristicChunkSignalClassifier implements ChunkSignalClassifi
             return SignalStrength.POSSIBLE_SIGNAL;
         }
         return SignalStrength.LOW_SIGNAL;
+    }
+
+    static boolean hasTurkishFutureOrImperative(String lower) {
+        for (String token : lower.split("[^\\p{L}\\p{N}]+")) {
+            if (token.length() < 4 || token.length() > 48) {
+                continue;
+            }
+            if (token.endsWith("acağız") || token.endsWith("eceğiz")
+                    || token.endsWith("acak") || token.endsWith("ecek")
+                    || token.endsWith("alsın") || token.endsWith("yapsın")
+                    || token.endsWith("bitirsin")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

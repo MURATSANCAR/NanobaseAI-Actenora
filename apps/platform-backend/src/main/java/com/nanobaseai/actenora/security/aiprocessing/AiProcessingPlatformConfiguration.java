@@ -379,11 +379,9 @@ public class AiProcessingPlatformConfiguration {
             ObjectProvider<ContinuityLedgerApi> continuityLedgerApi,
             ObjectProvider<HybridKnowledgeSearchPort> knowledgeSearch
     ) {
-        ContinuityLedgerApi api = continuityLedgerApi.getIfAvailable();
-        if (api == null) {
-            return PriorMeetingContextPort.noop();
-        }
-        return new LedgerPriorMeetingContextAdapter(api, knowledgeSearch.getIfAvailable());
+        // Temporary isolation: prior-context load was implicated in EVAL OOM before first infer.
+        // Re-enable LedgerPriorMeetingContextAdapter after the allocator is fixed.
+        return PriorMeetingContextPort.noop();
     }
 
     @Bean
