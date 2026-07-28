@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.security.messaging;
 
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
+import com.nanobaseai.actenora.security.meeting.MeetingEndedOrganizerMailHandler;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeWorkConsumer;
 import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
@@ -156,6 +157,11 @@ public class JdbcRabbitMessagingPlatformConfiguration {
         return jdbcRabbitEventBackbone.consumer("microsoft-connection");
     }
 
+    @Bean
+    IdempotentEventConsumer meetingEndedMailEventConsumer(EventBackbone jdbcRabbitEventBackbone) {
+        return jdbcRabbitEventBackbone.consumer("meeting-ended-mail");
+    }
+
     @Component
     @ConditionalOnProperty(name = "actenora.messaging.mode", havingValue = "jdbc-rabbit")
     static class JdbcRabbitInboundListeners {
@@ -164,9 +170,11 @@ public class JdbcRabbitMessagingPlatformConfiguration {
         private final IdempotentEventConsumer meetingIntelligenceEventConsumer;
         private final IdempotentEventConsumer aiProcessingEventConsumer;
         private final IdempotentEventConsumer microsoftConnectionEventConsumer;
+        private final IdempotentEventConsumer meetingEndedMailEventConsumer;
         private final MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler;
         private final NoteApprovedForLedgerHandler noteApprovedForLedgerHandler;
         private final TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler;
+        private final ObjectProvider<MeetingEndedOrganizerMailHandler> meetingEndedOrganizerMailHandler;
         private final ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler;
         private final ObjectProvider<GraphChangeWorkConsumer> graphChangeWorkConsumer;
 
@@ -175,9 +183,11 @@ public class JdbcRabbitMessagingPlatformConfiguration {
                 @Qualifier("meetingIntelligenceEventConsumer") IdempotentEventConsumer meetingIntelligenceEventConsumer,
                 @Qualifier("aiProcessingEventConsumer") IdempotentEventConsumer aiProcessingEventConsumer,
                 @Qualifier("microsoftConnectionEventConsumer") IdempotentEventConsumer microsoftConnectionEventConsumer,
+                @Qualifier("meetingEndedMailEventConsumer") IdempotentEventConsumer meetingEndedMailEventConsumer,
                 MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
                 NoteApprovedForLedgerHandler noteApprovedForLedgerHandler,
                 TranscriptReadyAiAdmissionHandler transcriptReadyAiAdmissionHandler,
+                ObjectProvider<MeetingEndedOrganizerMailHandler> meetingEndedOrganizerMailHandler,
                 ObjectProvider<TeamsTranscriptPollScheduler> transcriptPollScheduler,
                 ObjectProvider<GraphChangeWorkConsumer> graphChangeWorkConsumer
         ) {
@@ -185,9 +195,11 @@ public class JdbcRabbitMessagingPlatformConfiguration {
             this.meetingIntelligenceEventConsumer = meetingIntelligenceEventConsumer;
             this.aiProcessingEventConsumer = aiProcessingEventConsumer;
             this.microsoftConnectionEventConsumer = microsoftConnectionEventConsumer;
+            this.meetingEndedMailEventConsumer = meetingEndedMailEventConsumer;
             this.meetingOccurrenceUpsertedHandler = meetingOccurrenceUpsertedHandler;
             this.noteApprovedForLedgerHandler = noteApprovedForLedgerHandler;
             this.transcriptReadyAiAdmissionHandler = transcriptReadyAiAdmissionHandler;
+            this.meetingEndedOrganizerMailHandler = meetingEndedOrganizerMailHandler;
             this.transcriptPollScheduler = transcriptPollScheduler;
             this.graphChangeWorkConsumer = graphChangeWorkConsumer;
         }
@@ -205,6 +217,11 @@ public class JdbcRabbitMessagingPlatformConfiguration {
                     envelope,
                     aiProcessingEventConsumer,
                     transcriptReadyAiAdmissionHandler
+            );
+            EventBackboneConsumerDispatch.dispatchMeetingEnded(
+                    envelope,
+                    meetingEndedMailEventConsumer,
+                    meetingEndedOrganizerMailHandler.getIfAvailable()
             );
         }
 

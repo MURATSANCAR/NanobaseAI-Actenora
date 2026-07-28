@@ -8,6 +8,7 @@ import com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteFinalDeliveryPort;
+import com.nanobaseai.actenora.security.meeting.MeetingEndedOrganizerMailHandler;
 import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
 import com.nanobaseai.actenora.template.api.TemplateApi;
 import com.nanobaseai.actenora.template.application.DocumentRenderWorker;
@@ -71,6 +72,24 @@ public class DeliveryPlatformConfiguration {
                 Optional.ofNullable(objectStorage.getIfAvailable()),
                 Optional.ofNullable(meetingApi.getIfAvailable()),
                 Optional.ofNullable(deliveryWorker.getIfAvailable())
+        );
+    }
+
+    @Bean
+    @ConditionalOnBean({MeetingApi.class, DeliveryApi.class})
+    public MeetingEndedOrganizerMailHandler meetingEndedOrganizerMailHandler(
+            MeetingApi meetingApi,
+            DeliveryApi deliveryApi,
+            ObjectProvider<DeliveryWorker> deliveryWorker,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai/easymeeting}")
+                    String portalBaseUrl
+    ) {
+        return new MeetingEndedOrganizerMailHandler(
+                meetingApi,
+                deliveryApi,
+                Optional.ofNullable(deliveryWorker.getIfAvailable()),
+                portalBaseUrl
         );
     }
 }

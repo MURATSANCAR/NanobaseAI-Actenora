@@ -1,8 +1,11 @@
 package com.nanobaseai.actenora.delivery.infrastructure.mail;
 
+import com.nanobaseai.actenora.delivery.application.model.DraftMinutesReadyMailBody;
+import com.nanobaseai.actenora.delivery.application.model.MeetingEndedMailBody;
 import com.nanobaseai.actenora.delivery.application.model.MeetingNoteDocument;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryMailProvider;
 import com.nanobaseai.actenora.delivery.domain.DeliveryDomainException;
+import com.nanobaseai.actenora.delivery.domain.DeliveryIntent;
 import com.nanobaseai.actenora.delivery.domain.DeliveryPolicySnapshot;
 import com.nanobaseai.actenora.delivery.domain.ProviderMessage;
 import com.nanobaseai.actenora.delivery.infrastructure.render.MeetingNoteBrandedTemplates;
@@ -71,11 +74,23 @@ public final class SmtpMailProvider implements DeliveryMailProvider {
             helper.setSubject(command.request().subject());
 
             String plain = command.request().bodyText();
-            String html = MeetingNoteBrandedTemplates.emailHtmlFromPlain(
-                    command.request().subject(),
-                    plain,
-                    command.signedPortalUrl().orElse(null)
-            );
+            String html;
+            String intent = command.request().intent();
+            if (DeliveryIntent.MEETING_ENDED.equals(intent)) {
+                html = MeetingNoteBrandedTemplates.meetingEndedEmailHtml(
+                        MeetingEndedMailBody.decode(plain)
+                );
+            } else if (DeliveryIntent.DRAFT_ORGANIZER.equals(intent)) {
+                html = MeetingNoteBrandedTemplates.draftMinutesReadyEmailHtml(
+                        DraftMinutesReadyMailBody.decode(plain)
+                );
+            } else {
+                html = MeetingNoteBrandedTemplates.emailHtmlFromPlain(
+                        command.request().subject(),
+                        plain,
+                        command.signedPortalUrl().orElse(null)
+                );
+            }
             helper.setText(plain, html);
 
             if (command.pdfBytes().isPresent()) {

@@ -225,6 +225,30 @@ class MeetingApplicationServiceTest {
     }
 
     @Test
+    void listMeetingsOrdersByScheduledStartNewestFirstAndPaginates() {
+        UUID contextId = createContext().id();
+        MeetingResponse older = createMeeting(contextId, "g-old", "i-old", Instant.parse("2026-07-26T14:00:00Z"));
+        // Same calendar day: earlier clock (AM) before later clock (PM); newer days still first.
+        MeetingResponse morning = createMeeting(contextId, "g-am", "i-am", Instant.parse("2026-07-28T10:00:00Z"));
+        MeetingResponse afternoon = createMeeting(contextId, "g-pm", "i-pm", Instant.parse("2026-07-28T16:00:00Z"));
+
+        var all = api.listMeetings(new CursorPageRequest(null, contextId, null, 10));
+        assertEquals(List.of(morning.id(), afternoon.id(), older.id()),
+                all.items().stream().map(MeetingResponse::id).toList());
+
+        var firstPage = api.listMeetings(new CursorPageRequest(null, contextId, null, 2));
+        assertEquals(2, firstPage.items().size());
+        assertEquals(morning.id(), firstPage.items().get(0).id());
+        assertEquals(afternoon.id(), firstPage.items().get(1).id());
+        assertEquals(afternoon.id().toString(), firstPage.nextCursor());
+
+        var secondPage = api.listMeetings(new CursorPageRequest(null, contextId, firstPage.nextCursor(), 2));
+        assertEquals(1, secondPage.items().size());
+        assertEquals(older.id(), secondPage.items().getFirst().id());
+        assertEquals(null, secondPage.nextCursor());
+    }
+
+    @Test
     void advanceLifecycleCatchesDraftUpToEndedWhenPastEnd() {
         Instant start = Instant.now().minusSeconds(7200);
         Instant end = Instant.now().minusSeconds(3600);

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
 import { FileText, ListChecks, ShieldAlert, Target, Zap } from "lucide-react";
 import { HighlightPersonNames } from "@/components/meeting/HighlightPersonNames";
+import { MeetingMinutesPdfPreview } from "@/components/meeting/MeetingMinutesPdfPreview";
 import { MeetingNoteEditor } from "@/components/meeting/MeetingNoteEditor";
 import { MeetingReviewPanel } from "@/components/meeting/MeetingReviewPanel";
 import { StatusBadge } from "@/components/qa/StatusBadge";
@@ -14,6 +15,7 @@ import type {
   DecisionItem,
   EvidenceRef,
   MeetingDetailResponse,
+  MeetingNote,
   RiskItem,
 } from "@/api/types";
 import { useAuth } from "@/auth/AuthProvider";
@@ -22,6 +24,10 @@ import { isOptimisticSafe } from "@/lib/approval";
 import { evidenceMatchesSegment, formatEvidenceRange, isSeekableEvidence } from "@/lib/evidence";
 import { deriveMeetingPipelineStages } from "@/lib/meetingPipeline";
 import { collectPersonNames } from "@/lib/personNames";
+
+function isNoteApproved(note: MeetingNote): boolean {
+  return !note.draft && note.approvalStatus === "APPROVED";
+}
 
 type InsightTab = "decisions" | "actions" | "risks" | "commitments";
 
@@ -204,18 +210,6 @@ export function MeetingCenterPanel({
             {deliveryBadge ? (
               <StatusBadge label={deliveryBadge.label} status={deliveryBadge.status} />
             ) : null}
-            {pdfDocument?.downloadUrl ? (
-              <a
-                href={pdfDocument.downloadUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800"
-              >
-                {t("meeting.pdfDownload")}
-              </a>
-            ) : pdfPending ? (
-              <StatusBadge label={t("meeting.pdfPending")} status="QUEUED" />
-            ) : null}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/80 bg-gradient-to-r from-violet-50 to-sky-50 px-3 py-1 text-[11px] font-semibold text-violet-800">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
               {auth.can("meetings:edit") ? t("meeting.editEnabled") : t("meeting.readOnly")}
@@ -251,6 +245,21 @@ export function MeetingCenterPanel({
                 saving={noteMutation.isPending}
               />
             ))}
+            {primaryNoteId ? (
+              <MeetingMinutesPdfPreview
+                meetingTitle={detail.meeting.title}
+                body={
+                  noteDrafts[primaryNoteId] ??
+                  editableNotes.find((n) => n.id === primaryNoteId)?.body ??
+                  ""
+                }
+                approved={isNoteApproved(
+                  editableNotes.find((n) => n.id === primaryNoteId) ?? editableNotes[0]!,
+                )}
+                downloadUrl={pdfDocument?.downloadUrl ?? null}
+                pdfPending={pdfPending}
+              />
+            ) : null}
           </div>
         ) : (
           <p className="text-sm text-slate-500">{t("meeting.noNotesEditable")}</p>

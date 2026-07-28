@@ -23,6 +23,24 @@ function formatMeetingWhen(iso: string, locale: Locale) {
   };
 }
 
+/** Newer calendar days first; within a day, earlier clock time first (AM before PM). */
+export function compareMeetingsByScheduledStartDesc(a: MeetingSummary, b: MeetingSummary): number {
+  const aMs = Date.parse(a.scheduledStartAt);
+  const bMs = Date.parse(b.scheduledStartAt);
+  const aValid = !Number.isNaN(aMs);
+  const bValid = !Number.isNaN(bMs);
+  if (!aValid && !bValid) return b.id.localeCompare(a.id);
+  if (!aValid) return 1;
+  if (!bValid) return -1;
+
+  const aDate = new Date(aMs);
+  const bDate = new Date(bMs);
+  const aDay = Date.UTC(aDate.getFullYear(), aDate.getMonth(), aDate.getDate());
+  const bDay = Date.UTC(bDate.getFullYear(), bDate.getMonth(), bDate.getDate());
+  if (aDay !== bDay) return bDay - aDay;
+  return aMs - bMs;
+}
+
 /** Numbered card list used on dashboard "Recent meetings" and Meetings page. */
 export function MeetingSummaryList({
   meetings,
@@ -37,8 +55,9 @@ export function MeetingSummaryList({
   indexOffset?: number;
 }) {
   const { t, tb, locale } = useI18n();
+  const ordered = [...meetings].sort(compareMeetingsByScheduledStartDesc);
 
-  if (meetings.length === 0) {
+  if (ordered.length === 0) {
     return empty ? (
       <p className="rounded-2xl border border-dashed border-teal-200/80 bg-teal-50/40 px-4 py-8 text-center text-sm text-slate-600">
         {empty}
@@ -48,7 +67,7 @@ export function MeetingSummaryList({
 
   return (
     <ul className="dashboard-meeting-list" aria-label={ariaLabel}>
-      {meetings.map((m, index) => {
+      {ordered.map((m, index) => {
         const { dateLabel, timeLabel } = formatMeetingWhen(m.scheduledStartAt, locale);
         const displayIndex = indexOffset + index + 1;
         return (

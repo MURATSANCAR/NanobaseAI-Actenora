@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.security.messaging;
 
 import com.nanobaseai.actenora.meeting.application.port.MeetingEventPublisher;
 import com.nanobaseai.actenora.meeting.infrastructure.messaging.OutboxMeetingEventPublisher;
+import com.nanobaseai.actenora.security.meeting.MeetingEndedOrganizerMailHandler;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeWorkConsumer;
 import com.nanobaseai.actenora.sharedkernel.messaging.EventBackbone;
@@ -40,6 +41,7 @@ public class EventBackbonePlatformConfiguration {
     EventBackbone platformEventBackbone(
             MeetingOccurrenceUpsertedHandler meetingOccurrenceUpsertedHandler,
             NoteApprovedForLedgerHandler noteApprovedForLedgerHandler,
+            ObjectProvider<MeetingEndedOrganizerMailHandler> meetingEndedOrganizerMailHandler,
             ObjectProvider<TranscriptReadyAiAdmissionHandler> transcriptReadyHandler,
             ObjectProvider<GraphChangeWorkConsumer> graphChangeWorkConsumer
     ) {
@@ -55,6 +57,14 @@ public class EventBackbonePlatformConfiguration {
         IdempotentEventConsumer transcriptConsumer = backbone.consumer("transcript");
         transport.subscribe(envelope -> dispatchOccurrenceUpserted(
                 envelope, transcriptConsumer, meetingOccurrenceUpsertedHandler));
+
+        IdempotentEventConsumer meetingEndedConsumer = backbone.consumer("meeting-ended-mail");
+        transport.subscribe(envelope -> {
+            MeetingEndedOrganizerMailHandler handler = meetingEndedOrganizerMailHandler.getIfAvailable();
+            if (handler != null) {
+                EventBackboneConsumerDispatch.dispatchMeetingEnded(envelope, meetingEndedConsumer, handler);
+            }
+        });
 
         IdempotentEventConsumer aiConsumer = backbone.consumer("ai-processing");
         transport.subscribe(envelope -> {

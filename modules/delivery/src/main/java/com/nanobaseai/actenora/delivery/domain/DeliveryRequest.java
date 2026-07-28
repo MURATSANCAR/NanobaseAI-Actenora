@@ -138,11 +138,9 @@ public final class DeliveryRequest {
         return recipient.idempotencyKey(noteVersionId) + "|" + intent();
     }
 
-    /** DRAFT_ORGANIZER when approval is not required; otherwise FINAL_EXTERNAL. */
+    /** Intent channel from policy (explicit or derived from requireApproval). */
     public String intent() {
-        return policySnapshot.requireApproval()
-                ? DeliveryIntent.FINAL_EXTERNAL
-                : DeliveryIntent.DRAFT_ORGANIZER;
+        return policySnapshot.resolvedIntent();
     }
 
     public void applyPdfDecision(PdfAttachmentDecision decision) {

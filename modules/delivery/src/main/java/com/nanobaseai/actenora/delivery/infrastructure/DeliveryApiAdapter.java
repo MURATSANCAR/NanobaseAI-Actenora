@@ -120,6 +120,35 @@ public final class DeliveryApiAdapter implements DeliveryApi {
     }
 
     @Override
+    public EnqueueDeliveryResult enqueueMeetingEndedOrganizerNotification(
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            String recipientEmail,
+            String recipientDisplayName,
+            String subject,
+            String bodyText
+    ) {
+        Objects.requireNonNull(tenantId, "tenantId");
+        Objects.requireNonNull(meetingOccurrenceId, "meetingOccurrenceId");
+        Objects.requireNonNull(recipientEmail, "recipientEmail");
+        TenantId tid = TenantId.of(tenantId);
+        ApprovalId synthetic = ApprovalId.of(meetingOccurrenceId);
+        String display = recipientDisplayName == null || recipientDisplayName.isBlank()
+                ? recipientEmail
+                : recipientDisplayName;
+        return dispatcher.enqueue(new EnqueueDeliveryCommand(
+                tid,
+                meetingOccurrenceId,
+                synthetic,
+                List.of(DeliveryRecipient.internal(recipientEmail.trim(), display)),
+                DeliveryPolicySnapshot.meetingEndedOrganizer(),
+                subject == null ? "Toplantınız bitti · Rapor hazırlanıyor" : subject,
+                bodyText == null ? "" : bodyText,
+                "system:meeting-ended"
+        ));
+    }
+
+    @Override
     public List<DeliveryRequestStatusView> listByNoteVersion(UUID tenantId, UUID noteVersionId) {
         TenantId tid = TenantId.of(tenantId);
         return repository.findByNoteVersion(tid, noteVersionId).stream()

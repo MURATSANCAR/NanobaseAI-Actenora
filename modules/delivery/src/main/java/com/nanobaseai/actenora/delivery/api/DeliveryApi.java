@@ -60,6 +60,20 @@ public interface DeliveryApi {
     );
 
     /**
+     * Enqueue organizer meeting-ended status mail (notes pipeline started).
+     * Idempotent on (tenant, meetingOccurrenceId, recipient, MEETING_ENDED).
+     * Uses meetingOccurrenceId as synthetic noteVersionId / approval id.
+     */
+    EnqueueDeliveryResult enqueueMeetingEndedOrganizerNotification(
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            String recipientEmail,
+            String recipientDisplayName,
+            String subject,
+            String bodyText
+    );
+
+    /**
      * List delivery requests for a note version (portal status surface).
      */
     java.util.List<DeliveryRequestStatusView> listByNoteVersion(UUID tenantId, UUID noteVersionId);

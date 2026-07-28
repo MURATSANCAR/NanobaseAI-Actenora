@@ -199,10 +199,45 @@ public final class JdbcMeetingOccurrenceRepository implements MeetingOccurrenceR
             args.add(businessContextId);
         }
         if (cursor != null && !cursor.isBlank()) {
-            sql.append(" AND id > ?");
-            args.add(UUID.fromString(cursor));
+            UUID cursorId = UUID.fromString(cursor);
+            // Keyset for: calendar day DESC, clock time ASC, id ASC (Europe/Istanbul).
+            sql.append("""
+                     AND (
+                        ((scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::date)
+                            < (SELECT (scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::date
+                                 FROM meeting.meeting_occurrences WHERE id = ?)
+                        OR (
+                            ((scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::date)
+                                = (SELECT (scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::date
+                                     FROM meeting.meeting_occurrences WHERE id = ?)
+                            AND ((scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::time)
+                                > (SELECT (scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::time
+                                     FROM meeting.meeting_occurrences WHERE id = ?)
+                        )
+                        OR (
+                            ((scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::date)
+                                = (SELECT (scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::date
+                                     FROM meeting.meeting_occurrences WHERE id = ?)
+                            AND ((scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::time)
+                                = (SELECT (scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::time
+                                     FROM meeting.meeting_occurrences WHERE id = ?)
+                            AND id > ?
+                        )
+                     )
+                    """);
+            args.add(cursorId);
+            args.add(cursorId);
+            args.add(cursorId);
+            args.add(cursorId);
+            args.add(cursorId);
+            args.add(cursorId);
         }
-        sql.append(" ORDER BY created_at ASC, id ASC LIMIT ?");
+        sql.append("""
+                 ORDER BY (scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::date DESC,
+                          (scheduled_start_at AT TIME ZONE 'Europe/Istanbul')::time ASC,
+                          id ASC
+                 LIMIT ?
+                """);
         args.add(limit + 1);
         List<MeetingOccurrence> rows = jdbc.query(sql.toString(), ROW_MAPPER, args.toArray());
         String next = rows.size() > limit ? rows.get(limit - 1).id().toString() : null;

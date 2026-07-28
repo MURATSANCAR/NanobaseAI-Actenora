@@ -6,6 +6,8 @@ import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class InMemoryMeetingOccurrenceRepository implements MeetingOccurrenceRepository {
+
+    /** Calendar-day grouping for portal list order (TR wall clock). */
+    private static final ZoneId LIST_ZONE = ZoneId.of("Europe/Istanbul");
 
     private final Map<UUID, MeetingOccurrence> store = new ConcurrentHashMap<>();
 
@@ -86,7 +91,9 @@ public final class InMemoryMeetingOccurrenceRepository implements MeetingOccurre
                 .filter(o -> o.tenantId().equals(tenantId))
                 .filter(o -> status == null || o.status() == status)
                 .filter(o -> businessContextId == null || o.businessContextId().equals(businessContextId))
-                .sorted(Comparator.comparing(MeetingOccurrence::createdAt)
+                .sorted(Comparator
+                        .comparing((MeetingOccurrence o) -> localDay(o)).reversed()
+                        .thenComparing(MeetingOccurrence::scheduledStartAt)
                         .thenComparing(MeetingOccurrence::id))
                 .toList();
 
@@ -128,6 +135,10 @@ public final class InMemoryMeetingOccurrenceRepository implements MeetingOccurre
             case IN_PROGRESS -> !now.isBefore(o.scheduledEndAt());
             case ENDED, CANCELLED -> false;
         };
+    }
+
+    private static LocalDate localDay(MeetingOccurrence occurrence) {
+        return occurrence.scheduledStartAt().atZone(LIST_ZONE).toLocalDate();
     }
 
     public void clear() {

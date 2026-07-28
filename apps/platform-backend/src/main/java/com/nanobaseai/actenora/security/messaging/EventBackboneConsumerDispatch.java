@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.security.messaging;
 
 import com.nanobaseai.actenora.meeting.api.event.MeetingIntegrationEvents;
 import com.nanobaseai.actenora.meetingintelligence.api.event.MeetingIntelligenceIntegrationEvents;
+import com.nanobaseai.actenora.security.meeting.MeetingEndedOrganizerMailHandler;
 import com.nanobaseai.actenora.security.meetingintelligence.NoteApprovedForLedgerHandler;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeNotificationProcessor;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphChangeWorkConsumer;
@@ -42,6 +43,19 @@ final class EventBackboneConsumerDispatch {
             IdempotentEventConsumer consumer,
             MeetingOccurrenceUpsertedHandler handler) {
         dispatchOccurrenceUpserted(envelope, consumer, handler, null);
+    }
+
+    static void dispatchMeetingEnded(
+            EventEnvelope envelope,
+            IdempotentEventConsumer consumer,
+            MeetingEndedOrganizerMailHandler handler) {
+        if (!MeetingIntegrationEvents.MEETING_ENDED.equals(envelope.eventType())) {
+            return;
+        }
+        if (handler == null) {
+            return;
+        }
+        consumer.consume(envelope, handler::handle);
     }
 
     static void dispatchTranscriptReady(

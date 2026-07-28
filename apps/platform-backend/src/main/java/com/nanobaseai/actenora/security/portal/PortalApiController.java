@@ -197,7 +197,7 @@ public class PortalApiController {
     public DashboardView dashboard() {
         AuthenticatedPrincipal principal = require(Permission.MEETING_READ);
         List<MeetingSummaryView> recent = toSummaries(
-                meetingApi.listMeetings(new CursorPageRequest(null, null, null, 5)).items()
+                meetingApi.listMeetings(new CursorPageRequest(null, null, null, 50)).items()
         );
         int pendingApprovals = countPendingApprovals(principal.tenantId().value());
         int openActions = ledgerApi.listOpenActionItems(principal.tenantId()).size();

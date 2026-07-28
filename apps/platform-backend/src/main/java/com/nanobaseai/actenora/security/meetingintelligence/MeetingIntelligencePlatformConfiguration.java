@@ -310,7 +310,10 @@ public class MeetingIntelligencePlatformConfiguration {
             NoteArtifactStoragePort noteArtifactStorage,
             ObjectProvider<PlatformUserNotificationPublisher> notificationPublisher,
             ObjectProvider<com.nanobaseai.actenora.delivery.api.DeliveryApi> deliveryApi,
-            ObjectProvider<com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker> deliveryWorker
+            ObjectProvider<com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker> deliveryWorker,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai/easymeeting}")
+                    String portalBaseUrl
     ) {
         return new MeetingIntelligenceHandoffAdapter(
                 meetingIntelligenceApi,
@@ -321,7 +324,8 @@ public class MeetingIntelligencePlatformConfiguration {
                 noteArtifactStorage,
                 Optional.ofNullable(notificationPublisher.getIfAvailable()),
                 Optional.ofNullable(deliveryApi.getIfAvailable()),
-                Optional.ofNullable(deliveryWorker.getIfAvailable())
+                Optional.ofNullable(deliveryWorker.getIfAvailable()),
+                portalBaseUrl
         );
     }
 

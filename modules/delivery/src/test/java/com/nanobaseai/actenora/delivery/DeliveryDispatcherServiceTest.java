@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.delivery.application.EnqueueDeliveryResult;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryMailProvider;
 import com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker;
 import com.nanobaseai.actenora.delivery.domain.DeliveryDomainException;
+import com.nanobaseai.actenora.delivery.domain.DeliveryIntent;
 import com.nanobaseai.actenora.delivery.domain.DeliveryPolicySnapshot;
 import com.nanobaseai.actenora.delivery.domain.DeliveryRecipient;
 import com.nanobaseai.actenora.delivery.domain.DeliveryRequest;
@@ -125,6 +126,33 @@ class DeliveryDispatcherServiceTest {
         assertEquals(0, finale.duplicateIds().size());
         assertNotEquals(draft.createdIds().getFirst(), finale.createdIds().getFirst());
         assertEquals(2, repository.findByNoteVersion(tenant, noteVersionId).size());
+    }
+
+    @Test
+    void meetingEndedCoexistsWithDraftForSameRecipientAndId() {
+        UUID meetingId = noteVersionId;
+        EnqueueDeliveryResult ended = enqueue(
+                List.of(DeliveryRecipient.internal("org@ex.com", "Org")),
+                DeliveryPolicySnapshot.meetingEndedOrganizer()
+        );
+        EnqueueDeliveryResult draft = enqueue(
+                List.of(DeliveryRecipient.internal("org@ex.com", "Org")),
+                DeliveryPolicySnapshot.draftOrganizer()
+        );
+        EnqueueDeliveryResult duplicateEnded = enqueue(
+                List.of(DeliveryRecipient.internal("org@ex.com", "Org")),
+                DeliveryPolicySnapshot.meetingEndedOrganizer()
+        );
+
+        assertEquals(1, ended.createdIds().size());
+        assertEquals(1, draft.createdIds().size());
+        assertEquals(0, duplicateEnded.createdIds().size());
+        assertEquals(1, duplicateEnded.duplicateIds().size());
+        assertEquals(2, repository.findByNoteVersion(tenant, meetingId).size());
+        assertEquals(
+                DeliveryIntent.MEETING_ENDED,
+                repository.findById(tenant, ended.createdIds().getFirst().value()).orElseThrow().intent()
+        );
     }
 
     @Test

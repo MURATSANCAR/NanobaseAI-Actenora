@@ -138,7 +138,7 @@ public class DeliveryModuleConfiguration {
     @ConditionalOnMissingBean
     SignedPortalLinkPort signedPortalLinkPort(
             @Value("${actenora.delivery.portal-link.secret:actenora-local-portal-secret}") String secret,
-            @Value("${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai}") String baseUrl
+            @Value("${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai/easymeeting}") String baseUrl
     ) {
         return new HmacSignedPortalLinkService(secret, baseUrl);
     }
