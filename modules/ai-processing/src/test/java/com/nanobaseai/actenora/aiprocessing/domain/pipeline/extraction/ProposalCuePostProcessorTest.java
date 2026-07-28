@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProposalCuePostProcessorTest {
@@ -19,7 +20,7 @@ class ProposalCuePostProcessorTest {
     private final ProposalCuePostProcessor processor = ProposalCuePostProcessor.productionDefaults();
 
     @Test
-    void movesHenuzKararDegilFromDecisionAndFactToProposals() {
+    void movesSubstantiveProposalCuesAndDropsMetaOnly() {
         ExtractionBundle input = new ExtractionBundle(
                 List.of(new TopicCandidate("Belki sprinte erteleyelim henüz karar değil", List.of("t1"), 0.9)),
                 List.of(new DecisionCandidate(
@@ -40,13 +41,15 @@ class ProposalCuePostProcessorTest {
         assertEquals(0, out.decisions().size());
         assertEquals(0, out.importantFacts().size());
         assertEquals(0, out.topics().size());
-        assertEquals(3, out.proposals().size());
-        assertTrue(out.proposals().stream().allMatch(p -> p.text().toLowerCase().contains("henüz karar değil")
-                || p.text().toLowerCase().contains("öner")));
+        assertEquals(2, out.proposals().size());
+        assertTrue(out.proposals().stream().anyMatch(p -> p.text().toLowerCase().contains("spike")));
+        assertTrue(out.proposals().stream().anyMatch(p -> p.text().toLowerCase().contains("erteleyelim")));
+        assertFalse(out.proposals().stream().anyMatch(p ->
+                p.text().equalsIgnoreCase("Bu öneriyi not ediyorum ama henüz karar değil.")));
     }
 
     @Test
-    void seedsDroppedProposalCuesFromSegments() {
+    void seedsOnlySubstantiveProposalCuesFromSegments() {
         ExtractionBundle empty = new ExtractionBundle(
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of(), List.of(), List.of("s6", "s21", "s36", "s20"), 0.5
@@ -59,11 +62,40 @@ class ProposalCuePostProcessorTest {
                 seg("s99", "Bu noktayı biraz açmamız iyi olur.")
         );
         ExtractionBundle out = processor.process(empty, segments);
-        assertEquals(4, out.proposals().size());
-        assertTrue(out.proposals().stream().anyMatch(p -> p.text().contains("spike")));
-        assertEquals(3, out.proposals().stream()
-                .filter(p -> p.text().toLowerCase().contains("henüz karar değil"))
+        assertEquals(1, out.proposals().size());
+        assertTrue(out.proposals().getFirst().text().contains("spike"));
+        assertEquals(0, out.proposals().stream()
+                .filter(p -> p.text().toLowerCase().contains("henüz karar değil")
+                        && !p.text().toLowerCase().contains("spike")
+                        && !p.text().toLowerCase().contains("önerim"))
                 .count());
+    }
+
+    @Test
+    void mergesNearDuplicateMetaScaffoldIntoSubstantive() {
+        ExtractionBundle input = new ExtractionBundle(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                        new ProposalCandidate(
+                                "Önerim, önce küçük bir spike yapalım, henüz karar değil.", List.of("p1"), 0.9),
+                        new ProposalCandidate(
+                                "Önerim, önce küçük bir spike yapalım.", List.of("p2"), 0.85)
+                ),
+                List.of(),
+                List.of(),
+                List.of("p1", "p2"),
+                0.9
+        );
+        ExtractionBundle out = processor.process(input);
+        assertEquals(1, out.proposals().size());
+        assertEquals(2, out.proposals().getFirst().evidenceSegmentIds().size());
+        assertTrue(out.proposals().getFirst().text().toLowerCase().contains("spike"));
     }
 
     private static SegmentInput seg(String id, String content) {
@@ -110,5 +142,13 @@ class ProposalCuePostProcessorTest {
         ExtractionBundle out = processor.process(input);
         assertEquals(1, out.decisions().size());
         assertEquals(1, out.proposals().size());
+    }
+
+    @Test
+    void metaOnlyHasNoSubstantiveContent() {
+        assertFalse(ProposalCuePostProcessor.hasSubstantiveProposalContent(
+                "Bu öneriyi not ediyorum ama henüz karar değil."));
+        assertTrue(ProposalCuePostProcessor.hasSubstantiveProposalContent(
+                "Önerim, önce küçük bir spike yapmamız yönünde."));
     }
 }

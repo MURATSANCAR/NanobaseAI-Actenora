@@ -20,14 +20,30 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Recovers explicit proposal cues that landed in the wrong extraction bucket,
  * and seeds proposals from transcript segments when the model dropped them.
+ *
+ * <p>Meta-only filler ("Bu öneriyi not ediyorum ama henüz karar değil.") is neither
+ * seeded nor promoted — only cues with substantive proposal content survive.
  */
 public final class ProposalCuePostProcessor {
 
     private static final double SEEDED_CONFIDENCE = 0.92d;
+
+    /** Known scaffolding stripped when judging substance / near-dupe keys. */
+    private static final Pattern META_SCAFFOLD = Pattern.compile(
+            "(?iu)(bu\\s+)?öneriyi\\s+not\\s+ediyorum(\\s+ama)?|hen[uü]z\\s+karar\\s+de[gğ]il"
+    );
+
+    /** Concrete proposal verbs / content markers (narrow — avoid dropping real notes). */
+    private static final Pattern SUBSTANTIVE_CUE = Pattern.compile(
+            "(?iu)(?<!\\p{L})(önerim|öneriyorum|spike|yapal[ıi]m|yapmam[ıi]z|deneyelim|"
+                    + "de[gğ]erlendirmeye\\s+alal[ıi]m|erteleyelim|ba[sş]latal[ıi]m|"
+                    + "dene(yelim|mek)|incele(yelim|mek)|prototip)(?!\\p{L})"
+    );
 
     private final HybridSpeechActClassifier classifier;
     private final DeterministicSpeechActMatcher matcher;
@@ -49,7 +65,9 @@ public final class ProposalCuePostProcessor {
         Objects.requireNonNull(bundle, "bundle");
         Map<String, ProposalCandidate> proposals = new LinkedHashMap<>();
         for (ProposalCandidate proposal : bundle.proposals()) {
-            putProposal(proposals, proposal);
+            if (shouldBecomeProposal(proposal.text())) {
+                putProposal(proposals, proposal);
+            }
         }
 
         List<DecisionCandidate> decisions = new ArrayList<>();
@@ -57,6 +75,8 @@ public final class ProposalCuePostProcessor {
             if (shouldBecomeProposal(decision.text()) && !matcher.hasExplicitDecisionCue(decision.text())) {
                 putProposal(proposals, new ProposalCandidate(
                         decision.text(), decision.evidenceSegmentIds(), decision.confidence()));
+            } else if (isDroppableMetaProposalCue(decision.text())) {
+                // Meta-only cue must not remain as a fake decision.
             } else {
                 decisions.add(decision);
             }
@@ -67,6 +87,8 @@ public final class ProposalCuePostProcessor {
             if (shouldBecomeProposal(fact.text())) {
                 putProposal(proposals, new ProposalCandidate(
                         fact.text(), fact.evidenceSegmentIds(), fact.confidence()));
+            } else if (isDroppableMetaProposalCue(fact.text())) {
+                // drop
             } else {
                 facts.add(fact);
             }
@@ -77,6 +99,8 @@ public final class ProposalCuePostProcessor {
             if (shouldBecomeProposal(topic.text())) {
                 putProposal(proposals, new ProposalCandidate(
                         topic.text(), topic.evidenceSegmentIds(), topic.confidence()));
+            } else if (isDroppableMetaProposalCue(topic.text())) {
+                // drop
             } else {
                 topics.add(topic);
             }
@@ -87,6 +111,8 @@ public final class ProposalCuePostProcessor {
             if (shouldBecomeProposal(question.text())) {
                 putProposal(proposals, new ProposalCandidate(
                         question.text(), question.evidenceSegmentIds(), question.confidence()));
+            } else if (isDroppableMetaProposalCue(question.text())) {
+                // drop
             } else {
                 questions.add(question);
             }
@@ -126,9 +152,7 @@ public final class ProposalCuePostProcessor {
             if (!isSeedableProposal(text)) {
                 continue;
             }
-            // Keep one proposal per cue segment so repeated "henüz karar değil" lines survive.
-            String key = "seed|" + segment.segmentId();
-            proposals.putIfAbsent(key, new ProposalCandidate(
+            putProposal(proposals, new ProposalCandidate(
                     text, List.of(segment.segmentId()), SEEDED_CONFIDENCE));
             coveredEvidence.add(segment.segmentId());
         }
@@ -136,6 +160,9 @@ public final class ProposalCuePostProcessor {
 
     private boolean isSeedableProposal(String text) {
         if (!matcher.hasProposalCue(text) || matcher.hasExplicitDecisionCue(text)) {
+            return false;
+        }
+        if (!hasSubstantiveProposalContent(text)) {
             return false;
         }
         SpeechActResult act = classifier.classify(text);
@@ -149,6 +176,9 @@ public final class ProposalCuePostProcessor {
         if (text == null || text.isBlank()) {
             return false;
         }
+        if (!hasSubstantiveProposalContent(text)) {
+            return false;
+        }
         SpeechActResult act = classifier.classify(text);
         if (act.speechAct() == MeetingSpeechAct.DISCUSSION_PROMPT
                 || act.speechAct() == MeetingSpeechAct.STATUS_QUO
@@ -159,8 +189,30 @@ public final class ProposalCuePostProcessor {
         return matcher.hasProposalCue(text) && !matcher.hasExplicitDecisionCue(text);
     }
 
+    private boolean isDroppableMetaProposalCue(String text) {
+        return text != null
+                && matcher.hasProposalCue(text)
+                && !matcher.hasExplicitDecisionCue(text)
+                && !hasSubstantiveProposalContent(text);
+    }
+
+    static boolean hasSubstantiveProposalContent(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        if (SUBSTANTIVE_CUE.matcher(text).find()) {
+            return true;
+        }
+        String remainder = META_SCAFFOLD.matcher(text).replaceAll(" ");
+        remainder = remainder.replaceAll("[\\p{Punct}]+", " ").replaceAll("\\s+", " ").trim();
+        return remainder.length() >= 12;
+    }
+
     private static void putProposal(Map<String, ProposalCandidate> proposals, ProposalCandidate proposal) {
-        String key = norm(proposal.text());
+        String key = dedupeKey(proposal.text());
+        if (key.isBlank()) {
+            return;
+        }
         ProposalCandidate prior = proposals.get(key);
         if (prior == null) {
             proposals.put(key, proposal);
@@ -168,11 +220,41 @@ public final class ProposalCuePostProcessor {
         }
         LinkedHashSet<String> evidence = new LinkedHashSet<>(prior.evidenceSegmentIds());
         evidence.addAll(proposal.evidenceSegmentIds());
+        String keepText = preferSubstantiveText(prior.text(), proposal.text());
         proposals.put(key, new ProposalCandidate(
-                prior.text(),
+                keepText,
                 List.copyOf(evidence),
                 Math.max(prior.confidence(), proposal.confidence())
         ));
+    }
+
+    private static String preferSubstantiveText(String a, String b) {
+        int scoreA = substantiveScore(a);
+        int scoreB = substantiveScore(b);
+        if (scoreB > scoreA) {
+            return b;
+        }
+        if (scoreA > scoreB) {
+            return a;
+        }
+        return a.length() >= b.length() ? a : b;
+    }
+
+    private static int substantiveScore(String text) {
+        int score = 0;
+        if (SUBSTANTIVE_CUE.matcher(text).find()) {
+            score += 100;
+        }
+        String remainder = META_SCAFFOLD.matcher(text).replaceAll(" ");
+        remainder = remainder.replaceAll("[\\p{Punct}]+", " ").replaceAll("\\s+", " ").trim();
+        score += remainder.length();
+        return score;
+    }
+
+    /** Near-dupe key: strip meta scaffolding so repeated filler collapses. */
+    static String dedupeKey(String text) {
+        String stripped = META_SCAFFOLD.matcher(norm(text)).replaceAll(" ");
+        return stripped.replaceAll("[\\p{Punct}]+", " ").replaceAll("\\s+", " ").trim();
     }
 
     private static String norm(String text) {
