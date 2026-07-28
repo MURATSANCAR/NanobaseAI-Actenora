@@ -30,7 +30,8 @@ class MeetingLlmBudgetsTest {
     @Test
     void operationalClampsNativeModelLimits() {
         assertEquals(MeetingLlmBudgets.OPERATIONAL_CTX_SIZE, MeetingLlmBudgets.operationalContextWindow(32_768));
-        assertEquals(MeetingLlmBudgets.DEFAULT_MAX_TOKENS, MeetingLlmBudgets.operationalMaxOutput(6_000));
+        assertEquals(MeetingLlmBudgets.DEFAULT_MAX_TOKENS, MeetingLlmBudgets.operationalMaxOutput(16_000));
+        assertEquals(6_000, MeetingLlmBudgets.operationalMaxOutput(6_000));
         assertEquals(512, MeetingLlmBudgets.operationalMaxOutput(512));
     }
 

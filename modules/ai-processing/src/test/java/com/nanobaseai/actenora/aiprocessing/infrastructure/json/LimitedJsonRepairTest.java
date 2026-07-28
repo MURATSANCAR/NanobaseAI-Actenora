@@ -37,6 +37,12 @@ class LimitedJsonRepairTest {
     }
 
     @Test
+    void stripsIncompletePropertyBeforeClosing() {
+        String repaired = repair.repairOrThrow("{\"decisions\":[{\"text\":\"A\"}],\"executiveSummary\":");
+        assertEquals("{\"decisions\":[{\"text\":\"A\"}]}", repaired);
+    }
+
+    @Test
     void needsRepairWhenBracketsUnbalancedEvenIfEndsWithBrace() {
         assertTrue(repair.needsRepair("{\"a\":[1,2}}"));
     }

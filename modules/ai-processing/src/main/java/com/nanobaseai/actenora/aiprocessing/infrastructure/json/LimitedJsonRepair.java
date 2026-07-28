@@ -136,19 +136,72 @@ public final class LimitedJsonRepair {
         if (inString) {
             out.append('"');
         }
-        // Drop a dangling trailing comma before closing.
-        int end = out.length() - 1;
-        while (end >= 0 && Character.isWhitespace(out.charAt(end))) {
-            end--;
-        }
-        if (end >= 0 && out.charAt(end) == ',') {
-            out.deleteCharAt(end);
-        }
+        stripDanglingPartialMember(out);
         for (int i = openers.length() - 1; i >= 0; i--) {
             char opener = openers.charAt(i);
             out.append(opener == '{' ? '}' : ']');
         }
         return out.toString();
+    }
+
+    /**
+     * Truncation often leaves {@code "key":} or a trailing comma with no value.
+     * Closing braces then yields {@code "key": }} which Jackson rejects.
+     */
+    private static void stripDanglingPartialMember(StringBuilder out) {
+        while (true) {
+            int end = out.length() - 1;
+            while (end >= 0 && Character.isWhitespace(out.charAt(end))) {
+                end--;
+            }
+            if (end < 0) {
+                return;
+            }
+            char last = out.charAt(end);
+            if (last == ',') {
+                out.delete(end, out.length());
+                continue;
+            }
+            if (last != ':') {
+                if (end + 1 < out.length()) {
+                    out.delete(end + 1, out.length());
+                }
+                return;
+            }
+            // Remove back through {@code "key":} (or bare key:) so the parent can close cleanly.
+            int cut = end - 1;
+            while (cut >= 0 && Character.isWhitespace(out.charAt(cut))) {
+                cut--;
+            }
+            int keyStart;
+            if (cut >= 0 && out.charAt(cut) == '"') {
+                keyStart = cut;
+                cut--;
+                while (cut >= 0) {
+                    char c = out.charAt(cut);
+                    if (c == '"' && (cut == 0 || out.charAt(cut - 1) != '\\')) {
+                        keyStart = cut;
+                        break;
+                    }
+                    cut--;
+                }
+            } else {
+                while (cut >= 0 && (Character.isLetterOrDigit(out.charAt(cut)) || out.charAt(cut) == '_')) {
+                    cut--;
+                }
+                keyStart = cut + 1;
+            }
+            int beforeKey = keyStart - 1;
+            while (beforeKey >= 0 && Character.isWhitespace(out.charAt(beforeKey))) {
+                beforeKey--;
+            }
+            if (beforeKey >= 0 && out.charAt(beforeKey) == ',') {
+                out.delete(beforeKey, out.length());
+                continue;
+            }
+            out.delete(keyStart, out.length());
+            return;
+        }
     }
 
     private static String stripFence(String text) {

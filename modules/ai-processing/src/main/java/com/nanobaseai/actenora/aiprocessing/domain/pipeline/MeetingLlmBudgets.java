@@ -44,8 +44,11 @@ public final class MeetingLlmBudgets {
     /** CANDIDATE_MERGE generation cap. */
     public static final int MERGE_MAX_TOKENS = 2_048;
 
-    /** FINAL_NOTE / final minutes generation cap — 2048 truncates dense TR minutes JSON (finish_reason=length). */
-    public static final int FINAL_MAX_TOKENS = 4_096;
+    /**
+     * FINAL_NOTE / final minutes generation cap.
+     * 2048 and 4096 both truncate dense TR minutes JSON on eval-1h (finish_reason=length → SYNTHESIS_FALLBACK).
+     */
+    public static final int FINAL_MAX_TOKENS = 8_192;
 
     /** Evidence-audit generation cap — 800 truncates multi-item audit arrays. */
     public static final int AUDIT_MAX_TOKENS = 2_048;

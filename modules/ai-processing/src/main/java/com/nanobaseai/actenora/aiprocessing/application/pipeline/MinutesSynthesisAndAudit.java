@@ -243,17 +243,19 @@ public final class MinutesSynthesisAndAudit {
             boolean manual = fallback.requiresManualReview()
                     || flags.stream().anyMatch(f -> f.toUpperCase(Locale.ROOT).contains("NEEDS_REVIEW"))
                     || node.path("reviewRequired").asBoolean(false);
+            // Final-minutes models often omit proposal cues; keep deterministic/seeded recoveries.
+            List<ProposalCandidate> proposals = preferNonEmpty(bundle.proposals(), fallback.proposals());
             return new FinalNoteDraft(
                     summary,
-                    bundle.decisions(),
-                    bundle.actionItems(),
-                    bundle.risks(),
-                    bundle.openQuestions(),
-                    bundle.commitments(),
-                    bundle.topics(),
-                    bundle.issues(),
-                    bundle.proposals(),
-                    bundle.importantFacts(),
+                    preferNonEmpty(bundle.decisions(), fallback.decisions()),
+                    preferNonEmpty(bundle.actionItems(), fallback.actionItems()),
+                    preferNonEmpty(bundle.risks(), fallback.risks()),
+                    preferNonEmpty(bundle.openQuestions(), fallback.openQuestions()),
+                    preferNonEmpty(bundle.commitments(), fallback.commitments()),
+                    preferNonEmpty(bundle.topics(), fallback.topics()),
+                    preferNonEmpty(bundle.issues(), fallback.issues()),
+                    proposals,
+                    preferNonEmpty(bundle.importantFacts(), fallback.importantFacts()),
                     flags,
                     bundle.evidenceSegmentIds().isEmpty() ? fallback.evidenceSegmentIds() : bundle.evidenceSegmentIds(),
                     bundle.confidence() > 0 ? bundle.confidence() : fallback.confidence(),
@@ -436,6 +438,13 @@ public final class MinutesSynthesisAndAudit {
             String repaired = jsonRepair.repairOrThrow(raw == null ? "" : raw);
             return objectMapper.readTree(repaired);
         }
+    }
+
+    private static <T> List<T> preferNonEmpty(List<T> primary, List<T> fallback) {
+        if (primary != null && !primary.isEmpty()) {
+            return primary;
+        }
+        return fallback == null ? List.of() : fallback;
     }
 
     private ObjectNode toCandidateNode(ExtractionBundle bundle) {
