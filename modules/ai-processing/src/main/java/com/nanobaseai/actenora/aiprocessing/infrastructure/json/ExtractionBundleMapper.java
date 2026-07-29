@@ -83,7 +83,8 @@ public final class ExtractionBundleMapper {
                     confidenceOrDefault(item),
                     textOrNull(item, "ownerType"),
                     textOrNull(item, "priority"),
-                    textOrNull(item, "relativeDate")
+                    textOrNull(item, "relativeDate"),
+                    textOrNull(item, "dueAt")
             ));
         }
         return list;

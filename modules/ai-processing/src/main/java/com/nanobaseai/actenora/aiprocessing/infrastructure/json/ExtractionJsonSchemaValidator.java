@@ -281,6 +281,7 @@ public final class ExtractionJsonSchemaValidator {
             assertNullOrEnum(item, "ownerType", OWNER_TYPES);
             assertNullOrText(item, "dueDate");
             assertNullOrText(item, "relativeDate");
+            assertNullOrText(item, "dueAt");
             assertNullOrEnum(item, "priority", PRIORITIES);
         }
         if ("risks".equals(field)) {

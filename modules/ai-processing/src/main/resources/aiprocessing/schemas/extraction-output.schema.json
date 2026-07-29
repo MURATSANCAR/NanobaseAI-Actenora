@@ -136,6 +136,7 @@
         },
         "dueDate": { "type": ["string", "null"] },
         "relativeDate": { "type": ["string", "null"] },
+        "dueAt": { "type": ["string", "null"] },
         "priority": {
           "type": ["string", "null"],
           "enum": ["HIGH", "MEDIUM", "LOW", null]

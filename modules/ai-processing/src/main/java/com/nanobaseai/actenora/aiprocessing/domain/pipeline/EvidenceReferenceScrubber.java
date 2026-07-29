@@ -79,7 +79,7 @@ public final class EvidenceReferenceScrubber {
             } else {
                 actions.add(new ActionItemCandidate(
                         item.text(), item.owner(), item.dueDate(), refs.ids(), item.confidence(),
-                        item.ownerType(), item.priority(), item.relativeDate()));
+                        item.ownerType(), item.priority(), item.relativeDate(), item.dueAt()));
             }
         }
 

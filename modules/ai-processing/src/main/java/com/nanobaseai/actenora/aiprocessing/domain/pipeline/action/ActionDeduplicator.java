@@ -1,0 +1,246 @@
+package com.nanobaseai.actenora.aiprocessing.domain.pipeline.action;
+
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
+
+/**
+ * Deterministic, source-aware action deduplication / subsumption.
+ * Prefer atomic over compound, richer dates, stronger evidence; merge fields into survivor.
+ */
+public final class ActionDeduplicator {
+
+    public static final String AMBIGUOUS_DEDUP = "AMBIGUOUS_ACTION_DEDUP";
+
+    private static final Pattern PUNCT = Pattern.compile("[\\p{Punct}]+");
+
+    public record Result(List<ActionItemCandidate> actions, int removed, List<String> warnings) {
+    }
+
+    public Result deduplicate(List<ActionItemCandidate> actions) {
+        Objects.requireNonNull(actions, "actions");
+        if (actions.size() <= 1) {
+            return new Result(List.copyOf(actions), 0, List.of());
+        }
+        List<ActionItemCandidate> remaining = new ArrayList<>(actions);
+        int removed = 0;
+        List<String> warnings = new ArrayList<>();
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            outer:
+            for (int i = 0; i < remaining.size(); i++) {
+                for (int j = i + 1; j < remaining.size(); j++) {
+                    ActionItemCandidate a = remaining.get(i);
+                    ActionItemCandidate b = remaining.get(j);
+                    Match match = classify(a, b);
+                    if (match == Match.NONE) {
+                        continue;
+                    }
+                    if (match == Match.AMBIGUOUS) {
+                        if (!warnings.contains(AMBIGUOUS_DEDUP)) {
+                            warnings.add(AMBIGUOUS_DEDUP);
+                        }
+                        continue;
+                    }
+                    ActionItemCandidate survivor = merge(a, b);
+                    remaining.remove(j);
+                    remaining.remove(i);
+                    remaining.add(i, survivor);
+                    removed++;
+                    changed = true;
+                    break outer;
+                }
+            }
+        }
+        return new Result(List.copyOf(remaining), removed, warnings);
+    }
+
+    private enum Match {
+        NONE,
+        DUPLICATE,
+        AMBIGUOUS
+    }
+
+    private static Match classify(ActionItemCandidate a, ActionItemCandidate b) {
+        if (!sameOwner(a.owner(), b.owner())) {
+            return Match.NONE;
+        }
+        boolean evidenceOverlap = evidenceOverlap(a.evidenceSegmentIds(), b.evidenceSegmentIds());
+        String coreA = actionCore(a.text());
+        String coreB = actionCore(b.text());
+        if (coreA.isBlank() || coreB.isBlank()) {
+            return Match.NONE;
+        }
+        boolean coreEqual = coreA.equals(coreB);
+        boolean coreSimilar = coreEqual || tokenJaccard(coreA, coreB) >= 0.55d
+                || containsCore(coreA, coreB) || containsCore(coreB, coreA);
+        boolean compoundChild = looksCompound(a.text()) != looksCompound(b.text());
+        if (coreSimilar && (evidenceOverlap || coreEqual || compoundChild)) {
+            return Match.DUPLICATE;
+        }
+        if (coreSimilar && !evidenceOverlap) {
+            return Match.AMBIGUOUS;
+        }
+        return Match.NONE;
+    }
+
+    private static ActionItemCandidate merge(ActionItemCandidate a, ActionItemCandidate b) {
+        ActionItemCandidate primary = prefer(a, b);
+        ActionItemCandidate secondary = primary == a ? b : a;
+        String text = preferText(primary, secondary);
+        String owner = primary.owner() != null && !primary.owner().isBlank()
+                ? primary.owner()
+                : secondary.owner();
+        String dueDate = firstNonBlank(primary.dueDate(), secondary.dueDate());
+        String relative = firstNonBlank(primary.relativeDate(), secondary.relativeDate());
+        String dueAt = firstNonBlank(primary.dueAt(), secondary.dueAt());
+        Set<String> evidence = new HashSet<>(primary.evidenceSegmentIds());
+        evidence.addAll(secondary.evidenceSegmentIds());
+        double confidence = Math.max(primary.confidence(), secondary.confidence());
+        return new ActionItemCandidate(
+                text,
+                owner,
+                dueDate,
+                new ArrayList<>(evidence),
+                confidence,
+                firstNonBlank(primary.ownerType(), secondary.ownerType()),
+                firstNonBlank(primary.priority(), secondary.priority()),
+                relative,
+                dueAt
+        );
+    }
+
+    private static ActionItemCandidate prefer(ActionItemCandidate a, ActionItemCandidate b) {
+        int scoreA = score(a);
+        int scoreB = score(b);
+        if (scoreA != scoreB) {
+            return scoreA >= scoreB ? a : b;
+        }
+        // Prefer shorter cleaned text
+        return a.text().length() <= b.text().length() ? a : b;
+    }
+
+    private static int score(ActionItemCandidate a) {
+        int s = 0;
+        if (!looksCompound(a.text())) {
+            s += 8;
+        }
+        if (a.owner() != null && !a.owner().isBlank()) {
+            s += 4;
+        }
+        if (a.dueAt() != null && !a.dueAt().isBlank()) {
+            s += 4;
+        } else if (a.dueDate() != null && !a.dueDate().isBlank()) {
+            s += 3;
+        } else if (a.relativeDate() != null && !a.relativeDate().isBlank()) {
+            s += 2;
+        }
+        s += Math.min(3, a.evidenceSegmentIds().size());
+        if (!ActionDiscoursePrefixNormalizer.lower(a.text()).startsWith("aksiyon")) {
+            s += 1;
+        }
+        return s;
+    }
+
+    private static String preferText(ActionItemCandidate primary, ActionItemCandidate secondary) {
+        if (looksCompound(primary.text()) && !looksCompound(secondary.text())) {
+            return secondary.text();
+        }
+        if (!looksCompound(primary.text()) && looksCompound(secondary.text())) {
+            return primary.text();
+        }
+        // Prefer text without discourse prefix and with more substance tokens
+        String p = primary.text();
+        String s = secondary.text();
+        if (new ActionDiscoursePrefixNormalizer().startsWithDiscoursePrefix(p)
+                && !new ActionDiscoursePrefixNormalizer().startsWithDiscoursePrefix(s)) {
+            return s;
+        }
+        return actionCore(p).length() >= actionCore(s).length() ? p : s;
+    }
+
+    static boolean looksCompound(String text) {
+        return text != null && text.contains(";");
+    }
+
+    static boolean sameOwner(String a, String b) {
+        if (a == null || a.isBlank() || b == null || b.isBlank()) {
+            return a == null || a.isBlank() ? b == null || b.isBlank() : false;
+        }
+        return a.strip().equalsIgnoreCase(b.strip());
+    }
+
+    static boolean evidenceOverlap(List<String> a, List<String> b) {
+        if (a == null || b == null || a.isEmpty() || b.isEmpty()) {
+            return false;
+        }
+        Set<String> set = new HashSet<>(a);
+        for (String id : b) {
+            if (set.contains(id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static String actionCore(String text) {
+        if (text == null) {
+            return "";
+        }
+        String t = new ActionDiscoursePrefixNormalizer().strip(text).toLowerCase(Locale.ROOT);
+        t = t.replace("correlation id", "correlationid")
+                .replace("correlation ıd", "correlationid")
+                .replace("id eklemesini", "correlationid")
+                .replace("id ekleyecek", "correlationid");
+        t = PUNCT.matcher(t).replaceAll(" ");
+        // Drop owner-like leading token when followed by common verbs later — keep tokens.
+        t = t.replaceAll("\\b(gerceklestirecek|gerçekleştirecek|yapacak|ekleyecek|tamamlayacak)\\b", " ");
+        return t.replaceAll("\\s+", " ").strip();
+    }
+
+    private static boolean containsCore(String a, String b) {
+        return a.contains(b) || b.contains(a);
+    }
+
+    private static double tokenJaccard(String a, String b) {
+        Set<String> ta = tokens(a);
+        Set<String> tb = tokens(b);
+        if (ta.isEmpty() || tb.isEmpty()) {
+            return 0.0d;
+        }
+        Set<String> inter = new HashSet<>(ta);
+        inter.retainAll(tb);
+        Set<String> union = new HashSet<>(ta);
+        union.addAll(tb);
+        return (double) inter.size() / (double) union.size();
+    }
+
+    private static Set<String> tokens(String core) {
+        Set<String> set = new HashSet<>();
+        for (String t : core.split("\\s+")) {
+            if (t.length() >= 3) {
+                set.add(t);
+            }
+        }
+        return set;
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        if (a != null && !a.isBlank()) {
+            return a;
+        }
+        if (b != null && !b.isBlank()) {
+            return b;
+        }
+        return null;
+    }
+}
