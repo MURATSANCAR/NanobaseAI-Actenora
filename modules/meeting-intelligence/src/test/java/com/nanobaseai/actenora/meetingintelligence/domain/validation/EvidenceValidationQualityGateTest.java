@@ -110,6 +110,46 @@ class EvidenceValidationQualityGateTest {
     }
 
     @Test
+    void resolvedIsoDueDatePassesWhenRelativeDateInTranscript() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .dueDateText("2026-07-29")
+                .relativeDateText("bugün 16.00'ya kadar")
+                .build();
+
+        ValidationSegment relativeSegment = new ValidationSegment(
+                segmentId,
+                0,
+                "spk-1",
+                "Ada Lovelace",
+                0,
+                10_000,
+                "Ada will ship release notes bugün 16'ya kadar for 15000 TL. (ISO date not present)",
+                true
+        );
+
+        ValidationExecutionResult result = validate(
+                List.of(candidate),
+                List.of(relativeSegment),
+                List.of(participant())
+        );
+
+        assertEquals(QualityGateOutcome.PASSED, result.decision().outcome());
+        assertTrue(!hasFail(result, ValidationRuleCodes.DUE_DATE_IN_TRANSCRIPT));
+    }
+
+    @Test
+    void ownerFirstNameMatchesSpeakerFullName() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .owner("unknown-user", "Ada")
+                .build();
+
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment()), List.of(participant()));
+
+        assertEquals(QualityGateOutcome.PASSED, result.decision().outcome());
+        assertTrue(!hasFail(result, ValidationRuleCodes.OWNER_IS_PARTICIPANT));
+    }
+
+    @Test
     void duplicateCandidateFails() {
         ValidationCandidate first = baseCandidate(segmentId).build();
         ValidationCandidate duplicate = ValidationCandidate.builder(

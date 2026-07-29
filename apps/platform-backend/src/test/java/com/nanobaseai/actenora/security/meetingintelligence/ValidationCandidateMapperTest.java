@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.security.meetingintelligence;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.CandidateKind;
@@ -43,6 +44,7 @@ class ValidationCandidateMapperTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of("seg-1"),
                 0.9,
                 false
@@ -52,5 +54,41 @@ class ValidationCandidateMapperTest {
         assertEquals(CandidateKind.DECISION, candidates.getFirst().kind());
         assertEquals(List.of(ValidationCandidateMapper.toSegmentUuid("seg-1")), candidates.getFirst().evidenceSegmentIds());
         assertTrue(candidates.getFirst().markedAsDecision());
+    }
+
+    @Test
+    void mapsRelativeDateFromActionItem() {
+        FinalNoteDraft draft = new FinalNoteDraft(
+                "Summary",
+                List.of(),
+                List.of(new ActionItemCandidate(
+                        "Call customer",
+                        "Ada",
+                        "2026-07-29",
+                        List.of("seg-1"),
+                        0.9,
+                        null,
+                        null,
+                        "bugün 16.00'ya kadar"
+                )),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("seg-1"),
+                0.9,
+                false
+        );
+
+        List<ValidationCandidate> candidates = ValidationCandidateMapper.toCandidates(draft);
+        assertEquals(1, candidates.size());
+
+        ValidationCandidate action = candidates.getFirst();
+        assertEquals(CandidateKind.ACTION_ITEM, action.kind());
+        assertEquals("bugün 16.00'ya kadar", action.relativeDateText().orElseThrow());
     }
 }

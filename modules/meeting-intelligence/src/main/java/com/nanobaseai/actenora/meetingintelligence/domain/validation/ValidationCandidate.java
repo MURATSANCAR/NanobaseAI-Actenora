@@ -21,6 +21,7 @@ public final class ValidationCandidate {
     private final String ownerParticipantId;
     private final String ownerDisplayName;
     private final String dueDateText;
+    private final String relativeDateText;
     private final String amountText;
     private final BigDecimal confidence;
     private final boolean markedAsDecision;
@@ -37,6 +38,7 @@ public final class ValidationCandidate {
         this.ownerParticipantId = builder.ownerParticipantId;
         this.ownerDisplayName = builder.ownerDisplayName;
         this.dueDateText = builder.dueDateText;
+        this.relativeDateText = builder.relativeDateText;
         this.amountText = builder.amountText;
         this.confidence = Objects.requireNonNull(builder.confidence, "confidence");
         if (confidence.compareTo(BigDecimal.ZERO) < 0 || confidence.compareTo(BigDecimal.ONE) > 0) {
@@ -93,6 +95,10 @@ public final class ValidationCandidate {
         return Optional.ofNullable(dueDateText);
     }
 
+    public Optional<String> relativeDateText() {
+        return Optional.ofNullable(relativeDateText);
+    }
+
     public Optional<String> amountText() {
         return Optional.ofNullable(amountText);
     }
@@ -124,6 +130,7 @@ public final class ValidationCandidate {
         private String ownerParticipantId;
         private String ownerDisplayName;
         private String dueDateText;
+        private String relativeDateText;
         private String amountText;
         private boolean markedAsDecision;
         private String attributedSpeakerId;
@@ -155,6 +162,11 @@ public final class ValidationCandidate {
 
         public Builder dueDateText(String dueDateText) {
             this.dueDateText = dueDateText;
+            return this;
+        }
+
+        public Builder relativeDateText(String relativeDateText) {
+            this.relativeDateText = relativeDateText;
             return this;
         }
 

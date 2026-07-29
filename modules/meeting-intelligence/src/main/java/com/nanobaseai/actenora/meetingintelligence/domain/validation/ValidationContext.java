@@ -96,12 +96,55 @@ public final class ValidationContext {
             return false;
         }
         String normalized = normalize(displayName);
-        return participants.stream()
-                .anyMatch(p -> normalize(p.displayName()).equals(normalized));
+        if (normalized.isBlank()) {
+            return false;
+        }
+        String firstToken = firstToken(normalized);
+        int tokenCount = tokenCount(normalized);
+
+        return participants.stream().anyMatch(p -> {
+            String participantNorm = normalize(p.displayName());
+            if (participantNorm.equals(normalized)) {
+                return true;
+            }
+            String participantFirst = firstToken(participantNorm);
+            int participantTokenCount = tokenCount(participantNorm);
+
+            // Allow short first-name owners to match full multi-token speaker names.
+            if (tokenCount == 1 && participantFirst.equals(firstToken)) {
+                return true;
+            }
+            // Vice-versa: allow full owner names to match single-token participant names.
+            if (participantTokenCount == 1 && participantFirst.equals(firstToken)) {
+                return true;
+            }
+            return false;
+        });
     }
 
     public static String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase().replaceAll("\\s+", " ");
+    }
+
+    private static String firstToken(String normalizedValue) {
+        if (normalizedValue == null || normalizedValue.isBlank()) {
+            return "";
+        }
+        int idx = normalizedValue.indexOf(' ');
+        return idx < 0 ? normalizedValue : normalizedValue.substring(0, idx);
+    }
+
+    private static int tokenCount(String normalizedValue) {
+        if (normalizedValue == null || normalizedValue.isBlank()) {
+            return 0;
+        }
+        int count = 1;
+        for (int i = 0; i < normalizedValue.length(); i++) {
+            if (normalizedValue.charAt(i) == ' ') {
+                count++;
+            }
+        }
+        return count;
     }
 
     public static boolean corpusContains(String corpus, String needle) {
