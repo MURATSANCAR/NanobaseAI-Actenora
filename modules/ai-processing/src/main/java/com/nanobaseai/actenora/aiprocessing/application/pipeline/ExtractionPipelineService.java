@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
@@ -260,6 +262,7 @@ public final class ExtractionPipelineService {
             ExtractionBundle merged = merger.merge(perChunk);
             merged = ProposalCuePostProcessor.productionDefaults().process(merged, normalized);
             merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(merged);
+            merged = new CrossTypeConsistencyAuditor().auditBundle(merged);
             Set<String> allowed = normalized.stream()
                     .map(SegmentInput::segmentId)
                     .collect(Collectors.toCollection(HashSet::new));
@@ -275,6 +278,8 @@ public final class ExtractionPipelineService {
                             language,
                             request.priorMeetingContext()
                     );
+            note = new CrossTypeConsistencyAuditor().audit(note);
+            note = new ActionContextualEnricher().enrich(note, normalized);
             note = FinalNoteConfidencePolicy.productionDefaults().apply(note);
             metrics.addDurationMs((System.nanoTime() - pipelineStarted) / 1_000_000L);
             return PipelineRunResult.succeeded(promptVersionId, modelVersion, note, metrics);

@@ -3,8 +3,15 @@ import { sanitizeProductCopy } from "@/lib/brandSanitize";
 
 export type MinutesSectionKind = "paragraph" | "list";
 
+/** Template sections plus presentation-only minutes blocks (not Template Studio components). */
+export type MinutesSectionType =
+  | TemplateComponentType
+  | "PROPOSALS"
+  | "ISSUES"
+  | "NEXT_CHECKPOINT";
+
 export interface MinutesSection {
-  type: TemplateComponentType;
+  type: MinutesSectionType;
   kind: MinutesSectionKind;
   /** Raw section body (paragraph text or newline-joined list items). */
   value: string;
@@ -17,7 +24,7 @@ export interface MinutesDocument {
 }
 
 const SECTION_SPECS: Array<{
-  type: TemplateComponentType;
+  type: MinutesSectionType;
   kind: MinutesSectionKind;
   headings: string[];
 }> = [
@@ -56,35 +63,118 @@ const SECTION_SPECS: Array<{
     kind: "list",
     headings: ["AÇIK SORULAR", "ACIK SORULAR", "OPEN QUESTIONS"],
   },
+  {
+    type: "ISSUES",
+    kind: "list",
+    headings: ["SORUNLAR", "ISSUES"],
+  },
+  {
+    type: "PROPOSALS",
+    kind: "list",
+    headings: [
+      "ÖNERİLER",
+      "ONERILER",
+      "ÖNERİLER — HENÜZ KARAR DEĞİL",
+      "ONERILER HENUZ KARAR DEGIL",
+      "PROPOSALS",
+    ],
+  },
+  {
+    type: "NEXT_CHECKPOINT",
+    kind: "list",
+    headings: [
+      "BİR SONRAKİ KONTROL",
+      "BIR SONRAKI KONTROL",
+      "ÖNEMLİ BULGULAR",
+      "ONEMLI BULGULAR",
+      "NEXT STEPS",
+      "IMPORTANT FACTS",
+    ],
+  },
 ];
 
 const HEADING_RE =
   /^\s*(\d+)\.\s+(.+?)\s*$/u;
+
+const CORPORATE_ID_RE = /^(K|A|R)-(\d{2})\s*[—–-]\s*(.+)$/u;
 
 function normalizeHeading(raw: string): string {
   return raw
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .toUpperCase()
+    .replace(/\s+/gu, " ")
     .trim();
+}
+
+/** Splits `K-01 — body` presentation ids from list lines. */
+export function parseCorporateItemId(item: string): {
+  id?: string;
+  text: string;
+} {
+  const m = CORPORATE_ID_RE.exec(item.trim());
+  if (!m) return { text: item.trim() };
+  return {
+    id: `${m[1]}-${m[2]}`,
+    text: (m[3] ?? "").trim(),
+  };
 }
 
 /** Splits action lines like `Task (Sorumlu: Ada, Son tarih: —)` into display parts. */
 export function parseActionMeta(item: string): {
+  id?: string;
   text: string;
   owner?: string;
   due?: string;
 } {
+  const { id, text: withoutId } = parseCorporateItemId(item);
   const m =
     /^(.+?)\s*\((?:Sorumlu|Owner):\s*([^,)]+)\s*,\s*(?:Son tarih|Due):\s*([^)]+)\)\s*$/iu.exec(
-      item.trim(),
+      withoutId.trim(),
     );
-  if (!m) return { text: item.trim() };
+  if (!m) return { id, text: withoutId.trim() };
   return {
+    id,
     text: (m[1] ?? "").trim(),
     owner: (m[2] ?? "").trim(),
     due: (m[3] ?? "").trim(),
   };
+}
+
+/** User-facing review reasons only — successful consistency drops are not review. */
+export function reviewBannerReasons(qualityFlags: string[]): string[] {
+  const reasons: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of qualityFlags) {
+    const f = raw.trim().toUpperCase();
+    if (!f || seen.has(f)) continue;
+    if (f.includes("UNRESOLVED_DECISION_PROPOSAL_CONFLICT")) {
+      seen.add(f);
+      reasons.push("UNRESOLVED_DECISION_PROPOSAL_CONFLICT");
+      continue;
+    }
+    if (f === "REQUIRES_MANUAL_REVIEW" || f === "CONSISTENCY_AUDIT_NEEDS_REVIEW") {
+      seen.add(f);
+      reasons.push(f);
+      continue;
+    }
+    if (
+      f === "NEEDS_REVIEW" ||
+      f === "LOW_CONFIDENCE" ||
+      f === "SYNTHESIS_FALLBACK" ||
+      f === "AUDIT_FALLBACK"
+    ) {
+      seen.add(f);
+      reasons.push(f);
+    }
+  }
+  return reasons;
+}
+
+export function hasSubsumedProposalDrop(qualityFlags: string[]): boolean {
+  return qualityFlags.some((f) =>
+    f.toUpperCase().includes("DECISION_SUBSUMED_PROPOSAL_DROPPED"),
+  );
 }
 
 function matchSectionHeading(raw: string): (typeof SECTION_SPECS)[number] | null {
@@ -93,7 +183,10 @@ function matchSectionHeading(raw: string): (typeof SECTION_SPECS)[number] | null
   const heading = normalizeHeading(m[2] ?? "");
   return (
     SECTION_SPECS.find((spec) =>
-      spec.headings.some((h) => normalizeHeading(h) === heading),
+      spec.headings.some((h) => {
+        const nh = normalizeHeading(h);
+        return heading === nh || heading.startsWith(nh);
+      }),
     ) ?? null
   );
 }
@@ -157,6 +250,7 @@ export function parseSectionContent(
   const lines = trimmed.split(/\n+/).map((l) => l.trim()).filter(Boolean);
   const items: string[] = [];
   for (const line of lines) {
+    if (/^Not:\s+/iu.test(line)) continue;
     const numbered = /^\d+\.\s+(.+)$/u.exec(line);
     items.push((numbered?.[1] ?? line).trim());
   }
@@ -173,7 +267,7 @@ export function parseMinutesBody(body: string, fallbackTitle = ""): MinutesDocum
   const lines = body.replace(/\r\n/g, "\n").split("\n");
   let title = fallbackTitle.trim();
   let statusLabel = "";
-  const buckets = new Map<TemplateComponentType, string[]>();
+  const buckets = new Map<MinutesSectionType, string[]>();
   let current: (typeof SECTION_SPECS)[number] | null = null;
 
   for (const line of lines) {
@@ -244,11 +338,7 @@ export function serializeMinutesBody(doc: MinutesDocument): string {
   }
   lines.push("");
 
-  const headings: Record<TemplateComponentType, string> = {
-    LOGO: "",
-    HEADER: "",
-    METADATA: "",
-    PARTICIPANT_TABLE: "",
+  const headings: Partial<Record<MinutesSectionType, string>> = {
     EXECUTIVE_SUMMARY: "1. YÖNETİCİ ÖZETİ",
     AGENDA: "2. GÜNDEM",
     DECISIONS: "3. ALINAN KARARLAR",
@@ -256,16 +346,18 @@ export function serializeMinutesBody(doc: MinutesDocument): string {
     RISKS: "5. RİSKLER",
     COMMITMENTS: "6. TAAHHÜTLER",
     OPEN_QUESTIONS: "7. AÇIK SORULAR",
-    SIGNATURE: "",
-    FOOTER: "",
-    CONFIDENTIALITY: "",
-    PAGE_NUMBER: "",
+    ISSUES: "8. SORUNLAR",
+    PROPOSALS: "9. ÖNERİLER — HENÜZ KARAR DEĞİL",
+    NEXT_CHECKPOINT: "10. BİR SONRAKİ KONTROL",
   };
 
+  let index = 1;
   for (const section of doc.sections) {
     const heading = headings[section.type];
     if (!heading) continue;
-    lines.push(heading);
+    const labeled = heading.replace(/^\d+\./u, `${index}.`);
+    index += 1;
+    lines.push(labeled);
     const parsed = parseSectionContent(section.value, section.kind);
     if (parsed.empty) {
       lines.push("—");

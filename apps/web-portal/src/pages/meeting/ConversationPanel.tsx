@@ -312,6 +312,14 @@ function isInternalQualityFlag(flag: string): boolean {
     normalized === "OTHER" ||
     normalized.includes("LLM") ||
     normalized.startsWith("SV-") ||
-    normalized.startsWith("PV-")
+    normalized.startsWith("PV-") ||
+    normalized.startsWith("AUDITSTATUS=") ||
+    normalized.startsWith("UNRESOLVEDCONFLICTCOUNT=") ||
+    normalized.startsWith("GENERICACTIONCOUNT=") ||
+    normalized.startsWith("UNSUPPORTEDITEMCOUNT=") ||
+    normalized.startsWith("FALLBACKUSED=") ||
+    normalized === "CONSISTENCY_AUDIT_PASSED" ||
+    normalized === "DECISION_SUBSUMED_PROPOSAL_DROPPED" ||
+    normalized === "AMBIGUOUS_ACTION_ENRICHMENT"
   );
 }

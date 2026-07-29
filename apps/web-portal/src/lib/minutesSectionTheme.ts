@@ -1,13 +1,16 @@
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarRange,
+  Flag,
   HelpCircle,
+  Lightbulb,
   ListChecks,
   Scale,
   ShieldAlert,
   Sparkles,
   Zap,
 } from "lucide-react";
+import type { MinutesSectionType } from "@/lib/minutesDocument";
 import type { TemplateComponentType } from "@/types/template";
 
 export type MinutesSectionTheme = {
@@ -42,7 +45,7 @@ const FALLBACK: MinutesSectionTheme = {
   swatch: "bg-slate-400",
 };
 
-export const MINUTES_SECTION_THEME: Partial<Record<TemplateComponentType, MinutesSectionTheme>> = {
+export const MINUTES_SECTION_THEME: Partial<Record<MinutesSectionType, MinutesSectionTheme>> = {
   EXECUTIVE_SUMMARY: {
     icon: Sparkles,
     shell: "border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-white to-fuchsia-50/40",
@@ -120,8 +123,41 @@ export const MINUTES_SECTION_THEME: Partial<Record<TemplateComponentType, Minute
     itemIndex: "bg-sky-500 text-white",
     swatch: "bg-gradient-to-br from-sky-500 to-blue-500",
   },
+  ISSUES: {
+    icon: Flag,
+    shell: "border-orange-200/70 bg-gradient-to-br from-orange-50/90 via-white to-amber-50/40",
+    rail: "from-orange-500 to-amber-500",
+    iconTile: "bg-orange-500 text-white shadow-orange-200/80",
+    indexChip: "bg-orange-100 text-orange-900",
+    heading: "text-orange-950",
+    item: "border-orange-100/90 bg-white/90",
+    itemIndex: "bg-orange-500 text-white",
+    swatch: "bg-orange-500",
+  },
+  PROPOSALS: {
+    icon: Lightbulb,
+    shell: "border-lime-200/70 bg-gradient-to-br from-lime-50/90 via-white to-emerald-50/40",
+    rail: "from-lime-500 to-emerald-500",
+    iconTile: "bg-lime-600 text-white shadow-lime-200/80",
+    indexChip: "bg-lime-100 text-lime-900",
+    heading: "text-lime-950",
+    item: "border-lime-100/90 bg-white/90",
+    itemIndex: "bg-lime-600 text-white",
+    swatch: "bg-lime-500",
+  },
+  NEXT_CHECKPOINT: {
+    icon: CalendarRange,
+    shell: "border-slate-200/70 bg-gradient-to-br from-slate-50/90 via-white to-indigo-50/40",
+    rail: "from-slate-500 to-indigo-500",
+    iconTile: "bg-slate-700 text-white shadow-slate-200/80",
+    indexChip: "bg-slate-100 text-slate-800",
+    heading: "text-slate-900",
+    item: "border-slate-100/90 bg-white/90",
+    itemIndex: "bg-slate-600 text-white",
+    swatch: "bg-slate-600",
+  },
 };
 
-export function minutesSectionTheme(type: TemplateComponentType): MinutesSectionTheme {
+export function minutesSectionTheme(type: MinutesSectionType | TemplateComponentType): MinutesSectionTheme {
   return MINUTES_SECTION_THEME[type] ?? FALLBACK;
 }

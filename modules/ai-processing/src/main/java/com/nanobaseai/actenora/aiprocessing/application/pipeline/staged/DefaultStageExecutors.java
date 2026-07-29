@@ -23,6 +23,8 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingArtifact;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
@@ -688,8 +690,9 @@ public final class DefaultStageExecutors {
                             (System.nanoTime() - t0) / 1_000_000L, now);
                 }
                 List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
-                ExtractionBundle merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
-                        ProposalCuePostProcessor.productionDefaults().process(merger.merge(bundles), normalized));
+                ExtractionBundle merged = new CrossTypeConsistencyAuditor().auditBundle(
+                        CrossTypeMeetingItemScrubber.productionDefaults().scrub(
+                                ProposalCuePostProcessor.productionDefaults().process(merger.merge(bundles), normalized)));
                 String cleanedJson = MAPPER.writeValueAsString(MAPPER.valueToTree(merged));
                 String deterministicJson = MAPPER.writeValueAsString(Map.of(
                         "mergedDeterministic", true,
@@ -719,9 +722,10 @@ public final class DefaultStageExecutors {
                 // Prefer LLM output when schema-valid; else keep scrubbed deterministic merge.
                 try {
                     JsonNode llmNode = schema.parseAndValidate(json);
-                    ExtractionBundle llmBundle = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
-                            ProposalCuePostProcessor.productionDefaults().process(
-                                    bundleMapper.fromJson(llmNode), normalized));
+                    ExtractionBundle llmBundle = new CrossTypeConsistencyAuditor().auditBundle(
+                            CrossTypeMeetingItemScrubber.productionDefaults().scrub(
+                                    ProposalCuePostProcessor.productionDefaults().process(
+                                            bundleMapper.fromJson(llmNode), normalized)));
                     json = MAPPER.writeValueAsString(MAPPER.valueToTree(llmBundle));
                 } catch (RuntimeException ex) {
                     json = cleanedJson;
@@ -836,6 +840,7 @@ public final class DefaultStageExecutors {
                     List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
                     bundle = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
                             ProposalCuePostProcessor.productionDefaults().process(bundle, normalized));
+                    bundle = new CrossTypeConsistencyAuditor().auditBundle(bundle);
                     FinalNoteDraft deterministic = noteAssembler.assemble(bundle, job.language());
                     // Same allowlist as VALIDATE / legacy ExtractionPipelineService: all transcript segment ids.
                     Set<String> allowed = normalized.stream()
@@ -853,6 +858,8 @@ public final class DefaultStageExecutors {
                                     job.language(),
                                     prior
                             );
+                    draft = new CrossTypeConsistencyAuditor().audit(draft);
+                    draft = new ActionContextualEnricher().enrich(draft, normalized);
                     draft = FinalNoteConfidencePolicy.productionDefaults().apply(draft);
                 }
                 Optional<UUID> noteId = noteHandoff.handoff(new MeetingNoteHandoffPort.HandoffCommand(

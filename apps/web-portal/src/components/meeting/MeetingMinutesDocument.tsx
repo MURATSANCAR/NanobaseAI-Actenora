@@ -7,17 +7,35 @@ import { classifyAttendance } from "@/components/meeting/ParticipantAttendanceRo
 import { TemplateBrandFooter } from "@/components/template/TemplateBrandBanner";
 import { PRODUCT_BRAND } from "@/config/brand";
 import { useI18n } from "@/i18n";
+import type { MessageKey } from "@/i18n";
 import { sanitizeProductCopy } from "@/lib/brandSanitize";
 import {
   enhanceParagraphReadability,
+  hasSubsumedProposalDrop,
   parseActionMeta,
+  parseCorporateItemId,
   parseSectionContent,
+  reviewBannerReasons,
   type MinutesDocument,
   type MinutesSection,
+  type MinutesSectionType,
 } from "@/lib/minutesDocument";
 import { minutesSectionTheme } from "@/lib/minutesSectionTheme";
 import { collectPersonNames } from "@/lib/personNames";
 import type { TemplateComponentType } from "@/types/template";
+
+const SECTION_TITLE_KEYS: Partial<Record<MinutesSectionType, MessageKey>> = {
+  EXECUTIVE_SUMMARY: "backend.templateComponentType.EXECUTIVE_SUMMARY",
+  AGENDA: "backend.templateComponentType.AGENDA",
+  DECISIONS: "backend.templateComponentType.DECISIONS",
+  ACTIONS: "backend.templateComponentType.ACTIONS",
+  RISKS: "backend.templateComponentType.RISKS",
+  COMMITMENTS: "backend.templateComponentType.COMMITMENTS",
+  OPEN_QUESTIONS: "backend.templateComponentType.OPEN_QUESTIONS",
+  ISSUES: "meeting.minutesSection.ISSUES",
+  PROPOSALS: "meeting.minutesSection.PROPOSALS",
+  NEXT_CHECKPOINT: "meeting.minutesSection.NEXT_CHECKPOINT",
+};
 
 export function MeetingMinutesDocument({
   document,
@@ -29,6 +47,8 @@ export function MeetingMinutesDocument({
   footerExtra,
   participants = [],
   meetingStatus = "",
+  qualityFlags = [],
+  showAdminQualityInfo = false,
 }: {
   document: MinutesDocument;
   canEdit?: boolean;
@@ -39,6 +59,8 @@ export function MeetingMinutesDocument({
   footerExtra?: ReactNode;
   participants?: Participant[];
   meetingStatus?: string;
+  qualityFlags?: string[];
+  showAdminQualityInfo?: boolean;
 }) {
   const { t } = useI18n();
   const filledCount = document.sections.filter((section) => {
@@ -67,6 +89,9 @@ export function MeetingMinutesDocument({
     }
     return { attended, absent };
   }, [participants, meetingStatus]);
+
+  const reviewReasons = useMemo(() => reviewBannerReasons(qualityFlags), [qualityFlags]);
+  const showDropInfo = showAdminQualityInfo && hasSubsumedProposalDrop(qualityFlags);
 
   return (
     <article className="meeting-note-document">
@@ -145,6 +170,26 @@ export function MeetingMinutesDocument({
         </div>
       </header>
 
+      {reviewReasons.length ? (
+        <div
+          className="relative z-10 border-b border-amber-200/80 bg-amber-50/95 px-4 py-3 sm:px-6"
+          role="status"
+        >
+          <p className="text-sm font-semibold text-amber-950">{t("meeting.minutesReviewBannerTitle")}</p>
+          <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm text-amber-900">
+            {reviewReasons.map((code) => (
+              <li key={code}>{t(`backend.qualityFlag.${code}` as MessageKey)}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {showDropInfo ? (
+        <div className="relative z-10 border-b border-slate-200/80 bg-slate-50/90 px-4 py-2 sm:px-6">
+          <p className="text-xs text-slate-600">{t("meeting.minutesAdminDropInfo")}</p>
+        </div>
+      ) : null}
+
       {participants.length ? (
         <div className="relative z-10 border-b border-violet-100/70 bg-gradient-to-b from-violet-50/50 via-white to-white px-4 py-4 sm:px-6">
           <MinutesAttendanceBanner participants={participants} meetingStatus={meetingStatus} />
@@ -157,11 +202,11 @@ export function MeetingMinutesDocument({
             key={section.type}
             section={section}
             index={index + 1}
-            canEdit={Boolean(canEdit)}
+            canEdit={Boolean(canEdit) && isEditableTemplateSection(section.type)}
             personNames={personNames}
             onChange={
-              onSectionChange
-                ? (value) => onSectionChange(section.type, value)
+              onSectionChange && isEditableTemplateSection(section.type)
+                ? (value) => onSectionChange(section.type as TemplateComponentType, value)
                 : undefined
             }
           />
@@ -185,6 +230,14 @@ export function MeetingMinutesDocument({
   );
 }
 
+function isEditableTemplateSection(type: MinutesSectionType): type is TemplateComponentType {
+  return (
+    type !== "PROPOSALS" &&
+    type !== "ISSUES" &&
+    type !== "NEXT_CHECKPOINT"
+  );
+}
+
 function MinutesSectionCard({
   section,
   index,
@@ -198,13 +251,14 @@ function MinutesSectionCard({
   personNames: string[];
   onChange?: (value: string) => void;
 }) {
-  const { t, tb } = useI18n();
+  const { t } = useI18n();
   const theme = minutesSectionTheme(section.type);
   const Icon = theme.icon;
   const parsed = parseSectionContent(section.value, section.kind);
   const remoteValue = editableValue(section);
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState(remoteValue);
+  const titleKey = SECTION_TITLE_KEYS[section.type];
 
   useEffect(() => {
     if (!focused) setDraft(remoteValue);
@@ -250,7 +304,7 @@ function MinutesSectionCard({
                 theme.heading,
               ].join(" ")}
             >
-              {tb("templateComponentType", section.type)}
+              {titleKey ? t(titleKey) : section.type}
             </h3>
           </div>
         </div>
@@ -272,7 +326,6 @@ function MinutesSectionCard({
               onChange(next);
             }}
             onKeyDown={(e) => {
-              // Keep Enter as a newline inside the note field (not a form submit).
               if (e.key === "Enter") e.stopPropagation();
             }}
             placeholder={
@@ -294,11 +347,13 @@ function MinutesSectionCard({
           <p className="whitespace-pre-wrap break-words rounded-xl bg-white/80 px-4 py-3.5 text-sm leading-relaxed text-slate-800 shadow-sm ring-1 ring-white/90 sm:text-[15px] sm:leading-7">
             <HighlightPersonNames text={parsed.paragraph} names={personNames} />
           </p>
+        ) : section.type === "ACTIONS" ? (
+          <ActionTable items={parsed.items} personNames={personNames} themeItem={theme.item} />
         ) : (
           <ol className="space-y-2.5">
             {parsed.items.map((item, i) => {
-              const meta =
-                section.type === "ACTIONS" ? parseActionMeta(item) : { text: item };
+              const corp = parseCorporateItemId(item);
+              const mitigationSplit = splitMitigation(corp.text);
               return (
                 <li
                   key={`${section.type}-${i}`}
@@ -314,26 +369,17 @@ function MinutesSectionCard({
                     ].join(" ")}
                     aria-hidden
                   >
-                    {i + 1}
+                    {corp.id ?? i + 1}
                   </span>
-                  <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <p className="break-words [overflow-wrap:anywhere] sm:text-[15px] sm:leading-6">
-                      <HighlightPersonNames text={meta.text} names={personNames} />
+                      <HighlightPersonNames text={mitigationSplit.body} names={personNames} />
                     </p>
-                    {"owner" in meta && (meta.owner || meta.due) ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {meta.owner ? (
-                          <span className="rounded-full bg-amber-100/95 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950">
-                            {t("meeting.minutesOwner")}:{" "}
-                            <HighlightPersonNames text={meta.owner} names={personNames} />
-                          </span>
-                        ) : null}
-                        {meta.due ? (
-                          <span className="rounded-full bg-slate-100/95 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
-                            {t("meeting.minutesDue")}: {meta.due}
-                          </span>
-                        ) : null}
-                      </div>
+                    {mitigationSplit.mitigation ? (
+                      <p className="text-xs text-slate-600">
+                        <span className="font-semibold">{t("meeting.minutesMitigation")}: </span>
+                        <HighlightPersonNames text={mitigationSplit.mitigation} names={personNames} />
+                      </p>
                     ) : null}
                   </div>
                 </li>
@@ -344,6 +390,64 @@ function MinutesSectionCard({
       </div>
     </section>
   );
+}
+
+function ActionTable({
+  items,
+  personNames,
+  themeItem,
+}: {
+  items: string[];
+  personNames: string[];
+  themeItem: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="overflow-x-auto rounded-xl border border-amber-100/90 bg-white/85 shadow-sm">
+      <table className="min-w-full text-left text-sm">
+        <thead className="bg-amber-50/90 text-[11px] font-bold uppercase tracking-wide text-amber-950">
+          <tr>
+            <th className="px-3 py-2">{t("meeting.minutesActionColId")}</th>
+            <th className="px-3 py-2">{t("meeting.minutesActionColOwner")}</th>
+            <th className="px-3 py-2">{t("meeting.minutesActionColWork")}</th>
+            <th className="px-3 py-2">{t("meeting.minutesActionColDue")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, i) => {
+            const meta = parseActionMeta(item);
+            return (
+              <tr key={`action-${i}`} className={["border-t border-amber-100/80", themeItem].join(" ")}>
+                <td className="px-3 py-2.5 font-semibold tabular-nums text-amber-900">
+                  {meta.id ?? `A-${String(i + 1).padStart(2, "0")}`}
+                </td>
+                <td className="px-3 py-2.5 text-slate-800">
+                  {meta.owner ? (
+                    <HighlightPersonNames text={meta.owner} names={personNames} />
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-slate-800">
+                  <HighlightPersonNames text={meta.text} names={personNames} />
+                </td>
+                <td className="px-3 py-2.5 text-slate-700">{meta.due ?? "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function splitMitigation(text: string): { body: string; mitigation?: string } {
+  const m = /\s+Azaltma:\s*(.+)$/iu.exec(text);
+  if (!m) return { body: text };
+  return {
+    body: text.slice(0, m.index).trim(),
+    mitigation: (m[1] ?? "").trim(),
+  };
 }
 
 function editableValue(section: MinutesSection): string {

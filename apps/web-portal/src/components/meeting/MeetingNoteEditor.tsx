@@ -34,6 +34,7 @@ export function MeetingNoteEditor({
   variant = "document",
   participants = [],
   meetingStatus = "",
+  qualityFlags = [],
 }: {
   meetingId: string;
   note: MeetingNote;
@@ -47,6 +48,7 @@ export function MeetingNoteEditor({
   variant?: "form" | "document";
   participants?: Participant[];
   meetingStatus?: string;
+  qualityFlags?: string[];
 }) {
   const api = useApi();
   const { t, tb } = useI18n();
@@ -241,6 +243,8 @@ export function MeetingNoteEditor({
         footerExtra={templatePicker}
         participants={participants}
         meetingStatus={meetingStatus}
+        qualityFlags={qualityFlags}
+        showAdminQualityInfo={canEdit}
         onSectionChange={(type, value) => {
           const next = {
             ...minutesDoc,

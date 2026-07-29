@@ -1364,56 +1364,100 @@ public class PortalApiController {
         appendMinutesSection(sb, "2. GÜNDEM",
                 com.nanobaseai.actenora.security.delivery.ApprovedNoteContentJsonMapper.parseAgendaItems(summary));
 
-        appendMinutesSection(sb, "3. ALINAN KARARLAR", note.decisions() == null ? List.of()
-                : note.decisions().stream().map(d -> {
-                    StringBuilder line = new StringBuilder(d.text() == null ? "" : d.text());
-                    if (d.rationale() != null && !d.rationale().isBlank()) {
-                        line.append(" (Gerekçe: ").append(d.rationale().trim()).append(')');
-                    }
-                    if (d.decisionStatus() != null && !d.decisionStatus().isBlank()) {
-                        line.append(" [").append(d.decisionStatus().trim()).append(']');
-                    }
-                    return line.toString();
-                }).filter(t -> t != null && !t.isBlank()).toList());
-        appendMinutesSection(sb, "4. AKSİYON MADDELERİ", note.actionItems() == null ? List.of()
-                : note.actionItems().stream().map(a -> {
-                    String owner = a.owner() == null || a.owner().isBlank() ? "—" : a.owner();
-                    String due = a.dueDate() == null ? "—" : a.dueDate().toString();
-                    StringBuilder line = new StringBuilder(a.text())
-                            .append(" (Sorumlu: ").append(owner).append(", Son tarih: ").append(due);
-                    if (a.ownerType() != null && !a.ownerType().isBlank()) {
-                        line.append(", Tip: ").append(a.ownerType().trim());
-                    }
-                    if (a.priority() != null && !a.priority().isBlank()) {
-                        line.append(", Öncelik: ").append(a.priority().trim());
-                    }
-                    if (a.relativeDate() != null && !a.relativeDate().isBlank()) {
-                        line.append(", Relatif: ").append(a.relativeDate().trim());
-                    }
-                    return line.append(')').toString();
-                }).toList());
-        appendMinutesSection(sb, "5. RİSKLER", note.risks() == null ? List.of()
-                : note.risks().stream().map(r -> {
-                    StringBuilder line = new StringBuilder(r.text() == null ? "" : r.text());
-                    if (r.likelihood() != null && !r.likelihood().isBlank()) {
-                        line.append(" (Olasılık: ").append(r.likelihood().trim()).append(')');
-                    }
-                    if (r.mitigation() != null && !r.mitigation().isBlank()) {
-                        line.append(" Azaltma: ").append(r.mitigation().trim());
-                    }
-                    return line.toString();
-                }).filter(t -> t != null && !t.isBlank()).toList());
+        // Deterministic presentation IDs: list order = extraction/persist order (not alphabetical).
+        List<String> decisions = new ArrayList<>();
+        if (note.decisions() != null) {
+            int i = 0;
+            for (var d : note.decisions()) {
+                if (d == null || d.text() == null || d.text().isBlank()) {
+                    continue;
+                }
+                i++;
+                StringBuilder line = new StringBuilder(corporateId("K", i))
+                        .append(" — ").append(d.text().trim());
+                if (d.rationale() != null && !d.rationale().isBlank()) {
+                    line.append(" (Gerekçe: ").append(d.rationale().trim()).append(')');
+                }
+                if (d.decisionStatus() != null && !d.decisionStatus().isBlank()) {
+                    line.append(" [").append(d.decisionStatus().trim()).append(']');
+                }
+                decisions.add(line.toString());
+            }
+        }
+        appendMinutesSection(sb, "3. ALINAN KARARLAR", decisions);
+
+        List<String> actions = new ArrayList<>();
+        boolean anyActionWithoutHardDue = false;
+        if (note.actionItems() != null) {
+            int i = 0;
+            for (var a : note.actionItems()) {
+                if (a == null || a.text() == null || a.text().isBlank()) {
+                    continue;
+                }
+                i++;
+                String owner = a.owner() == null || a.owner().isBlank() ? "—" : a.owner().trim();
+                String due;
+                if (a.dueDate() != null) {
+                    due = a.dueDate().toString();
+                } else if (a.relativeDate() != null && !a.relativeDate().isBlank()) {
+                    due = a.relativeDate().trim();
+                } else {
+                    due = "—";
+                    anyActionWithoutHardDue = true;
+                }
+                StringBuilder line = new StringBuilder(corporateId("A", i))
+                        .append(" — ").append(a.text().trim())
+                        .append(" (Sorumlu: ").append(owner).append(", Son tarih: ").append(due);
+                if (a.ownerType() != null && !a.ownerType().isBlank()) {
+                    line.append(", Tip: ").append(a.ownerType().trim());
+                }
+                if (a.priority() != null && !a.priority().isBlank()) {
+                    line.append(", Öncelik: ").append(a.priority().trim());
+                }
+                actions.add(line.append(')').toString());
+            }
+        }
+        appendMinutesSection(sb, "4. AKSİYON MADDELERİ", actions);
+        if (anyActionWithoutHardDue && !actions.isEmpty()) {
+            sb.append("Not: Toplantıda aksiyonlar için kesin teslim tarihi belirtilmedi.").append('\n');
+        }
+
+        List<String> risks = new ArrayList<>();
+        if (note.risks() != null) {
+            int i = 0;
+            for (var r : note.risks()) {
+                if (r == null || r.text() == null || r.text().isBlank()) {
+                    continue;
+                }
+                i++;
+                StringBuilder line = new StringBuilder(corporateId("R", i))
+                        .append(" — ").append(r.text().trim());
+                if (r.likelihood() != null && !r.likelihood().isBlank()) {
+                    line.append(" (Olasılık: ").append(r.likelihood().trim()).append(')');
+                }
+                if (r.mitigation() != null && !r.mitigation().isBlank()) {
+                    line.append(" Azaltma: ").append(r.mitigation().trim());
+                }
+                risks.add(line.toString());
+            }
+        }
+        appendMinutesSection(sb, "5. RİSKLER", risks);
         appendMinutesSection(sb, "6. TAAHHÜTLER", note.commitments() == null ? List.of()
                 : note.commitments().stream().map(c -> c.text()).filter(Objects::nonNull).toList());
         appendMinutesSection(sb, "7. AÇIK SORULAR", note.openQuestions() == null ? List.of()
                 : note.openQuestions().stream().map(q -> q.text()).filter(Objects::nonNull).toList());
         appendMinutesSection(sb, "8. SORUNLAR", note.issues() == null ? List.of()
                 : note.issues().stream().map(i -> i.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "9. ÖNERİLER", note.proposals() == null ? List.of()
+        appendMinutesSection(sb, "9. ÖNERİLER — HENÜZ KARAR DEĞİL", note.proposals() == null ? List.of()
                 : note.proposals().stream().map(p -> p.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "10. ÖNEMLİ BULGULAR", note.importantFacts() == null ? List.of()
+        appendMinutesSection(sb, "10. BİR SONRAKİ KONTROL", note.importantFacts() == null ? List.of()
                 : note.importantFacts().stream().map(f -> f.text()).filter(Objects::nonNull).toList());
         return sb.toString().trim();
+    }
+
+    /** Presentation-only corporate id (K-01 / A-01 / R-01); not persisted. */
+    private static String corporateId(String prefix, int oneBasedIndex) {
+        return prefix + "-" + String.format(java.util.Locale.ROOT, "%02d", oneBasedIndex);
     }
 
     private static String blankToNull(String value) {
@@ -1445,12 +1489,19 @@ public class PortalApiController {
         return normalized;
     }
 
-    /** Ops/version tokens that must not surface in the meeting conversation UI. */
+    /** Ops/version tokens that must not surface as primary meeting quality chips. */
     private static boolean isInternalQualityFlagToken(String normalized) {
+        // DECISION_SUBSUMED_PROPOSAL_DROPPED is intentionally kept for optional admin soft-info.
         return normalized.contains("LLM")
                 || normalized.startsWith("SV-")
                 || normalized.startsWith("PV-")
-                || "OTHER".equals(normalized);
+                || "OTHER".equals(normalized)
+                || normalized.startsWith("AUDITSTATUS=")
+                || normalized.startsWith("UNRESOLVEDCONFLICTCOUNT=")
+                || normalized.startsWith("GENERICACTIONCOUNT=")
+                || normalized.startsWith("UNSUPPORTEDITEMCOUNT=")
+                || normalized.startsWith("FALLBACKUSED=")
+                || "CONSISTENCY_AUDIT_PASSED".equals(normalized);
     }
 
     private static void appendMinutesSection(StringBuilder sb, String title, List<String> items) {

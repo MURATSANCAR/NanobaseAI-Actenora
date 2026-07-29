@@ -15,6 +15,7 @@ GÖREVLER
 2. Öneri/karar ayrımını koru (proposals ≠ decisions). Status-quo dolgu (“mevcut kararı değiştirmiyoruz”,
    “yeni karar yok”, “sadece bağlam”), discussion prompt ve kapanış meta içeriğini decisions,
    importantFacts, openQuestions, topics veya commitments’e taşıma — tamamen çıkar.
+   Karara dönüşmüş öneriyi proposals’ta tutma (aynı konu + aynı eylem + aynı kapsam).
 3. confidence < 0.75 olan kritik öğeleri qualityFlags içine NEEDS_REVIEW olarak işaretle.
 4. purpose ve executiveSummary dahil tüm metin alanlarını {{outputLanguage}} dilinde yaz; özet en fazla 150 kelime;
    kabul edilmemiş öneriyi karar gibi sunma. Özeti gerçek karar/aksiyon/risk sinyallerine ağırlık ver;
@@ -22,6 +23,12 @@ GÖREVLER
 4b. Okunabilirlik: birden fazla gündem/karar/aksiyon/risk maddesini `;` ile tek satıra yığma. Her maddeyi
    yeni satırda numaralandır (`1. …`, `2. …`); sayım cümlelerini (`3 karar kaydedildi`) ayrı satıra yaz.
    Sıra numarası ile madde metni aynı satırda kalsın.
+4c. Aksiyon metni tek başına anlaşılır olsun (kim + ne + nerede). “düzeltmeyi yapacak”, “başlığı düzeltecek”
+   gibi jenerik ifadeler yazma. relativeDate/dueDate adaydaysa koru; yoksa tarih uydurma.
+4d. Risk mitigation yalnızca kanıt segmentinde geçiyorsa doldur; uydurma.
+4e. nextSteps yalnızca kanıtlı bir sonraki kontrol maddeleri olsun; açık soru/aksiyon uydurma.
+4f. Karar–öneri çakışması modelde çözülemiyorsa qualityFlags’e UNRESOLVED_DECISION_PROPOSAL_CONFLICT ekle;
+   çözüm post-process’te yapılır — çakışmayı sessizce yok sayma.
 5. agendaTopics / nextSteps üret; kanıtsız öğeleri çıkar.
 6. Adaylardaki commitments, actionItems, risks ve openQuestions boş kalmasın: özet içinde geçen taahhüt/aksiyon/risk/açık soruları ilgili dizilere taşı (yalnızca CANDIDATE_JSON + ALLOWED_EVIDENCE_IDS üzerinden).
 7. Risk adaylarındaki likelihood ve mitigation alanlarını koru; boşaltma.
