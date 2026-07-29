@@ -57,8 +57,10 @@ public final class MinutesSynthesisAndAudit {
     private final ObjectMapper objectMapper;
     private final String finalMinutesTemplate;
     private final String evidenceAuditTemplate;
+    private final String editorialSummaryTemplate;
     private final int timeoutSeconds;
     private final PipelineQualityMetricsPort qualityMetrics;
+    private final MinutesFinalizationPolicy finalizationPolicy;
 
     public MinutesSynthesisAndAudit(ModelRuntimePort modelRuntime) {
         this(modelRuntime, 0);
@@ -73,6 +75,15 @@ public final class MinutesSynthesisAndAudit {
             int timeoutSeconds,
             PipelineQualityMetricsPort qualityMetrics
     ) {
+        this(modelRuntime, timeoutSeconds, qualityMetrics, MinutesFinalizationPolicy.compatibility());
+    }
+
+    public MinutesSynthesisAndAudit(
+            ModelRuntimePort modelRuntime,
+            int timeoutSeconds,
+            PipelineQualityMetricsPort qualityMetrics,
+            MinutesFinalizationPolicy finalizationPolicy
+    ) {
         this(
                 modelRuntime,
                 new LimitedJsonRepair(),
@@ -82,7 +93,8 @@ public final class MinutesSynthesisAndAudit {
                 loadTemplate("/aiprocessing/prompts/final-minutes.v1.txt"),
                 loadTemplate("/aiprocessing/prompts/evidence-audit.v1.txt"),
                 timeoutSeconds,
-                qualityMetrics
+                qualityMetrics,
+                finalizationPolicy
         );
     }
 
@@ -104,7 +116,8 @@ public final class MinutesSynthesisAndAudit {
                 finalMinutesTemplate,
                 evidenceAuditTemplate,
                 0,
-                PipelineQualityMetricsPort.noop()
+                PipelineQualityMetricsPort.noop(),
+                MinutesFinalizationPolicy.compatibility()
         );
     }
 
@@ -127,7 +140,8 @@ public final class MinutesSynthesisAndAudit {
                 finalMinutesTemplate,
                 evidenceAuditTemplate,
                 timeoutSeconds,
-                PipelineQualityMetricsPort.noop()
+                PipelineQualityMetricsPort.noop(),
+                MinutesFinalizationPolicy.compatibility()
         );
     }
 
@@ -142,6 +156,32 @@ public final class MinutesSynthesisAndAudit {
             int timeoutSeconds,
             PipelineQualityMetricsPort qualityMetrics
     ) {
+        this(
+                modelRuntime,
+                jsonRepair,
+                schemaValidator,
+                bundleMapper,
+                objectMapper,
+                finalMinutesTemplate,
+                evidenceAuditTemplate,
+                timeoutSeconds,
+                qualityMetrics,
+                MinutesFinalizationPolicy.compatibility()
+        );
+    }
+
+    MinutesSynthesisAndAudit(
+            ModelRuntimePort modelRuntime,
+            LimitedJsonRepair jsonRepair,
+            ExtractionJsonSchemaValidator schemaValidator,
+            ExtractionBundleMapper bundleMapper,
+            ObjectMapper objectMapper,
+            String finalMinutesTemplate,
+            String evidenceAuditTemplate,
+            int timeoutSeconds,
+            PipelineQualityMetricsPort qualityMetrics,
+            MinutesFinalizationPolicy finalizationPolicy
+    ) {
         this.modelRuntime = Objects.requireNonNull(modelRuntime, "modelRuntime");
         this.jsonRepair = Objects.requireNonNull(jsonRepair, "jsonRepair");
         this.schemaValidator = Objects.requireNonNull(schemaValidator, "schemaValidator");
@@ -149,6 +189,10 @@ public final class MinutesSynthesisAndAudit {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.finalMinutesTemplate = Objects.requireNonNull(finalMinutesTemplate, "finalMinutesTemplate");
         this.evidenceAuditTemplate = Objects.requireNonNull(evidenceAuditTemplate, "evidenceAuditTemplate");
+        this.finalizationPolicy = Objects.requireNonNull(finalizationPolicy, "finalizationPolicy");
+        this.editorialSummaryTemplate = finalizationPolicy.mode() == MinutesFinalizationPolicy.Mode.EDITORIAL
+                ? loadTemplate(finalizationPolicy.promptResource())
+                : "";
         if (timeoutSeconds < 0) {
             throw new IllegalArgumentException("timeoutSeconds must be >= 0");
         }

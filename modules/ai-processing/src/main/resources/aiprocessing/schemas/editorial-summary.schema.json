@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "meeting.editorial-summary.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["executiveSummary", "reviewRequired"],
+  "properties": {
+    "executiveSummary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewRequired": {
+      "type": "boolean"
+    }
+  }
+}
