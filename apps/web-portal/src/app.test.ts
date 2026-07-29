@@ -400,6 +400,11 @@ test("dense executive summary expands to numbered lines", async () => {
   assert.equal(parseSectionContent(dense, "paragraph").paragraph, readable);
 });
 
+test("finalization fallback is visible as a review reason", async () => {
+  const { reviewBannerReasons } = await import("./lib/minutesDocument.ts");
+  assert.deepEqual(reviewBannerReasons(["FINALIZATION_FALLBACK"]), ["FINALIZATION_FALLBACK"]);
+});
+
 test("person names split longest match for bold highlighting", async () => {
   const { collectPersonNames, splitByPersonNames } = await import("./lib/personNames.ts");
   const names = collectPersonNames(["Murat Sancar", "Burak", "unknown", "ada@example.com"]);

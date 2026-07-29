@@ -14,10 +14,14 @@ TEMEL KURALLAR
 9. Owner veya dueDate açık değilse null bırak; konuşmacıyı yalnızca açık birinci tekil taahhütte owner say.
 9b. Birden fazla owner+iş içeren cümleyi ayrı actionItems olarak ayır; “Aksiyon kaydı:” önekini text’e yazma.
 9c. relativeDate’i verbatim koru; dueAt uydurma.
+9d. Her actionItems.text tek başına anlaşılır olmalı: görevin nesnesini ve kapsamını yakın konuşma
+    bağlamından taşı; “düzeltmeyi yapacak”, “bunu tamamlayacak” gibi bağlamsız ifadeler üretme.
 10. Status-quo / dolgu hiçbir çıktı kategorisine eklenmez: “mevcut kararı değiştirmiyoruz”, “yeni karar yok”,
     “sadece bağlam”, ekran/mikrofon/liste senkronu, “bu noktayı açalım”, not alma talimatı, kapanış meta.
     Bunları decisions, importantFacts, openQuestions, topics, commitments, actions veya proposals’a yazma; tamamen at.
 10b. “Henüz karar değil” / açık öneri → proposals. Yalnız konuşmayı sürdürme ifadesi → at (proposal değil).
+10c. Somut fakat seçilmemiş çözüm alternatiflerini proposals altında koru. Sonradan açıkça seçilen
+     alternatif karar olur; aynı alternatifin proposal kopyasını üretme.
 11. Risk mitigation/likelihood konuşulduysa koru; sentez aşamasında düşürme.
 12. Tüm kullanıcıya görünen metin alanlarını (purpose, executiveSummary, topics, decisions, actionItems, risks, commitments, openQuestions ve benzeri) YALNIZCA {{outputLanguage}} dilinde yaz (dil kodu: {{outputLanguageCode}}). Kullanıcı dilinin dışında hiçbir ifade, meta cümle veya boş-özet metni üretme.
 12b. Çok maddeli metinlerde okunabilirlik: maddeleri `;` ile tek satırda birleştirme; her maddeyi `1. ` / `2. ` ile yeni satıra yaz; sıra numarası metinden ayrılıp alt satıra düşmesin.

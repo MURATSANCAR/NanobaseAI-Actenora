@@ -122,7 +122,7 @@ class BurstFairnessAndSlaLoadScenarioTest {
 
         assertTrue(criticalClaimedFirst >= 5, "critical jobs must not starve under bulk/normal burst");
         assertTrue(slaTracker.breachCount(JobPriority.NORMAL) + slaTracker.breachCount(JobPriority.BULK) >= 0);
-        // CRITICAL SLA is 5 minutes; completions at +2m must not breach
+        // CRITICAL SLA is 2 hours; completions at +2m must not breach.
         assertEquals(0, slaTracker.breachCount(JobPriority.CRITICAL));
         assertFalse(queueGuard.isOverLimit());
     }
@@ -142,7 +142,7 @@ class BurstFairnessAndSlaLoadScenarioTest {
     @Test
     void delayedBulk_recordsSlaBreach() {
         AiJob bulk = service.submit(command(tenantA, JobPriority.BULK, "late-bulk")).job();
-        Instant late = now.plus(Duration.ofHours(5)); // BULK SLA = 240m
+        Instant late = now.plus(Duration.ofHours(49)); // BULK SLA = 48h
         var attempt = bulk.markRunning(now.plus(Duration.ofMinutes(1)));
         attempts.save(attempt);
         jobs.save(bulk);

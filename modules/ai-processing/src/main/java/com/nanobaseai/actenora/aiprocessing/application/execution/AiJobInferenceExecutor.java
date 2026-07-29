@@ -579,7 +579,7 @@ public final class AiJobInferenceExecutor {
                     ? result.metrics().durationMs()
                     : elapsedMs(startedNanos);
             AiJob completed = jobService.completeAttempt(
-                    job.id(), latencyMs, inputTokens, outputTokens, java.time.Instant.now());
+                    job.id(), latencyMs, inputTokens, outputTokens, now);
             persistActionPostProcessingArtifact(job, result);
             UUID meetingNoteId = null;
             try {
@@ -600,7 +600,7 @@ public final class AiJobInferenceExecutor {
                 result.failureCategory(),
                 result.failureMessage() == null ? result.failureCategory().name() : result.failureMessage(),
                 result.permanentFailure(),
-                java.time.Instant.now()
+                now
         );
     }
 
@@ -643,17 +643,17 @@ public final class AiJobInferenceExecutor {
                     result.latencyMs(),
                     result.tokenUsage().inputTokens(),
                     result.tokenUsage().outputTokens(),
-                    java.time.Instant.now()
+                    now
             );
             return ExecutionOutcome.succeeded(
                     completed.id(), attemptId, completed.status(), result.latencyMs(), null);
         } catch (LocalModelProviderException ex) {
             return fail(job, attemptId, elapsedMs(startedNanos), ex.category(), ex.retryable(), ex.getMessage(),
-                    java.time.Instant.now());
+                    now);
         } catch (RuntimeException ex) {
             return fail(job, attemptId, elapsedMs(startedNanos),
                     ProviderFailureCategory.UNKNOWN, false, ex.getClass().getSimpleName(),
-                    java.time.Instant.now());
+                    now);
         }
     }
 

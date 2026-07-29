@@ -987,7 +987,6 @@ public final class DefaultStageExecutors {
                     finalizationModelCalls = finalization.modelCalls();
                     finalizationModelLatencyMs = finalization.modelLatencyMs();
                     finalizationFallbackUsed = finalization.fallbackUsed();
-                    draft = new CrossTypeConsistencyAuditor().audit(draft);
                     draft = new ActionContextualEnricher().enrich(draft, normalized);
                     ExplicitActionCueRecoverer.Result recovered =
                             new ExplicitActionCueRecoverer().recover(draft.actionItems(), normalized);
@@ -1013,6 +1012,7 @@ public final class DefaultStageExecutors {
                             draft.confidence(),
                             draft.requiresManualReview() || post.requiresManualReview()
                     );
+                    draft = new CrossTypeConsistencyAuditor().audit(draft, finalizationFallbackUsed);
                     draft = FinalNoteConfidencePolicy.productionDefaults().apply(draft);
                     actionPostStats = post.stats().toArtifactMap(job.meetingOccurrenceId().toString());
                     if (artifacts != null && actionPostStats != null) {

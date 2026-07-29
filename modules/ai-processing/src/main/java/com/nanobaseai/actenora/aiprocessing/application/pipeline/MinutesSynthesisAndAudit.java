@@ -383,8 +383,18 @@ public final class MinutesSynthesisAndAudit {
             String summary,
             boolean reviewRequired
     ) {
+        String renderedSummary = summary;
+        if (!source.topics().isEmpty()) {
+            int firstBlockEnd = source.executiveSummary().indexOf("\n\n");
+            String agendaBlock = firstBlockEnd < 0
+                    ? source.executiveSummary().trim()
+                    : source.executiveSummary().substring(0, firstBlockEnd).trim();
+            if (!agendaBlock.isBlank()) {
+                renderedSummary = agendaBlock + "\n\n" + summary;
+            }
+        }
         return new FinalNoteDraft(
-                summary,
+                renderedSummary,
                 source.decisions(),
                 source.actionItems(),
                 source.risks(),

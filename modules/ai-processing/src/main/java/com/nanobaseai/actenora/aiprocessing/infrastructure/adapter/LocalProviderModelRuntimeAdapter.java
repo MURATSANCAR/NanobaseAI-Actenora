@@ -193,9 +193,12 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
         return format;
     }
 
-    private static String schemaResourceFor(InferenceRequest request) {
+    static String schemaResourceFor(InferenceRequest request) {
         String task = request.taskType() == null ? "" : request.taskType();
         String schemaVersion = request.schemaVersion() == null ? "" : request.schemaVersion();
+        if (schemaVersion.contains("editorial-summary")) {
+            return "/aiprocessing/schemas/editorial-summary.schema.json";
+        }
         if (task.contains("FINAL") || schemaVersion.contains("final-note") || schemaVersion.contains("final-minutes")) {
             return "/aiprocessing/schemas/final-minutes.schema.json";
         }
@@ -209,8 +212,11 @@ public final class LocalProviderModelRuntimeAdapter implements ModelRuntimePort 
         return "/aiprocessing/schemas/extraction-output.schema.json";
     }
 
-    private static String schemaNameFor(InferenceRequest request) {
+    static String schemaNameFor(InferenceRequest request) {
         String resource = schemaResourceFor(request);
+        if (resource != null && resource.contains("editorial-summary")) {
+            return "editorial_summary";
+        }
         if (resource != null && resource.contains("final-minutes")) {
             return "final_minutes";
         }

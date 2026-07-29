@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.aiprocessing.infrastructure.adapter;
 
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ExtractionPipelineService;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.InferenceRequest;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PipelineRunRequest;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PipelineRunResult;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
@@ -17,6 +18,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LocalProviderModelRuntimeAdapterTest {
+
+    @Test
+    void editorialFinalizationUsesItsBoundedSummarySchema() {
+        InferenceRequest request = new InferenceRequest(
+                "FINAL_NOTE",
+                "pv-meeting-editorial-summary-v1",
+                "meeting.editorial-summary.v1",
+                "system",
+                "user",
+                List.of(),
+                768,
+                90
+        );
+
+        assertEquals(
+                "/aiprocessing/schemas/editorial-summary.schema.json",
+                LocalProviderModelRuntimeAdapter.schemaResourceFor(request)
+        );
+        assertEquals("editorial_summary", LocalProviderModelRuntimeAdapter.schemaNameFor(request));
+    }
 
     @Test
     void qwenBridgeRunsThroughLocalModelProviderWithoutCloudFallback() {
@@ -52,6 +73,6 @@ class LocalProviderModelRuntimeAdapterTest {
 
         assertTrue(result.success());
         assertEquals(Qwen27BModelAdapter.MODEL_VERSION, result.modelVersion());
-        assertEquals("pv-meeting-chunk-extraction-v1", result.promptVersionId());
+        assertEquals("pv-meeting-chunk-extraction-v2", result.promptVersionId());
     }
 }

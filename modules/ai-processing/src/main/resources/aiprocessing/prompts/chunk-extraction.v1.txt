@@ -19,6 +19,8 @@ katılım yokluğu, iletilmeyen takvim, belirsiz teslim → risks ve/veya openQu
 dueDate yalnızca konuşmada geçen tarih ifadesini aynen yaz (ISO uydurma); relativeDate kullanabilirsin.
 dueAt alanını doldurma (takvim çözümlemesi backend'de yapılır).
 Bir cümlede birden fazla owner+iş varsa her birini ayrı actionItems kaydı olarak döndür; tek satırda birleştirme.
+Her actionItems.text tek başına anlaşılır olmalı; görevin nesnesini ve kapsamını yakın konuşma
+bağlamından taşı, zamir veya “düzeltmeyi yapacak” gibi bağlamsız kısa ifadeler kullanma.
 "Aksiyon kaydı:", "Aksiyon:", "Görev:" gibi söylem etiketlerini action text'e yazma.
 Tarih ifadesini yalnızca ilgili owner clause'una bağla (Selin'in tarihi Can'a taşınmasın).
 "Yapacağım/ekleyeceğim/göndereceğim" açık self-commitment ise commitments.owner = konuşmacı olabilir;
@@ -30,6 +32,8 @@ alanlarından HİÇBİRİNE koyma. Tamamen at.
 PROPOSAL: "Henüz karar değil", "öneri olarak not ediyorum" veya açık öneri içeren ifadeleri
 decisions'a koyma. Gerçek bir öneri içeriyorsa proposals'a ekle; yalnız konuşmayı sürdürme /
 konu açma ifadesiyse tamamen at.
+Somut fakat seçilmemiş çözüm alternatiflerini proposals altında koru; sonradan açıkça seçilen
+alternatifi ayrıca proposal olarak çoğaltma.
 Riskte konuşulan mitigation/likelihood varsa mutlaka doldur (ör. "erken smoke", HIGH/MEDIUM/LOW).
 Tüm metin alanlarını yalnızca {{outputLanguage}} dilinde yaz; kullanıcı dilinin dışında ifade üretme.
 candidateId formatı: chunk-{n}-{type}-{seq} (ör. chunk-1-decision-01).

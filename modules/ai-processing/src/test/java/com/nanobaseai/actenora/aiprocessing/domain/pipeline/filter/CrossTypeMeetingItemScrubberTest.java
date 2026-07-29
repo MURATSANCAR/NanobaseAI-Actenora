@@ -34,9 +34,15 @@ class CrossTypeMeetingItemScrubberTest {
                         "Alınan kararları tutanağa taşıyoruz.", null, List.of("c1"), 0.9)),
                 List.of(),
                 List.of(),
-                List.of(new ImportantFactCandidate("Mevcut kararı değiştirmiyoruz.", List.of("f1"), 0.9)),
+                List.of(
+                        new ImportantFactCandidate("Mevcut kararı değiştirmiyoruz.", List.of("f1"), 0.9),
+                        new ImportantFactCandidate(
+                                "Token süresi şimdilik değiştirilmeyecek.", List.of("f2"), 0.9),
+                        new ImportantFactCandidate(
+                                "SMTP sağlayıcısı bugün değiştirilmeyecek.", List.of("f3"), 0.9)
+                ),
                 List.of(),
-                List.of("d1", "d2", "a1", "q1", "c1", "f1", "t1"),
+                List.of("d1", "d2", "a1", "q1", "c1", "f1", "f2", "f3", "t1"),
                 0.9
         );
 

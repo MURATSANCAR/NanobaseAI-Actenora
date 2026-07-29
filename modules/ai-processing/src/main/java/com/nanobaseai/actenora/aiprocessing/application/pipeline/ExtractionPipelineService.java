@@ -349,7 +349,6 @@ public final class ExtractionPipelineService {
                     finalization.modelLatencyMs()
             );
             FinalNoteDraft note = finalization.draft();
-            note = new CrossTypeConsistencyAuditor().audit(note);
             note = new ActionContextualEnricher().enrich(note, normalized);
             ExplicitActionCueRecoverer.Result recovered =
                     new ExplicitActionCueRecoverer().recover(note.actionItems(), normalized);
@@ -360,6 +359,7 @@ public final class ExtractionPipelineService {
                 applied.stats().incrementExplicitActionCuesRecovered();
             }
             note = applied.draft();
+            note = new CrossTypeConsistencyAuditor().audit(note, finalization.fallbackUsed());
             metrics.setActionPostProcessingStats(applied.stats().toArtifactMap(
                     request.meetingOccurrenceId() == null ? null : request.meetingOccurrenceId().toString()));
             note = FinalNoteConfidencePolicy.productionDefaults().apply(note);

@@ -53,6 +53,8 @@ class PortalMinutesRendererTest {
         assertTrue(rendered.contains("Sorumlu: Burak"));
         assertFalse(rendered.contains("Toplantıda aksiyonlar için kesin teslim tarihi belirtilmedi."));
         assertFalse(rendered.contains("Not: Aksiyonlar için yapılandırılmış son tarih bulunmuyor."));
+        assertTrue(rendered.contains("10. ÖNEMLİ BULGULAR"));
+        assertFalse(rendered.contains("BİR SONRAKİ KONTROL"));
     }
 
     private static ActionItemResponse action(

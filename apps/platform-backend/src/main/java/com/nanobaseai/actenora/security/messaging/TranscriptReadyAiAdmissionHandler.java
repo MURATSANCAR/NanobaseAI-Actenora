@@ -46,7 +46,7 @@ public final class TranscriptReadyAiAdmissionHandler {
     private static final Pattern LANGUAGE = Pattern.compile("\"language\"\\s*:\\s*\"([^\"]+)\"");
 
     private static final String TASK_TYPE = "CHUNK_EXTRACTION";
-    private static final String PROMPT_VERSION = "pv-meeting-chunk-extraction-v1";
+    private static final String PROMPT_VERSION = "pv-meeting-chunk-extraction-v2";
     private static final String SCHEMA_VERSION = "extraction-output.v1";
     /** Meetings at/above this segment count use BULK SLA (240m) instead of NORMAL (60m). */
     static final int BULK_SEGMENT_THRESHOLD = 100;

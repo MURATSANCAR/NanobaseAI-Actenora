@@ -197,7 +197,7 @@ PY
     ) VALUES (
       '$JOB', '$TENANT', '$MEETING', '$TR', 'CHUNK_EXTRACTION', 'HIGH', 'QUEUED',
       'DECISION_EXTRACTION', '$MODEL', '$DEP', 'realistic-suite',
-      'pv-meeting-chunk-extraction-v1', 'extraction-output.v1', now(), now() + interval '48 hours', '$CORR', 'tr',
+      'pv-meeting-chunk-extraction-v2', 'extraction-output.v1', now(), now() + interval '48 hours', '$CORR', 'tr',
       16384, true, 0, 0, 'LEGACY', '$IDEM'
     );"
   echo "MEETING=$MEETING TR=$TR JOB=$JOB" | tee "$OUT_DIR/${file%.vtt}.ids"

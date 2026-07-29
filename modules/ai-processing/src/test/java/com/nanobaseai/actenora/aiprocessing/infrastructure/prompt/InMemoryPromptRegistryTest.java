@@ -14,20 +14,23 @@ class InMemoryPromptRegistryTest {
     @Test
     void publishCreatesNewImmutableVersionWithoutOverwritingPrior() {
         InMemoryPromptRegistry registry = new InMemoryPromptRegistry();
-        PublishedPrompt v1 = registry.requirePublished(InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID);
+        PublishedPrompt current = registry.requirePublished(InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID);
 
-        PublishedPrompt v2 = registry.publish(
+        PublishedPrompt next = registry.publish(
                 InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID,
                 "new template v2",
                 "extraction-output.v1",
                 "TRANSCRIPT_EXTRACTION"
         );
 
-        assertEquals(2, v2.version());
-        assertNotEquals(v1.promptVersionId(), v2.promptVersionId());
-        assertEquals(v1.promptVersionId(), registry.requireByVersionId(v1.promptVersionId()).promptVersionId());
+        assertEquals(3, next.version());
+        assertNotEquals(current.promptVersionId(), next.promptVersionId());
+        assertEquals(
+                current.promptVersionId(),
+                registry.requireByVersionId(current.promptVersionId()).promptVersionId()
+        );
         assertEquals("new template v2", registry.requirePublished(InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID).template());
-        assertEquals(2, registry.listVersions(InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID).size());
+        assertEquals(3, registry.listVersions(InMemoryPromptRegistry.DEFAULT_EXTRACTION_PROMPT_ID).size());
     }
 
     @Test

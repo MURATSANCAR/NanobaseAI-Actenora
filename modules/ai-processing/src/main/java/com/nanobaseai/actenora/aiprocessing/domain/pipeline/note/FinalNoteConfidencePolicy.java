@@ -30,6 +30,10 @@ public final class FinalNoteConfidencePolicy {
         Objects.requireNonNull(draft, "draft");
         boolean synthesisFallback = hasFlag(draft, "SYNTHESIS_FALLBACK");
         boolean auditFallback = hasFlag(draft, "AUDIT_FALLBACK");
+        boolean finalizationFallback = hasFlag(
+                draft,
+                CrossTypeConsistencyAuditor.FINALIZATION_FALLBACK
+        );
         boolean unresolvedConflict = hasFlag(draft, DecisionProposalSubsumer.UNRESOLVED)
                 || hasFlag(draft, CrossTypeConsistencyAuditor.AUDIT_NEEDS_REVIEW);
 
@@ -45,7 +49,7 @@ public final class FinalNoteConfidencePolicy {
         }
 
         boolean fallbackReview = properties.manualReviewOnAnyFallback()
-                && (synthesisFallback || auditFallback);
+                && (synthesisFallback || auditFallback || finalizationFallback);
         boolean otherReviewSignal = hasFlag(draft, "NEEDS_REVIEW")
                 || hasFlag(draft, "LOW_CONFIDENCE");
 
@@ -87,7 +91,9 @@ public final class FinalNoteConfidencePolicy {
         boolean dropped = hasFlag(draft, DecisionProposalSubsumer.DROPPED);
         boolean unresolved = hasFlag(draft, DecisionProposalSubsumer.UNRESOLVED)
                 || hasFlag(draft, CrossTypeConsistencyAuditor.AUDIT_NEEDS_REVIEW);
-        boolean fallback = hasFlag(draft, "SYNTHESIS_FALLBACK") || hasFlag(draft, "AUDIT_FALLBACK");
+        boolean fallback = hasFlag(draft, "SYNTHESIS_FALLBACK")
+                || hasFlag(draft, "AUDIT_FALLBACK")
+                || hasFlag(draft, CrossTypeConsistencyAuditor.FINALIZATION_FALLBACK);
         return dropped && !unresolved && !fallback
                 && !hasFlag(draft, "NEEDS_REVIEW")
                 && !hasFlag(draft, "LOW_CONFIDENCE");

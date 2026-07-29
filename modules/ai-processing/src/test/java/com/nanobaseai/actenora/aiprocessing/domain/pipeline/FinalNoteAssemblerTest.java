@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FinalNoteAssemblerTest {
 
     @Test
-    void buildsDecisionFirstSummary() {
+    void buildsAgendaPrefixBeforeDecisionFirstSummary() {
         ExtractionBundle bundle = new ExtractionBundle(
                 List.of(
                         new TopicCandidate("Sprint planlama ve kapasite", List.of("s1"), 0.9),
@@ -37,11 +37,11 @@ class FinalNoteAssemblerTest {
 
         FinalNoteDraft draft = new FinalNoteAssembler().assemble(bundle, "tr");
         String summary = draft.executiveSummary();
-        assertTrue(summary.startsWith("Kararlar\n1. API sözleşmesini cuma günü donduruyoruz."));
+        assertTrue(summary.startsWith("Gündem:\n1. Sprint planlama ve kapasite"));
+        assertTrue(summary.contains("\n\nKararlar\n1. API sözleşmesini cuma günü donduruyoruz."));
         assertTrue(summary.contains("3. Idempotency anahtarını istemci üretecek."));
         assertTrue(summary.contains("Aksiyonlar\n1. VTT regresyon paketini hazırla"));
         assertTrue(summary.contains("Riskler\n1. Deploy gecikmesi"));
-        assertFalse(summary.contains("Gündem:"));
         assertFalse(summary.contains("bağlam paylaşımı"));
         assertFalse(summary.contains("karar kaydedildi"));
     }

@@ -38,6 +38,12 @@
       "confidence": 0.98
     },
     {
+      "id": "tr-status-003",
+      "speechAct": "STATUS_QUO",
+      "pattern": "(?iu)^(?!.*\\b(karar\\s+verildi|kararla[sş]t[ıi]r[ıi]ld[ıi]|karar\\s+ald[ıi])\\b).+\\b(de[gğ]i[sş]tirilmeyecek|de[gğ]i[sş]tirmiyoruz)\\b.*$",
+      "confidence": 0.97
+    },
+    {
       "id": "tr-discuss-001",
       "speechAct": "DISCUSSION_PROMPT",
       "pattern": "(?iu)\\b(bu\\s+noktay[ıi]\\s+(biraz\\s+)?a[cç]mam[ıi]z\\s+[iı]yi\\s+olur|bu\\s+noktay[ıi]\\s+a[cç]al[ıi]m|bu\\s+konuyu\\s+biraz\\s+a[cç]al[ıi]m|buray[ıi]\\s+a[cç]mam[ıi]z\\s+gerekiyor)\\b",

@@ -28,10 +28,15 @@ public final class CrossTypeConsistencyAuditor {
     public static final String GENERIC_ACTION_COUNT_PREFIX = "genericActionCount=";
     public static final String UNSUPPORTED_COUNT_PREFIX = "unsupportedItemCount=";
     public static final String FALLBACK_USED_PREFIX = "fallbackUsed=";
+    public static final String FINALIZATION_FALLBACK = "FINALIZATION_FALLBACK";
 
     private final DecisionProposalSubsumer subsumer = new DecisionProposalSubsumer();
 
     public FinalNoteDraft audit(FinalNoteDraft draft) {
+        return audit(draft, false);
+    }
+
+    public FinalNoteDraft audit(FinalNoteDraft draft, boolean finalizationFallbackUsed) {
         Objects.requireNonNull(draft, "draft");
         FinalNoteDraft afterDp = subsumer.applyToDraft(draft);
         List<OpenQuestionCandidate> questions = dropAnsweredQuestions(
@@ -57,8 +62,11 @@ public final class CrossTypeConsistencyAuditor {
         }
         int unsupported = countUnsupported(flags);
 
-        boolean fallbackUsed = flags.stream().anyMatch(f -> f != null && (
-                f.equalsIgnoreCase("SYNTHESIS_FALLBACK") || f.equalsIgnoreCase("AUDIT_FALLBACK")));
+        if (finalizationFallbackUsed) {
+            flags.add(FINALIZATION_FALLBACK);
+        }
+        boolean fallbackUsed = flags.stream().anyMatch(f -> f != null
+                && f.toUpperCase(Locale.ROOT).endsWith("_FALLBACK"));
 
         flags.removeIf(f -> f != null && (
                 f.startsWith(UNRESOLVED_COUNT_PREFIX)
@@ -73,7 +81,8 @@ public final class CrossTypeConsistencyAuditor {
         flags.add(GENERIC_ACTION_COUNT_PREFIX + genericActions);
         flags.add(UNSUPPORTED_COUNT_PREFIX + unsupported);
         flags.add(FALLBACK_USED_PREFIX + fallbackUsed);
-        if (unresolved > 0) {
+        boolean needsReview = unresolved > 0 || genericActions > 0 || unsupported > 0 || fallbackUsed;
+        if (needsReview) {
             flags.add(AUDIT_NEEDS_REVIEW);
             flags.add(AUDIT_STATUS_PREFIX + "NEEDS_REVIEW");
         } else {
@@ -82,7 +91,7 @@ public final class CrossTypeConsistencyAuditor {
             flags.add(AUDIT_STATUS_PREFIX + "PASSED");
         }
 
-        boolean manual = afterDp.requiresManualReview() || unresolved > 0;
+        boolean manual = afterDp.requiresManualReview() || needsReview;
         if (manual) {
             flags.add("REQUIRES_MANUAL_REVIEW");
         }
@@ -172,8 +181,7 @@ public final class CrossTypeConsistencyAuditor {
                 continue;
             }
             String u = f.toUpperCase(Locale.ROOT);
-            if (u.contains("EVIDENCE_REF_DROPPED")
-                    || u.contains("UNSUPPORTED")
+            if (u.contains("UNSUPPORTED")
                     || u.contains("MISSING_EVIDENCE")
                     || u.contains("SOFT_DROP")) {
                 n++;

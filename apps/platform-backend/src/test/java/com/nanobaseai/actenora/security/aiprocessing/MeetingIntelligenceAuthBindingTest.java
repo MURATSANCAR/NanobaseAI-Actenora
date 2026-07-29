@@ -278,7 +278,7 @@ class MeetingIntelligenceAuthBindingTest {
         assertEquals("Ship Friday", note.decisions().getFirst().text());
         assertFalse(note.actionItems().isEmpty());
         assertFalse(note.evidenceLinks().isEmpty());
-        assertEquals("pv-meeting-chunk-extraction-v1", note.currentVersion().provenance().promptVersionId());
+        assertEquals("pv-meeting-chunk-extraction-v2", note.currentVersion().provenance().promptVersionId());
         assertFalse(audit.timelineFor(note.id()).isEmpty());
         assertEquals("MEETING_NOTE_MAPPED_FROM_AI", audit.timelineFor(note.id()).getFirst().action());
         assertEquals(

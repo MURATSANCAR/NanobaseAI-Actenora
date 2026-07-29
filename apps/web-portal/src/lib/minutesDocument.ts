@@ -162,7 +162,8 @@ export function reviewBannerReasons(qualityFlags: string[]): string[] {
       f === "NEEDS_REVIEW" ||
       f === "LOW_CONFIDENCE" ||
       f === "SYNTHESIS_FALLBACK" ||
-      f === "AUDIT_FALLBACK"
+      f === "AUDIT_FALLBACK" ||
+      f === "FINALIZATION_FALLBACK"
     ) {
       seen.add(f);
       reasons.push(f);
@@ -348,7 +349,7 @@ export function serializeMinutesBody(doc: MinutesDocument): string {
     OPEN_QUESTIONS: "7. AÇIK SORULAR",
     ISSUES: "8. SORUNLAR",
     PROPOSALS: "9. ÖNERİLER — HENÜZ KARAR DEĞİL",
-    NEXT_CHECKPOINT: "10. BİR SONRAKİ KONTROL",
+    NEXT_CHECKPOINT: "10. ÖNEMLİ BULGULAR",
   };
 
   let index = 1;

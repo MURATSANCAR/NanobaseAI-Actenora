@@ -6,6 +6,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -101,6 +102,59 @@ class MinutesEditorialFinalizationTest {
         assertEquals(3, result.outputTokens());
         assertEquals(deterministic.executiveSummary(), result.draft().executiveSummary());
         assertStructuredFieldsEqual(deterministic, result.draft());
+    }
+
+    @Test
+    void editorialSummaryPreservesStructuredAgendaPrefix() {
+        ModelRuntimePort runtime = runtime(request -> new InferenceResponse(
+                """
+                        {
+                          "executiveSummary": "Kararlar ve aksiyonlar doğrulandı.",
+                          "reviewRequired": false
+                        }
+                        """,
+                120,
+                20,
+                100,
+                "editorial-test@1"
+        ));
+        FinalNoteDraft base = deterministicDraft();
+        FinalNoteDraft deterministic = new FinalNoteDraft(
+                "Gündem:\n1. Oturum yenileme",
+                base.decisions(),
+                base.actionItems(),
+                base.risks(),
+                base.openQuestions(),
+                base.commitments(),
+                List.of(new TopicCandidate("Oturum yenileme", List.of("seg-1"), 0.95)),
+                base.issues(),
+                base.proposals(),
+                base.importantFacts(),
+                base.qualityFlags(),
+                base.evidenceSegmentIds(),
+                base.confidence(),
+                base.requiresManualReview()
+        );
+
+        MinutesFinalizationResult result = new MinutesSynthesisAndAudit(
+                runtime,
+                90,
+                PipelineQualityMetricsPort.noop(),
+                editorialPolicy(MinutesFinalizationPolicy.FailureMode.DETERMINISTIC)
+        ).finalizeMinutes(
+                bundle(deterministic),
+                deterministic,
+                Set.of("seg-1"),
+                "meeting",
+                "tr",
+                PriorMeetingContext.EMPTY
+        );
+
+        assertEquals(
+                "Gündem:\n1. Oturum yenileme\n\nKararlar ve aksiyonlar doğrulandı.",
+                result.draft().executiveSummary()
+        );
+        assertFalse(result.fallbackUsed());
     }
 
     private static MinutesFinalizationPolicy editorialPolicy(

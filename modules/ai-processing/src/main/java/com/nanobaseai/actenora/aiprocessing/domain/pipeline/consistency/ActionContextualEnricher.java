@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -63,7 +64,10 @@ public final class ActionContextualEnricher {
                 out.add(action);
                 continue;
             }
-            String enriched = mergeWithoutNewVerb(action.text(), chosen, action.owner());
+            String enriched = qualifyFromNearestTopic(action, draft.topics(), segments);
+            if (enriched == null) {
+                enriched = mergeWithoutNewVerb(action.text(), chosen, action.owner());
+            }
             if (enriched == null || enriched.equals(action.text())) {
                 ambiguous = true;
                 out.add(action);
@@ -107,13 +111,57 @@ public final class ActionContextualEnricher {
             return true;
         }
         String t = text.strip();
+        String lower = t.toLowerCase(Locale.ROOT);
+        if (lower.contains(" için düzeltmeyi yapacak")) {
+            return false;
+        }
         if (t.length() < 28 && GENERIC_SHORT.matcher(t).find()) {
             return true;
         }
         return GENERIC.matcher(t).find()
-                || t.toLowerCase(Locale.ROOT).matches(".*düzeltmeyi yapacak\\.?")
-                || t.toLowerCase(Locale.ROOT).matches(".*başlığı düzeltecek\\.?")
-                || t.toLowerCase(Locale.ROOT).matches(".*basligi duzeltecek\\.?");
+                || lower.matches(".*düzeltmeyi yapacak\\.?")
+                || lower.matches(".*başlığı düzeltecek\\.?")
+                || lower.matches(".*basligi duzeltecek\\.?");
+    }
+
+    private static String qualifyFromNearestTopic(
+            ActionItemCandidate action,
+            List<TopicCandidate> topics,
+            List<SegmentInput> segments
+    ) {
+        if (topics == null || topics.isEmpty() || segments == null || segments.isEmpty()) {
+            return null;
+        }
+        Map<String, Integer> sequenceById = new LinkedHashMap<>();
+        for (SegmentInput segment : segments) {
+            sequenceById.put(segment.segmentId(), segment.sequence());
+        }
+        int actionSequence = action.evidenceSegmentIds().stream()
+                .map(sequenceById::get)
+                .filter(Objects::nonNull)
+                .min(Integer::compareTo)
+                .orElse(Integer.MAX_VALUE);
+        TopicCandidate nearest = null;
+        int nearestSequence = Integer.MIN_VALUE;
+        for (TopicCandidate topic : topics) {
+            for (String evidenceId : topic.evidenceSegmentIds()) {
+                Integer topicSequence = sequenceById.get(evidenceId);
+                if (topicSequence != null
+                        && topicSequence <= actionSequence
+                        && topicSequence > nearestSequence) {
+                    nearest = topic;
+                    nearestSequence = topicSequence;
+                }
+            }
+        }
+        if (nearest == null || nearest.text().isBlank()) {
+            return null;
+        }
+        String text = action.text().strip();
+        if (!text.toLowerCase(Locale.ROOT).matches(".*düzeltmeyi\\s+yapacak\\.?")) {
+            return null;
+        }
+        return nearest.text().strip() + " için düzeltmeyi yapacak.";
     }
 
     private static Map<String, String> indexSegments(List<SegmentInput> segments) {

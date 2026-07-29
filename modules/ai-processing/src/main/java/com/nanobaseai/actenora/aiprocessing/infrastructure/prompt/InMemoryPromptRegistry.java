@@ -30,6 +30,7 @@ public final class InMemoryPromptRegistry implements PromptRegistryPort {
     private final Map<String, String> latestVersionByPromptId = new ConcurrentHashMap<>();
 
     public InMemoryPromptRegistry() {
+        seed(legacyExtractionPrompt());
         seed(defaultExtractionPrompt());
         seed(new PublishedPrompt(
                 "pv-meeting-candidate-merge-v1",
@@ -146,6 +147,17 @@ public final class InMemoryPromptRegistry implements PromptRegistryPort {
     }
 
     private static PublishedPrompt defaultExtractionPrompt() {
+        return new PublishedPrompt(
+                "pv-meeting-chunk-extraction-v2",
+                DEFAULT_EXTRACTION_PROMPT_ID,
+                2,
+                loadTemplate(),
+                "extraction-output.v1",
+                "TRANSCRIPT_EXTRACTION"
+        );
+    }
+
+    private static PublishedPrompt legacyExtractionPrompt() {
         return new PublishedPrompt(
                 "pv-meeting-chunk-extraction-v1",
                 DEFAULT_EXTRACTION_PROMPT_ID,

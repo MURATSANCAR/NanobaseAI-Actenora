@@ -1533,7 +1533,7 @@ public class PortalApiController {
                 : note.issues().stream().map(i -> i.text()).filter(Objects::nonNull).toList());
         appendMinutesSection(sb, "9. ÖNERİLER — HENÜZ KARAR DEĞİL", note.proposals() == null ? List.of()
                 : note.proposals().stream().map(p -> p.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "10. BİR SONRAKİ KONTROL", note.importantFacts() == null ? List.of()
+        appendMinutesSection(sb, "10. ÖNEMLİ BULGULAR", note.importantFacts() == null ? List.of()
                 : note.importantFacts().stream().map(f -> f.text()).filter(Objects::nonNull).toList());
         return sb.toString().trim();
     }

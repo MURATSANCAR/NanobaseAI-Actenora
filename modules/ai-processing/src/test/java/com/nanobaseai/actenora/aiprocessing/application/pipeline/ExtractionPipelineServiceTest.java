@@ -35,7 +35,7 @@ class ExtractionPipelineServiceTest {
                 result.success(),
                 () -> "pipeline failed: " + result.failureCategory() + " / " + result.failureMessage()
         );
-        assertEquals("pv-meeting-chunk-extraction-v1", result.promptVersionId());
+        assertEquals("pv-meeting-chunk-extraction-v2", result.promptVersionId());
         assertEquals(Qwen27BModelAdapter.MODEL_VERSION, result.modelVersion());
         assertTrue(result.metrics().inputTokens() > 0);
         assertTrue(result.metrics().outputTokens() > 0);

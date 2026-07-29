@@ -61,7 +61,20 @@ public final class FinalNoteAssembler {
         boolean en = "en".equals(language);
         StringBuilder sb = new StringBuilder();
 
+        List<TopicCandidate> usableTopics = bundle.topics().stream()
+                .filter(FinalNoteAssembler::isUsableTopic)
+                .toList();
+        if (!usableTopics.isEmpty()) {
+            sb.append(en ? "Agenda:" : "Gündem:").append('\n');
+            int i = 1;
+            for (TopicCandidate topic : usableTopics) {
+                sb.append(i++).append(". ").append(topic.text().strip()).append('\n');
+            }
+        }
         if (!bundle.decisions().isEmpty()) {
+            if (!sb.isEmpty()) {
+                sb.append('\n');
+            }
             sb.append(en ? "Decisions" : "Kararlar").append('\n');
             int i = 1;
             for (DecisionCandidate decision : bundle.decisions()) {
@@ -110,18 +123,6 @@ public final class FinalNoteAssembler {
             int i = 1;
             for (OpenQuestionCandidate question : bundle.openQuestions()) {
                 sb.append(i++).append(". ").append(question.text().strip()).append('\n');
-            }
-        }
-        if (sb.isEmpty()) {
-            List<TopicCandidate> usableTopics = bundle.topics().stream()
-                    .filter(FinalNoteAssembler::isUsableTopic)
-                    .toList();
-            if (!usableTopics.isEmpty()) {
-                sb.append(en ? "Agenda:" : "Gündem:").append('\n');
-                int i = 1;
-                for (TopicCandidate topic : usableTopics) {
-                    sb.append(i++).append(". ").append(topic.text().strip()).append('\n');
-                }
             }
         }
         if (sb.isEmpty()) {

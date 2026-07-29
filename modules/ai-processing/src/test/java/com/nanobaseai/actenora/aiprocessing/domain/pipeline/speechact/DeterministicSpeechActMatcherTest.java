@@ -15,6 +15,10 @@ class DeterministicSpeechActMatcherTest {
                 matcher.classify("Mevcut kararı değiştirmiyoruz.").speechAct());
         assertEquals(MeetingSpeechAct.EXPLICIT_DECISION,
                 matcher.classify("Kurul, mevcut kararı değiştirmemeye karar verdi.").speechAct());
+        assertEquals(MeetingSpeechAct.STATUS_QUO,
+                matcher.classify("Token süresi şimdilik değiştirilmeyecek.").speechAct());
+        assertEquals(MeetingSpeechAct.STATUS_QUO,
+                matcher.classify("SMTP sağlayıcısı bugün değiştirilmeyecek.").speechAct());
     }
 
     @Test

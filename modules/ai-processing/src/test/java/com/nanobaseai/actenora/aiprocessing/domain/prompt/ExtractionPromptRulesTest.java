@@ -30,8 +30,8 @@ class ExtractionPromptRulesTest {
         FinalNoteAssembler assembler = new FinalNoteAssembler();
         FinalNoteDraft tr = assembler.assemble(ExtractionBundle.empty(), "tr");
         FinalNoteDraft en = assembler.assemble(ExtractionBundle.empty(), "en");
-        assertTrue(tr.executiveSummary().contains("Çıkarım tamamlandı"));
-        assertTrue(en.executiveSummary().contains("Extraction completed"));
+        assertTrue(tr.executiveSummary().contains("güvenilir bir yönetici özeti"));
+        assertTrue(en.executiveSummary().contains("reliable executive summary"));
         assertEquals("tr", ExtractionPromptRules.normalizeLanguage(null));
     }
 
