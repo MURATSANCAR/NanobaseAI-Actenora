@@ -34,6 +34,9 @@ decisions'a koyma. Gerçek bir öneri içeriyorsa proposals'a ekle; yalnız konu
 konu açma ifadesiyse tamamen at.
 Somut fakat seçilmemiş çözüm alternatiflerini proposals altında koru; sonradan açıkça seçilen
 alternatifi ayrıca proposal olarak çoğaltma.
+Doğrulanmış ölçüm, oran, adet, hata gözlemi veya deney sonucu karar/aksiyon olmasa bile
+importantFacts altında korunmalı. Açıkça geçici mevcut durum veya “karar değildir” diye
+nitelenen davranış değişikliği ifadelerini importantFacts'a taşıma.
 Riskte konuşulan mitigation/likelihood varsa mutlaka doldur (ör. "erken smoke", HIGH/MEDIUM/LOW).
 Tüm metin alanlarını yalnızca {{outputLanguage}} dilinde yaz; kullanıcı dilinin dışında ifade üretme.
 candidateId formatı: chunk-{n}-{type}-{seq} (ör. chunk-1-decision-01).

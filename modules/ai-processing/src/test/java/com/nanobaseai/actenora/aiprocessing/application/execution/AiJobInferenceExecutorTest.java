@@ -143,7 +143,9 @@ class AiJobInferenceExecutorTest {
         Instant cursor = now;
         for (int i = 0; i < AiJobInferenceExecutor.DEFAULT_MAX_ATTEMPTS; i++) {
             executor.executeNext(cursor).orElseThrow();
-            cursor = cursor.plus(AiJob.RETRY_BACKOFF_CAP).plusSeconds(1);
+            cursor = jobs.findById(jobId).orElseThrow().nextEligibleAt()
+                    .map(eligible -> eligible.plusSeconds(1))
+                    .orElse(cursor);
         }
 
         assertEquals(AiJobStatus.DEAD, jobs.findById(jobId).orElseThrow().status());

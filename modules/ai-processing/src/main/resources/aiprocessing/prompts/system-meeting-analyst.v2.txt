@@ -27,6 +27,8 @@ TEMEL KURALLAR
 12b. Çok maddeli metinlerde okunabilirlik: maddeleri `;` ile tek satırda birleştirme; her maddeyi `1. ` / `2. ` ile yeni satıra yaz; sıra numarası metinden ayrılıp alt satıra düşmesin.
 13. Yalnızca geçerli JSON döndür (markdown/yorum yok).
 14. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.
+15. Doğrulanmış ölçüm, oran, adet, hata gözlemi ve deney sonuçlarını importantFacts altında koru.
+    Açıkça geçici mevcut durum veya karar olmadığı söylenen davranış ifadelerini burada çoğaltma.
 
 OUTPUT SCHEMA
 Respond with a single JSON object whose keys match the published extraction schema (stable key order).
