@@ -116,7 +116,7 @@ actenora:
       kind: ${ACTENORA_AI_PROVIDER_KIND:offline}
       base-url: ${ACTENORA_AI_PROVIDER_BASE_URL:http://127.0.0.1:8010}
       connect-timeout: ${ACTENORA_AI_PROVIDER_CONNECT_TIMEOUT:2s}
-      read-timeout: ${ACTENORA_AI_PROVIDER_READ_TIMEOUT:1800s}
+      read-timeout: ${ACTENORA_AI_PROVIDER_READ_TIMEOUT:7200s}
       max-concurrency: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY:4}
       max-concurrency-extraction: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_EXTRACTION:2}
       max-concurrency-final: ${ACTENORA_AI_PROVIDER_MAX_CONCURRENCY_FINAL:1}
@@ -135,8 +135,9 @@ actenora:
     worker:
       enabled: ${ACTENORA_AI_WORKER_ENABLED:true}
       poll-interval: ${ACTENORA_AI_WORKER_POLL_INTERVAL:PT15S}
-      # Re-queue RUNNING jobs abandoned after worker/process loss (above provider read-timeout)
-      stale-running-after: ${ACTENORA_AI_WORKER_STALE_RUNNING_AFTER:PT45M}
+      # Re-queue RUNNING jobs abandoned after worker/process loss.
+      # Must exceed longest end-to-end minutes pipeline (multi-hour transcripts).
+      stale-running-after: ${ACTENORA_AI_WORKER_STALE_RUNNING_AFTER:PT24H}
     routing:
       # false = FAZ 12 capability route stays authoritative, no routing/provenance audit
       enabled: ${ACTENORA_AI_ROUTING_ENABLED:true}

@@ -31,6 +31,32 @@ generate_secret() {
 ensure_remote_env() {
   if ssh "${SSH_HOST}" "test -f '${REMOTE_ENV}'"; then
     log "Using existing server env: ${REMOTE_ENV}"
+    # Keep secrets; upsert long-meeting AI timeout knobs so deploys stay future-proof.
+    ssh "${SSH_HOST}" "sudo python3 -" <<'PY'
+from pathlib import Path
+p = Path("/etc/nanobaseai/actenora.env")
+keys = {
+    "ACTENORA_AI_PROVIDER_READ_TIMEOUT": "7200s",
+    "ACTENORA_AI_WORKER_STALE_RUNNING_AFTER": "PT24H",
+}
+lines = p.read_text().splitlines()
+out, seen = [], set()
+for line in lines:
+    if not line or line.startswith("#") or "=" not in line:
+        out.append(line)
+        continue
+    k = line.split("=", 1)[0]
+    if k in keys:
+        out.append(f"{k}={keys[k]}")
+        seen.add(k)
+    else:
+        out.append(line)
+for k, v in keys.items():
+    if k not in seen:
+        out.append(f"{k}={v}")
+p.write_text("\n".join(out) + "\n")
+print("upserted AI timeout knobs in", p)
+PY
     return
   fi
 
@@ -83,12 +109,14 @@ ACTENORA_MESSAGING_MODE=jdbc-rabbit
 ACTENORA_MICROSOFT_GRAPH_ENABLED=false
 ACTENORA_AI_PROVIDER_KIND=nanobaseai
 ACTENORA_AI_PROVIDER_BASE_URL=http://host.docker.internal:8010
-ACTENORA_AI_PROVIDER_READ_TIMEOUT=1800s
+# Long meetings: single LLM call can exceed 30m; end-to-end pipeline can take many hours.
+ACTENORA_AI_PROVIDER_READ_TIMEOUT=7200s
 ACTENORA_AI_PROVIDER_MAX_ATTEMPTS=5
 ACTENORA_AI_PROVIDER_FAST_EXTRACTION_SERVED_MODEL_ID=nanobase-qwen36-35b-a3b-mtp
 ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID=nanobase-qwen36-35b-a3b-mtp
 ACTENORA_AI_PIPELINE_MODE=legacy
 ACTENORA_AI_WORKER_ENABLED=true
+ACTENORA_AI_WORKER_STALE_RUNNING_AFTER=PT24H
 ACTENORA_ALLOW_DEFAULT_SECRETS=false
 EOF
 }

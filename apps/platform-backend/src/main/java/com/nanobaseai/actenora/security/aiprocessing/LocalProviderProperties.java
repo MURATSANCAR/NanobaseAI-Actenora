@@ -18,7 +18,7 @@ public class LocalProviderProperties {
     private String kind = "mock";
     private URI baseUrl = URI.create("http://127.0.0.1:8000");
     private Duration connectTimeout = Duration.ofSeconds(2);
-    private Duration readTimeout = Duration.ofSeconds(1800);
+    private Duration readTimeout = Duration.ofSeconds(7200);
     private int maxConcurrency = 4;
     /** Parallel chunk extraction slots (CPU-friendly default). */
     private int maxConcurrencyExtraction = 2;

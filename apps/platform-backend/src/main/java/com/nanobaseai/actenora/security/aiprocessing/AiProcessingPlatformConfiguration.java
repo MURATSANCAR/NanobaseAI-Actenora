@@ -555,7 +555,7 @@ public class AiProcessingPlatformConfiguration {
             AiJobInferenceExecutor inferenceExecutor,
             AiProcessingApi aiProcessingApi,
             LocalProviderProperties properties,
-            @Value("${actenora.ai.worker.stale-running-after:PT45M}") Duration staleRunningAfter
+            @Value("${actenora.ai.worker.stale-running-after:PT24H}") Duration staleRunningAfter
     ) {
         return new AiJobInferenceWorker(
                 inferenceExecutor, aiProcessingApi, staleRunningAfter, properties.getMaxAttempts());

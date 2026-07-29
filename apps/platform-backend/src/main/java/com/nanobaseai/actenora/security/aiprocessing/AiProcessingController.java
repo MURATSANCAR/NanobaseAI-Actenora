@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.TenantAiPolicyPort;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobException;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobSla;
 import com.nanobaseai.actenora.aiprocessing.domain.job.JobPriority;
 import com.nanobaseai.actenora.aiprocessing.domain.job.SelectedRoute;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
@@ -96,7 +97,7 @@ public class AiProcessingController {
                 && props != null
                 && props.resolvedMode() == PipelineMode.STAGED) {
             JobPriority priority = body.priority() == null ? JobPriority.NORMAL : body.priority();
-            Duration deadline = priority == JobPriority.BULK ? Duration.ofHours(4) : Duration.ofHours(1);
+            Duration deadline = AiJobSla.admissionDeadline(priority, body.contextSize());
             String language = body.language() == null || body.language().isBlank() ? "tr" : body.language();
             UUID correlation = body.correlationId() == null ? body.transcriptId() : body.correlationId();
             PipelineGraphFactory.GraphAdmission admission = graph.admitFromTranscriptReady(

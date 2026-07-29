@@ -19,10 +19,11 @@ public final class InMemoryTenantAiPolicy implements TenantAiPolicyPort {
     private final Map<JobPriority, Duration> slaTargets = new HashMap<>();
 
     public InMemoryTenantAiPolicy() {
-        slaTargets.put(JobPriority.CRITICAL, Duration.ofMinutes(5));
-        slaTargets.put(JobPriority.HIGH, Duration.ofMinutes(15));
-        slaTargets.put(JobPriority.NORMAL, Duration.ofMinutes(60));
-        slaTargets.put(JobPriority.BULK, Duration.ofMinutes(240));
+        // Align with AiJobSla — long meetings need multi-hour admission windows.
+        slaTargets.put(JobPriority.CRITICAL, Duration.ofHours(2));
+        slaTargets.put(JobPriority.HIGH, Duration.ofHours(24));
+        slaTargets.put(JobPriority.NORMAL, Duration.ofHours(24));
+        slaTargets.put(JobPriority.BULK, Duration.ofHours(48));
     }
 
     public void allow(UUID tenantId, String... modelKeys) {
@@ -63,7 +64,7 @@ public final class InMemoryTenantAiPolicy implements TenantAiPolicyPort {
     @Override
     public Duration slaTarget(UUID tenantId, JobPriority priority) {
         Objects.requireNonNull(priority, "priority");
-        return slaTargets.getOrDefault(priority, Duration.ofMinutes(60));
+        return slaTargets.getOrDefault(priority, Duration.ofHours(24));
     }
 
     @Override

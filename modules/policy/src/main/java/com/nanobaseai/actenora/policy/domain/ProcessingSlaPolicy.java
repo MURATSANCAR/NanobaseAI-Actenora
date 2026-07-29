@@ -31,11 +31,13 @@ public record ProcessingSlaPolicy(
     }
 
     public static ProcessingSlaPolicy systemDefaults() {
+        // Minutes — also used as legacy AI job admission deadline via TenantAiPolicyPort.
+        // Long multi-hour transcripts need day-scale windows (see AiJobSla).
         EnumMap<SlaLevel, Integer> latency = new EnumMap<>(SlaLevel.class);
-        latency.put(SlaLevel.CRITICAL, 5);
-        latency.put(SlaLevel.HIGH, 15);
-        latency.put(SlaLevel.NORMAL, 60);
-        latency.put(SlaLevel.BULK, 240);
+        latency.put(SlaLevel.CRITICAL, 120);   // 2h
+        latency.put(SlaLevel.HIGH, 1_440);     // 24h
+        latency.put(SlaLevel.NORMAL, 1_440);   // 24h
+        latency.put(SlaLevel.BULK, 2_880);     // 48h
         return new ProcessingSlaPolicy(SlaLevel.NORMAL, latency);
     }
 }

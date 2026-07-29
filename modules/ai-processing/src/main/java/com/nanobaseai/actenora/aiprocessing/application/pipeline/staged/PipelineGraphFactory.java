@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.AiJobRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingJobDependencyRepository;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobSla;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
 import com.nanobaseai.actenora.aiprocessing.domain.job.JobPriority;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingJobDependency;
@@ -99,7 +100,7 @@ public final class PipelineGraphFactory {
                 ? baseKey + ":force:" + UUID.randomUUID()
                 : baseKey;
 
-        Instant deadlineAt = now.plus(deadline == null ? Duration.ofHours(1) : deadline);
+        Instant deadlineAt = now.plus(deadline == null ? AiJobSla.DEFAULT_ADMISSION : deadline);
         AiJob root = AiJob.enqueueStaged(
                 tenantId, meetingOccurrenceId, transcriptId,
                 "PIPELINE_ROOT", ProcessingStage.ROOT, priority,

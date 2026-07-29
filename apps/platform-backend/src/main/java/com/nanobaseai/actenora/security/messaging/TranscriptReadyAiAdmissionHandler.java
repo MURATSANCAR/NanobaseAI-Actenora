@@ -5,6 +5,7 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.Pipeline
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.PipelineMode;
 import com.nanobaseai.actenora.aiprocessing.application.port.AdmissionController;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobSla;
 import com.nanobaseai.actenora.aiprocessing.domain.job.JobPriority;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.OutputLanguagePolicy;
 import com.nanobaseai.actenora.security.aiprocessing.AiPipelineProperties;
@@ -157,7 +158,7 @@ public final class TranscriptReadyAiAdmissionHandler {
             if (graphFactory != null
                     && pipelineProperties != null
                     && pipelineProperties.resolvedMode() == PipelineMode.STAGED) {
-                Duration deadline = priority == JobPriority.BULK ? Duration.ofHours(4) : Duration.ofHours(1);
+                Duration deadline = AiJobSla.admissionDeadline(priority, Math.max(0, payload.segmentCount()));
                 PipelineGraphFactory.GraphAdmission admission = graphFactory.admitFromTranscriptReady(
                         payload.tenantId(),
                         payload.meetingOccurrenceId(),

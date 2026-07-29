@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.ModelRouter;
 import com.nanobaseai.actenora.aiprocessing.application.port.TenantAiPolicyPort;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobException;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobSla;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
 
 import java.time.Duration;
@@ -79,6 +80,7 @@ public final class DefaultAdmissionController implements AdmissionController {
 
         boolean fallbackPermitted = resolveFallback(command);
         Duration sla = tenantPolicy.slaTarget(command.tenantId(), command.priority());
+        Duration jobDeadline = AiJobSla.admissionDeadline(command.priority(), command.contextSize());
         Duration estimatedWait = scheduler.estimateQueueWait(
                 command.tenantId(), command.priority(), command.now());
         if (estimatedWait.compareTo(sla.multipliedBy(2)) > 0 && command.priority().isCritical()) {
@@ -115,7 +117,7 @@ public final class DefaultAdmissionController implements AdmissionController {
                 command.contextSize(),
                 fallbackPermitted,
                 command.now(),
-                command.now().plus(sla),
+                command.now().plus(jobDeadline),
                 command.correlationId()
         );
         job.applyRoute(routeProbe.selected());
