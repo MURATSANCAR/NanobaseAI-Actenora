@@ -73,45 +73,62 @@ public final class ValidationCandidateMapper {
     }
 
     public static List<ValidationCandidate> toCandidates(FinalNoteDraft draft) {
+        return toCandidates(draft, null, null);
+    }
+
+    public static List<ValidationCandidate> toCandidates(
+            FinalNoteDraft draft,
+            String meetingStartedAtIso,
+            String meetingTimezone
+    ) {
         Objects.requireNonNull(draft, "draft");
         List<ValidationCandidate> candidates = new ArrayList<>();
         int i = 0;
         for (TopicCandidate topic : draft.topics()) {
             candidates.add(build("topic-" + (++i), CandidateKind.TOPIC, topic.text(),
-                    topic.evidenceSegmentIds(), topic.confidence(), null, null, null, null, false));
+                    topic.evidenceSegmentIds(), topic.confidence(), null, null, null, null,
+                    meetingStartedAtIso, meetingTimezone, false));
         }
         for (DecisionCandidate decision : draft.decisions()) {
             candidates.add(build("decision-" + (++i), CandidateKind.DECISION, decision.text(),
-                    decision.evidenceSegmentIds(), decision.confidence(), null, null, null, null, true));
+                    decision.evidenceSegmentIds(), decision.confidence(), null, null, null, null,
+                    meetingStartedAtIso, meetingTimezone, true));
         }
         for (ActionItemCandidate item : draft.actionItems()) {
             candidates.add(build("action-" + (++i), CandidateKind.ACTION_ITEM, item.text(),
                     item.evidenceSegmentIds(), item.confidence(), item.owner(),
-                    item.dueDate(), item.relativeDate(), item.dueAt(), false));
+                    item.dueDate(), item.relativeDate(), item.dueAt(),
+                    meetingStartedAtIso, meetingTimezone, false));
         }
         for (RiskCandidate risk : draft.risks()) {
             candidates.add(build("risk-" + (++i), CandidateKind.RISK, risk.text(),
-                    risk.evidenceSegmentIds(), risk.confidence(), null, null, null, null, false));
+                    risk.evidenceSegmentIds(), risk.confidence(), null, null, null, null,
+                    meetingStartedAtIso, meetingTimezone, false));
         }
         for (OpenQuestionCandidate question : draft.openQuestions()) {
             candidates.add(build("question-" + (++i), CandidateKind.OPEN_QUESTION, question.text(),
-                    question.evidenceSegmentIds(), question.confidence(), null, null, null, null, false));
+                    question.evidenceSegmentIds(), question.confidence(), null, null, null, null,
+                    meetingStartedAtIso, meetingTimezone, false));
         }
         for (CommitmentCandidate commitment : draft.commitments()) {
             candidates.add(build("commitment-" + (++i), CandidateKind.COMMITMENT, commitment.text(),
-                    commitment.evidenceSegmentIds(), commitment.confidence(), commitment.owner(), null, null, null, false));
+                    commitment.evidenceSegmentIds(), commitment.confidence(), commitment.owner(), null, null, null,
+                    meetingStartedAtIso, meetingTimezone, false));
         }
         for (IssueCandidate issue : draft.issues()) {
             candidates.add(build("issue-" + (++i), CandidateKind.ISSUE, issue.text(),
-                    issue.evidenceSegmentIds(), issue.confidence(), null, null, null, null, false));
+                    issue.evidenceSegmentIds(), issue.confidence(), null, null, null, null,
+                    meetingStartedAtIso, meetingTimezone, false));
         }
         for (ProposalCandidate proposal : draft.proposals()) {
             candidates.add(build("proposal-" + (++i), CandidateKind.PROPOSAL, proposal.text(),
-                    proposal.evidenceSegmentIds(), proposal.confidence(), null, null, null, null, false));
+                    proposal.evidenceSegmentIds(), proposal.confidence(), null, null, null, null,
+                    meetingStartedAtIso, meetingTimezone, false));
         }
         for (ImportantFactCandidate fact : draft.importantFacts()) {
             candidates.add(build("fact-" + (++i), CandidateKind.IMPORTANT_FACT, fact.text(),
-                    fact.evidenceSegmentIds(), fact.confidence(), null, null, null, null, false));
+                    fact.evidenceSegmentIds(), fact.confidence(), null, null, null, null,
+                    meetingStartedAtIso, meetingTimezone, false));
         }
         return List.copyOf(candidates);
     }
@@ -126,6 +143,8 @@ public final class ValidationCandidateMapper {
             String dueDate,
             String relativeDate,
             String dueAt,
+            String meetingStartedAtIso,
+            String meetingTimezone,
             boolean markedAsDecision
     ) {
         ValidationCandidate.Builder builder = ValidationCandidate.builder(
@@ -150,8 +169,12 @@ public final class ValidationCandidateMapper {
         builder.dateResolution(
                 deriveDateResolutionStatus(dueDate, relativeDate, dueAt),
                 deriveDateResolutionSource(dueDate, relativeDate, dueAt),
-                null,
-                dueAt != null && !dueAt.isBlank() ? "Europe/Istanbul" : null
+                relativeDate != null && !relativeDate.isBlank() && dueAt != null && !dueAt.isBlank()
+                        ? trimToNull(meetingStartedAtIso)
+                        : null,
+                relativeDate != null && !relativeDate.isBlank() && dueAt != null && !dueAt.isBlank()
+                        ? trimToNull(meetingTimezone)
+                        : null
         );
         return builder.build();
     }
@@ -201,5 +224,9 @@ public final class ValidationCandidateMapper {
             return 1.0d;
         }
         return confidence;
+    }
+
+    private static String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

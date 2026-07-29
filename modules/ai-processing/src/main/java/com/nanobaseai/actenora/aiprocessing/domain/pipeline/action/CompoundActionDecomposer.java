@@ -113,8 +113,22 @@ public final class CompoundActionDecomposer {
             List<SegmentInput> segments
     ) {
         Optional<Clause> clause = parseClause(cleaned, participants);
-        if (clause.isPresent()) {
-            return toCandidate(clause.get(), original, segments);
+        if (clause.isPresent() && canRebindOwner(original.owner(), clause.get().owner())) {
+            ActionItemCandidate bound = toCandidate(clause.get(), original, segments);
+            String relative = bound.relativeDate() == null || bound.relativeDate().isBlank()
+                    ? original.relativeDate()
+                    : bound.relativeDate();
+            return new ActionItemCandidate(
+                    bound.text(),
+                    bound.owner(),
+                    original.dueDate(),
+                    bound.evidenceSegmentIds(),
+                    bound.confidence(),
+                    bound.ownerType(),
+                    bound.priority(),
+                    relative,
+                    original.dueAt()
+            );
         }
         String owner = original.owner();
         String relative = original.relativeDate();
@@ -142,6 +156,14 @@ public final class CompoundActionDecomposer {
                 relative,
                 original.dueAt()
         );
+    }
+
+    private static boolean canRebindOwner(String currentOwner, String parsedOwner) {
+        if (currentOwner == null || currentOwner.isBlank()) {
+            return true;
+        }
+        ActionIdentityNormalizer identity = new ActionIdentityNormalizer();
+        return identity.normalizeLoose(currentOwner).equals(identity.normalizeLoose(parsedOwner));
     }
 
     private Optional<Clause> parseClause(String part, Set<String> participants) {

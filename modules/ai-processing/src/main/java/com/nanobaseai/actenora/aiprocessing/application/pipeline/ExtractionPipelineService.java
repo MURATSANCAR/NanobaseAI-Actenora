@@ -5,6 +5,8 @@ import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetr
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ExplicitActionCueRecoverer;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
@@ -293,8 +295,14 @@ public final class ExtractionPipelineService {
                     );
             note = new CrossTypeConsistencyAuditor().audit(note);
             note = new ActionContextualEnricher().enrich(note, normalized);
+            ExplicitActionCueRecoverer.Result recovered =
+                    new ExplicitActionCueRecoverer().recover(note.actionItems(), normalized);
+            note = withActions(note, recovered.actions());
             ActionPostProcessingPipeline.AppliedDraft applied =
                     ActionPostProcessingPipeline.productionDefaults().applyToDraftDetailed(note, actionCtx);
+            for (int i = 0; i < recovered.recovered(); i++) {
+                applied.stats().incrementExplicitActionCuesRecovered();
+            }
             note = applied.draft();
             metrics.setActionPostProcessingStats(applied.stats().toArtifactMap(
                     request.meetingOccurrenceId() == null ? null : request.meetingOccurrenceId().toString()));
@@ -322,6 +330,25 @@ public final class ExtractionPipelineService {
                     false
             );
         }
+    }
+
+    private static FinalNoteDraft withActions(FinalNoteDraft draft, List<ActionItemCandidate> actions) {
+        return new FinalNoteDraft(
+                draft.executiveSummary(),
+                draft.decisions(),
+                actions,
+                draft.risks(),
+                draft.openQuestions(),
+                draft.commitments(),
+                draft.topics(),
+                draft.issues(),
+                draft.proposals(),
+                draft.importantFacts(),
+                draft.qualityFlags(),
+                draft.evidenceSegmentIds(),
+                draft.confidence(),
+                draft.requiresManualReview()
+        );
     }
 
     /**

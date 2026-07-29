@@ -25,6 +25,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ExplicitActionCueRecoverer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingStats;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
@@ -909,9 +910,14 @@ public final class DefaultStageExecutors {
                             );
                     draft = new CrossTypeConsistencyAuditor().audit(draft);
                     draft = new ActionContextualEnricher().enrich(draft, normalized);
+                    ExplicitActionCueRecoverer.Result recovered =
+                            new ExplicitActionCueRecoverer().recover(draft.actionItems(), normalized);
                     ActionPostProcessingPipeline.Result post =
                             ActionPostProcessingPipeline.productionDefaults().postProcess(
-                                    draft.actionItems(), draft.commitments(), actionCtx);
+                                    recovered.actions(), draft.commitments(), actionCtx);
+                    for (int i = 0; i < recovered.recovered(); i++) {
+                        post.stats().incrementExplicitActionCuesRecovered();
+                    }
                     draft = new FinalNoteDraft(
                             draft.executiveSummary(),
                             draft.decisions(),
@@ -945,6 +951,11 @@ public final class DefaultStageExecutors {
                         }
                     }
                 }
+                var meetingStartedAt = meetingClock
+                        .scheduledStart(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
+                        .orElse(null);
+                var meetingTimezone =
+                        meetingClock.timezone(TenantId.of(job.tenantId()), job.meetingOccurrenceId());
                 Optional<UUID> noteId = noteHandoff.handoff(new MeetingNoteHandoffPort.HandoffCommand(
                         job.tenantId(),
                         job.meetingOccurrenceId(),
@@ -953,6 +964,8 @@ public final class DefaultStageExecutors {
                         modelRuntime.descriptor().servedModelId(),
                         job.promptVersion(),
                         job.schemaVersion(),
+                        meetingStartedAt == null ? null : meetingStartedAt.toString(),
+                        meetingTimezone == null ? null : meetingTimezone.getId(),
                         draft
                 ));
                 java.util.LinkedHashMap<String, Object> payload = new java.util.LinkedHashMap<>();

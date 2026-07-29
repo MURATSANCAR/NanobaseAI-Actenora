@@ -656,6 +656,11 @@ public final class AiJobInferenceExecutor {
         if (noteHandoff == null) {
             return Optional.empty();
         }
+        java.time.OffsetDateTime meetingStartedAt = meetingClock
+                .scheduledStart(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
+                .orElse(null);
+        java.time.ZoneId meetingTimezone =
+                meetingClock.timezone(TenantId.of(job.tenantId()), job.meetingOccurrenceId());
         return result.finalNoteOptional().flatMap(draft -> noteHandoff.handoff(
                 new MeetingNoteHandoffPort.HandoffCommand(
                         job.tenantId(),
@@ -665,6 +670,8 @@ public final class AiJobInferenceExecutor {
                         result.modelVersion(),
                         result.promptVersionId(),
                         job.schemaVersion(),
+                        meetingStartedAt == null ? null : meetingStartedAt.toString(),
+                        meetingTimezone == null ? null : meetingTimezone.getId(),
                         draft
                 )));
     }

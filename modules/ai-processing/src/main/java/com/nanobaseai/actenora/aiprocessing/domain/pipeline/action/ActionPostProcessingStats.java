@@ -22,6 +22,7 @@ public final class ActionPostProcessingStats {
     private int unresolvedRelativeDates;
     private int duplicatesRemoved;
     private int commitmentsOwnerBound;
+    private int explicitActionCuesRecovered;
     private String auditStatus = "PASSED";
     private final List<String> warnings = new ArrayList<>();
     private List<Map<String, Object>> actionTrace = List.of();
@@ -66,6 +67,10 @@ public final class ActionPostProcessingStats {
         commitmentsOwnerBound++;
     }
 
+    public void incrementExplicitActionCuesRecovered() {
+        explicitActionCuesRecovered++;
+    }
+
     public void setAuditStatus(String auditStatus) {
         this.auditStatus = auditStatus == null || auditStatus.isBlank() ? "PASSED" : auditStatus.trim();
     }
@@ -95,6 +100,7 @@ public final class ActionPostProcessingStats {
         map.put("unresolvedRelativeDates", unresolvedRelativeDates);
         map.put("duplicatesRemoved", duplicatesRemoved);
         map.put("commitmentsOwnerBound", commitmentsOwnerBound);
+        map.put("explicitActionCuesRecovered", explicitActionCuesRecovered);
         map.put("auditStatus", auditStatus);
         map.put("warnings", List.copyOf(warnings));
         map.put("actionTrace", actionTrace);

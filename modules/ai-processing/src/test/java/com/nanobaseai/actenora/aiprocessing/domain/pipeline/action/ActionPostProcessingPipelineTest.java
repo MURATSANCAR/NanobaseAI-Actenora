@@ -104,6 +104,43 @@ class ActionPostProcessingPipelineTest {
     }
 
     @Test
+    void postProcessingIsIdempotentForAtomicCorrelationIdAction() {
+        var first = pipeline.postProcess(List.of(action(
+                "Aksiyon kaydı: Selin düzeltmeyi bugün 16.00'ya kadar yapacak; Can correlation id ekleyecek.",
+                "Selin",
+                List.of("s1")
+        )), List.of(), ctx(segments()));
+
+        var second = pipeline.postProcess(first.actions(), List.of(), ctx(segments()));
+
+        assertEquals(2, second.actions().size());
+        assertTrue(second.actions().stream().anyMatch(a ->
+                "Can".equals(a.owner()) && a.text().equals("Correlation ID ekleyecek.")));
+        assertTrue(second.actions().stream().noneMatch(a -> "Correlation".equals(a.owner())));
+    }
+
+    @Test
+    void explicitActionCueRecoveryRestoresModelOmission() {
+        List<ActionItemCandidate> modelActions = List.of(
+                action("Hata düzeltmesini yapacak.", "Selin", List.of("s1")),
+                action("Correlation ID ekleyecek.", "Can", List.of("s1"))
+        );
+        ExplicitActionCueRecoverer.Result recovered =
+                new ExplicitActionCueRecoverer().recover(modelActions, segments());
+
+        var result = pipeline.postProcess(recovered.actions(), List.of(), ctx(segments()));
+
+        assertEquals(1, recovered.recovered());
+        assertEquals(4, result.actions().size(), () -> result.actions().toString());
+        assertEquals(1, result.actions().stream()
+                .filter(a -> "Can".equals(a.owner()))
+                .filter(a -> a.text().toLowerCase().contains("correlation"))
+                .count());
+        assertTrue(result.actions().stream().anyMatch(a ->
+                "Burak".equals(a.owner()) && "2026-07-30T12:00:00+03:00".equals(a.dueAt())));
+    }
+
+    @Test
     void ambiguousSemicolonDoesNotForceSplit() {
         ActionItemCandidate in = action(
                 "Listeyi şunlarla güncelle: timeout; retry; yetkisiz erişim.",
@@ -373,6 +410,28 @@ class ActionPostProcessingPipelineTest {
     }
 
     @Test
+    void sameEvidenceDifferentActionsAreNotDeduplicated() {
+        var dedup = deduplicator.deduplicate(List.of(
+                action("Correlation ID ekleyecek.", "Can", List.of("s1")),
+                action("Correlation ID kaldıracak.", "Can", List.of("s1"))
+        ));
+        assertEquals(2, dedup.actions().size());
+    }
+
+    @Test
+    void normalizesLiveCorrelationIdParaphrasesToSameIdentity() {
+        ActionIdentityNormalizer identity = new ActionIdentityNormalizer();
+        ActionItemCandidate child = action("Can correlation ID ekleyecek.", "Can", List.of("s1"));
+        ActionItemCandidate paraphrase =
+                action("Can, correlation ID eklemesini gerçekleştirecek.", "Can,", List.of("s3"));
+
+        assertEquals("can", identity.canonicalOwner(child));
+        assertEquals("can", identity.canonicalOwner(paraphrase));
+        assertEquals(identity.canonicalCore(child), identity.canonicalCore(paraphrase));
+        assertEquals(identity.identityKey(child), identity.identityKey(paraphrase));
+    }
+
+    @Test
     void duplicateRemovalIsReportedInStats() {
         List<ActionItemCandidate> llmOut = List.of(
                 action("Can correlation id ekleyecek.", "Can", List.of("s1")),
@@ -453,6 +512,18 @@ class ActionPostProcessingPipelineTest {
         );
         var result = pipeline.postProcess(List.of(), List.of(c), ctx(segments()));
         assertEquals("Burak", result.commitments().getFirst().owner());
+    }
+
+    @Test
+    void nonSelfCommitmentIsNotBoundFromEvidenceSpeaker() {
+        CommitmentCandidate c = new CommitmentCandidate(
+                "Test planına timeout senaryoları eklenmeli.",
+                null,
+                List.of("s3"),
+                0.9
+        );
+        var result = pipeline.postProcess(List.of(), List.of(c), ctx(segments()));
+        assertNull(result.commitments().getFirst().owner());
     }
 
     private static ActionItemCandidate action(String text, String owner, List<String> evidence) {

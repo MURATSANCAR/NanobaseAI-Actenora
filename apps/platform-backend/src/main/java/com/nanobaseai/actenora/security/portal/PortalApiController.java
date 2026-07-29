@@ -1351,7 +1351,7 @@ public class PortalApiController {
         return "LOW";
     }
 
-    private static String renderDraftMinutesBody(MeetingNoteDetailResponse note, String meetingTitle) {
+    static String renderDraftMinutesBody(MeetingNoteDetailResponse note, String meetingTitle) {
         String summary = note.currentVersion() == null || note.currentVersion().executiveSummary() == null
                 ? ""
                 : note.currentVersion().executiveSummary().trim();
@@ -1396,6 +1396,7 @@ public class PortalApiController {
 
         List<String> actions = new ArrayList<>();
         boolean anyStructuredMissing = false;
+        boolean anyStructuredDue = false;
         boolean anyDateCueWithoutStructured = false;
         boolean anyUnresolvedRelative = false;
         if (note.actionItems() != null) {
@@ -1409,6 +1410,7 @@ public class PortalApiController {
                 String due;
                 Instant dueAtInstant = a.dueAt();
                 if (dueAtInstant != null) {
+                    anyStructuredDue = true;
                     due = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
                             .withZone(java.time.ZoneId.of("Europe/Istanbul"))
                             .format(dueAtInstant);
@@ -1416,6 +1418,7 @@ public class PortalApiController {
                     due = a.relativeDate().trim();
                     anyUnresolvedRelative = true;
                 } else if (a.dueDate() != null) {
+                    anyStructuredDue = true;
                     due = a.dueDate().toString();
                 } else {
                     due = "—";
@@ -1443,7 +1446,7 @@ public class PortalApiController {
                         .append('\n');
             } else if (anyUnresolvedRelative) {
                 sb.append("Not: Tarih henüz takvim değerine çözümlenemedi.").append('\n');
-            } else if (anyStructuredMissing) {
+            } else if (anyStructuredMissing && !anyStructuredDue) {
                 sb.append("Not: Aksiyonlar için yapılandırılmış son tarih bulunmuyor.").append('\n');
             }
         }

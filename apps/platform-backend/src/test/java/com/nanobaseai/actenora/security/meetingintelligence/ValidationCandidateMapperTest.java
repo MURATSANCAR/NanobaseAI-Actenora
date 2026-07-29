@@ -48,7 +48,11 @@ class ValidationCandidateMapperTest {
                 0.9,
                 false
         );
-        List<ValidationCandidate> candidates = ValidationCandidateMapper.toCandidates(draft);
+        List<ValidationCandidate> candidates = ValidationCandidateMapper.toCandidates(
+                draft,
+                "2026-07-29T08:11:26+03:00",
+                "Europe/Istanbul"
+        );
         assertEquals(1, candidates.size());
         assertEquals(CandidateKind.DECISION, candidates.getFirst().kind());
         assertEquals(List.of(ValidationCandidateMapper.toSegmentUuid("seg-1")), candidates.getFirst().evidenceSegmentIds());
@@ -84,7 +88,11 @@ class ValidationCandidateMapperTest {
                 false
         );
 
-        List<ValidationCandidate> candidates = ValidationCandidateMapper.toCandidates(draft);
+        List<ValidationCandidate> candidates = ValidationCandidateMapper.toCandidates(
+                draft,
+                "2026-07-29T08:11:26+03:00",
+                "Europe/Istanbul"
+        );
         assertEquals(1, candidates.size());
 
         ValidationCandidate action = candidates.getFirst();
@@ -93,5 +101,8 @@ class ValidationCandidateMapperTest {
         assertEquals("2026-07-29T16:00:00+03:00", action.dueAtText().orElseThrow());
         assertEquals("RESOLVED", action.dateResolutionStatus().orElseThrow());
         assertEquals("RELATIVE_DATE_EVIDENCE", action.dateResolutionSource().orElseThrow());
+        assertEquals("2026-07-29T08:11:26+03:00",
+                action.dateResolutionReferenceTime().orElseThrow());
+        assertEquals("Europe/Istanbul", action.dateResolutionTimezone().orElseThrow());
     }
 }

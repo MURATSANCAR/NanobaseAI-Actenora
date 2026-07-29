@@ -298,7 +298,10 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 command.tenantId(),
                 command.meetingOccurrenceId(),
                 command.jobId(),
-                ValidationCandidateMapper.toCandidates(command.draft()),
+                ValidationCandidateMapper.toCandidates(
+                        command.draft(),
+                        command.meetingStartedAtIso(),
+                        command.meetingTimezone()),
                 ValidationCandidateMapper.toSegments(segments),
                 ValidationCandidateMapper.participantsFromSpeakers(segments)
         ));

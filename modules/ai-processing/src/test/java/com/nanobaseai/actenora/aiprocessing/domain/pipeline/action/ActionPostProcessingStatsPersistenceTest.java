@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -135,11 +136,14 @@ class ActionPostProcessingStatsPersistenceTest {
                           "topics": [],
                           "decisions": [],
                           "actionItems": [
-                            {"text":"Aksiyon kaydı: Selin düzeltmeyi bugün 16.00'ya kadar yapacak; Can correlation id ekleyecek.","owner":"Selin","evidenceSegmentIds":["seg-1"],"confidence":0.9}
+                            {"text":"Aksiyon kaydı: Selin düzeltmeyi bugün 16.00'ya kadar yapacak; Can correlation id ekleyecek.","owner":"Selin","evidenceSegmentIds":["seg-1"],"confidence":0.9},
+                            {"text":"Aksiyon kaydı: Can başlığı düzeltecek; Burak Outlook ve Apple Mail regresyonunu yarın öğlene kadar tamamlayacak.","owner":"Can","evidenceSegmentIds":["seg-2"],"confidence":0.9}
                           ],
                           "risks": [],
                           "openQuestions": [],
-                          "commitments": [],
+                          "commitments": [
+                            {"text":"Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını ekleyeceğim.","evidenceSegmentIds":["seg-3"],"confidence":0.9}
+                          ],
                           "qualityFlags": [],
                           "evidenceSegmentIds": ["seg-1"],
                           "confidence": 0.9
@@ -169,9 +173,21 @@ class ActionPostProcessingStatsPersistenceTest {
                 new SegmentInput(
                         "seg-1", 0, "Selin", 0, 1_000,
                         "Aksiyon kaydı: Selin düzeltmeyi bugün 16.00'ya kadar yapacak; Can correlation id ekleyecek.",
+                        false),
+                new SegmentInput(
+                        "seg-2", 1, "Derya", 1_000, 2_000,
+                        "Aksiyon kaydı: Can başlığı düzeltecek; Burak Outlook ve Apple Mail regresyonunu yarın öğlene kadar tamamlayacak.",
+                        false),
+                new SegmentInput(
+                        "seg-3", 2, "Burak", 2_000, 3_000,
+                        "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını ekleyeceğim.",
                         false)
         );
-        MeetingNoteHandoffPort handoff = command -> Optional.of(UUID.randomUUID());
+        AtomicReference<MeetingNoteHandoffPort.HandoffCommand> handedOff = new AtomicReference<>();
+        MeetingNoteHandoffPort handoff = command -> {
+            handedOff.set(command);
+            return Optional.of(UUID.randomUUID());
+        };
         MeetingOccurrenceClockPort clock = new MeetingOccurrenceClockPort() {
             @Override
             public Optional<OffsetDateTime> scheduledStart(TenantId tenantId, UUID meetingOccurrenceId) {
@@ -199,6 +215,33 @@ class ActionPostProcessingStatsPersistenceTest {
 
         StageExecutionResult stageResult = executor.execute(job, now);
         assertTrue(stageResult.succeeded(), () -> "minutes failed: " + stageResult.errorMessage());
+        MeetingNoteHandoffPort.HandoffCommand handoffCommand = handedOff.get();
+        assertEquals("2026-07-29T08:11:26+03:00", handoffCommand.meetingStartedAtIso());
+        assertEquals("Europe/Istanbul", handoffCommand.meetingTimezone());
+        assertEquals(4, handoffCommand.draft().actionItems().size(),
+                () -> handoffCommand.draft().actionItems().toString());
+        var selin = handoffCommand.draft().actionItems().stream()
+                .filter(action -> "Selin".equals(action.owner()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("2026-07-29", selin.dueDate());
+        assertEquals("2026-07-29T16:00:00+03:00", selin.dueAt());
+        assertEquals("bugün 16.00'ya kadar", selin.relativeDate());
+        var burak = handoffCommand.draft().actionItems().stream()
+                .filter(action -> "Burak".equals(action.owner()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("2026-07-30", burak.dueDate());
+        assertEquals("2026-07-30T12:00:00+03:00", burak.dueAt());
+        assertEquals("yarın öğlene kadar", burak.relativeDate());
+        assertEquals(1, handoffCommand.draft().actionItems().stream()
+                .filter(action -> "Can".equals(action.owner()))
+                .filter(action -> action.text().toLowerCase().contains("correlation"))
+                .count());
+        assertEquals("Burak", handoffCommand.draft().commitments().getFirst().owner());
+        assertTrue(handoffCommand.draft().actionItems().stream()
+                .noneMatch(action -> action.text().startsWith("Aksiyon kaydı:")
+                        || action.text().contains(";")));
 
         Optional<ProcessingArtifact> saved = artifacts.findLatestByMeetingAndType(
                 tenant, meeting, ActionPostProcessingStats.ARTIFACT_TYPE);
@@ -207,6 +250,9 @@ class ActionPostProcessingStatsPersistenceTest {
         Map<String, Object> payload = mapper.readValue(saved.get().payloadJson().orElseThrow(), Map.class);
         assertEquals("ACTION_POST_PROCESSING", payload.get("stage"));
         assertTrue(payload.containsKey("auditStatus"));
+        assertEquals(4, payload.get("outputActionCount"));
+        assertTrue(((Number) payload.get("compoundActionsSplit")).intValue() >= 1);
+        assertEquals(2, payload.get("datesResolved"));
         assertTrue(ActionPostProcessingStats.isSafeArtifactPayload(payload));
         assertFalse(containsRawTranscript(payload));
     }

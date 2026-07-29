@@ -269,6 +269,15 @@ public final class ActionPostProcessingPipeline {
             row.put("dateResolutionSource", action.dueAt() != null && !action.dueAt().isBlank()
                     ? "RELATIVE_DATE_EVIDENCE"
                     : action.dueDate() != null && !action.dueDate().isBlank() ? "MODEL_PROVIDED_UNVERIFIED" : "NONE");
+            row.put("dateResolutionReferenceTime",
+                    action.dueAt() != null && !action.dueAt().isBlank() && ctx.meetingStartedAt() != null
+                            ? ctx.meetingStartedAt().toString()
+                            : null);
+            row.put("dateResolutionTimezone",
+                    action.dueAt() != null && !action.dueAt().isBlank()
+                            ? ctx.meetingTimezone().getId()
+                            : null);
+            row.put("dedupIdentityHash", identityNormalizer.sha256(identityNormalizer.identityKey(action)));
             trace.add(row);
         }
         return trace;

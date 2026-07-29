@@ -30,6 +30,8 @@ public interface MeetingNoteHandoffPort {
             String modelId,
             String promptVersionId,
             String schemaId,
+            String meetingStartedAtIso,
+            String meetingTimezone,
             FinalNoteDraft draft
     ) {
         public HandoffCommand {
