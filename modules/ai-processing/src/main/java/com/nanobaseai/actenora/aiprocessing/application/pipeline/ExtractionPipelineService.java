@@ -6,7 +6,6 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalC
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
-import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
@@ -294,7 +293,11 @@ public final class ExtractionPipelineService {
                     );
             note = new CrossTypeConsistencyAuditor().audit(note);
             note = new ActionContextualEnricher().enrich(note, normalized);
-            note = ActionPostProcessingPipeline.productionDefaults().applyToDraft(note, actionCtx);
+            ActionPostProcessingPipeline.AppliedDraft applied =
+                    ActionPostProcessingPipeline.productionDefaults().applyToDraftDetailed(note, actionCtx);
+            note = applied.draft();
+            metrics.setActionPostProcessingStats(applied.stats().toArtifactMap(
+                    request.meetingOccurrenceId() == null ? null : request.meetingOccurrenceId().toString()));
             note = FinalNoteConfidencePolicy.productionDefaults().apply(note);
             metrics.addDurationMs((System.nanoTime() - pipelineStarted) / 1_000_000L);
             return PipelineRunResult.succeeded(promptVersionId, modelVersion, note, metrics);

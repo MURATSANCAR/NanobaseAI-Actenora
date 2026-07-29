@@ -25,6 +25,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingStats;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
@@ -929,6 +930,20 @@ public final class DefaultStageExecutors {
                     );
                     draft = FinalNoteConfidencePolicy.productionDefaults().apply(draft);
                     actionPostStats = post.stats().toArtifactMap(job.meetingOccurrenceId().toString());
+                    if (artifacts != null && actionPostStats != null) {
+                        try {
+                            artifacts.save(ProcessingArtifact.inlineJson(
+                                    job.tenantId(),
+                                    job.id(),
+                                    job.meetingOccurrenceId(),
+                                    ActionPostProcessingStats.ARTIFACT_TYPE,
+                                    MAPPER.writeValueAsString(actionPostStats),
+                                    now
+                            ));
+                        } catch (Exception ignored) {
+                            // Observability must not fail minutes stage.
+                        }
+                    }
                 }
                 Optional<UUID> noteId = noteHandoff.handoff(new MeetingNoteHandoffPort.HandoffCommand(
                         job.tenantId(),

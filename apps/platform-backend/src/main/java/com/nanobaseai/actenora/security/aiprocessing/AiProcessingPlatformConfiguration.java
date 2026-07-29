@@ -368,7 +368,8 @@ public class AiProcessingPlatformConfiguration {
             PriorMeetingContextPort priorMeetingContext,
             ObjectProvider<com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StagedPipelineRunner> stagedRunner,
             AiPipelineProperties pipelineProperties,
-            MeetingOccurrenceClockPort meetingOccurrenceClock
+            MeetingOccurrenceClockPort meetingOccurrenceClock,
+            ObjectProvider<com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository> artifacts
     ) {
         return new AiJobInferenceExecutor(
                 aiJobService,
@@ -383,6 +384,7 @@ public class AiProcessingPlatformConfiguration {
                 priorMeetingContext,
                 pipelineProperties.isStaged() ? stagedRunner.getIfAvailable() : null,
                 meetingOccurrenceClock,
+                artifacts.getIfAvailable(),
                 properties.getMaxAttempts(),
                 (int) Math.max(1, properties.getReadTimeout().toSeconds())
         );

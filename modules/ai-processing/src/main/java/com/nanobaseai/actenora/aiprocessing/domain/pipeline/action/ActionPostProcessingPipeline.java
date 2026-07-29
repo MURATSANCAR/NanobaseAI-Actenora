@@ -117,6 +117,7 @@ public final class ActionPostProcessingPipeline {
             CompoundActionDecomposer.Decomposition decomposition =
                     decomposer.decompose(prefixed, participants, ctx.transcriptSegments());
             if (decomposition.ambiguous()) {
+                stats.incrementAmbiguousCompoundActions();
                 stats.warn(decomposition.warning());
                 flags.add(CompoundActionDecomposer.AMBIGUOUS_SPLIT);
             }
@@ -145,6 +146,7 @@ public final class ActionPostProcessingPipeline {
 
         ActionExtractionAuditor.AuditResult audit = auditor.audit(dedup.actions());
         flags.addAll(audit.flags());
+        stats.setAuditStatus(audit.passed() ? "PASSED" : "FAILED");
 
         stats.setOutputActionCount(dedup.actions().size());
         boolean manual = !audit.passed()
@@ -189,6 +191,13 @@ public final class ActionPostProcessingPipeline {
     }
 
     public FinalNoteDraft applyToDraft(FinalNoteDraft draft, Context context) {
+        return applyToDraftDetailed(draft, context).draft();
+    }
+
+    /**
+     * Same as {@link #applyToDraft} but preserves structured post-processing stats for artifacts.
+     */
+    public AppliedDraft applyToDraftDetailed(FinalNoteDraft draft, Context context) {
         Result result = postProcess(draft.actionItems(), draft.commitments(), context);
         List<String> flags = auditor.remapDecisionFlags(draft.qualityFlags(), false);
         for (String f : result.qualityFlags()) {
@@ -202,7 +211,7 @@ public final class ActionPostProcessingPipeline {
             flags.add(ActionExtractionAuditor.DECISION_PASSED);
         }
         boolean manual = draft.requiresManualReview() || result.requiresManualReview();
-        return new FinalNoteDraft(
+        FinalNoteDraft out = new FinalNoteDraft(
                 draft.executiveSummary(),
                 draft.decisions(),
                 result.actions(),
@@ -218,6 +227,10 @@ public final class ActionPostProcessingPipeline {
                 draft.confidence(),
                 manual
         );
+        return new AppliedDraft(out, result.stats());
+    }
+
+    public record AppliedDraft(FinalNoteDraft draft, ActionPostProcessingStats stats) {
     }
 
     private ActionItemCandidate resolveDates(
@@ -271,6 +284,7 @@ public final class ActionPostProcessingPipeline {
         }
         if (resolved.status() == TurkishRelativeDateResolver.Status.UNRESOLVED) {
             flags.add(ActionExtractionAuditor.UNRESOLVED_RELATIVE_DATE);
+            stats.incrementUnresolvedRelativeDates();
             stats.warn(ActionExtractionAuditor.UNRESOLVED_RELATIVE_DATE);
             return action.withDates(action.dueDate(), relative, action.dueAt());
         }

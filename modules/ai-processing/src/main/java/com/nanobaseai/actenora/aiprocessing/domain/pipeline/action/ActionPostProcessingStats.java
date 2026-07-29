@@ -10,14 +10,19 @@ import java.util.Map;
  */
 public final class ActionPostProcessingStats {
 
+    public static final String ARTIFACT_TYPE = "action-post-processing";
+
     private int inputActionCount;
     private int outputActionCount;
     private int prefixesRemoved;
     private int compoundActionsSplit;
+    private int ambiguousCompoundActions;
     private int datesDetected;
     private int datesResolved;
+    private int unresolvedRelativeDates;
     private int duplicatesRemoved;
     private int commitmentsOwnerBound;
+    private String auditStatus = "PASSED";
     private final List<String> warnings = new ArrayList<>();
 
     public void setInputActionCount(int inputActionCount) {
@@ -34,9 +39,10 @@ public final class ActionPostProcessingStats {
 
     public void incrementCompoundActionsSplit(int children) {
         compoundActionsSplit++;
-        if (children > 0) {
-            // children counted in output; parent removed
-        }
+    }
+
+    public void incrementAmbiguousCompoundActions() {
+        ambiguousCompoundActions++;
     }
 
     public void incrementDatesDetected() {
@@ -47,12 +53,20 @@ public final class ActionPostProcessingStats {
         datesResolved++;
     }
 
+    public void incrementUnresolvedRelativeDates() {
+        unresolvedRelativeDates++;
+    }
+
     public void incrementDuplicatesRemoved() {
         duplicatesRemoved++;
     }
 
     public void incrementCommitmentsOwnerBound() {
         commitmentsOwnerBound++;
+    }
+
+    public void setAuditStatus(String auditStatus) {
+        this.auditStatus = auditStatus == null || auditStatus.isBlank() ? "PASSED" : auditStatus.trim();
     }
 
     public void warn(String code) {
@@ -69,10 +83,14 @@ public final class ActionPostProcessingStats {
         map.put("outputActionCount", outputActionCount);
         map.put("prefixesRemoved", prefixesRemoved);
         map.put("compoundActionsSplit", compoundActionsSplit);
+        map.put("ambiguousCompoundActions", ambiguousCompoundActions);
+        map.put("dateCuesDetected", datesDetected);
         map.put("datesDetected", datesDetected);
         map.put("datesResolved", datesResolved);
+        map.put("unresolvedRelativeDates", unresolvedRelativeDates);
         map.put("duplicatesRemoved", duplicatesRemoved);
         map.put("commitmentsOwnerBound", commitmentsOwnerBound);
+        map.put("auditStatus", auditStatus);
         map.put("warnings", List.copyOf(warnings));
         return map;
     }
@@ -93,6 +111,10 @@ public final class ActionPostProcessingStats {
         return compoundActionsSplit;
     }
 
+    public int ambiguousCompoundActions() {
+        return ambiguousCompoundActions;
+    }
+
     public int datesDetected() {
         return datesDetected;
     }
@@ -101,11 +123,34 @@ public final class ActionPostProcessingStats {
         return datesResolved;
     }
 
+    public int unresolvedRelativeDates() {
+        return unresolvedRelativeDates;
+    }
+
     public int duplicatesRemoved() {
         return duplicatesRemoved;
     }
 
+    public String auditStatus() {
+        return auditStatus;
+    }
+
     public List<String> warnings() {
         return List.copyOf(warnings);
+    }
+
+    /** True when serialized form has no transcript-like payload keys. */
+    public static boolean isSafeArtifactPayload(Map<?, ?> payload) {
+        if (payload == null) {
+            return true;
+        }
+        for (Object key : payload.keySet()) {
+            String k = String.valueOf(key).toLowerCase();
+            if (k.contains("transcript") || k.contains("prompt") || k.contains("raw")
+                    || k.contains("chunk") || k.contains("segmenttext")) {
+                return false;
+            }
+        }
+        return true;
     }
 }

@@ -20,20 +20,25 @@ import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProviderL
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingOccurrenceClockPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.ServedModelResolverPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StageExecutionResult;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StagedPipelineRunner;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
+import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingArtifact;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobException;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FailureCategory;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingStats;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.prompt.InMemoryPromptRegistry;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -74,6 +79,8 @@ public final class AiJobInferenceExecutor {
     private final PriorMeetingContextPort priorMeetingContext;
     private final StagedPipelineRunner stagedPipelineRunner;
     private final MeetingOccurrenceClockPort meetingClock;
+    private final ProcessingArtifactRepository artifacts;
+    private final ObjectMapper artifactMapper;
     private final int maxAttempts;
     private final int maxTimeoutSeconds;
 
@@ -299,6 +306,42 @@ public final class AiJobInferenceExecutor {
             int maxAttempts,
             int maxTimeoutSeconds
     ) {
+        this(
+                jobService,
+                providers,
+                inputResolver,
+                servedModels,
+                extractionPipeline,
+                segmentSource,
+                routingCoordinator,
+                noteHandoff,
+                qualityMetrics,
+                priorMeetingContext,
+                stagedPipelineRunner,
+                meetingClock,
+                null,
+                maxAttempts,
+                maxTimeoutSeconds
+        );
+    }
+
+    public AiJobInferenceExecutor(
+            AiJobService jobService,
+            LocalModelProviderLocator providers,
+            InferenceInputResolverPort inputResolver,
+            ServedModelResolverPort servedModels,
+            ExtractionPipelineService extractionPipeline,
+            TranscriptSegmentSourcePort segmentSource,
+            JobRoutingCoordinatorPort routingCoordinator,
+            MeetingNoteHandoffPort noteHandoff,
+            PipelineQualityMetricsPort qualityMetrics,
+            PriorMeetingContextPort priorMeetingContext,
+            StagedPipelineRunner stagedPipelineRunner,
+            MeetingOccurrenceClockPort meetingClock,
+            ProcessingArtifactRepository artifacts,
+            int maxAttempts,
+            int maxTimeoutSeconds
+    ) {
         this.jobService = Objects.requireNonNull(jobService, "jobService");
         this.providers = Objects.requireNonNull(providers, "providers");
         this.inputResolver = Objects.requireNonNull(inputResolver, "inputResolver");
@@ -315,6 +358,8 @@ public final class AiJobInferenceExecutor {
         this.meetingClock = meetingClock == null
                 ? MeetingOccurrenceClockPort.unsupported()
                 : meetingClock;
+        this.artifacts = artifacts;
+        this.artifactMapper = new ObjectMapper();
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
@@ -492,6 +537,7 @@ public final class AiJobInferenceExecutor {
                     : elapsedMs(startedNanos);
             AiJob completed = jobService.completeAttempt(
                     job.id(), latencyMs, inputTokens, outputTokens, java.time.Instant.now());
+            persistActionPostProcessingArtifact(job, result);
             UUID meetingNoteId = null;
             try {
                 meetingNoteId = handoffFinalNote(job, result).orElse(null);
@@ -621,6 +667,32 @@ public final class AiJobInferenceExecutor {
                         job.schemaVersion(),
                         draft
                 )));
+    }
+
+    private void persistActionPostProcessingArtifact(AiJob job, PipelineRunResult result) {
+        if (artifacts == null || result == null || result.metrics() == null) {
+            return;
+        }
+        Map<String, Object> stats = result.metrics().actionPostProcessingStats();
+        if (stats == null || stats.isEmpty()) {
+            return;
+        }
+        if (!ActionPostProcessingStats.isSafeArtifactPayload(stats)) {
+            return;
+        }
+        try {
+            String json = artifactMapper.writeValueAsString(stats);
+            artifacts.save(ProcessingArtifact.inlineJson(
+                    job.tenantId(),
+                    job.id(),
+                    job.meetingOccurrenceId(),
+                    ActionPostProcessingStats.ARTIFACT_TYPE,
+                    json,
+                    Instant.now()
+            ));
+        } catch (Exception ignored) {
+            // Observability must not fail the job.
+        }
     }
 
     private static boolean usesExtractionPipeline(InferenceTaskType taskType) {

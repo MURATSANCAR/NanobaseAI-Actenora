@@ -241,7 +241,9 @@ class ExtractionPipelineServiceTest {
     }
 
     @Test
-    void truncatedJsonRecoversClosedDecisions() {
+    void truncatedJsonIsRepairedAndKeepsClosedDecisions() {
+        // LimitedJsonRepair LIFO close (7a5e108+) turns this truncated payload into valid JSON,
+        // so PartialExtractionJsonRecovery is no longer required for this fixture.
         Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> """
                 {
                   "topics": [],
@@ -256,8 +258,40 @@ class ExtractionPipelineServiceTest {
         )));
 
         assertTrue(result.success(), () -> String.valueOf(result.failureCategory()) + " / " + result.failureMessage());
-        assertTrue(result.metrics().partialJsonRecoveries() >= 1);
+        assertTrue(result.metrics().repairCount() >= 1);
         assertFalse(result.finalNote().decisions().isEmpty());
+        assertTrue(result.finalNote().decisions().stream().anyMatch(d -> d.text().contains("Ship Friday")));
+    }
+
+    @Test
+    void severelyTruncatedJsonUsesPartialRecovery() {
+        // Confidence truncated mid-string makes LimitedJsonRepair produce schema-invalid JSON
+        // (confidence remains a string), forcing PartialExtractionJsonRecovery.
+        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> """
+                {
+                  "topics": [],
+                  "decisions": [
+                    {"text":"Ship Friday","evidenceSegmentIds":["seg-1"],"confidence":0.9}
+                  ],
+                  "actionItems": [],
+                  "risks": [],
+                  "openQuestions": [],
+                  "commitments": [],
+                  "qualityFlags": [],
+                  "evidenceSegmentIds": ["seg-1"],
+                  "confidence": "0.9
+                """);
+        ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), adapter);
+
+        PipelineRunResult result = service.run(request(List.of(
+                segment("seg-1", 0, "Alice", "We decided to ship Friday.")
+        )));
+
+        assertTrue(result.success(), () -> String.valueOf(result.failureCategory()) + " / " + result.failureMessage());
+        assertTrue(result.metrics().partialJsonRecoveries() >= 1,
+                "expected PartialExtractionJsonRecovery path; repairCount=" + result.metrics().repairCount());
+        assertFalse(result.finalNote().decisions().isEmpty());
+        assertTrue(result.finalNote().decisions().stream().anyMatch(d -> d.text().contains("Ship Friday")));
     }
 
     @Test

@@ -1,5 +1,8 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * Accumulated token / latency metrics for a pipeline run.
  * Methods are synchronized so parallel chunk extraction can update safely.
@@ -17,6 +20,7 @@ public final class PipelineRunMetrics {
     private int evidenceItemsDropped;
     private int partialJsonRecoveries;
     private int invalidJsonRetries;
+    private Map<String, Object> actionPostProcessingStats;
 
     public synchronized void addInputTokens(long tokens) {
         this.inputTokens += Math.max(0, tokens);
@@ -54,6 +58,10 @@ public final class PipelineRunMetrics {
 
     public synchronized void incrementInvalidJsonRetry() {
         this.invalidJsonRetries++;
+    }
+
+    public synchronized void setActionPostProcessingStats(Map<String, Object> stats) {
+        this.actionPostProcessingStats = stats == null ? null : new LinkedHashMap<>(stats);
     }
 
     public synchronized long inputTokens() {
@@ -100,6 +108,10 @@ public final class PipelineRunMetrics {
         return invalidJsonRetries;
     }
 
+    public synchronized Map<String, Object> actionPostProcessingStats() {
+        return actionPostProcessingStats == null ? Map.of() : Map.copyOf(actionPostProcessingStats);
+    }
+
     public synchronized PipelineRunMetrics snapshot() {
         PipelineRunMetrics copy = new PipelineRunMetrics();
         copy.inputTokens = inputTokens;
@@ -113,6 +125,9 @@ public final class PipelineRunMetrics {
         copy.evidenceItemsDropped = evidenceItemsDropped;
         copy.partialJsonRecoveries = partialJsonRecoveries;
         copy.invalidJsonRetries = invalidJsonRetries;
+        copy.actionPostProcessingStats = actionPostProcessingStats == null
+                ? null
+                : new LinkedHashMap<>(actionPostProcessingStats);
         return copy;
     }
 }

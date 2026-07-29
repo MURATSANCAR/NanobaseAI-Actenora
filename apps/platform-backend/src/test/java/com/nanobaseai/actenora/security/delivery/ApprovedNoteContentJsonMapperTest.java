@@ -56,7 +56,7 @@ class ApprovedNoteContentJsonMapperTest {
                 List.of(new ActionItemResponse(
                         UUID.randomUUID(), noteId, "Write docs", "Ada", LocalDate.parse("2026-02-01"),
                         ActionItemStatus.OPEN, false, 0.8, null, "PERSON", "HIGH", "next week",
-                        1L, now
+                        null, 1L, now
                 )),
                 List.of(new RiskResponse(
                         UUID.randomUUID(), noteId, "Slippage", false, 0.7, null,
