@@ -50,10 +50,11 @@ public final class DueDateInTranscriptRule implements ValidationRule {
                     results.add(pass(candidate, "Relative due date appears in transcript"));
                     continue;
                 }
-                if (containsRelativeDateCues(candidate.title(), corpus)) {
-                    results.add(pass(candidate, "Relative due date cues found"));
-                    continue;
-                }
+            }
+
+            if (containsRelativeDateCues(candidate.title(), corpus) && (hasRelativeDateText || hasDueDate)) {
+                results.add(pass(candidate, "Relative due date cues found"));
+                continue;
             }
 
             String messageNeedle = candidate.dueDateText().orElse(candidate.relativeDateText().orElse(""));

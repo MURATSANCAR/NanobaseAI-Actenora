@@ -138,6 +138,34 @@ class EvidenceValidationQualityGateTest {
     }
 
     @Test
+    void resolvedIsoDueDatePassesWhenTurkishCueExistsWithoutRelativeDateText() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .dueDateText("2026-07-29")
+                .build();
+
+        ValidationSegment relativeCueSegment = new ValidationSegment(
+                segmentId,
+                0,
+                "spk-1",
+                "Ada Lovelace",
+                0,
+                10_000,
+                "Ada will ship release notes bugun 16'ya kadar for 15000 TL. (ISO date not present)",
+                true
+        );
+
+        ValidationExecutionResult result = validate(
+                List.of(candidate),
+                List.of(relativeCueSegment),
+                List.of(participant())
+        );
+
+        assertEquals(QualityGateOutcome.PASSED, result.decision().outcome());
+        assertTrue(!hasFail(result, ValidationRuleCodes.DUE_DATE_IN_TRANSCRIPT));
+    }
+
+
+    @Test
     void ownerFirstNameMatchesSpeakerFullName() {
         ValidationCandidate candidate = baseCandidate(segmentId)
                 .owner("unknown-user", "Ada")
