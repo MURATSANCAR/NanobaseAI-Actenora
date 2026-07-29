@@ -290,14 +290,7 @@ public final class MapAiCandidatesToNoteService {
             ));
         }
 
-        if (anyMissingEvidence
-                || candidates.qualityFlags().stream().anyMatch(f ->
-                f != null && (
-                        f.equalsIgnoreCase("REQUIRES_MANUAL_REVIEW")
-                                || f.equalsIgnoreCase("SYNTHESIS_FALLBACK")
-                                || f.equalsIgnoreCase("AUDIT_FALLBACK")
-                                || f.toUpperCase(Locale.ROOT).endsWith("_FALLBACK")
-                ))) {
+        if (requiresManualReview(anyMissingEvidence, candidates.qualityFlags())) {
             note.markManualReviewWithoutLock(now);
         }
 
@@ -307,6 +300,19 @@ public final class MapAiCandidatesToNoteService {
 
         versionRepository.save(version);
         return noteRepository.save(note);
+    }
+
+    static boolean requiresManualReview(boolean anyMissingEvidence, List<String> qualityFlags) {
+        if (anyMissingEvidence) {
+            return true;
+        }
+        return qualityFlags != null && qualityFlags.stream().anyMatch(f ->
+                f != null && (
+                        f.equalsIgnoreCase("REQUIRES_MANUAL_REVIEW")
+                                || f.equalsIgnoreCase("SYNTHESIS_FALLBACK")
+                                || f.equalsIgnoreCase("AUDIT_FALLBACK")
+                                || f.toUpperCase(Locale.ROOT).endsWith("_FALLBACK")
+                ));
     }
 
     private void linkEvidence(
