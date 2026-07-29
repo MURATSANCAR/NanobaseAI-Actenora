@@ -106,6 +106,10 @@ public final class ContinuityLedgerApi {
         return service.listOverdueCommitments(tenantId);
     }
 
+    public List<CommitmentConfirmation> listCommitments(TenantId tenantId) {
+        return service.listCommitments(tenantId);
+    }
+
     public List<LedgerProjectionState.TrackedActionItem> listActionItems(TenantId tenantId) {
         return service.listActionItems(tenantId);
     }

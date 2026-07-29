@@ -193,9 +193,31 @@ actenora:
       from: ${ACTENORA_DELIVERY_MAIL_FROM:noreply@actenora.local}
       graph-sender: ${ACTENORA_DELIVERY_GRAPH_SENDER:}
   portal:
+    business-zone: ${ACTENORA_PORTAL_BUSINESS_ZONE:Europe/Istanbul}
     auth:
       # headers = X-Actenora-* operator identity (local); msal = Entra Bearer via SPA (prod)
       mode: ${ACTENORA_PORTAL_AUTH_MODE:headers}
+    my-work:
+      upcoming-window: ${ACTENORA_PORTAL_MY_WORK_UPCOMING_WINDOW:P7D}
+      recent-commitment-limit: ${ACTENORA_PORTAL_MY_WORK_RECENT_COMMITMENT_LIMIT:12}
+      date-only-deadline-time: ${ACTENORA_PORTAL_MY_WORK_DATE_ONLY_DEADLINE_TIME:23:59:59}
+    meeting-prep:
+      agenda-source-order: ${ACTENORA_PORTAL_MEETING_PREP_AGENDA_SOURCE_ORDER:OPEN_QUESTION,RISK,ACTION_ITEM,COMMITMENT}
+    meeting-question:
+      prompt-resource: ${ACTENORA_PORTAL_MEETING_QUESTION_PROMPT_RESOURCE:classpath:/portal/prompts/meeting-question.v1.txt}
+      task-type: ${ACTENORA_PORTAL_MEETING_QUESTION_TASK_TYPE:MEETING_QUESTION}
+      prompt-version: ${ACTENORA_PORTAL_MEETING_QUESTION_PROMPT_VERSION:meeting-question.v1}
+      schema-version: ${ACTENORA_PORTAL_MEETING_QUESTION_SCHEMA_VERSION:meeting-question.schema.v1}
+      evidence-limit: ${ACTENORA_PORTAL_MEETING_QUESTION_EVIDENCE_LIMIT:24}
+      max-output-tokens: ${ACTENORA_PORTAL_MEETING_QUESTION_MAX_OUTPUT_TOKENS:768}
+      timeout-seconds: ${ACTENORA_PORTAL_MEETING_QUESTION_TIMEOUT_SECONDS:45}
+    global-search:
+      default-limit: ${ACTENORA_PORTAL_GLOBAL_SEARCH_DEFAULT_LIMIT:20}
+      max-limit: ${ACTENORA_PORTAL_GLOBAL_SEARCH_MAX_LIMIT:50}
+    outlook-draft:
+      subject-template: ${ACTENORA_PORTAL_OUTLOOK_DRAFT_SUBJECT_TEMPLATE:classpath:/portal/templates/outlook-followup-subject.v1.txt}
+      html-template: ${ACTENORA_PORTAL_OUTLOOK_DRAFT_HTML_TEMPLATE:classpath:/portal/templates/outlook-followup.v1.html}
+      action-template: ${ACTENORA_PORTAL_OUTLOOK_DRAFT_ACTION_TEMPLATE:classpath:/portal/templates/outlook-followup-action.v1.html}
   microsoft-graph:
     # Bounded context + its Graph notification webhook are disabled locally by default (FAZ 32)
     enabled: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:false}

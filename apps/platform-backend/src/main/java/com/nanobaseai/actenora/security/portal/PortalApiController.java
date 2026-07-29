@@ -27,9 +27,12 @@ import com.nanobaseai.actenora.meetingintelligence.domain.ledger.event.LedgerEve
 import com.nanobaseai.actenora.meetingintelligence.domain.ledger.event.LedgerEventType;
 import com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ActionItemResponse;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ActionItemUpdateRequest;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteUpdateRequest;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNote;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.ActionItemStatus;
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscription;
 import com.nanobaseai.actenora.modelmanagement.api.ModelManagementApi;
@@ -282,17 +285,16 @@ public class PortalApiController {
     ) {
         require(Permission.MEETING_READ);
         MeetingOccurrenceStatus parsed = parseStatus(status);
+        if (q != null && !q.isBlank()) {
+            int searchLimit = limit == null || limit < 1 ? 50 : Math.min(limit, 200);
+            return new PortalCursorPage<>(
+                    toSummaries(meetingApi.searchMeetings(q.trim(), parsed, searchLimit)),
+                    null);
+        }
         MeetingListResponse page = meetingApi.listMeetings(
                 new CursorPageRequest(parsed, null, cursor, limit == null ? 50 : limit)
         );
-        List<MeetingSummaryView> items = toSummaries(page.items());
-        if (q != null && !q.isBlank()) {
-            String needle = q.trim().toLowerCase(Locale.ROOT);
-            items = items.stream()
-                    .filter(m -> m.title() != null && m.title().toLowerCase(Locale.ROOT).contains(needle))
-                    .toList();
-        }
-        return new PortalCursorPage<>(items, page.nextCursor());
+        return new PortalCursorPage<>(toSummaries(page.items()), page.nextCursor());
     }
 
     @GetMapping("/meetings/{meetingId}")
@@ -839,8 +841,9 @@ public class PortalApiController {
             HttpServletResponse response
     ) {
         AuthenticatedPrincipal principal = require(Permission.MEETING_READ);
+        Map<UUID, ActionItemResponse> richActions = richActionIndex();
         List<ActionItemView> items = ledgerApi.listActionItems(principal.tenantId()).stream()
-                .map(PortalApiController::toActionItemView)
+                .map(item -> toActionItemView(item, richActions.get(item.id())))
                 .filter(item -> matchesActionStatus(item, status))
                 .toList();
         return page(items, cursor, limit);
@@ -854,8 +857,23 @@ public class PortalApiController {
         if (ledgerApi.findActionItem(tenantId, actionId).isEmpty()) {
             throw new ActenoraException("ACTION_NOT_FOUND", "Action not found: " + actionId);
         }
+        ActionItemResponse updated = null;
+        if (meetingIntelligenceApi.isPresent()) {
+            ActionItemResponse rich = meetingIntelligenceApi.get().listActionItems().stream()
+                    .filter(item -> actionId.equals(item.id()))
+                    .findFirst()
+                    .orElse(null);
+            if (rich != null && rich.status() != ActionItemStatus.COMPLETED) {
+                updated = meetingIntelligenceApi.get().updateActionItem(
+                        actionId,
+                        new ActionItemUpdateRequest(null, null, null, ActionItemStatus.COMPLETED, rich.version())
+                );
+            } else {
+                updated = rich;
+            }
+        }
         ledgerApi.completeActionItem(tenantId, actionId);
-        return toActionItemView(ledgerApi.findActionItem(tenantId, actionId).orElseThrow());
+        return toActionItemView(ledgerApi.findActionItem(tenantId, actionId).orElseThrow(), updated);
     }
 
     @GetMapping("/commitments")
@@ -1242,18 +1260,43 @@ public class PortalApiController {
     private static ActionItemView toActionItemView(
             com.nanobaseai.actenora.meetingintelligence.domain.ledger.projection.LedgerProjectionState.TrackedActionItem item
     ) {
+        return toActionItemView(item, null);
+    }
+
+    private static ActionItemView toActionItemView(
+            com.nanobaseai.actenora.meetingintelligence.domain.ledger.projection.LedgerProjectionState.TrackedActionItem item,
+            ActionItemResponse rich
+    ) {
+        String dueAt = null;
+        if (rich != null) {
+            dueAt = rich.dueAt() != null
+                    ? rich.dueAt().toString()
+                    : rich.dueDate() == null ? null : rich.dueDate().toString();
+        }
         return new ActionItemView(
                 item.id(),
                 item.meetingOccurrenceId(),
-                item.text(),
-                item.status().name(),
-                "unknown",
-                null,
+                rich == null ? item.text() : rich.text(),
+                rich == null || rich.status() == null ? item.status().name() : rich.status().name(),
+                rich == null || rich.owner() == null || rich.owner().isBlank() ? "unknown" : rich.owner(),
+                dueAt,
                 List.of(),
-                null,
-                null,
-                null
+                rich == null ? null : blankToNull(rich.ownerType()),
+                rich == null ? null : blankToNull(rich.priority()),
+                rich == null ? null : blankToNull(rich.relativeDate())
         );
+    }
+
+    private Map<UUID, ActionItemResponse> richActionIndex() {
+        if (meetingIntelligenceApi.isEmpty()) {
+            return Map.of();
+        }
+        return meetingIntelligenceApi.get().listActionItems().stream()
+                .collect(Collectors.toMap(
+                        ActionItemResponse::id,
+                        java.util.function.Function.identity(),
+                        (left, right) -> right
+                ));
     }
 
     private Map<String, TranscriptSegmentView> loadTranscriptSegmentsById(UUID meetingId) {

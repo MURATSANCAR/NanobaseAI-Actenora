@@ -233,6 +233,146 @@ export interface DashboardResponse {
   recentMeetings: MeetingSummary[];
 }
 
+export interface MeetingPrepDecision {
+  id: string;
+  meetingId: string;
+  text: string;
+  recordedAt: string;
+}
+
+export interface MeetingPrepCarryOver {
+  id: string;
+  kind: string;
+  text: string;
+  sourceMeetingId: string;
+}
+
+export interface MeetingPrepCommitment {
+  id: string;
+  meetingId: string;
+  text: string;
+  owner: string | null;
+  dueDate: string | null;
+  status: string;
+  overdue: boolean;
+  updatedAt: string;
+}
+
+export interface MeetingPrepContradiction {
+  id: string;
+  meetingId: string;
+  leftDecisionId: string;
+  rightDecisionId: string;
+  reason: string;
+  confidence: string;
+  status: string;
+}
+
+export interface MeetingPrepAgendaItem {
+  id: string;
+  sourceType: string;
+  text: string;
+  sourceMeetingId: string;
+}
+
+export interface MeetingPrepResponse {
+  briefId: string;
+  targetMeetingId: string;
+  previousMeetingId: string | null;
+  meetingSeriesId: string | null;
+  businessContextId: string | null;
+  previousDecisions: MeetingPrepDecision[];
+  openActions: MeetingPrepCarryOver[];
+  openRisks: MeetingPrepCarryOver[];
+  openQuestions: MeetingPrepCarryOver[];
+  overdueCommitments: MeetingPrepCommitment[];
+  contradictions: MeetingPrepContradiction[];
+  suggestedAgenda: MeetingPrepAgendaItem[];
+  generatedAt: string;
+}
+
+export interface WorkAction {
+  id: string;
+  meetingId: string;
+  noteId: string;
+  title: string;
+  status: ArtifactStatus;
+  owner: string | null;
+  dueAt: string | null;
+  priority: string | null;
+  ownerType: string | null;
+  version: number;
+}
+
+export interface MyWorkResponse {
+  assignedActions: WorkAction[];
+  dueSoonActions: WorkAction[];
+  overdueActions: WorkAction[];
+  pendingApprovals: Array<{
+    id: string;
+    subjectType: string;
+    subjectId: string;
+    status: string;
+    version: number;
+    updatedAt: string;
+    expiresAt: string | null;
+  }>;
+  recentCommitments: MeetingPrepCommitment[];
+  today: string;
+  upcomingUntil: string;
+}
+
+export interface ActionRequestResponse {
+  requestId: string;
+  requestType: string;
+}
+
+export type GlobalSearchKind =
+  | "DECISION"
+  | "ACTION_ITEM"
+  | "COMMITMENT"
+  | "RISK"
+  | "OPEN_QUESTION";
+
+export interface GlobalSearchHit {
+  id: string;
+  meetingId: string;
+  sourceItemId: string;
+  kind: GlobalSearchKind;
+  content: string;
+  score: number;
+  href: string;
+}
+
+export interface GlobalSearchResponse {
+  query: string;
+  items: GlobalSearchHit[];
+}
+
+export interface MeetingQuestionCitation {
+  segmentId: string;
+  speaker: string;
+  quote: string;
+  startMs: number;
+  endMs: number;
+}
+
+export interface MeetingQuestionResponse {
+  status: "ANSWERED" | "INSUFFICIENT_EVIDENCE";
+  answer: string | null;
+  citations: MeetingQuestionCitation[];
+  modelVersion: string | null;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface OutlookDraftResponse {
+  providerMessageId: string;
+  webLink: string | null;
+  reused: boolean;
+  recipientCount: number;
+}
+
 export type NotificationType =
   | "APPROVAL_REQUESTED"
   | "DRAFT_MINUTES_READY"
@@ -403,6 +543,8 @@ export interface ApiClient {
   markAllNotificationsRead(): Promise<void>;
   listMeetings(params?: ListMeetingsParams): Promise<CursorPage<MeetingSummary>>;
   getMeetingDetail(meetingId: string): Promise<MeetingDetailResponse>;
+  getMeetingPrep(meetingId: string): Promise<MeetingPrepResponse>;
+  getMyWork(): Promise<MyWorkResponse>;
   getMeetingDelivery(meetingId: string): Promise<MeetingDeliveryRequest[]>;
   getNoteRenders(meetingId: string, noteId: string): Promise<NoteRenderStatus>;
   getMeetingTranscript(
@@ -424,7 +566,18 @@ export interface ApiClient {
   listDecisions(params?: ListArtifactsParams): Promise<CursorPage<DecisionItem>>;
   listActions(params?: ListArtifactsParams): Promise<CursorPage<ActionItem>>;
   completeAction(actionId: string): Promise<ActionItem>;
+  disputeAction(
+    actionId: string,
+    body: { reason: string; proposedTitle?: string },
+  ): Promise<ActionRequestResponse>;
+  requestActionDueDateChange(
+    actionId: string,
+    body: { requestedDueDate: string; reason: string },
+  ): Promise<ActionRequestResponse>;
   listCommitments(params?: ListArtifactsParams): Promise<CursorPage<CommitmentItem>>;
+  globalSearch(params: { q: string; limit?: number }): Promise<GlobalSearchResponse>;
+  askMeeting(meetingId: string, question: string): Promise<MeetingQuestionResponse>;
+  createOutlookDraft(meetingId: string, noteId: string): Promise<OutlookDraftResponse>;
   listTemplates(): Promise<TemplateListResponse>;
   createTemplate(body: { name: string; locale?: string }): Promise<TemplateSummary>;
   getTemplate(templateId: string): Promise<TemplateDetail>;

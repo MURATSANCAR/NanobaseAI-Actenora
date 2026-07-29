@@ -246,6 +246,39 @@ public final class JdbcMeetingOccurrenceRepository implements MeetingOccurrenceR
     }
 
     @Override
+    public List<MeetingOccurrence> searchByTitle(
+            TenantId tenantId,
+            String query,
+            MeetingOccurrenceStatus status,
+            int limit
+    ) {
+        if (query == null || query.isBlank() || limit < 1) {
+            return List.of();
+        }
+        StringBuilder sql = new StringBuilder("SELECT " + COLUMNS + """
+                 FROM meeting.meeting_occurrences
+                WHERE tenant_id = ?
+                  AND title_tsv @@ plainto_tsquery('simple', ?)
+                """);
+        List<Object> args = new java.util.ArrayList<>();
+        args.add(tenantId.value());
+        args.add(query.trim());
+        if (status != null) {
+            sql.append(" AND status = ?");
+            args.add(status.name());
+        }
+        sql.append("""
+                 ORDER BY ts_rank_cd(title_tsv, plainto_tsquery('simple', ?)) DESC,
+                         scheduled_start_at DESC,
+                         id ASC
+                LIMIT ?
+                """);
+        args.add(query.trim());
+        args.add(limit);
+        return jdbc.query(sql.toString(), ROW_MAPPER, args.toArray());
+    }
+
+    @Override
     public List<MeetingOccurrence> findDueForLifecycleAdvance(Instant now, int limit) {
         if (limit < 1) {
             return List.of();

@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   Activity,
   ArrowRight,
+  Check,
   CheckSquare,
   Clock,
   Handshake,
@@ -15,6 +16,7 @@ import { queryKeys } from "@/api/client";
 import type { DashboardResponse, MeetingSummary } from "@/api/types";
 import { useAuth } from "@/auth/AuthProvider";
 import { MeetingSummaryList } from "@/components/meeting/MeetingSummaryList";
+import { MeetingPrepCard } from "@/components/meeting/MeetingPrepCard";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { PRODUCT_BRAND } from "@/config/brand";
 import { useI18n } from "@/i18n";
@@ -76,6 +78,8 @@ export function DashboardPage() {
           <>
             <OnboardingBanner />
             <MetricStrip data={q.data} />
+            <MyWorkDashboardCard />
+            <UpcomingMeetingPrep />
             <RecentMeetings
               meetings={q.data.recentMeetings}
               title={t("dashboard.recentMeetings")}
@@ -86,6 +90,116 @@ export function DashboardPage() {
         ) : null}
       </AsyncState>
     </div>
+  );
+}
+
+function MyWorkDashboardCard() {
+  const api = useApi();
+  const auth = useAuth();
+  const queryClient = useQueryClient();
+  const { t } = useI18n();
+  const query = useQuery({
+    queryKey: queryKeys.myWork,
+    queryFn: () => api.getMyWork(),
+  });
+  const complete = useMutation({
+    mutationFn: (actionId: string) => api.completeAction(actionId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.myWork }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+        queryClient.invalidateQueries({ queryKey: ["actions"] }),
+      ]);
+    },
+  });
+
+  if (query.isLoading || query.isError || !query.data) return null;
+  const attention = [...query.data.overdueActions, ...query.data.dueSoonActions]
+    .filter((action, index, all) => all.findIndex((item) => item.id === action.id) === index)
+    .slice(0, 5);
+
+  return (
+    <section className="card-static overflow-hidden" aria-labelledby="dashboard-my-work-title">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-700">
+            {t("dashboard.metricsHint")}
+          </p>
+          <h2 id="dashboard-my-work-title" className="mt-1 font-semibold text-slate-900">
+            {t("myWork.title")}
+          </h2>
+        </div>
+        <Link to="/my-work" className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:text-violet-900">
+          {t("myWork.openCenter")}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+      {attention.length ? (
+        <ul className="divide-y divide-slate-100">
+          {attention.map((action) => (
+            <li key={action.id} className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+              <Link
+                to={`/meetings/${action.meetingId}`}
+                className="min-w-0 flex-1 text-sm font-medium text-slate-900 hover:text-violet-800"
+              >
+                {action.title}
+              </Link>
+              {action.dueAt ? (
+                <span className="text-xs text-slate-500">{new Date(action.dueAt).toLocaleString()}</span>
+              ) : null}
+              {auth.can("meetings:edit") ? (
+                <button
+                  type="button"
+                  className="btn-primary px-2.5 py-1.5 text-xs"
+                  disabled={complete.isPending && complete.variables === action.id}
+                  onClick={() => complete.mutate(action.id)}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  {t("myWork.complete")}
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="px-4 py-5 text-sm text-slate-500 sm:px-5">{t("myWork.noAttention")}</p>
+      )}
+    </section>
+  );
+}
+
+function UpcomingMeetingPrep() {
+  const api = useApi();
+  const { t } = useI18n();
+  const params = { status: "SCHEDULED" as const, limit: 20 };
+  const query = useQuery({
+    queryKey: queryKeys.meetings(params),
+    queryFn: () => api.listMeetings(params),
+  });
+  const next = query.data?.items
+    .filter((meeting) => meeting.status === "SCHEDULED")
+    .filter((meeting) => new Date(meeting.scheduledStartAt).getTime() >= Date.now())
+    .sort(
+      (left, right) =>
+        new Date(left.scheduledStartAt).getTime() - new Date(right.scheduledStartAt).getTime(),
+    )[0];
+  if (!next) return null;
+
+  return (
+    <section className="space-y-3" aria-label={t("meetingPrep.upcoming")}>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-700">
+            {t("meetingPrep.upcoming")}
+          </p>
+          <Link to={`/meetings/${next.id}`} className="font-semibold text-slate-900 hover:text-violet-800">
+            {next.title}
+          </Link>
+        </div>
+        <span className="text-xs text-slate-500">{new Date(next.scheduledStartAt).toLocaleString()}</span>
+      </div>
+      <MeetingPrepCard meetingId={next.id} compact />
+    </section>
   );
 }
 

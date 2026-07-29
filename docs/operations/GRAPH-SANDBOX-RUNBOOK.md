@@ -5,7 +5,7 @@ Operator runbook for end-to-end Microsoft Graph integration against a real Entra
 ## Prerequisites
 
 - PostgreSQL, RabbitMQ, MinIO (or compatible object storage) running locally or in sandbox infra
-- Microsoft Entra app registration with application permissions for Calendar.Read, OnlineMeetings.Read, OnlineMeetingTranscript.Read.All (as required by your Graph subscription resources)
+- Microsoft Entra app registration with application permissions for Calendar.Read, OnlineMeetings.Read, OnlineMeetingTranscript.Read.All, and Mail.ReadWrite for Outlook draft creation. Add Mail.Send only when final approved delivery is enabled.
 - Public HTTPS webhook URL (ngrok, Azure Front Door, etc.) reachable by Microsoft Graph
 - `actenora.persistence.mode=jdbc` and `actenora.messaging.mode=jdbc-rabbit`. Production boot fails closed when Graph is enabled without either durable mode, certificate auth, or certificate/key paths.
 

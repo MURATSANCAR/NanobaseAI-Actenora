@@ -2,10 +2,12 @@ package com.nanobaseai.actenora.microsoftconnection.infrastructure.config;
 
 import com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore;
 import com.nanobaseai.actenora.microsoftconnection.application.port.NotificationInbox;
+import com.nanobaseai.actenora.microsoftconnection.application.port.OutlookDraftReceiptStore;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.notification.DeduplicatingNotificationInbox;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.notification.JdbcNotificationInbox;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.JdbcCalendarSyncCursorStore;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.JdbcOutlookDraftReceiptStore;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.JdbcSubscriptionStore;
 import com.nanobaseai.actenora.sharedkernel.coordination.ShortLivedDeduplicator;
 import org.springframework.beans.factory.ObjectProvider;
@@ -40,5 +42,10 @@ public class MicrosoftConnectionJdbcPersistenceConfiguration {
     @Bean
     CalendarSyncCursorStore jdbcCalendarSyncCursorStore(DataSource dataSource) {
         return new JdbcCalendarSyncCursorStore(new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    OutlookDraftReceiptStore jdbcOutlookDraftReceiptStore(DataSource dataSource) {
+        return new JdbcOutlookDraftReceiptStore(new JdbcTemplate(dataSource));
     }
 }

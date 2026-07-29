@@ -2,12 +2,14 @@ package com.nanobaseai.actenora.security.delivery;
 
 import com.nanobaseai.actenora.audit.api.AuditApi;
 import com.nanobaseai.actenora.delivery.api.DeliveryApi;
+import com.nanobaseai.actenora.delivery.application.port.DeliveryMailProvider;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryAuditPort;
 import com.nanobaseai.actenora.delivery.application.port.PdfAttachmentPort;
 import com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteFinalDeliveryPort;
+import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.security.meeting.MeetingEndedOrganizerMailHandler;
 import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
 import com.nanobaseai.actenora.template.api.TemplateApi;
@@ -16,9 +18,12 @@ import com.nanobaseai.actenora.template.application.port.out.RenderJobRepository
 import com.nanobaseai.actenora.template.application.port.out.RenderedDocumentRepository;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 
 import java.util.Map;
 import java.util.Optional;
@@ -31,6 +36,25 @@ import java.util.UUID;
  */
 @Configuration
 public class DeliveryPlatformConfiguration {
+
+    @Bean
+    @Primary
+    @ConditionalOnProperty(name = "actenora.delivery.mail.provider", havingValue = "microsoft-graph")
+    public DeliveryMailProvider graphBackedDeliveryMailProvider(
+            MicrosoftConnectionApi microsoft,
+            InstantClock clock,
+            @Value("${actenora.microsoft-graph.tenant-id:}") String tenantId,
+            @Value("${actenora.microsoft-graph.client-id:}") String clientId,
+            @Value("${actenora.delivery.mail.graph-sender:}") String senderUpn
+    ) {
+        return new MicrosoftGraphDeliveryBridge(
+                microsoft,
+                clock,
+                tenantId,
+                clientId,
+                senderUpn
+        );
+    }
 
     @Bean
     @Primary

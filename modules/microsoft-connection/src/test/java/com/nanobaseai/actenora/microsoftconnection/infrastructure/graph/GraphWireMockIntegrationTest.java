@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.SubscriptionLifec
 import com.nanobaseai.actenora.microsoftconnection.application.model.CalendarEvent;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphChangeNotification;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscription;
+import com.nanobaseai.actenora.microsoftconnection.application.model.OutlookDraftRequest;
 import com.nanobaseai.actenora.microsoftconnection.application.model.SubscriptionCreateRequest;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptAvailability;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptContent;
@@ -36,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.patch;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
@@ -166,6 +168,66 @@ class GraphWireMockIntegrationTest {
 
         GraphOnlineMeetingGateway gateway = new GraphOnlineMeetingGateway(http, mapper);
         assertEquals("m1", gateway.getByMeetingId(tenantId, userId, "m1").orElseThrow().meetingId());
+    }
+
+    @Test
+    void createsReviewableOutlookDraftWithoutSending() {
+        wm.stubFor(post(urlEqualTo("/v1.0/users/user-1/messages"))
+                .willReturn(aResponse()
+                        .withStatus(201)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {
+                                  "id": "draft-42",
+                                  "webLink": "https://outlook.office.com/mail/deeplink/draft-42"
+                                }
+                                """)));
+
+        GraphOutlookDraftGateway gateway = new GraphOutlookDraftGateway(http, mapper);
+        var result = gateway.create(
+                tenantId,
+                new OutlookDraftRequest(
+                        "user-1",
+                        "Follow-up",
+                        "<p>Summary</p>",
+                        List.of("person@example.com"),
+                        "draft-idempotency-1"
+                )
+        );
+
+        assertEquals("draft-42", result.providerMessageId());
+        assertEquals("https://outlook.office.com/mail/deeplink/draft-42", result.webLink());
+        assertFalse(result.reused());
+        wm.verify(postRequestedFor(urlEqualTo("/v1.0/users/user-1/messages"))
+                .withRequestBody(matchingJsonPath("$.subject", equalTo("Follow-up")))
+                .withRequestBody(matchingJsonPath(
+                        "$.toRecipients[0].emailAddress.address",
+                        equalTo("person@example.com")))
+                .withRequestBody(matchingJsonPath(
+                        "$.internetMessageHeaders[0].value",
+                        equalTo("draft-idempotency-1"))));
+        wm.verify(0, postRequestedFor(urlEqualTo("/v1.0/users/user-1/sendMail")));
+    }
+
+    @Test
+    void doesNotReplayDraftCreationAfterAmbiguousServerFailure() {
+        wm.stubFor(post(urlEqualTo("/v1.0/users/user-1/messages"))
+                .willReturn(aResponse().withStatus(503).withBody("unavailable")));
+
+        GraphOutlookDraftGateway gateway = new GraphOutlookDraftGateway(http, mapper);
+        GraphApiException failure = assertThrows(
+                GraphApiException.class,
+                () -> gateway.create(
+                        tenantId,
+                        new OutlookDraftRequest(
+                                "user-1",
+                                "Follow-up",
+                                "<p>Summary</p>",
+                                List.of("person@example.com"),
+                                "draft-idempotency-ambiguous")));
+
+        assertEquals(GraphApiException.CODE_SERVER_ERROR, failure.code());
+        wm.verify(1, postRequestedFor(urlEqualTo("/v1.0/users/user-1/messages")));
     }
 
     @Test

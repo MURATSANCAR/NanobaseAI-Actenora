@@ -136,6 +136,63 @@ public final class GraphHttpClient {
         return send(requestFactory, false);
     }
 
+    /**
+     * Sends a non-idempotent request at most once. Ambiguous transport and 5xx
+     * failures are surfaced to the caller without replaying the mutation.
+     */
+    public HttpResponse<String> sendAtMostOnce(Function<AccessToken, HttpRequest> requestFactory) {
+        Objects.requireNonNull(requestFactory, "requestFactory");
+        if (!telemetry.allowRequest()) {
+            throw GraphApiException.circuitOpen();
+        }
+        AccessToken token = tokenProvider.getAccessToken();
+        HttpRequest request = requestFactory.apply(token);
+        Instant attemptStartedAt = Instant.now();
+        try {
+            HttpResponse<String> response = httpClient.send(
+                    request,
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            int status = response.statusCode();
+            telemetry.recordHttp(status, Duration.between(attemptStartedAt, Instant.now()));
+            if (status >= 200 && status < 300) {
+                return response;
+            }
+            if (status == 401) {
+                tokenProvider.refreshAccessToken();
+                throw GraphApiException.unauthorized("Graph unauthorized; token refreshed for a safe caller retry");
+            }
+            if (status == 403) {
+                throw GraphApiException.configuration(
+                        "Graph configuration/permission error: " + truncate(response.body()));
+            }
+            if (status == 404) {
+                throw GraphApiException.notFound("Graph resource not found: " + request.uri());
+            }
+            if (status == 429) {
+                throw GraphApiException.rateLimited(
+                        "Graph rate limited",
+                        parseRetryAfter(response).orElse(Duration.ofSeconds(2)));
+            }
+            if (status >= 500) {
+                throw GraphApiException.serverError(status, "Graph server error status=" + status);
+            }
+            throw new GraphApiException(
+                    "GRAPH_CLIENT_ERROR",
+                    "Graph client error status=" + status + " body=" + truncate(response.body()),
+                    status,
+                    null,
+                    false);
+        } catch (GraphApiException ex) {
+            throw ex;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw GraphApiException.transport("Graph request interrupted", ex);
+        } catch (IOException ex) {
+            telemetry.recordHttp(0, Duration.between(attemptStartedAt, Instant.now()));
+            throw GraphApiException.transport("Graph transport failure", ex);
+        }
+    }
+
     private static HttpRequest copyWithBearer(HttpRequest prototype, AccessToken token) {
         HttpRequest.Builder builder = HttpRequest.newBuilder(prototype.uri())
                 .timeout(prototype.timeout().orElse(Duration.ofSeconds(30)))

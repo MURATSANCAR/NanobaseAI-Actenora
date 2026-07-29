@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.meeting.api.dto.ParticipantResponse;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateBusinessContextRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
 import com.nanobaseai.actenora.meeting.application.MeetingMapper;
+import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus;
 
 import java.util.List;
 import java.util.Objects;
@@ -55,6 +56,15 @@ public final class MeetingApiFacade implements MeetingApi {
     @Override
     public MeetingListResponse listMeetings(CursorPageRequest pageRequest) {
         return meetingService.list(pageRequest);
+    }
+
+    @Override
+    public List<MeetingResponse> searchMeetings(
+            String query,
+            MeetingOccurrenceStatus status,
+            int limit
+    ) {
+        return meetingService.search(query, status, limit);
     }
 
     @Override

@@ -5,8 +5,12 @@ import { ArrowLeft, Download } from "lucide-react";
 import { useApi } from "@/api/ApiProvider";
 import { queryKeys } from "@/api/client";
 import type { EvidenceRef, MeetingDetailResponse } from "@/api/types";
+import { useAuth } from "@/auth/AuthProvider";
 import { MeetingHeaderBar } from "@/components/meeting/MeetingHeaderBar";
+import { MeetingPrepCard } from "@/components/meeting/MeetingPrepCard";
 import { MeetingProgressPipeline } from "@/components/meeting/MeetingProgressPipeline";
+import { MeetingQuestionPanel } from "@/components/meeting/MeetingQuestionPanel";
+import { OutlookDraftButton } from "@/components/meeting/OutlookDraftButton";
 import { PageShell } from "@/components/qa/PageShell";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { useI18n } from "@/i18n";
@@ -22,6 +26,7 @@ import { MeetingCenterPanel } from "./MeetingCenterPanel";
 export function MeetingDetailPage() {
   const { meetingId = "" } = useParams();
   const api = useApi();
+  const auth = useAuth();
   const { t } = useI18n();
   const [highlight, setHighlight] = useState<EvidenceRef | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
@@ -64,6 +69,7 @@ export function MeetingDetailPage() {
   });
 
   const hasConversation = Boolean(conversationQ.data?.segments.length);
+  const approvedNote = detailQ.data?.notes.find((note) => note.approvalStatus === "APPROVED");
 
   const handleEvidence = (ref: EvidenceRef) => {
     setHighlight(ref);
@@ -101,6 +107,9 @@ export function MeetingDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           {detailQ.data ? (
             <>
+              {approvedNote && auth.can("meetings:edit") ? (
+                <OutlookDraftButton meetingId={meetingId} noteId={approvedNote.id} />
+              ) : null}
               <button
                 type="button"
                 className="btn-secondary px-3 py-1.5 text-xs"
@@ -135,6 +144,8 @@ export function MeetingDetailPage() {
           <div className="space-y-5 pb-6">
             <MeetingHeaderBar detail={detailQ.data} />
 
+            <MeetingPrepCard meetingId={meetingId} />
+
             <MeetingProgressPipeline
               detail={detailQ.data}
               hasConversation={hasConversation}
@@ -146,6 +157,12 @@ export function MeetingDetailPage() {
               onEvidence={handleEvidence}
               selectedSegmentId={selectedSegmentId}
               hasConversation={hasConversation}
+            />
+
+            <MeetingQuestionPanel
+              meetingId={meetingId}
+              enabled={hasConversation}
+              onEvidence={handleEvidence}
             />
 
             {conversationQ.isLoading ? (

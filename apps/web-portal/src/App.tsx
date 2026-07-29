@@ -17,6 +17,7 @@ import {
 } from "./pages/LedgerPages";
 import { MeetingDetailPage } from "./pages/meeting/MeetingDetailPage";
 import { MeetingListPage } from "./pages/MeetingListPage";
+import { MyWorkPage } from "./pages/MyWorkPage";
 import {
   AuditViewerPage,
   ModelManagementPage,
@@ -49,6 +50,7 @@ export function App({ apiClient }: { apiClient?: ApiClient }) {
             <Routes>
               <Route element={<Layout />}>
                 <Route index element={<DashboardPage />} />
+                <Route path="my-work" element={<MyWorkPage />} />
                 <Route path="approvals" element={<ApprovalsInboxPage />} />
                 <Route path="meetings" element={<MeetingListPage />} />
                 <Route path="meetings/:meetingId" element={<MeetingDetailPage />} />

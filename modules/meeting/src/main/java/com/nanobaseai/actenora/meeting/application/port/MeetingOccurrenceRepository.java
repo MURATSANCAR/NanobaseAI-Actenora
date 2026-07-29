@@ -45,6 +45,13 @@ public interface MeetingOccurrenceRepository {
             int limit
     );
 
+    List<MeetingOccurrence> searchByTitle(
+            TenantId tenantId,
+            String query,
+            MeetingOccurrenceStatus status,
+            int limit
+    );
+
     /**
      * Cross-tenant candidates for automatic lifecycle advancement:
      * DRAFT (promote to SCHEDULED / catch-up), SCHEDULED past start, IN_PROGRESS past end.

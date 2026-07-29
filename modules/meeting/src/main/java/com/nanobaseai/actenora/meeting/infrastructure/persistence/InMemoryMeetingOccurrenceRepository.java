@@ -115,6 +115,27 @@ public final class InMemoryMeetingOccurrenceRepository implements MeetingOccurre
     }
 
     @Override
+    public List<MeetingOccurrence> searchByTitle(
+            TenantId tenantId,
+            String query,
+            MeetingOccurrenceStatus status,
+            int limit
+    ) {
+        if (query == null || query.isBlank() || limit < 1) {
+            return List.of();
+        }
+        String normalized = query.trim().toLowerCase(java.util.Locale.ROOT);
+        return store.values().stream()
+                .filter(occurrence -> occurrence.tenantId().equals(tenantId))
+                .filter(occurrence -> status == null || occurrence.status() == status)
+                .filter(occurrence -> occurrence.title().toLowerCase(java.util.Locale.ROOT).contains(normalized))
+                .sorted(Comparator.comparing(MeetingOccurrence::scheduledStartAt).reversed()
+                        .thenComparing(MeetingOccurrence::id))
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
     public List<MeetingOccurrence> findDueForLifecycleAdvance(Instant now, int limit) {
         Objects.requireNonNull(now, "now");
         if (limit < 1) {

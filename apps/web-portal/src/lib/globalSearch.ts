@@ -1,6 +1,18 @@
-import type { ActionItem, CommitmentItem, DecisionItem, MeetingSummary } from "@/api/types";
+import type {
+  ActionItem,
+  CommitmentItem,
+  DecisionItem,
+  GlobalSearchHit,
+  MeetingSummary,
+} from "@/api/types";
 
-export type SearchResultKind = "meeting" | "decision" | "action" | "commitment";
+export type SearchResultKind =
+  | "meeting"
+  | "decision"
+  | "action"
+  | "commitment"
+  | "risk"
+  | "question";
 
 export type SearchResult = {
   kind: SearchResultKind;
@@ -76,4 +88,21 @@ export function searchCommitments(
 
 export function mergeSearchResults(groups: SearchResult[][]): SearchResult[] {
   return groups.flat().slice(0, 20);
+}
+
+const SERVER_KIND: Record<GlobalSearchHit["kind"], Exclude<SearchResultKind, "meeting">> = {
+  DECISION: "decision",
+  ACTION_ITEM: "action",
+  COMMITMENT: "commitment",
+  RISK: "risk",
+  OPEN_QUESTION: "question",
+};
+
+export function searchGlobalKnowledge(hits: GlobalSearchHit[]): SearchResult[] {
+  return hits.map((hit) => ({
+    kind: SERVER_KIND[hit.kind],
+    id: hit.id,
+    title: hit.content,
+    href: hit.href,
+  }));
 }

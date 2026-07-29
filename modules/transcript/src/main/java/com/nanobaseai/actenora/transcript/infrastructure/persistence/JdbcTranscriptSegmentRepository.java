@@ -85,20 +85,25 @@ public final class JdbcTranscriptSegmentRepository implements TranscriptSegmentR
                 SELECT id, tenant_id, transcript_id, sequence, speaker_id, speaker_display_name,
                        start_offset_ms, end_offset_ms, content
                 FROM transcript.transcript_segments
+                CROSS JOIN LATERAL (
+                    SELECT count(*) AS matched_terms
+                    FROM unnest(regexp_split_to_array(trim(?), '\\s+')) AS terms(term)
+                    WHERE term <> ''
+                      AND content_tsv @@ plainto_tsquery('simple', term)
+                ) relevance
                 WHERE tenant_id = ?
                   AND transcript_id = ?
-                  AND content_tsv @@ websearch_to_tsquery('simple', ?)
-                ORDER BY ts_rank_cd(content_tsv, websearch_to_tsquery('simple', ?)) DESC,
+                  AND relevance.matched_terms > 0
+                ORDER BY relevance.matched_terms DESC,
                          sequence ASC
                 LIMIT ?
                 """;
         return jdbc.query(
                 sql,
                 ROW_MAPPER,
+                query,
                 tenantId.value(),
                 transcriptId.value(),
-                query,
-                query,
                 limit
         );
     }

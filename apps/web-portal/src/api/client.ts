@@ -101,6 +101,8 @@ function createHttpApiClient(baseUrl: string): ApiClient {
       httpJson(baseUrl, "/api/v1/portal/notifications/read-all", { method: "POST" }),
     listMeetings: (params) => httpJson(baseUrl, `/api/v1/portal/meetings${q(params)}`),
     getMeetingDetail: (id) => httpJson(baseUrl, `/api/v1/portal/meetings/${id}`),
+    getMeetingPrep: (id) => httpJson(baseUrl, `/api/v1/portal/meetings/${id}/brief`),
+    getMyWork: () => httpJson(baseUrl, "/api/v1/portal/my-work"),
     getMeetingDelivery: (id) => httpJson(baseUrl, `/api/v1/portal/meetings/${id}/delivery`),
     getNoteRenders: (meetingId, noteId) =>
       httpJson(baseUrl, `/api/v1/portal/meetings/${meetingId}/notes/${noteId}/renders`),
@@ -128,7 +130,27 @@ function createHttpApiClient(baseUrl: string): ApiClient {
     listActions: (params) => httpJson(baseUrl, `/api/v1/portal/actions${q(params)}`),
     completeAction: (actionId) =>
       httpJson(baseUrl, `/api/v1/portal/actions/${actionId}/complete`, { method: "POST" }),
+    disputeAction: (actionId, body) =>
+      httpJson(baseUrl, `/api/v1/portal/actions/${actionId}/disputes`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    requestActionDueDateChange: (actionId, body) =>
+      httpJson(baseUrl, `/api/v1/portal/actions/${actionId}/due-date-change-requests`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
     listCommitments: (params) => httpJson(baseUrl, `/api/v1/portal/commitments${q(params)}`),
+    globalSearch: (params) => httpJson(baseUrl, `/api/v1/portal/search${q(params)}`),
+    askMeeting: (meetingId, question) =>
+      httpJson(baseUrl, `/api/v1/portal/meetings/${meetingId}/questions`, {
+        method: "POST",
+        body: JSON.stringify({ question }),
+      }),
+    createOutlookDraft: (meetingId, noteId) =>
+      httpJson(baseUrl, `/api/v1/portal/meetings/${meetingId}/notes/${noteId}/outlook-draft`, {
+        method: "POST",
+      }),
     listTemplates: () => httpJson(baseUrl, "/api/v1/portal/templates"),
     createTemplate: (body) =>
       httpJson(baseUrl, "/api/v1/portal/templates", {
@@ -229,12 +251,15 @@ export const queryKeys = {
   approvalsPending: ["approvals-pending"] as const,
   meetings: (params: object) => ["meetings", params] as const,
   meetingDetail: (id: string) => ["meeting", id] as const,
+  meetingPrep: (id: string) => ["meeting-prep", id] as const,
+  myWork: ["my-work"] as const,
   meetingDelivery: (id: string) => ["meeting-delivery", id] as const,
   noteRenders: (meetingId: string, noteId: string) => ["note-renders", meetingId, noteId] as const,
   transcript: (id: string, params: object) => ["transcript", id, params] as const,
   decisions: (params: object) => ["decisions", params] as const,
   actions: (params: object) => ["actions", params] as const,
   commitments: (params: object) => ["commitments", params] as const,
+  globalSearch: (params: object) => ["global-search", params] as const,
   templates: ["templates"] as const,
   templateDetail: (id: string) => ["template", id] as const,
   noteTemplateLock: (meetingId: string, noteId: string) =>

@@ -8,9 +8,7 @@ import { queryKeys } from "@/api/client";
 import { useI18n } from "@/i18n";
 import {
   mergeSearchResults,
-  searchActions,
-  searchCommitments,
-  searchDecisions,
+  searchGlobalKnowledge,
   searchMeetings,
   type SearchResult,
 } from "@/lib/globalSearch";
@@ -50,19 +48,9 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
     queryFn: () => api.listMeetings({ q: debounced, limit: 12 }),
     enabled,
   });
-  const decisionsQ = useQuery({
-    queryKey: queryKeys.decisions({ limit: 50 }),
-    queryFn: () => api.listDecisions({ limit: 50 }),
-    enabled,
-  });
-  const actionsQ = useQuery({
-    queryKey: queryKeys.actions({ limit: 50 }),
-    queryFn: () => api.listActions({ limit: 50 }),
-    enabled,
-  });
-  const commitmentsQ = useQuery({
-    queryKey: queryKeys.commitments({ limit: 50 }),
-    queryFn: () => api.listCommitments({ limit: 50 }),
+  const knowledgeQ = useQuery({
+    queryKey: queryKeys.globalSearch({ q: debounced, limit: 20 }),
+    queryFn: () => api.globalSearch({ q: debounced, limit: 20 }),
     enabled,
   });
 
@@ -70,17 +58,13 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
     if (!enabled) return [];
     return mergeSearchResults([
       searchMeetings(meetingsQ.data?.items ?? [], debounced),
-      searchDecisions(decisionsQ.data?.items ?? [], debounced),
-      searchActions(actionsQ.data?.items ?? [], debounced),
-      searchCommitments(commitmentsQ.data?.items ?? [], debounced),
+      searchGlobalKnowledge(knowledgeQ.data?.items ?? []),
     ]);
   }, [
     enabled,
     debounced,
     meetingsQ.data?.items,
-    decisionsQ.data?.items,
-    actionsQ.data?.items,
-    commitmentsQ.data?.items,
+    knowledgeQ.data?.items,
   ]);
 
   useEffect(() => {
@@ -89,7 +73,7 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
 
   const loading =
     enabled &&
-    (meetingsQ.isFetching || decisionsQ.isFetching || actionsQ.isFetching || commitmentsQ.isFetching);
+    (meetingsQ.isFetching || knowledgeQ.isFetching);
 
   useEffect(() => {
     if (!open) return;

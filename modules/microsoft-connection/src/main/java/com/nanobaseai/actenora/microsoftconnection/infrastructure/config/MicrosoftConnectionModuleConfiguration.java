@@ -15,6 +15,8 @@ import com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.MicrosoftTokenProvider;
 import com.nanobaseai.actenora.microsoftconnection.application.port.NotificationInbox;
 import com.nanobaseai.actenora.microsoftconnection.application.port.OnlineMeetingGateway;
+import com.nanobaseai.actenora.microsoftconnection.application.port.OutlookDraftGateway;
+import com.nanobaseai.actenora.microsoftconnection.application.port.OutlookDraftReceiptStore;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 import com.nanobaseai.actenora.microsoftconnection.application.port.TranscriptGateway;
@@ -28,12 +30,16 @@ import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphHtt
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphEgressPolicy;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphMailGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphOnlineMeetingGateway;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphOutlookDraftGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphSleeper;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphSubscriptionGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphTranscriptGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.mail.RateLimitedMailGateway;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.mail.DurableOutlookDraftGateway;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.mail.RateLimitedOutlookDraftGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.notification.InMemoryNotificationInbox;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.InMemoryCalendarSyncCursorStore;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.InMemoryOutlookDraftReceiptStore;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.persistence.InMemorySubscriptionStore;
 import com.nanobaseai.actenora.sharedkernel.messaging.ExponentialBackoff;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
@@ -168,6 +174,32 @@ public class MicrosoftConnectionModuleConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(OutlookDraftReceiptStore.class)
+    @ConditionalOnProperty(
+            name = "actenora.persistence.mode",
+            havingValue = "inmemory",
+            matchIfMissing = true)
+    OutlookDraftReceiptStore outlookDraftReceiptStore() {
+        return new InMemoryOutlookDraftReceiptStore();
+    }
+
+    @Bean
+    OutlookDraftGateway outlookDraftGateway(
+            GraphHttpClient http,
+            ObjectMapper mapper,
+            OutlookDraftReceiptStore receipts,
+            @Value("${actenora.microsoft-graph.mail.max-per-window:100}") int maxPerWindow,
+            @Value("${actenora.microsoft-graph.mail.window:PT1M}") Duration window
+    ) {
+        return new RateLimitedOutlookDraftGateway(
+                new DurableOutlookDraftGateway(
+                        new GraphOutlookDraftGateway(http, mapper),
+                        receipts),
+                maxPerWindow,
+                window);
+    }
+
+    @Bean
     CalendarSyncService calendarSyncService(
             CalendarGateway calendarGateway,
             CalendarSyncCursorStore cursorStore,
@@ -232,6 +264,7 @@ public class MicrosoftConnectionModuleConfiguration {
             PollingFallbackService pollingFallbackService,
             ReconciliationJob reconciliationJob,
             MailGateway mailGateway,
+            OutlookDraftGateway outlookDraftGateway,
             SubscriptionStore subscriptionStore,
             OnlineMeetingTranscriptionEnabler transcriptionEnabler
     ) {
@@ -242,6 +275,7 @@ public class MicrosoftConnectionModuleConfiguration {
                 pollingFallbackService,
                 reconciliationJob,
                 mailGateway,
+                outlookDraftGateway,
                 subscriptionStore,
                 transcriptionEnabler
         );

@@ -5,6 +5,7 @@ import {
   Compass,
   FileText,
   Handshake,
+  ListChecks,
   LayoutDashboard,
   Mic,
   Scale,
@@ -40,6 +41,7 @@ export const ACTENORA_NAV_GROUPS: ActenoraNavGroup[] = [
     titleKey: "actenora.nav.workspace",
     links: [
       { to: "/", icon: LayoutDashboard, labelKey: "nav.dashboard" },
+      { to: "/my-work", icon: ListChecks, labelKey: "nav.myWork" },
       { to: "/approvals", icon: ClipboardCheck, labelKey: "nav.approvals", gate: "approvals" },
       { to: "/meetings", icon: Mic, labelKey: "nav.meetings" },
       { to: "/onboarding", icon: Compass, labelKey: "nav.onboarding" },

@@ -242,6 +242,19 @@ public final class MeetingApplicationService {
         );
     }
 
+    public List<MeetingResponse> search(String query, MeetingOccurrenceStatus status, int limit) {
+        TenantId tenantId = tenantContext.requireTenantId();
+        if (query == null || query.isBlank()) {
+            throw new IllegalArgumentException("query must not be blank");
+        }
+        if (limit < 1 || limit > 200) {
+            throw new IllegalArgumentException("limit must be between 1 and 200");
+        }
+        return occurrenceRepository.searchByTitle(tenantId, query.trim(), status, limit).stream()
+                .map(MeetingMapper::toResponse)
+                .toList();
+    }
+
     public MeetingResponse transitionStatus(UUID id, MeetingStatusTransitionRequest request) {
         TenantId tenantId = tenantContext.requireTenantId();
         UUID actor = tenantContext.requireActorUserId();

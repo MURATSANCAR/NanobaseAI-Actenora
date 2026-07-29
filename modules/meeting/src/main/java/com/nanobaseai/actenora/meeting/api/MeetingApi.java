@@ -11,6 +11,7 @@ import com.nanobaseai.actenora.meeting.api.dto.MeetingStatusTransitionRequest;
 import com.nanobaseai.actenora.meeting.api.dto.ParticipantResponse;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateBusinessContextRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
+import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,12 @@ public interface MeetingApi {
     Optional<MeetingResponse> findByGraphEventImmutableId(String graphEventImmutableId);
 
     MeetingListResponse listMeetings(CursorPageRequest pageRequest);
+
+    List<MeetingResponse> searchMeetings(
+            String query,
+            MeetingOccurrenceStatus status,
+            int limit
+    );
 
     MeetingResponse transitionMeetingStatus(UUID meetingId, MeetingStatusTransitionRequest request);
 

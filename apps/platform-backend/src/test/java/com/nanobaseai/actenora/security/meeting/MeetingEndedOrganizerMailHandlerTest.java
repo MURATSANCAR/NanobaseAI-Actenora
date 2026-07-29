@@ -168,6 +168,15 @@ class MeetingEndedOrganizerMailHandlerTest {
         }
 
         @Override
+        public List<MeetingResponse> searchMeetings(
+                String query,
+                com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus status,
+                int limit
+        ) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public MeetingResponse transitionMeetingStatus(UUID meetingId, MeetingStatusTransitionRequest request) {
             throw new UnsupportedOperationException();
         }

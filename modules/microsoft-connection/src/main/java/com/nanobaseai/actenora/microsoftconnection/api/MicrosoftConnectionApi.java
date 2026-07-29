@@ -13,11 +13,14 @@ import com.nanobaseai.actenora.microsoftconnection.application.model.LifecycleNo
 import com.nanobaseai.actenora.microsoftconnection.application.model.MailSendRequest;
 import com.nanobaseai.actenora.microsoftconnection.application.model.MailSendResult;
 import com.nanobaseai.actenora.microsoftconnection.application.model.OnlineMeetingMetadata;
+import com.nanobaseai.actenora.microsoftconnection.application.model.OutlookDraftRequest;
+import com.nanobaseai.actenora.microsoftconnection.application.model.OutlookDraftResult;
 import com.nanobaseai.actenora.microsoftconnection.application.model.ParticipantMetadata;
 import com.nanobaseai.actenora.microsoftconnection.application.model.SubscriptionCreateRequest;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptAvailability;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptContent;
 import com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway;
+import com.nanobaseai.actenora.microsoftconnection.application.port.OutlookDraftGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 
 import java.util.List;
@@ -39,8 +42,32 @@ public final class MicrosoftConnectionApi {
     private final PollingFallbackService pollingFallbackService;
     private final ReconciliationJob reconciliationJob;
     private final MailGateway mailGateway;
+    private final OutlookDraftGateway outlookDraftGateway;
     private final SubscriptionStore subscriptionStore;
     private final OnlineMeetingTranscriptionEnabler transcriptionEnabler;
+
+    public MicrosoftConnectionApi(
+            CalendarSyncService calendarSyncService,
+            MeetingTranscriptService meetingTranscriptService,
+            SubscriptionLifecycleService subscriptionLifecycleService,
+            PollingFallbackService pollingFallbackService,
+            ReconciliationJob reconciliationJob,
+            MailGateway mailGateway,
+            OutlookDraftGateway outlookDraftGateway,
+            SubscriptionStore subscriptionStore,
+            OnlineMeetingTranscriptionEnabler transcriptionEnabler
+    ) {
+        this.calendarSyncService = Objects.requireNonNull(calendarSyncService, "calendarSyncService");
+        this.meetingTranscriptService = Objects.requireNonNull(meetingTranscriptService, "meetingTranscriptService");
+        this.subscriptionLifecycleService = Objects.requireNonNull(
+                subscriptionLifecycleService, "subscriptionLifecycleService");
+        this.pollingFallbackService = Objects.requireNonNull(pollingFallbackService, "pollingFallbackService");
+        this.reconciliationJob = Objects.requireNonNull(reconciliationJob, "reconciliationJob");
+        this.mailGateway = Objects.requireNonNull(mailGateway, "mailGateway");
+        this.outlookDraftGateway = Objects.requireNonNull(outlookDraftGateway, "outlookDraftGateway");
+        this.subscriptionStore = Objects.requireNonNull(subscriptionStore, "subscriptionStore");
+        this.transcriptionEnabler = Objects.requireNonNull(transcriptionEnabler, "transcriptionEnabler");
+    }
 
     public MicrosoftConnectionApi(
             CalendarSyncService calendarSyncService,
@@ -52,15 +79,19 @@ public final class MicrosoftConnectionApi {
             SubscriptionStore subscriptionStore,
             OnlineMeetingTranscriptionEnabler transcriptionEnabler
     ) {
-        this.calendarSyncService = Objects.requireNonNull(calendarSyncService, "calendarSyncService");
-        this.meetingTranscriptService = Objects.requireNonNull(meetingTranscriptService, "meetingTranscriptService");
-        this.subscriptionLifecycleService = Objects.requireNonNull(
-                subscriptionLifecycleService, "subscriptionLifecycleService");
-        this.pollingFallbackService = Objects.requireNonNull(pollingFallbackService, "pollingFallbackService");
-        this.reconciliationJob = Objects.requireNonNull(reconciliationJob, "reconciliationJob");
-        this.mailGateway = Objects.requireNonNull(mailGateway, "mailGateway");
-        this.subscriptionStore = Objects.requireNonNull(subscriptionStore, "subscriptionStore");
-        this.transcriptionEnabler = Objects.requireNonNull(transcriptionEnabler, "transcriptionEnabler");
+        this(
+                calendarSyncService,
+                meetingTranscriptService,
+                subscriptionLifecycleService,
+                pollingFallbackService,
+                reconciliationJob,
+                mailGateway,
+                (tenantId, request) -> {
+                    throw new IllegalStateException("Outlook draft gateway is not configured");
+                },
+                subscriptionStore,
+                transcriptionEnabler
+        );
     }
 
     public List<CalendarEvent> syncCalendar(UUID tenantId, String userId) {
@@ -152,5 +183,9 @@ public final class MicrosoftConnectionApi {
 
     public MailSendResult sendMail(UUID tenantId, MailSendRequest request) {
         return mailGateway.send(tenantId, request);
+    }
+
+    public OutlookDraftResult createOutlookDraft(UUID tenantId, OutlookDraftRequest request) {
+        return outlookDraftGateway.create(tenantId, request);
     }
 }
