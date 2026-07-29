@@ -474,10 +474,30 @@ public final class MinutesSynthesisAndAudit {
             } else {
                 n.put("owner", item.owner());
             }
+            if (item.ownerType() == null) {
+                n.putNull("ownerType");
+            } else {
+                n.put("ownerType", item.ownerType());
+            }
             if (item.dueDate() == null) {
                 n.putNull("dueDate");
             } else {
                 n.put("dueDate", item.dueDate());
+            }
+            if (item.relativeDate() == null) {
+                n.putNull("relativeDate");
+            } else {
+                n.put("relativeDate", item.relativeDate());
+            }
+            if (item.dueAt() == null) {
+                n.putNull("dueAt");
+            } else {
+                n.put("dueAt", item.dueAt());
+            }
+            if (item.priority() == null) {
+                n.putNull("priority");
+            } else {
+                n.put("priority", item.priority());
             }
             ArrayNode ev = n.putArray("evidenceSegmentIds");
             item.evidenceSegmentIds().forEach(ev::add);

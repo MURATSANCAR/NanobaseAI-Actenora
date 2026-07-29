@@ -77,7 +77,8 @@ public final class ActionContextualEnricher {
                     action.confidence(),
                     action.ownerType(),
                     action.priority(),
-                    action.relativeDate()
+                    action.relativeDate(),
+                    action.dueAt()
             ));
         }
         if (ambiguous) {
