@@ -296,7 +296,7 @@ public final class MapAiCandidatesToNoteService {
                         f.equalsIgnoreCase("REQUIRES_MANUAL_REVIEW")
                                 || f.equalsIgnoreCase("SYNTHESIS_FALLBACK")
                                 || f.equalsIgnoreCase("AUDIT_FALLBACK")
-                                || f.toUpperCase(Locale.ROOT).contains("FALLBACK")
+                                || f.toUpperCase(Locale.ROOT).endsWith("_FALLBACK")
                 ))) {
             note.markManualReviewWithoutLock(now);
         }
