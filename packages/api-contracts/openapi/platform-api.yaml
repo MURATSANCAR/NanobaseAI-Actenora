@@ -91,6 +91,153 @@ paths:
               schema:
                 $ref: "#/components/schemas/MeetingDetailResponse"
 
+  /api/v1/portal/meetings/{meetingId}/brief:
+    get:
+      operationId: getPortalMeetingPrep
+      summary: Evidence-backed continuity brief for an upcoming meeting
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      responses:
+        "200":
+          description: Previous decisions, carry-over work, contradictions, and suggested agenda
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingPrepResponse"
+
+  /api/v1/portal/meetings/{meetingId}/questions:
+    post:
+      operationId: askPortalMeeting
+      summary: Ask a question whose answer is grounded in transcript evidence
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingQuestionRequest"
+      responses:
+        "200":
+          description: Answer with allow-listed transcript citations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingQuestionResponse"
+        "503":
+          description: Transcript search or model runtime is unavailable
+
+  /api/v1/portal/meetings/{meetingId}/notes/{noteId}/outlook-draft:
+    post:
+      operationId: createPortalOutlookDraft
+      summary: Create an idempotent Outlook draft from a human-approved meeting note
+      parameters:
+        - $ref: "#/components/parameters/MeetingId"
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Created or previously created Outlook draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutlookDraftResponse"
+        "422":
+          description: Note is not approved or does not belong to the meeting
+        "503":
+          description: Microsoft Graph connection is unavailable
+
+  /api/v1/portal/my-work:
+    get:
+      operationId: getPortalMyWork
+      summary: Current user's assigned, due, overdue, approval, and commitment work
+      responses:
+        "200":
+          description: Personalized work center snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyWorkResponse"
+
+  /api/v1/portal/actions/{actionId}/disputes:
+    post:
+      operationId: disputePortalAction
+      summary: Open a durable human-review dispute for an assigned action
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionDisputeRequest"
+      responses:
+        "200":
+          description: Created review request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionRequestResponse"
+
+  /api/v1/portal/actions/{actionId}/due-date-change-requests:
+    post:
+      operationId: requestPortalActionDueDateChange
+      summary: Open a durable human-review request for a new action due date
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DueDateChangeRequest"
+      responses:
+        "200":
+          description: Created review request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionRequestResponse"
+
+  /api/v1/portal/search:
+    get:
+      operationId: searchPortalKnowledge
+      summary: Search approved meeting knowledge with PostgreSQL full-text search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Ranked tenant-scoped meeting knowledge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlobalSearchResponse"
+
   /api/v1/dashboard:
     get:
       operationId: getDashboard
@@ -949,6 +1096,417 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MeetingSummary"
+
+    MeetingPrepDecision:
+      type: object
+      additionalProperties: false
+      required: [id, meetingId, text, recordedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meetingId:
+          type: string
+          format: uuid
+        text:
+          type: string
+        recordedAt:
+          type: string
+          format: date-time
+
+    MeetingPrepCarryOver:
+      type: object
+      additionalProperties: false
+      required: [id, kind, text, sourceMeetingId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+        text:
+          type: string
+        sourceMeetingId:
+          type: string
+          format: uuid
+
+    MeetingPrepCommitment:
+      type: object
+      additionalProperties: false
+      required: [id, meetingId, text, owner, dueDate, status, overdue, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meetingId:
+          type: string
+          format: uuid
+        text:
+          type: string
+        owner:
+          type: string
+          nullable: true
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+        overdue:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+
+    MeetingPrepContradiction:
+      type: object
+      additionalProperties: false
+      required: [id, meetingId, leftDecisionId, rightDecisionId, reason, confidence, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meetingId:
+          type: string
+          format: uuid
+        leftDecisionId:
+          type: string
+          format: uuid
+        rightDecisionId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        confidence:
+          type: string
+        status:
+          type: string
+
+    MeetingPrepAgendaItem:
+      type: object
+      additionalProperties: false
+      required: [id, sourceType, text, sourceMeetingId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceType:
+          type: string
+        text:
+          type: string
+        sourceMeetingId:
+          type: string
+          format: uuid
+
+    MeetingPrepResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - briefId
+        - targetMeetingId
+        - previousMeetingId
+        - meetingSeriesId
+        - businessContextId
+        - previousDecisions
+        - openActions
+        - openRisks
+        - openQuestions
+        - overdueCommitments
+        - contradictions
+        - suggestedAgenda
+        - generatedAt
+      properties:
+        briefId:
+          type: string
+          format: uuid
+        targetMeetingId:
+          type: string
+          format: uuid
+        previousMeetingId:
+          type: string
+          format: uuid
+          nullable: true
+        meetingSeriesId:
+          type: string
+          format: uuid
+          nullable: true
+        businessContextId:
+          type: string
+          format: uuid
+          nullable: true
+        previousDecisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingPrepDecision"
+        openActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingPrepCarryOver"
+        openRisks:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingPrepCarryOver"
+        openQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingPrepCarryOver"
+        overdueCommitments:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingPrepCommitment"
+        contradictions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingPrepContradiction"
+        suggestedAgenda:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingPrepAgendaItem"
+        generatedAt:
+          type: string
+          format: date-time
+
+    WorkAction:
+      type: object
+      additionalProperties: false
+      required: [id, meetingId, noteId, title, status, owner, dueAt, priority, ownerType, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meetingId:
+          type: string
+          format: uuid
+        noteId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, IN_PROGRESS, COMPLETED, CANCELLED]
+        owner:
+          type: string
+          nullable: true
+        dueAt:
+          type: string
+          format: date-time
+          nullable: true
+        priority:
+          type: string
+          nullable: true
+        ownerType:
+          type: string
+          nullable: true
+        version:
+          type: integer
+          format: int64
+
+    PendingWorkApproval:
+      type: object
+      additionalProperties: false
+      required: [id, subjectType, subjectId, status, version, updatedAt, expiresAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        subjectType:
+          type: string
+        subjectId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        version:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MyWorkResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - assignedActions
+        - dueSoonActions
+        - overdueActions
+        - pendingApprovals
+        - recentCommitments
+        - today
+        - upcomingUntil
+      properties:
+        assignedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkAction"
+        dueSoonActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkAction"
+        overdueActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkAction"
+        pendingApprovals:
+          type: array
+          items:
+            $ref: "#/components/schemas/PendingWorkApproval"
+        recentCommitments:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingPrepCommitment"
+        today:
+          type: string
+          format: date
+        upcomingUntil:
+          type: string
+          format: date-time
+
+    ActionDisputeRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        proposedTitle:
+          type: string
+          nullable: true
+
+    DueDateChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [requestedDueDate, reason]
+      properties:
+        requestedDueDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          minLength: 1
+
+    ActionRequestResponse:
+      type: object
+      additionalProperties: false
+      required: [requestId, requestType]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        requestType:
+          type: string
+
+    GlobalSearchHit:
+      type: object
+      additionalProperties: false
+      required: [id, meetingId, sourceItemId, kind, content, score, href]
+      properties:
+        id:
+          type: string
+          format: uuid
+        meetingId:
+          type: string
+          format: uuid
+        sourceItemId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [DECISION, ACTION_ITEM, COMMITMENT, RISK, OPEN_QUESTION]
+        content:
+          type: string
+        score:
+          type: number
+          format: double
+        href:
+          type: string
+
+    GlobalSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [query, items]
+      properties:
+        query:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GlobalSearchHit"
+
+    MeetingQuestionRequest:
+      type: object
+      additionalProperties: false
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+
+    MeetingQuestionCitation:
+      type: object
+      additionalProperties: false
+      required: [segmentId, speaker, quote, startMs, endMs]
+      properties:
+        segmentId:
+          type: string
+          format: uuid
+        speaker:
+          type: string
+        quote:
+          type: string
+        startMs:
+          type: integer
+          format: int64
+        endMs:
+          type: integer
+          format: int64
+
+    MeetingQuestionResponse:
+      type: object
+      additionalProperties: false
+      required: [status, answer, citations, modelVersion, inputTokens, outputTokens]
+      properties:
+        status:
+          type: string
+          enum: [ANSWERED, INSUFFICIENT_EVIDENCE]
+        answer:
+          type: string
+          nullable: true
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingQuestionCitation"
+        modelVersion:
+          type: string
+          nullable: true
+        inputTokens:
+          type: integer
+          format: int64
+        outputTokens:
+          type: integer
+          format: int64
+
+    OutlookDraftResponse:
+      type: object
+      additionalProperties: false
+      required: [providerMessageId, webLink, reused, recipientCount]
+      properties:
+        providerMessageId:
+          type: string
+        webLink:
+          type: string
+          nullable: true
+        reused:
+          type: boolean
+        recipientCount:
+          type: integer
+          minimum: 0
 
     MeetingOccurrenceStatus:
       type: string
