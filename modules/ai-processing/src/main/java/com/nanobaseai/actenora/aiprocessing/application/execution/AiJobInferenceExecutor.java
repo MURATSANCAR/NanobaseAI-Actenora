@@ -83,6 +83,7 @@ public final class AiJobInferenceExecutor {
     private final ObjectMapper artifactMapper;
     private final int maxAttempts;
     private final int maxTimeoutSeconds;
+    private final int parallelChunkLimit;
 
     public AiJobInferenceExecutor(
             AiJobService jobService,
@@ -342,6 +343,44 @@ public final class AiJobInferenceExecutor {
             int maxAttempts,
             int maxTimeoutSeconds
     ) {
+        this(
+                jobService,
+                providers,
+                inputResolver,
+                servedModels,
+                extractionPipeline,
+                segmentSource,
+                routingCoordinator,
+                noteHandoff,
+                qualityMetrics,
+                priorMeetingContext,
+                stagedPipelineRunner,
+                meetingClock,
+                artifacts,
+                maxAttempts,
+                maxTimeoutSeconds,
+                PipelineRunRequest.DEFAULT_PARALLEL_CHUNK_LIMIT
+        );
+    }
+
+    public AiJobInferenceExecutor(
+            AiJobService jobService,
+            LocalModelProviderLocator providers,
+            InferenceInputResolverPort inputResolver,
+            ServedModelResolverPort servedModels,
+            ExtractionPipelineService extractionPipeline,
+            TranscriptSegmentSourcePort segmentSource,
+            JobRoutingCoordinatorPort routingCoordinator,
+            MeetingNoteHandoffPort noteHandoff,
+            PipelineQualityMetricsPort qualityMetrics,
+            PriorMeetingContextPort priorMeetingContext,
+            StagedPipelineRunner stagedPipelineRunner,
+            MeetingOccurrenceClockPort meetingClock,
+            ProcessingArtifactRepository artifacts,
+            int maxAttempts,
+            int maxTimeoutSeconds,
+            int parallelChunkLimit
+    ) {
         this.jobService = Objects.requireNonNull(jobService, "jobService");
         this.providers = Objects.requireNonNull(providers, "providers");
         this.inputResolver = Objects.requireNonNull(inputResolver, "inputResolver");
@@ -366,8 +405,12 @@ public final class AiJobInferenceExecutor {
         if (maxTimeoutSeconds < 1) {
             throw new IllegalArgumentException("maxTimeoutSeconds must be >= 1");
         }
+        if (parallelChunkLimit < 1) {
+            throw new IllegalArgumentException("parallelChunkLimit must be >= 1");
+        }
         this.maxAttempts = maxAttempts;
         this.maxTimeoutSeconds = maxTimeoutSeconds;
+        this.parallelChunkLimit = parallelChunkLimit;
     }
 
     public Optional<ExecutionOutcome> executeNext(Instant now) {
@@ -524,7 +567,7 @@ public final class AiJobInferenceExecutor {
                 segments,
                 job.language(),
                 timeoutSecondsFor(job, now),
-                PipelineRunRequest.DEFAULT_PARALLEL_CHUNK_LIMIT,
+                parallelChunkLimit,
                 prior,
                 meetingStartIso
         ));

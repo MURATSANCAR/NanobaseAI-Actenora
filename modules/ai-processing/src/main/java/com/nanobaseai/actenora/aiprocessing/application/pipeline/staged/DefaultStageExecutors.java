@@ -9,6 +9,8 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingCon
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.InferenceResponse;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.MinutesSynthesisAndAudit;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.MinutesFinalizationPolicy;
+import com.nanobaseai.actenora.aiprocessing.application.pipeline.MinutesFinalizationResult;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelDescriptor;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.ModelRuntimePort;
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingContextPort;
@@ -157,6 +159,34 @@ public final class DefaultStageExecutors {
             PipelineQualityMetricsPort qualityMetrics,
             MeetingOccurrenceClockPort meetingClock
     ) {
+        return createAll(
+                prompts,
+                modelRuntime,
+                segments,
+                artifacts,
+                priorContext,
+                noteHandoff,
+                knowledgeIndex,
+                chunkExtraction,
+                qualityMetrics,
+                meetingClock,
+                MinutesFinalizationPolicy.compatibility()
+        );
+    }
+
+    public static Map<ProcessingStage, StageExecutor> createAll(
+            PromptRegistryPort prompts,
+            ModelRuntimePort modelRuntime,
+            TranscriptSegmentSourcePort segments,
+            ProcessingArtifactRepository artifacts,
+            PriorMeetingContextPort priorContext,
+            MeetingNoteHandoffPort noteHandoff,
+            ApprovedKnowledgeIndexPort knowledgeIndex,
+            ChunkExtractionService chunkExtraction,
+            PipelineQualityMetricsPort qualityMetrics,
+            MeetingOccurrenceClockPort meetingClock,
+            MinutesFinalizationPolicy finalizationPolicy
+    ) {
         SegmentNormalizer normalizer = new SegmentNormalizer();
         TranscriptChunker chunker = new TranscriptChunker();
         ContextWindowGuard guard = new ContextWindowGuard();
@@ -196,7 +226,10 @@ public final class DefaultStageExecutors {
                         priorContext == null ? PriorMeetingContextPort.noop() : priorContext,
                         noteHandoff == null ? MeetingNoteHandoffPort.noop() : noteHandoff,
                         metrics,
-                        clock
+                        clock,
+                        finalizationPolicy == null
+                                ? MinutesFinalizationPolicy.compatibility()
+                                : finalizationPolicy
                 ),
                 ProcessingStage.EMBEDDING, new EmbeddingExecutor(
                         knowledgeIndex == null ? ApprovedKnowledgeIndexPort.noop() : knowledgeIndex
@@ -823,6 +856,7 @@ public final class DefaultStageExecutors {
         private final MeetingNoteHandoffPort noteHandoff;
         private final PipelineQualityMetricsPort qualityMetrics;
         private final MeetingOccurrenceClockPort meetingClock;
+        private final MinutesFinalizationPolicy finalizationPolicy;
 
         MinutesExecutor(
                 ModelRuntimePort modelRuntime,
@@ -836,7 +870,34 @@ public final class DefaultStageExecutors {
         ) {
             this(
                     modelRuntime, artifacts, noteAssembler, segments, normalizer, priorContext, noteHandoff,
-                    qualityMetrics, MeetingOccurrenceClockPort.unsupported()
+                    qualityMetrics,
+                    MeetingOccurrenceClockPort.unsupported(),
+                    MinutesFinalizationPolicy.compatibility()
+            );
+        }
+
+        MinutesExecutor(
+                ModelRuntimePort modelRuntime,
+                ProcessingArtifactRepository artifacts,
+                FinalNoteAssembler noteAssembler,
+                TranscriptSegmentSourcePort segments,
+                SegmentNormalizer normalizer,
+                PriorMeetingContextPort priorContext,
+                MeetingNoteHandoffPort noteHandoff,
+            PipelineQualityMetricsPort qualityMetrics,
+            MeetingOccurrenceClockPort meetingClock
+        ) {
+            this(
+                    modelRuntime,
+                    artifacts,
+                    noteAssembler,
+                    segments,
+                    normalizer,
+                    priorContext,
+                    noteHandoff,
+                    qualityMetrics,
+                    meetingClock,
+                    MinutesFinalizationPolicy.compatibility()
             );
         }
 
@@ -849,7 +910,8 @@ public final class DefaultStageExecutors {
                 PriorMeetingContextPort priorContext,
                 MeetingNoteHandoffPort noteHandoff,
                 PipelineQualityMetricsPort qualityMetrics,
-                MeetingOccurrenceClockPort meetingClock
+                MeetingOccurrenceClockPort meetingClock,
+                MinutesFinalizationPolicy finalizationPolicy
         ) {
             this.modelRuntime = modelRuntime;
             this.artifacts = artifacts;
@@ -862,6 +924,9 @@ public final class DefaultStageExecutors {
             this.meetingClock = meetingClock == null
                     ? MeetingOccurrenceClockPort.unsupported()
                     : meetingClock;
+            this.finalizationPolicy = finalizationPolicy == null
+                    ? MinutesFinalizationPolicy.compatibility()
+                    : finalizationPolicy;
         }
 
         @Override
@@ -879,6 +944,9 @@ public final class DefaultStageExecutors {
                 FinalNoteDraft draft;
                 int inTok = 0;
                 int outTok = 0;
+                int finalizationModelCalls = 0;
+                long finalizationModelLatencyMs = 0;
+                boolean finalizationFallbackUsed = false;
                 Map<String, Object> actionPostStats = null;
                 if (source == null) {
                     draft = noteAssembler.assemble(ExtractionBundle.empty(), job.language());
@@ -899,8 +967,13 @@ public final class DefaultStageExecutors {
                     PriorMeetingContext prior = priorContext
                             .load(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
                             .orElse(PriorMeetingContext.EMPTY);
-                    draft = new MinutesSynthesisAndAudit(modelRuntime, 1800, qualityMetrics)
-                            .synthesizeAndAudit(
+                    MinutesFinalizationResult finalization =
+                            new MinutesSynthesisAndAudit(
+                                    modelRuntime,
+                                    finalizationPolicy.timeoutSeconds(),
+                                    qualityMetrics,
+                                    finalizationPolicy
+                            ).finalizeMinutes(
                                     bundle,
                                     deterministic,
                                     allowed,
@@ -908,6 +981,12 @@ public final class DefaultStageExecutors {
                                     job.language(),
                                     prior
                             );
+                    draft = finalization.draft();
+                    inTok = clampTokens(finalization.inputTokens());
+                    outTok = clampTokens(finalization.outputTokens());
+                    finalizationModelCalls = finalization.modelCalls();
+                    finalizationModelLatencyMs = finalization.modelLatencyMs();
+                    finalizationFallbackUsed = finalization.fallbackUsed();
                     draft = new CrossTypeConsistencyAuditor().audit(draft);
                     draft = new ActionContextualEnricher().enrich(draft, normalized);
                     ExplicitActionCueRecoverer.Result recovered =
@@ -973,6 +1052,10 @@ public final class DefaultStageExecutors {
                 payload.put("requiresManualReview", draft.requiresManualReview());
                 payload.put("meetingNoteId", noteId.map(UUID::toString).orElse(""));
                 payload.put("qualityFlags", draft.qualityFlags());
+                payload.put("finalizationMode", finalizationPolicy.mode().name());
+                payload.put("finalizationModelCalls", finalizationModelCalls);
+                payload.put("finalizationModelLatencyMs", finalizationModelLatencyMs);
+                payload.put("finalizationFallbackUsed", finalizationFallbackUsed);
                 if (actionPostStats != null) {
                     payload.put("actionPostProcessing", actionPostStats);
                 }

@@ -88,6 +88,7 @@ public final class ExtractionPipelineService {
     private final EvidenceReferenceScrubber evidenceScrubber;
     private final PartialExtractionJsonRecovery partialJsonRecovery;
     private final PipelineQualityMetricsPort qualityMetrics;
+    private final MinutesFinalizationPolicy finalizationPolicy;
     /** Meeting start ISO for prompt {{meetingDate}}; set per {@link #run}. */
     private volatile String meetingDateForPrompt = "";
 
@@ -121,7 +122,8 @@ public final class ExtractionPipelineService {
                 retryClassifier,
                 promptInjectionGuard,
                 ChunkExtractionService.createDefault(),
-                PipelineQualityMetricsPort.noop()
+                PipelineQualityMetricsPort.noop(),
+                MinutesFinalizationPolicy.compatibility()
         );
     }
 
@@ -156,7 +158,8 @@ public final class ExtractionPipelineService {
                 retryClassifier,
                 promptInjectionGuard,
                 chunkExtractionService,
-                PipelineQualityMetricsPort.noop()
+                PipelineQualityMetricsPort.noop(),
+                MinutesFinalizationPolicy.compatibility()
         );
     }
 
@@ -177,6 +180,44 @@ public final class ExtractionPipelineService {
             ChunkExtractionService chunkExtractionService,
             PipelineQualityMetricsPort qualityMetrics
     ) {
+        this(
+                promptRegistry,
+                modelRuntime,
+                normalizer,
+                chunker,
+                contextWindowGuard,
+                jsonRepair,
+                schemaValidator,
+                bundleMapper,
+                deterministicValidator,
+                merger,
+                finalNoteAssembler,
+                retryClassifier,
+                promptInjectionGuard,
+                chunkExtractionService,
+                qualityMetrics,
+                MinutesFinalizationPolicy.compatibility()
+        );
+    }
+
+    public ExtractionPipelineService(
+            PromptRegistryPort promptRegistry,
+            ModelRuntimePort modelRuntime,
+            SegmentNormalizer normalizer,
+            TranscriptChunker chunker,
+            ContextWindowGuard contextWindowGuard,
+            LimitedJsonRepair jsonRepair,
+            ExtractionJsonSchemaValidator schemaValidator,
+            ExtractionBundleMapper bundleMapper,
+            DeterministicExtractionValidator deterministicValidator,
+            ExtractionMerger merger,
+            FinalNoteAssembler finalNoteAssembler,
+            RetryClassifier retryClassifier,
+            PromptInjectionGuard promptInjectionGuard,
+            ChunkExtractionService chunkExtractionService,
+            PipelineQualityMetricsPort qualityMetrics,
+            MinutesFinalizationPolicy finalizationPolicy
+    ) {
         this.promptRegistry = Objects.requireNonNull(promptRegistry, "promptRegistry");
         this.modelRuntime = Objects.requireNonNull(modelRuntime, "modelRuntime");
         this.normalizer = Objects.requireNonNull(normalizer, "normalizer");
@@ -196,6 +237,7 @@ public final class ExtractionPipelineService {
         this.evidenceScrubber = new EvidenceReferenceScrubber(EvidenceNearMissConfig.load());
         this.partialJsonRecovery = new PartialExtractionJsonRecovery();
         this.qualityMetrics = qualityMetrics == null ? PipelineQualityMetricsPort.noop() : qualityMetrics;
+        this.finalizationPolicy = Objects.requireNonNull(finalizationPolicy, "finalizationPolicy");
         this.meetingDateForPrompt = "";
     }
 
@@ -284,8 +326,13 @@ public final class ExtractionPipelineService {
             deterministicValidator.validate(merged, allowed, corpus);
 
             FinalNoteDraft deterministic = finalNoteAssembler.assemble(merged, language);
-            FinalNoteDraft note = new MinutesSynthesisAndAudit(modelRuntime, timeoutSeconds, qualityMetrics)
-                    .synthesizeAndAudit(
+            MinutesFinalizationResult finalization =
+                    new MinutesSynthesisAndAudit(
+                            modelRuntime,
+                            timeoutSeconds,
+                            qualityMetrics,
+                            finalizationPolicy
+                    ).finalizeMinutes(
                             merged,
                             deterministic,
                             allowed,
@@ -293,6 +340,15 @@ public final class ExtractionPipelineService {
                             language,
                             request.priorMeetingContext()
                     );
+            metrics.recordFinalization(
+                    finalization.mode(),
+                    finalization.fallbackUsed(),
+                    finalization.modelCalls(),
+                    finalization.inputTokens(),
+                    finalization.outputTokens(),
+                    finalization.modelLatencyMs()
+            );
+            FinalNoteDraft note = finalization.draft();
             note = new CrossTypeConsistencyAuditor().audit(note);
             note = new ActionContextualEnricher().enrich(note, normalized);
             ExplicitActionCueRecoverer.Result recovered =
@@ -707,9 +763,13 @@ public final class ExtractionPipelineService {
         );
 
         InferenceResponse response = modelRuntime.infer(inferenceRequest);
-        metrics.addInputTokens(response.inputTokens());
-        metrics.addOutputTokens(response.outputTokens());
-        metrics.addDurationMs(response.latencyMs());
+        metrics.recordModelUsage(
+                PipelineStage.EXTRACT.name(),
+                1,
+                response.inputTokens(),
+                response.outputTokens(),
+                response.latencyMs()
+        );
 
         promptInjectionGuard.assertClean(response.rawText());
 

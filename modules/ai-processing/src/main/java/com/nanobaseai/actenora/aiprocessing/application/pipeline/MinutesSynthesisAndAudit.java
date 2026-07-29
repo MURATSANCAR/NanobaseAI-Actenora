@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceNearMissConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceReferenceScrubber;
@@ -196,7 +197,9 @@ public final class MinutesSynthesisAndAudit {
         if (timeoutSeconds < 0) {
             throw new IllegalArgumentException("timeoutSeconds must be >= 0");
         }
-        this.timeoutSeconds = timeoutSeconds;
+        this.timeoutSeconds = finalizationPolicy.timeoutSeconds() > 0
+                ? finalizationPolicy.timeoutSeconds()
+                : timeoutSeconds;
         this.qualityMetrics = qualityMetrics == null ? PipelineQualityMetricsPort.noop() : qualityMetrics;
     }
 
@@ -228,18 +231,177 @@ public final class MinutesSynthesisAndAudit {
             String language,
             PriorMeetingContext priorMeetingContext
     ) {
-        FinalNoteDraft synthesized = synthesize(
+        return finalizeMinutes(
                 merged,
                 deterministicDraft,
                 allowedEvidenceIds,
                 meetingTitle,
                 language,
-                priorMeetingContext == null ? PriorMeetingContext.EMPTY : priorMeetingContext
-        );
-        return scrubDraftEvidence(audit(synthesized, allowedEvidenceIds, language), allowedEvidenceIds);
+                priorMeetingContext
+        ).draft();
     }
 
-    private FinalNoteDraft synthesize(
+    public MinutesFinalizationResult finalizeMinutes(
+            ExtractionBundle merged,
+            FinalNoteDraft deterministicDraft,
+            Set<String> allowedEvidenceIds,
+            String meetingTitle,
+            String language,
+            PriorMeetingContext priorMeetingContext
+    ) {
+        Objects.requireNonNull(merged, "merged");
+        Objects.requireNonNull(deterministicDraft, "deterministicDraft");
+        Objects.requireNonNull(allowedEvidenceIds, "allowedEvidenceIds");
+        PriorMeetingContext prior = priorMeetingContext == null ? PriorMeetingContext.EMPTY : priorMeetingContext;
+        return switch (finalizationPolicy.mode()) {
+            case DETERMINISTIC -> new MinutesFinalizationResult(
+                    scrubDraftEvidence(deterministicDraft, allowedEvidenceIds),
+                    finalizationPolicy.mode().name(),
+                    0,
+                    0,
+                    0,
+                    0,
+                    false
+            );
+            case EDITORIAL -> editorialFinalize(
+                    deterministicDraft,
+                    allowedEvidenceIds,
+                    meetingTitle,
+                    language
+            );
+            case FULL -> {
+                StepResult synthesized = synthesize(
+                        merged,
+                        deterministicDraft,
+                        allowedEvidenceIds,
+                        meetingTitle,
+                        language,
+                        prior
+                );
+                StepResult audited = audit(synthesized.draft(), allowedEvidenceIds, language);
+                yield new MinutesFinalizationResult(
+                        scrubDraftEvidence(audited.draft(), allowedEvidenceIds),
+                        finalizationPolicy.mode().name(),
+                        synthesized.modelCalls() + audited.modelCalls(),
+                        synthesized.inputTokens() + audited.inputTokens(),
+                        synthesized.outputTokens() + audited.outputTokens(),
+                        synthesized.modelLatencyMs() + audited.modelLatencyMs(),
+                        synthesized.fallbackUsed() || audited.fallbackUsed()
+                );
+            }
+        };
+    }
+
+    private MinutesFinalizationResult editorialFinalize(
+            FinalNoteDraft deterministicDraft,
+            Set<String> allowedEvidenceIds,
+            String meetingTitle,
+            String language
+    ) {
+        InferenceResponse response = null;
+        boolean inferenceAttempted = false;
+        try {
+            ObjectNode validatedMinutes = objectMapper.valueToTree(deterministicDraft);
+            validatedMinutes.remove("executiveSummary");
+            ObjectNode editorialInput = objectMapper.createObjectNode();
+            editorialInput.put("outputLanguageCode", language == null ? "" : language);
+            editorialInput.put("meetingTitle", meetingTitle == null ? "" : meetingTitle);
+            editorialInput.set("validatedMinutes", validatedMinutes);
+            String systemPrompt = editorialSummaryTemplate;
+            String userPrompt = objectMapper.writeValueAsString(editorialInput);
+            new ContextWindowGuard().assertFits(
+                    systemPrompt + "\n" + userPrompt,
+                    modelRuntime.descriptor().contextWindowTokens(),
+                    finalizationPolicy.maxOutputTokens()
+            );
+            inferenceAttempted = true;
+            response = modelRuntime.infer(new InferenceRequest(
+                    finalizationPolicy.taskType(),
+                    finalizationPolicy.promptVersionId(),
+                    finalizationPolicy.schemaVersion(),
+                    systemPrompt,
+                    userPrompt,
+                    List.copyOf(allowedEvidenceIds),
+                    finalizationPolicy.maxOutputTokens(),
+                    finalizationPolicy.timeoutSeconds()
+            ));
+            JsonNode root = parseEditorialJson(response.rawText());
+            String summary = root.path("executiveSummary").asText().trim();
+            if (summary.isBlank()) {
+                throw new IllegalArgumentException("Editorial summary response is blank");
+            }
+            FinalNoteDraft draft = withEditorialSummary(
+                    deterministicDraft,
+                    summary,
+                    root.path("reviewRequired").asBoolean(false)
+            );
+            return new MinutesFinalizationResult(
+                    scrubDraftEvidence(draft, allowedEvidenceIds),
+                    finalizationPolicy.mode().name(),
+                    1,
+                    response.inputTokens(),
+                    response.outputTokens(),
+                    response.latencyMs(),
+                    false
+            );
+        } catch (RuntimeException | IOException ex) {
+            qualityMetrics.recordFallback("editorial", ex.getClass().getSimpleName());
+            LOG.log(Level.SEVERE,
+                    () -> "Pipeline stage failed; configured finalization fallback activated. stage=EDITORIAL"
+                            + " reason=" + ex.getClass().getSimpleName());
+            LOG.log(Level.SEVERE, "EDITORIAL fallback detail", ex);
+            if (finalizationPolicy.failureMode() == MinutesFinalizationPolicy.FailureMode.FAIL) {
+                if (ex instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                throw new IllegalStateException(ex);
+            }
+            return new MinutesFinalizationResult(
+                    scrubDraftEvidence(deterministicDraft, allowedEvidenceIds),
+                    finalizationPolicy.mode().name(),
+                    inferenceAttempted ? 1 : 0,
+                    response == null ? 0 : response.inputTokens(),
+                    response == null ? 0 : response.outputTokens(),
+                    response == null ? 0 : response.latencyMs(),
+                    true
+            );
+        }
+    }
+
+    private JsonNode parseEditorialJson(String raw) throws IOException {
+        JsonNode root = parseAuditJson(raw);
+        if (!root.isObject()
+                || !root.path("executiveSummary").isTextual()
+                || !root.path("reviewRequired").isBoolean()) {
+            throw new IllegalArgumentException("Editorial response does not match the configured schema");
+        }
+        return root;
+    }
+
+    private static FinalNoteDraft withEditorialSummary(
+            FinalNoteDraft source,
+            String summary,
+            boolean reviewRequired
+    ) {
+        return new FinalNoteDraft(
+                summary,
+                source.decisions(),
+                source.actionItems(),
+                source.risks(),
+                source.openQuestions(),
+                source.commitments(),
+                source.topics(),
+                source.issues(),
+                source.proposals(),
+                source.importantFacts(),
+                source.qualityFlags(),
+                source.evidenceSegmentIds(),
+                source.confidence(),
+                source.requiresManualReview() || reviewRequired
+        );
+    }
+
+    private StepResult synthesize(
             ExtractionBundle merged,
             FinalNoteDraft fallback,
             Set<String> allowedEvidenceIds,
@@ -247,6 +409,8 @@ public final class MinutesSynthesisAndAudit {
             String language,
             PriorMeetingContext priorMeetingContext
     ) {
+        InferenceResponse response = null;
+        boolean inferenceAttempted = false;
         try {
             String candidatesJson = objectMapper.writeValueAsString(toCandidateNode(merged));
             String priorBlock = priorMeetingContext.toPromptBlock();
@@ -258,7 +422,8 @@ public final class MinutesSynthesisAndAudit {
                             "{{priorMeetingContext}}",
                             priorBlock.isBlank() ? "(yok)" : priorBlock
                     );
-            InferenceResponse response = modelRuntime.infer(new InferenceRequest(
+            inferenceAttempted = true;
+            response = modelRuntime.infer(new InferenceRequest(
                     InferenceTaskType.FINAL_NOTE.name(),
                     "pv-meeting-final-note-v1",
                     InMemoryPromptRegistry.FINAL_NOTE_PROMPT_ID,
@@ -289,21 +454,26 @@ public final class MinutesSynthesisAndAudit {
                     || node.path("reviewRequired").asBoolean(false);
             // Final-minutes models often omit proposal cues; keep deterministic/seeded recoveries.
             List<ProposalCandidate> proposals = preferNonEmpty(bundle.proposals(), fallback.proposals());
-            return new FinalNoteDraft(
-                    summary,
-                    preferNonEmpty(bundle.decisions(), fallback.decisions()),
-                    preferActionsPreserveDates(bundle.actionItems(), fallback.actionItems()),
-                    preferNonEmpty(bundle.risks(), fallback.risks()),
-                    preferNonEmpty(bundle.openQuestions(), fallback.openQuestions()),
-                    preferNonEmpty(bundle.commitments(), fallback.commitments()),
-                    preferNonEmpty(bundle.topics(), fallback.topics()),
-                    preferNonEmpty(bundle.issues(), fallback.issues()),
-                    proposals,
-                    preferNonEmpty(bundle.importantFacts(), fallback.importantFacts()),
-                    flags,
-                    bundle.evidenceSegmentIds().isEmpty() ? fallback.evidenceSegmentIds() : bundle.evidenceSegmentIds(),
-                    bundle.confidence() > 0 ? bundle.confidence() : fallback.confidence(),
-                    manual
+            return successfulStep(
+                    new FinalNoteDraft(
+                            summary,
+                            preferNonEmpty(bundle.decisions(), fallback.decisions()),
+                            preferActionsPreserveDates(bundle.actionItems(), fallback.actionItems()),
+                            preferNonEmpty(bundle.risks(), fallback.risks()),
+                            preferNonEmpty(bundle.openQuestions(), fallback.openQuestions()),
+                            preferNonEmpty(bundle.commitments(), fallback.commitments()),
+                            preferNonEmpty(bundle.topics(), fallback.topics()),
+                            preferNonEmpty(bundle.issues(), fallback.issues()),
+                            proposals,
+                            preferNonEmpty(bundle.importantFacts(), fallback.importantFacts()),
+                            flags,
+                            bundle.evidenceSegmentIds().isEmpty()
+                                    ? fallback.evidenceSegmentIds()
+                                    : bundle.evidenceSegmentIds(),
+                            bundle.confidence() > 0 ? bundle.confidence() : fallback.confidence(),
+                            manual
+                    ),
+                    response
             );
         } catch (RuntimeException | IOException ex) {
             SYNTHESIS_FALLBACKS.incrementAndGet();
@@ -315,32 +485,39 @@ public final class MinutesSynthesisAndAudit {
             LOG.log(Level.SEVERE, "SYNTHESIS fallback detail", ex);
             List<String> flags = new ArrayList<>(fallback.qualityFlags());
             flags.add("SYNTHESIS_FALLBACK");
-            return new FinalNoteDraft(
-                    fallback.executiveSummary(),
-                    fallback.decisions(),
-                    fallback.actionItems(),
-                    fallback.risks(),
-                    fallback.openQuestions(),
-                    fallback.commitments(),
-                    fallback.topics(),
-                    fallback.issues(),
-                    fallback.proposals(),
-                    fallback.importantFacts(),
-                    flags,
-                    fallback.evidenceSegmentIds(),
-                    fallback.confidence(),
-                    fallback.requiresManualReview()
+            return fallbackStep(
+                    new FinalNoteDraft(
+                            fallback.executiveSummary(),
+                            fallback.decisions(),
+                            fallback.actionItems(),
+                            fallback.risks(),
+                            fallback.openQuestions(),
+                            fallback.commitments(),
+                            fallback.topics(),
+                            fallback.issues(),
+                            fallback.proposals(),
+                            fallback.importantFacts(),
+                            flags,
+                            fallback.evidenceSegmentIds(),
+                            fallback.confidence(),
+                            fallback.requiresManualReview()
+                    ),
+                    response,
+                    inferenceAttempted
             );
         }
     }
 
-    private FinalNoteDraft audit(FinalNoteDraft draft, Set<String> allowedEvidenceIds, String language) {
+    private StepResult audit(FinalNoteDraft draft, Set<String> allowedEvidenceIds, String language) {
+        InferenceResponse response = null;
+        boolean inferenceAttempted = false;
         try {
             String candidatesJson = objectMapper.writeValueAsString(toDraftNode(draft));
             String userPrompt = ExtractionPromptRules.applyLanguage(evidenceAuditTemplate, language)
                     .replace("{{candidatesJson}}", candidatesJson)
                     .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds));
-            InferenceResponse response = modelRuntime.infer(new InferenceRequest(
+            inferenceAttempted = true;
+            response = modelRuntime.infer(new InferenceRequest(
                     InferenceTaskType.VALIDATION.name(),
                     "pv-meeting-validation-v1",
                     InMemoryPromptRegistry.VALIDATION_PROMPT_ID,
@@ -405,21 +582,24 @@ public final class MinutesSynthesisAndAudit {
                 flags.add("PARTIAL_EVIDENCE_NEEDS_REVIEW");
             }
             boolean manual = draft.requiresManualReview() || !partial.isEmpty();
-            return new FinalNoteDraft(
-                    draft.executiveSummary(),
-                    decisions,
-                    actions,
-                    risks,
-                    questions,
-                    commitments,
-                    topics,
-                    draft.issues(),
-                    draft.proposals(),
-                    facts,
-                    flags,
-                    draft.evidenceSegmentIds(),
-                    draft.confidence(),
-                    manual
+            return successfulStep(
+                    new FinalNoteDraft(
+                            draft.executiveSummary(),
+                            decisions,
+                            actions,
+                            risks,
+                            questions,
+                            commitments,
+                            topics,
+                            draft.issues(),
+                            draft.proposals(),
+                            facts,
+                            flags,
+                            draft.evidenceSegmentIds(),
+                            draft.confidence(),
+                            manual
+                    ),
+                    response
             );
         } catch (RuntimeException | IOException ex) {
             AUDIT_FALLBACKS.incrementAndGet();
@@ -430,23 +610,63 @@ public final class MinutesSynthesisAndAudit {
             LOG.log(Level.SEVERE, "AUDIT fallback detail", ex);
             List<String> flags = new ArrayList<>(draft.qualityFlags());
             flags.add("AUDIT_FALLBACK");
-            return new FinalNoteDraft(
-                    draft.executiveSummary(),
-                    draft.decisions(),
-                    draft.actionItems(),
-                    draft.risks(),
-                    draft.openQuestions(),
-                    draft.commitments(),
-                    draft.topics(),
-                    draft.issues(),
-                    draft.proposals(),
-                    draft.importantFacts(),
-                    flags,
-                    draft.evidenceSegmentIds(),
-                    draft.confidence(),
-                    draft.requiresManualReview()
+            return fallbackStep(
+                    new FinalNoteDraft(
+                            draft.executiveSummary(),
+                            draft.decisions(),
+                            draft.actionItems(),
+                            draft.risks(),
+                            draft.openQuestions(),
+                            draft.commitments(),
+                            draft.topics(),
+                            draft.issues(),
+                            draft.proposals(),
+                            draft.importantFacts(),
+                            flags,
+                            draft.evidenceSegmentIds(),
+                            draft.confidence(),
+                            draft.requiresManualReview()
+                    ),
+                    response,
+                    inferenceAttempted
             );
         }
+    }
+
+    private static StepResult successfulStep(FinalNoteDraft draft, InferenceResponse response) {
+        return new StepResult(
+                draft,
+                1,
+                response.inputTokens(),
+                response.outputTokens(),
+                response.latencyMs(),
+                false
+        );
+    }
+
+    private static StepResult fallbackStep(
+            FinalNoteDraft draft,
+            InferenceResponse response,
+            boolean inferenceAttempted
+    ) {
+        return new StepResult(
+                draft,
+                inferenceAttempted ? 1 : 0,
+                response == null ? 0 : response.inputTokens(),
+                response == null ? 0 : response.outputTokens(),
+                response == null ? 0 : response.latencyMs(),
+                true
+        );
+    }
+
+    private record StepResult(
+            FinalNoteDraft draft,
+            int modelCalls,
+            long inputTokens,
+            long outputTokens,
+            long modelLatencyMs,
+            boolean fallbackUsed
+    ) {
     }
 
     /** Test/ops visibility for fallback counters. */
@@ -769,7 +989,7 @@ public final class MinutesSynthesisAndAudit {
     private static String loadTemplate(String classpath) {
         try (InputStream in = MinutesSynthesisAndAudit.class.getResourceAsStream(classpath)) {
             if (in == null) {
-                return "{{candidatesJson}}";
+                throw new IllegalStateException("Configured prompt resource was not found: " + classpath);
             }
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException ex) {

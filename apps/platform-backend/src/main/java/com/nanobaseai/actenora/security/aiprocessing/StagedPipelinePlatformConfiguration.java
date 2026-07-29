@@ -164,7 +164,8 @@ public class StagedPipelinePlatformConfiguration {
             ApprovedKnowledgeIndexPort knowledgeIndex,
             com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService,
             PipelineQualityMetricsPort pipelineQualityMetrics,
-            MeetingOccurrenceClockPort meetingOccurrenceClock
+            MeetingOccurrenceClockPort meetingOccurrenceClock,
+            AiPipelineProperties pipelineProperties
     ) {
         return DefaultStageExecutors.createAll(
                 prompts,
@@ -178,7 +179,8 @@ public class StagedPipelinePlatformConfiguration {
                 knowledgeIndex,
                 chunkExtractionService,
                 pipelineQualityMetrics,
-                meetingOccurrenceClock
+                meetingOccurrenceClock,
+                pipelineProperties.finalizationPolicy()
         );
     }
 

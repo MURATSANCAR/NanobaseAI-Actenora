@@ -310,7 +310,8 @@ public class AiProcessingPlatformConfiguration {
             ModelRuntimePort modelRuntime,
             com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService,
             PipelineQualityMetricsPort pipelineQualityMetrics,
-            MeetingQualityProperties meetingQualityProperties
+            MeetingQualityProperties meetingQualityProperties,
+            AiPipelineProperties pipelineProperties
     ) {
         MeetingQualityProperties.install(meetingQualityProperties);
         return new ExtractionPipelineService(
@@ -328,7 +329,8 @@ public class AiProcessingPlatformConfiguration {
                 new com.nanobaseai.actenora.aiprocessing.domain.pipeline.RetryClassifier(),
                 new com.nanobaseai.actenora.aiprocessing.domain.pipeline.PromptInjectionGuard(),
                 chunkExtractionService,
-                pipelineQualityMetrics
+                pipelineQualityMetrics,
+                pipelineProperties.finalizationPolicy()
         );
     }
 
@@ -386,7 +388,8 @@ public class AiProcessingPlatformConfiguration {
                 meetingOccurrenceClock,
                 artifacts.getIfAvailable(),
                 properties.getMaxAttempts(),
-                (int) Math.max(1, properties.getReadTimeout().toSeconds())
+                (int) Math.max(1, properties.getReadTimeout().toSeconds()),
+                properties.getMaxConcurrencyExtraction()
         );
     }
 

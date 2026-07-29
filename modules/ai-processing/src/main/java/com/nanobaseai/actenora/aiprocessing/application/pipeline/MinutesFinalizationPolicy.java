@@ -14,10 +14,10 @@ public record MinutesFinalizationPolicy(
         Mode mode,
         String promptResource,
         String promptVersionId,
-        String promptId,
         String schemaVersion,
         String taskType,
         int maxOutputTokens,
+        int timeoutSeconds,
         FailureMode failureMode
 ) {
 
@@ -46,12 +46,16 @@ public record MinutesFinalizationPolicy(
         if (mode == Mode.EDITORIAL) {
             promptResource = requireText(promptResource, "promptResource");
             promptVersionId = requireText(promptVersionId, "promptVersionId");
-            promptId = requireText(promptId, "promptId");
             schemaVersion = requireText(schemaVersion, "schemaVersion");
             taskType = requireText(taskType, "taskType");
             if (maxOutputTokens <= 0) {
                 throw new IllegalArgumentException("maxOutputTokens must be > 0");
             }
+            if (timeoutSeconds <= 0) {
+                throw new IllegalArgumentException("timeoutSeconds must be > 0");
+            }
+        } else if (timeoutSeconds < 0) {
+            throw new IllegalArgumentException("timeoutSeconds must be >= 0");
         }
     }
 
@@ -66,7 +70,7 @@ public record MinutesFinalizationPolicy(
                 null,
                 null,
                 null,
-                null,
+                0,
                 0,
                 FailureMode.DETERMINISTIC
         );

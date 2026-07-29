@@ -132,6 +132,16 @@ actenora:
     pipeline:
       # staged = stage queues + DAG; legacy = monolithic ExtractionPipelineService
       mode: ${ACTENORA_AI_PIPELINE_MODE:staged}
+      # Runtime-selectable finalization. Editorial preserves validated structured items and
+      # uses one bounded model call for the executive summary only.
+      finalization-mode: ${ACTENORA_AI_FINALIZATION_MODE:editorial}
+      finalization-prompt-resource: ${ACTENORA_AI_FINALIZATION_PROMPT_RESOURCE:/aiprocessing/prompts/editorial-summary.v1.txt}
+      finalization-prompt-version-id: ${ACTENORA_AI_FINALIZATION_PROMPT_VERSION:pv-meeting-editorial-summary-v1}
+      finalization-schema-version: ${ACTENORA_AI_FINALIZATION_SCHEMA:meeting.editorial-summary.v1}
+      finalization-task-type: ${ACTENORA_AI_FINALIZATION_TASK_TYPE:FINAL_NOTE}
+      finalization-max-output-tokens: ${ACTENORA_AI_FINALIZATION_MAX_OUTPUT_TOKENS:768}
+      finalization-timeout-seconds: ${ACTENORA_AI_FINALIZATION_TIMEOUT_SECONDS:1800}
+      finalization-failure-mode: ${ACTENORA_AI_FINALIZATION_FAILURE_MODE:deterministic}
     worker:
       enabled: ${ACTENORA_AI_WORKER_ENABLED:true}
       poll-interval: ${ACTENORA_AI_WORKER_POLL_INTERVAL:PT15S}

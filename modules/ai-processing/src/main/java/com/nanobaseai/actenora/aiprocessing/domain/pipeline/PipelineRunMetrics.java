@@ -21,6 +21,10 @@ public final class PipelineRunMetrics {
     private int partialJsonRecoveries;
     private int invalidJsonRetries;
     private Map<String, Object> actionPostProcessingStats;
+    private final Map<String, Integer> modelCallsByStage = new LinkedHashMap<>();
+    private final Map<String, Long> modelLatencyMsByStage = new LinkedHashMap<>();
+    private String finalizationMode;
+    private boolean finalizationFallbackUsed;
 
     public synchronized void addInputTokens(long tokens) {
         this.inputTokens += Math.max(0, tokens);
@@ -32,6 +36,34 @@ public final class PipelineRunMetrics {
 
     public synchronized void addDurationMs(long ms) {
         this.durationMs += Math.max(0, ms);
+    }
+
+    public synchronized void recordModelUsage(
+            String stage,
+            int calls,
+            long inputTokens,
+            long outputTokens,
+            long latencyMs
+    ) {
+        String key = stage == null || stage.isBlank() ? "UNKNOWN" : stage.trim();
+        int safeCalls = Math.max(0, calls);
+        this.inputTokens += Math.max(0, inputTokens);
+        this.outputTokens += Math.max(0, outputTokens);
+        modelCallsByStage.merge(key, safeCalls, Integer::sum);
+        modelLatencyMsByStage.merge(key, Math.max(0, latencyMs), Long::sum);
+    }
+
+    public synchronized void recordFinalization(
+            String mode,
+            boolean fallbackUsed,
+            int calls,
+            long inputTokens,
+            long outputTokens,
+            long latencyMs
+    ) {
+        this.finalizationMode = mode;
+        this.finalizationFallbackUsed = fallbackUsed;
+        recordModelUsage("FINALIZATION", calls, inputTokens, outputTokens, latencyMs);
     }
 
     public synchronized void incrementChunkCount() {
@@ -112,6 +144,22 @@ public final class PipelineRunMetrics {
         return actionPostProcessingStats == null ? Map.of() : Map.copyOf(actionPostProcessingStats);
     }
 
+    public synchronized Map<String, Integer> modelCallsByStage() {
+        return Map.copyOf(modelCallsByStage);
+    }
+
+    public synchronized Map<String, Long> modelLatencyMsByStage() {
+        return Map.copyOf(modelLatencyMsByStage);
+    }
+
+    public synchronized String finalizationMode() {
+        return finalizationMode;
+    }
+
+    public synchronized boolean finalizationFallbackUsed() {
+        return finalizationFallbackUsed;
+    }
+
     public synchronized PipelineRunMetrics snapshot() {
         PipelineRunMetrics copy = new PipelineRunMetrics();
         copy.inputTokens = inputTokens;
@@ -128,6 +176,10 @@ public final class PipelineRunMetrics {
         copy.actionPostProcessingStats = actionPostProcessingStats == null
                 ? null
                 : new LinkedHashMap<>(actionPostProcessingStats);
+        copy.modelCallsByStage.putAll(modelCallsByStage);
+        copy.modelLatencyMsByStage.putAll(modelLatencyMsByStage);
+        copy.finalizationMode = finalizationMode;
+        copy.finalizationFallbackUsed = finalizationFallbackUsed;
         return copy;
     }
 }
