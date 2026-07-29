@@ -11,8 +11,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -33,6 +35,7 @@ public final class ActionPostProcessingPipeline {
     private final ActionDeduplicator deduplicator;
     private final CommitmentOwnerBinder commitmentOwnerBinder;
     private final ActionExtractionAuditor auditor;
+    private final ActionIdentityNormalizer identityNormalizer = new ActionIdentityNormalizer();
 
     public ActionPostProcessingPipeline() {
         this(
@@ -133,6 +136,10 @@ public final class ActionPostProcessingPipeline {
         }
 
         ActionDeduplicator.Result dedup = deduplicator.deduplicate(dated);
+        List<ActionItemCandidate> dedupedActions = new ArrayList<>();
+        for (ActionItemCandidate action : dedup.actions()) {
+            dedupedActions.add(ensureDueDateFromDueAt(action));
+        }
         for (int i = 0; i < dedup.removed(); i++) {
             stats.incrementDuplicatesRemoved();
         }
@@ -144,11 +151,12 @@ public final class ActionPostProcessingPipeline {
             stats.incrementCommitmentsOwnerBound();
         }
 
-        ActionExtractionAuditor.AuditResult audit = auditor.audit(dedup.actions());
+        ActionExtractionAuditor.AuditResult audit = auditor.audit(dedupedActions);
         flags.addAll(audit.flags());
         stats.setAuditStatus(audit.passed() ? "PASSED" : "FAILED");
+        stats.setActionTrace(buildActionTrace(dedupedActions, actions, ctx));
 
-        stats.setOutputActionCount(dedup.actions().size());
+        stats.setOutputActionCount(dedupedActions.size());
         boolean manual = !audit.passed()
                 || flags.contains(CompoundActionDecomposer.AMBIGUOUS_SPLIT)
                 || flags.contains(ActionDeduplicator.AMBIGUOUS_DEDUP)
@@ -158,7 +166,7 @@ public final class ActionPostProcessingPipeline {
             flags.add("REQUIRES_MANUAL_REVIEW");
         }
         return new Result(
-                dedup.actions(),
+                dedupedActions,
                 commitmentsBound.commitments(),
                 List.copyOf(new LinkedHashSet<>(flags)),
                 stats,
@@ -231,6 +239,88 @@ public final class ActionPostProcessingPipeline {
     }
 
     public record AppliedDraft(FinalNoteDraft draft, ActionPostProcessingStats stats) {
+    }
+
+    private List<Map<String, Object>> buildActionTrace(
+            List<ActionItemCandidate> finalActions,
+            List<ActionItemCandidate> originalActions,
+            Context ctx
+    ) {
+        List<Map<String, Object>> trace = new ArrayList<>();
+        for (int i = 0; i < finalActions.size(); i++) {
+            ActionItemCandidate action = finalActions.get(i);
+            ActionItemCandidate parent = inferCompoundParent(action, originalActions);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("index", i + 1);
+            row.put("owner", action.owner());
+            row.put("textHash", identityNormalizer.textHash(action.text()));
+            row.put("normalizedCoreHash", identityNormalizer.coreHash(action));
+            row.put("normalizedOwner", identityNormalizer.canonicalOwner(action));
+            row.put("dueDate", action.dueDate());
+            row.put("dueAt", action.dueAt());
+            row.put("relativeDate", action.relativeDate());
+            row.put("evidenceSegmentIds", List.copyOf(action.evidenceSegmentIds()));
+            row.put("evidenceSpeaker", firstEvidenceSpeaker(action, ctx.transcriptSegments()));
+            row.put("parentActionId", parent == null ? null : identityNormalizer.textHash(parent.text()));
+            row.put("splitFromCompound", parent != null);
+            row.put("dateResolutionStatus", action.dueAt() != null && !action.dueAt().isBlank()
+                    ? "RESOLVED"
+                    : action.relativeDate() != null && !action.relativeDate().isBlank() ? "UNRESOLVED" : "NONE");
+            row.put("dateResolutionSource", action.dueAt() != null && !action.dueAt().isBlank()
+                    ? "RELATIVE_DATE_EVIDENCE"
+                    : action.dueDate() != null && !action.dueDate().isBlank() ? "MODEL_PROVIDED_UNVERIFIED" : "NONE");
+            trace.add(row);
+        }
+        return trace;
+    }
+
+    private ActionItemCandidate inferCompoundParent(
+            ActionItemCandidate finalAction,
+            List<ActionItemCandidate> originalActions
+    ) {
+        for (ActionItemCandidate original : originalActions) {
+            if (!ActionDeduplicator.looksCompound(original.text())) {
+                continue;
+            }
+            if (!ActionDeduplicator.evidenceOverlap(finalAction.evidenceSegmentIds(), original.evidenceSegmentIds())) {
+                continue;
+            }
+            String finalOwner = identityNormalizer.canonicalOwner(finalAction);
+            String originalText = identityNormalizer.normalizeLoose(original.text());
+            if (!finalOwner.isBlank() && !originalText.contains(finalOwner)) {
+                continue;
+            }
+            String finalCore = identityNormalizer.canonicalCore(finalAction);
+            if (!finalCore.isBlank() && originalText.contains(finalCore.split("\\s+")[0])) {
+                return original;
+            }
+        }
+        return null;
+    }
+
+    private String firstEvidenceSpeaker(ActionItemCandidate action, List<SegmentInput> segments) {
+        Set<String> evidenceIds = new LinkedHashSet<>(action.evidenceSegmentIds());
+        for (SegmentInput segment : segments) {
+            if (evidenceIds.contains(segment.segmentId()) && segment.speakerDisplayName() != null) {
+                return segment.speakerDisplayName();
+            }
+        }
+        return null;
+    }
+
+    private ActionItemCandidate ensureDueDateFromDueAt(ActionItemCandidate action) {
+        if (action.dueDate() != null && !action.dueDate().isBlank()) {
+            return action;
+        }
+        if (action.dueAt() == null || action.dueAt().isBlank()) {
+            return action;
+        }
+        try {
+            String dueDate = OffsetDateTime.parse(action.dueAt()).toLocalDate().toString();
+            return action.withDates(dueDate, action.relativeDate(), action.dueAt());
+        } catch (RuntimeException ex) {
+            return action;
+        }
     }
 
     private ActionItemCandidate resolveDates(

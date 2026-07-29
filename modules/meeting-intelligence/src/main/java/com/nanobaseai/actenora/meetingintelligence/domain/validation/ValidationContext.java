@@ -80,6 +80,17 @@ public final class ValidationContext {
                 .collect(Collectors.joining("\n"));
     }
 
+    public String evidenceCorpus(ValidationCandidate candidate) {
+        if (candidate == null || candidate.evidenceSegmentIds().isEmpty()) {
+            return "";
+        }
+        return candidate.evidenceSegmentIds().stream()
+                .map(segmentsById::get)
+                .filter(Objects::nonNull)
+                .map(ValidationSegment::content)
+                .collect(Collectors.joining("\n"));
+    }
+
     public boolean isKnownParticipantId(String participantId) {
         if (participantId == null || participantId.isBlank()) {
             return false;
@@ -122,8 +133,60 @@ public final class ValidationContext {
         });
     }
 
+    public boolean ownerMatchesEvidenceSpeaker(ValidationCandidate candidate) {
+        if (candidate == null || candidate.ownerDisplayName().isEmpty()) {
+            return false;
+        }
+        String owner = normalize(candidate.ownerDisplayName().orElseThrow());
+        if (owner.isBlank()) {
+            return false;
+        }
+        for (UUID segmentId : candidate.evidenceSegmentIds()) {
+            ValidationSegment segment = segmentsById.get(segmentId);
+            if (segment == null) {
+                continue;
+            }
+            String speaker = normalize(segment.speakerDisplayName());
+            if (!speaker.isBlank() && namesEquivalent(owner, speaker)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase().replaceAll("\\s+", " ");
+        if (value == null) {
+            return "";
+        }
+        return value.trim()
+                .toLowerCase()
+                .replace('ı', 'i')
+                .replace('İ', 'i')
+                .replace('ş', 's')
+                .replace('Ş', 's')
+                .replace('ğ', 'g')
+                .replace('Ğ', 'g')
+                .replace('ç', 'c')
+                .replace('Ç', 'c')
+                .replace('ö', 'o')
+                .replace('Ö', 'o')
+                .replace('ü', 'u')
+                .replace('Ü', 'u')
+                .replaceAll("[^\\p{Alnum}]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private static boolean namesEquivalent(String left, String right) {
+        if (left.equals(right)) {
+            return true;
+        }
+        String leftFirst = firstToken(left);
+        String rightFirst = firstToken(right);
+        if (leftFirst.isBlank() || rightFirst.isBlank()) {
+            return false;
+        }
+        return leftFirst.equals(rightFirst);
     }
 
     private static String firstToken(String normalizedValue) {

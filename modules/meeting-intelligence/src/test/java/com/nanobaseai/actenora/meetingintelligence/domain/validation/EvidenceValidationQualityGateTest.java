@@ -113,7 +113,9 @@ class EvidenceValidationQualityGateTest {
     void resolvedIsoDueDatePassesWhenRelativeDateInTranscript() {
         ValidationCandidate candidate = baseCandidate(segmentId)
                 .dueDateText("2026-07-29")
+                .dueAtText("2026-07-29T16:00:00+03:00")
                 .relativeDateText("bugün 16.00'ya kadar")
+                .dateResolution("RESOLVED", "RELATIVE_DATE_EVIDENCE", "2026-07-29T08:11:26+03:00", "Europe/Istanbul")
                 .build();
 
         ValidationSegment relativeSegment = new ValidationSegment(
@@ -141,6 +143,7 @@ class EvidenceValidationQualityGateTest {
     void resolvedIsoDueDatePassesWhenTurkishCueExistsWithoutRelativeDateText() {
         ValidationCandidate candidate = baseCandidate(segmentId)
                 .dueDateText("2026-07-29")
+                .dateResolution("RESOLVED", "MODEL_PROVIDED_UNVERIFIED", null, null)
                 .build();
 
         ValidationSegment relativeCueSegment = new ValidationSegment(
@@ -164,6 +167,77 @@ class EvidenceValidationQualityGateTest {
         assertTrue(!hasFail(result, ValidationRuleCodes.DUE_DATE_IN_TRANSCRIPT));
     }
 
+    @Test
+    void todayAt1600ResolvesAndPassesQualityGate() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .dueDateText("2026-07-29")
+                .dueAtText("2026-07-29T16:00:00+03:00")
+                .relativeDateText("bugün 16.00'ya kadar")
+                .dateResolution("RESOLVED", "RELATIVE_DATE_EVIDENCE", "2026-07-29T08:11:26+03:00", "Europe/Istanbul")
+                .build();
+        ValidationSegment segment = new ValidationSegment(
+                segmentId, 0, "spk-1", "Ada Lovelace", 0, 10_000,
+                "bugün 16.00'ya kadar düzeltmeyi tamamlayacağım.", true
+        );
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment), List.of(participant()));
+        assertEquals(QualityGateOutcome.PASSED, result.decision().outcome());
+    }
+
+    @Test
+    void tomorrowNoonResolvesAndPassesQualityGate() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .dueDateText("2026-07-30")
+                .dueAtText("2026-07-30T12:00:00+03:00")
+                .relativeDateText("yarın öğlene kadar")
+                .dateResolution("RESOLVED", "RELATIVE_DATE_EVIDENCE", "2026-07-29T08:11:26+03:00", "Europe/Istanbul")
+                .build();
+        ValidationSegment segment = new ValidationSegment(
+                segmentId, 0, "spk-1", "Ada Lovelace", 0, 10_000,
+                "yarın öğlene kadar regresyonu tamamlayacağım.", true
+        );
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment), List.of(participant()));
+        assertEquals(QualityGateOutcome.PASSED, result.decision().outcome());
+    }
+
+    @Test
+    void modelProvidedUngroundedDueDateIsRejected() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .dueDateText("2026-07-29")
+                .dueAtText("2026-07-29T16:00:00+03:00")
+                .dateResolution("RESOLVED", "MODEL_PROVIDED_UNVERIFIED", null, null)
+                .build();
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment()), List.of(participant()));
+        assertTrue(hasFail(result, ValidationRuleCodes.DUE_DATE_IN_TRANSCRIPT));
+    }
+
+    @Test
+    void relativeDateMissingFromEvidenceIsRejected() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .dueDateText("2026-07-29")
+                .dueAtText("2026-07-29T16:00:00+03:00")
+                .relativeDateText("bugün 16.00'ya kadar")
+                .dateResolution("RESOLVED", "RELATIVE_DATE_EVIDENCE", "2026-07-29T08:11:26+03:00", "Europe/Istanbul")
+                .build();
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment()), List.of(participant()));
+        assertTrue(hasFail(result, ValidationRuleCodes.DUE_DATE_IN_TRANSCRIPT));
+    }
+
+    @Test
+    void resolvedDueAtMustMatchResolverOutput() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .dueDateText("2026-07-29")
+                .dueAtText("2026-07-30T16:00:00+03:00")
+                .relativeDateText("bugün 16.00'ya kadar")
+                .dateResolution("RESOLVED", "RELATIVE_DATE_EVIDENCE", "2026-07-29T08:11:26+03:00", "Europe/Istanbul")
+                .build();
+        ValidationSegment segment = new ValidationSegment(
+                segmentId, 0, "spk-1", "Ada Lovelace", 0, 10_000,
+                "bugün 16.00'ya kadar düzeltmeyi tamamlayacağım.", true
+        );
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment), List.of(participant()));
+        assertTrue(hasFail(result, ValidationRuleCodes.DUE_DATE_IN_TRANSCRIPT));
+    }
+
 
     @Test
     void ownerFirstNameMatchesSpeakerFullName() {
@@ -175,6 +249,54 @@ class EvidenceValidationQualityGateTest {
 
         assertEquals(QualityGateOutcome.PASSED, result.decision().outcome());
         assertTrue(!hasFail(result, ValidationRuleCodes.OWNER_IS_PARTICIPANT));
+    }
+
+    @Test
+    void canonicalParticipantOwnerPasses() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .owner("unknown-user", "ADA")
+                .build();
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment()), List.of(participant()));
+        assertEquals(QualityGateOutcome.PASSED, result.decision().outcome());
+    }
+
+    @Test
+    void ownerWithPunctuationPasses() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .owner("unknown-user", "Ada,")
+                .build();
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment()), List.of(participant()));
+        assertEquals(QualityGateOutcome.PASSED, result.decision().outcome());
+    }
+
+    @Test
+    void firstPersonCommitmentOwnerFromEvidenceSpeakerPasses() {
+        ValidationCandidate candidate = ValidationCandidate.builder(
+                        "cand-1",
+                        CandidateKind.COMMITMENT,
+                        "Test planına timeout senaryolarını ekleyeceğim.",
+                        new BigDecimal("0.90")
+                )
+                .evidenceSegmentIds(List.of(segmentId))
+                .owner("unknown-user", "Ada:")
+                .build();
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment()), List.of(participant()));
+        assertEquals(QualityGateOutcome.PASSED, result.decision().outcome());
+    }
+
+    @Test
+    void actionTextFirstTokenIsNotUsedAsOwnerAuthority() {
+        ValidationCandidate candidate = ValidationCandidate.builder(
+                        "cand-1",
+                        CandidateKind.ACTION_ITEM,
+                        "Budget notunu güncelleyecek.",
+                        new BigDecimal("0.90")
+                )
+                .evidenceSegmentIds(List.of(segmentId))
+                .owner("unknown-user", "Budget")
+                .build();
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment()), List.of(participant()));
+        assertTrue(hasFail(result, ValidationRuleCodes.OWNER_IS_PARTICIPANT));
     }
 
     @Test

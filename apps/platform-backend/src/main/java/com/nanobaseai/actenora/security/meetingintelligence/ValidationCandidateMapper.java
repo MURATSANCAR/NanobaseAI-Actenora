@@ -78,39 +78,40 @@ public final class ValidationCandidateMapper {
         int i = 0;
         for (TopicCandidate topic : draft.topics()) {
             candidates.add(build("topic-" + (++i), CandidateKind.TOPIC, topic.text(),
-                    topic.evidenceSegmentIds(), topic.confidence(), null, null, null, false));
+                    topic.evidenceSegmentIds(), topic.confidence(), null, null, null, null, false));
         }
         for (DecisionCandidate decision : draft.decisions()) {
             candidates.add(build("decision-" + (++i), CandidateKind.DECISION, decision.text(),
-                    decision.evidenceSegmentIds(), decision.confidence(), null, null, null, true));
+                    decision.evidenceSegmentIds(), decision.confidence(), null, null, null, null, true));
         }
         for (ActionItemCandidate item : draft.actionItems()) {
             candidates.add(build("action-" + (++i), CandidateKind.ACTION_ITEM, item.text(),
-                    item.evidenceSegmentIds(), item.confidence(), item.owner(), item.dueDate(), item.relativeDate(), false));
+                    item.evidenceSegmentIds(), item.confidence(), item.owner(),
+                    item.dueDate(), item.relativeDate(), item.dueAt(), false));
         }
         for (RiskCandidate risk : draft.risks()) {
             candidates.add(build("risk-" + (++i), CandidateKind.RISK, risk.text(),
-                    risk.evidenceSegmentIds(), risk.confidence(), null, null, null, false));
+                    risk.evidenceSegmentIds(), risk.confidence(), null, null, null, null, false));
         }
         for (OpenQuestionCandidate question : draft.openQuestions()) {
             candidates.add(build("question-" + (++i), CandidateKind.OPEN_QUESTION, question.text(),
-                    question.evidenceSegmentIds(), question.confidence(), null, null, null, false));
+                    question.evidenceSegmentIds(), question.confidence(), null, null, null, null, false));
         }
         for (CommitmentCandidate commitment : draft.commitments()) {
             candidates.add(build("commitment-" + (++i), CandidateKind.COMMITMENT, commitment.text(),
-                    commitment.evidenceSegmentIds(), commitment.confidence(), commitment.owner(), null, null, false));
+                    commitment.evidenceSegmentIds(), commitment.confidence(), commitment.owner(), null, null, null, false));
         }
         for (IssueCandidate issue : draft.issues()) {
             candidates.add(build("issue-" + (++i), CandidateKind.ISSUE, issue.text(),
-                    issue.evidenceSegmentIds(), issue.confidence(), null, null, null, false));
+                    issue.evidenceSegmentIds(), issue.confidence(), null, null, null, null, false));
         }
         for (ProposalCandidate proposal : draft.proposals()) {
             candidates.add(build("proposal-" + (++i), CandidateKind.PROPOSAL, proposal.text(),
-                    proposal.evidenceSegmentIds(), proposal.confidence(), null, null, null, false));
+                    proposal.evidenceSegmentIds(), proposal.confidence(), null, null, null, null, false));
         }
         for (ImportantFactCandidate fact : draft.importantFacts()) {
             candidates.add(build("fact-" + (++i), CandidateKind.IMPORTANT_FACT, fact.text(),
-                    fact.evidenceSegmentIds(), fact.confidence(), null, null, null, false));
+                    fact.evidenceSegmentIds(), fact.confidence(), null, null, null, null, false));
         }
         return List.copyOf(candidates);
     }
@@ -124,6 +125,7 @@ public final class ValidationCandidateMapper {
             String owner,
             String dueDate,
             String relativeDate,
+            String dueAt,
             boolean markedAsDecision
     ) {
         ValidationCandidate.Builder builder = ValidationCandidate.builder(
@@ -139,10 +141,45 @@ public final class ValidationCandidateMapper {
         if (dueDate != null && !dueDate.isBlank()) {
             builder.dueDateText(dueDate.trim());
         }
+        if (dueAt != null && !dueAt.isBlank()) {
+            builder.dueAtText(dueAt.trim());
+        }
         if (relativeDate != null && !relativeDate.isBlank()) {
             builder.relativeDateText(relativeDate.trim());
         }
+        builder.dateResolution(
+                deriveDateResolutionStatus(dueDate, relativeDate, dueAt),
+                deriveDateResolutionSource(dueDate, relativeDate, dueAt),
+                null,
+                dueAt != null && !dueAt.isBlank() ? "Europe/Istanbul" : null
+        );
         return builder.build();
+    }
+
+    private static String deriveDateResolutionStatus(String dueDate, String relativeDate, String dueAt) {
+        if (relativeDate != null && !relativeDate.isBlank() && dueAt != null && !dueAt.isBlank()) {
+            return "RESOLVED";
+        }
+        if (relativeDate != null && !relativeDate.isBlank()) {
+            return "UNRESOLVED";
+        }
+        if (dueDate != null && !dueDate.isBlank()) {
+            return "RESOLVED";
+        }
+        return "NONE";
+    }
+
+    private static String deriveDateResolutionSource(String dueDate, String relativeDate, String dueAt) {
+        if (relativeDate != null && !relativeDate.isBlank() && dueAt != null && !dueAt.isBlank()) {
+            return "RELATIVE_DATE_EVIDENCE";
+        }
+        if (relativeDate != null && !relativeDate.isBlank()) {
+            return "UNRESOLVED";
+        }
+        if (dueDate != null && !dueDate.isBlank()) {
+            return "MODEL_PROVIDED_UNVERIFIED";
+        }
+        return "NONE";
     }
 
     public static UUID toSegmentUuid(String segmentId) {

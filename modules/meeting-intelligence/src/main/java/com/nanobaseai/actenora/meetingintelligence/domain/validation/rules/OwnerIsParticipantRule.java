@@ -36,7 +36,8 @@ public final class OwnerIsParticipantRule implements ValidationRule {
             boolean knownName = candidate.ownerDisplayName()
                     .map(context::isKnownParticipantName)
                     .orElse(false);
-            if (knownId || knownName) {
+            boolean evidenceSpeaker = context.ownerMatchesEvidenceSpeaker(candidate);
+            if (knownId || knownName || evidenceSpeaker) {
                 results.add(pass(candidate, "Owner matches a meeting participant"));
             } else {
                 results.add(fail(candidate, "Owner is not a known meeting participant"));

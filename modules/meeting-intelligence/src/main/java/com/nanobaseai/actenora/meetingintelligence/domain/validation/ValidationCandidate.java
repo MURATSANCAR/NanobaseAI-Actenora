@@ -21,7 +21,12 @@ public final class ValidationCandidate {
     private final String ownerParticipantId;
     private final String ownerDisplayName;
     private final String dueDateText;
+    private final String dueAtText;
     private final String relativeDateText;
+    private final String dateResolutionStatus;
+    private final String dateResolutionSource;
+    private final String dateResolutionReferenceTime;
+    private final String dateResolutionTimezone;
     private final String amountText;
     private final BigDecimal confidence;
     private final boolean markedAsDecision;
@@ -38,7 +43,12 @@ public final class ValidationCandidate {
         this.ownerParticipantId = builder.ownerParticipantId;
         this.ownerDisplayName = builder.ownerDisplayName;
         this.dueDateText = builder.dueDateText;
+        this.dueAtText = builder.dueAtText;
         this.relativeDateText = builder.relativeDateText;
+        this.dateResolutionStatus = builder.dateResolutionStatus;
+        this.dateResolutionSource = builder.dateResolutionSource;
+        this.dateResolutionReferenceTime = builder.dateResolutionReferenceTime;
+        this.dateResolutionTimezone = builder.dateResolutionTimezone;
         this.amountText = builder.amountText;
         this.confidence = Objects.requireNonNull(builder.confidence, "confidence");
         if (confidence.compareTo(BigDecimal.ZERO) < 0 || confidence.compareTo(BigDecimal.ONE) > 0) {
@@ -95,8 +105,28 @@ public final class ValidationCandidate {
         return Optional.ofNullable(dueDateText);
     }
 
+    public Optional<String> dueAtText() {
+        return Optional.ofNullable(dueAtText);
+    }
+
     public Optional<String> relativeDateText() {
         return Optional.ofNullable(relativeDateText);
+    }
+
+    public Optional<String> dateResolutionStatus() {
+        return Optional.ofNullable(dateResolutionStatus);
+    }
+
+    public Optional<String> dateResolutionSource() {
+        return Optional.ofNullable(dateResolutionSource);
+    }
+
+    public Optional<String> dateResolutionReferenceTime() {
+        return Optional.ofNullable(dateResolutionReferenceTime);
+    }
+
+    public Optional<String> dateResolutionTimezone() {
+        return Optional.ofNullable(dateResolutionTimezone);
     }
 
     public Optional<String> amountText() {
@@ -130,7 +160,12 @@ public final class ValidationCandidate {
         private String ownerParticipantId;
         private String ownerDisplayName;
         private String dueDateText;
+        private String dueAtText;
         private String relativeDateText;
+        private String dateResolutionStatus;
+        private String dateResolutionSource;
+        private String dateResolutionReferenceTime;
+        private String dateResolutionTimezone;
         private String amountText;
         private boolean markedAsDecision;
         private String attributedSpeakerId;
@@ -165,8 +200,26 @@ public final class ValidationCandidate {
             return this;
         }
 
+        public Builder dueAtText(String dueAtText) {
+            this.dueAtText = dueAtText;
+            return this;
+        }
+
         public Builder relativeDateText(String relativeDateText) {
             this.relativeDateText = relativeDateText;
+            return this;
+        }
+
+        public Builder dateResolution(
+                String status,
+                String source,
+                String referenceTime,
+                String timezone
+        ) {
+            this.dateResolutionStatus = status;
+            this.dateResolutionSource = source;
+            this.dateResolutionReferenceTime = referenceTime;
+            this.dateResolutionTimezone = timezone;
             return this;
         }
 

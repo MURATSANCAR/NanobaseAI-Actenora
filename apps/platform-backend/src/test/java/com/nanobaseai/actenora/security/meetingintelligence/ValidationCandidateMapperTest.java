@@ -68,7 +68,8 @@ class ValidationCandidateMapperTest {
                         0.9,
                         null,
                         null,
-                        "bugün 16.00'ya kadar"
+                        "bugün 16.00'ya kadar",
+                        "2026-07-29T16:00:00+03:00"
                 )),
                 List.of(),
                 List.of(),
@@ -89,5 +90,8 @@ class ValidationCandidateMapperTest {
         ValidationCandidate action = candidates.getFirst();
         assertEquals(CandidateKind.ACTION_ITEM, action.kind());
         assertEquals("bugün 16.00'ya kadar", action.relativeDateText().orElseThrow());
+        assertEquals("2026-07-29T16:00:00+03:00", action.dueAtText().orElseThrow());
+        assertEquals("RESOLVED", action.dateResolutionStatus().orElseThrow());
+        assertEquals("RELATIVE_DATE_EVIDENCE", action.dateResolutionSource().orElseThrow());
     }
 }

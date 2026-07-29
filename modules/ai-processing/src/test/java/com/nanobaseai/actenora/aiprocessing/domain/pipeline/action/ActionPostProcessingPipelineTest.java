@@ -306,6 +306,85 @@ class ActionPostProcessingPipelineTest {
     }
 
     @Test
+    void liveShapeCompoundChildAndParaphraseAreDeduplicated() {
+        List<ActionItemCandidate> llmOut = List.of(
+                action("Aksiyon kaydı: Selin düzeltmeyi bugün 16.00'ya kadar yapacak; Can correlation id ekleyecek.",
+                        "Selin", List.of("s1")),
+                action("Can, correlation ID eklemesini gerçekleştirecek.", "Can,", List.of("s3")),
+                action("Can başlığı düzeltecek.", "Can", List.of("s2")),
+                action("Burak, Outlook ve Apple Mail regresyon testlerini yarın öğlene kadar tamamlayacak.",
+                        "Burak", List.of("s2"))
+        );
+        var result = pipeline.postProcess(llmOut, List.of(), ctx(segments()));
+        long correlationCount = result.actions().stream()
+                .filter(a -> "can".equalsIgnoreCase(a.owner()))
+                .filter(a -> a.text().toLowerCase().contains("correlation"))
+                .count();
+        assertEquals(1, correlationCount);
+    }
+
+    @Test
+    void paraphraseDedupProducesFourActions() {
+        List<ActionItemCandidate> llmOut = List.of(
+                action("Aksiyon kaydı: Selin düzeltmeyi bugün 16.00'ya kadar yapacak; Can correlation id ekleyecek.",
+                        "Selin", List.of("s1")),
+                action("Can, correlation ID eklemesini gerçekleştirecek.", "Can:", List.of("s3")),
+                action("Can başlığı düzeltecek.", "Can", List.of("s2")),
+                action("Burak, Outlook ve Apple Mail regresyon testlerini yarın öğlene kadar tamamlayacak.",
+                        "Burak", List.of("s2"))
+        );
+        var result = pipeline.postProcess(llmOut, List.of(), ctx(segments()));
+        assertEquals(4, result.actions().size());
+        assertEquals(1, result.stats().duplicatesRemoved());
+    }
+
+    @Test
+    void dedupPreservesDueAtAndEvidence() {
+        List<ActionItemCandidate> llmOut = List.of(
+                new ActionItemCandidate(
+                        "Can correlation id ekleyecek.",
+                        "Can",
+                        null,
+                        List.of("s1"),
+                        0.7,
+                        "PERSON",
+                        null,
+                        null,
+                        null
+                ),
+                new ActionItemCandidate(
+                        "Can, correlation ID eklemesini gerçekleştirecek.",
+                        "Can,",
+                        "2026-07-29",
+                        List.of("s3"),
+                        0.9,
+                        "PERSON",
+                        null,
+                        "bugün 16.00'ya kadar",
+                        "2026-07-29T16:00:00+03:00"
+                )
+        );
+        var result = pipeline.postProcess(llmOut, List.of(), ctx(segments()));
+        assertEquals(1, result.actions().size());
+        ActionItemCandidate survivor = result.actions().getFirst();
+        assertEquals("2026-07-29", survivor.dueDate());
+        assertEquals("2026-07-29T16:00:00+03:00", survivor.dueAt());
+        assertTrue(survivor.evidenceSegmentIds().containsAll(List.of("s1", "s3")));
+    }
+
+    @Test
+    void duplicateRemovalIsReportedInStats() {
+        List<ActionItemCandidate> llmOut = List.of(
+                action("Can correlation id ekleyecek.", "Can", List.of("s1")),
+                action("Can, correlation ID eklemesini gerçekleştirecek.", "Can,", List.of("s3"))
+        );
+        var result = pipeline.postProcess(llmOut, List.of(), ctx(segments()));
+        assertEquals(1, result.stats().duplicatesRemoved());
+        assertEquals(1, result.actions().size());
+        assertFalse(result.stats().actionTrace().isEmpty());
+    }
+
+    @Test
     void auditFailsOnPrefixLeak() {
         var audit = auditor.audit(List.of(action("Aksiyon kaydı: Can işi yapacak.", "Can", List.of("s1"))));
         assertFalse(audit.passed());

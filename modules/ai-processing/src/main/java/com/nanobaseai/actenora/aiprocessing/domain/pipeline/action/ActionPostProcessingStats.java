@@ -24,6 +24,7 @@ public final class ActionPostProcessingStats {
     private int commitmentsOwnerBound;
     private String auditStatus = "PASSED";
     private final List<String> warnings = new ArrayList<>();
+    private List<Map<String, Object>> actionTrace = List.of();
 
     public void setInputActionCount(int inputActionCount) {
         this.inputActionCount = inputActionCount;
@@ -75,6 +76,10 @@ public final class ActionPostProcessingStats {
         }
     }
 
+    public void setActionTrace(List<Map<String, Object>> actionTrace) {
+        this.actionTrace = actionTrace == null ? List.of() : List.copyOf(actionTrace);
+    }
+
     public Map<String, Object> toArtifactMap(String meetingId) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("stage", "ACTION_POST_PROCESSING");
@@ -92,6 +97,7 @@ public final class ActionPostProcessingStats {
         map.put("commitmentsOwnerBound", commitmentsOwnerBound);
         map.put("auditStatus", auditStatus);
         map.put("warnings", List.copyOf(warnings));
+        map.put("actionTrace", actionTrace);
         return map;
     }
 
@@ -137,6 +143,10 @@ public final class ActionPostProcessingStats {
 
     public List<String> warnings() {
         return List.copyOf(warnings);
+    }
+
+    public List<Map<String, Object>> actionTrace() {
+        return actionTrace;
     }
 
     /** True when serialized form has no transcript-like payload keys. */

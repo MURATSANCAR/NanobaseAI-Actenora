@@ -29,10 +29,22 @@ public final class DueDateInTranscriptRule implements ValidationRule {
         List<ValidationRuleResult> results = new ArrayList<>();
         String corpus = context.transcriptCorpus();
         for (ValidationCandidate candidate : context.candidates()) {
+            String evidenceCorpus = context.evidenceCorpus(candidate);
             boolean hasDueDate = candidate.dueDateText().isPresent();
             boolean hasRelativeDateText = candidate.relativeDateText().isPresent();
             if (!hasDueDate && !hasRelativeDateText) {
                 results.add(pass(candidate, "No due date claimed"));
+                continue;
+            }
+
+            if (candidate.dateResolutionSource().map("RELATIVE_DATE_EVIDENCE"::equalsIgnoreCase).orElse(false)
+                    && candidate.dateResolutionStatus().map("RESOLVED"::equalsIgnoreCase).orElse(false)) {
+                if (isGroundedResolvedRelativeDate(candidate, evidenceCorpus, corpus)) {
+                    results.add(pass(candidate, "Resolved relative due date is grounded by evidence"));
+                } else {
+                    String messageNeedle = candidate.dueDateText().orElse(candidate.relativeDateText().orElse(""));
+                    results.add(fail(candidate, "Due date is not supported by transcript text: " + messageNeedle));
+                }
                 continue;
             }
 
@@ -46,10 +58,16 @@ public final class DueDateInTranscriptRule implements ValidationRule {
 
             if (hasRelativeDateText) {
                 String relative = candidate.relativeDateText().orElseThrow();
-                if (corpusContainsTurkishNormalized(corpus, relative)) {
+                if (corpusContainsTurkishNormalized(evidenceCorpus, relative)
+                        || corpusContainsTurkishNormalized(corpus, relative)) {
                     results.add(pass(candidate, "Relative due date appears in transcript"));
                     continue;
                 }
+            }
+
+            if (isGroundedResolvedRelativeDate(candidate, evidenceCorpus, corpus)) {
+                results.add(pass(candidate, "Resolved relative due date is grounded by evidence"));
+                continue;
             }
 
             if (containsRelativeDateCues(candidate.title(), corpus) && (hasRelativeDateText || hasDueDate)) {
@@ -61,6 +79,39 @@ public final class DueDateInTranscriptRule implements ValidationRule {
             results.add(fail(candidate, "Due date is not supported by transcript text: " + messageNeedle));
         }
         return results;
+    }
+
+    private static boolean isGroundedResolvedRelativeDate(
+            ValidationCandidate candidate,
+            String evidenceCorpus,
+            String transcriptCorpus
+    ) {
+        String source = candidate.dateResolutionSource().orElse("");
+        String status = candidate.dateResolutionStatus().orElse("");
+        if (!"RELATIVE_DATE_EVIDENCE".equalsIgnoreCase(source) || !"RESOLVED".equalsIgnoreCase(status)) {
+            return false;
+        }
+        if (candidate.relativeDateText().isEmpty() || candidate.dueDateText().isEmpty()
+                || candidate.evidenceSegmentIds().isEmpty()) {
+            return false;
+        }
+        String relative = candidate.relativeDateText().orElseThrow();
+        boolean supportedByEvidence = corpusContainsTurkishNormalized(evidenceCorpus, relative)
+                || corpusContainsTurkishNormalized(transcriptCorpus, relative)
+                || containsRelativeDateCues(candidate.title(), evidenceCorpus)
+                || containsRelativeDateCues(candidate.title(), transcriptCorpus);
+        if (!supportedByEvidence) {
+            return false;
+        }
+        if (candidate.dueAtText().isPresent()) {
+            try {
+                java.time.OffsetDateTime dueAt = java.time.OffsetDateTime.parse(candidate.dueAtText().orElseThrow());
+                return candidate.dueDateText().orElseThrow().equals(dueAt.toLocalDate().toString());
+            } catch (RuntimeException ex) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean corpusContainsTurkishNormalized(String corpus, String needle) {

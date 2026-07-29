@@ -4,13 +4,10 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Deterministic, source-aware action deduplication / subsumption.
@@ -20,7 +17,7 @@ public final class ActionDeduplicator {
 
     public static final String AMBIGUOUS_DEDUP = "AMBIGUOUS_ACTION_DEDUP";
 
-    private static final Pattern PUNCT = Pattern.compile("[\\p{Punct}]+");
+    private final ActionIdentityNormalizer identity = new ActionIdentityNormalizer();
 
     public record Result(List<ActionItemCandidate> actions, int removed, List<String> warnings) {
     }
@@ -70,13 +67,13 @@ public final class ActionDeduplicator {
         AMBIGUOUS
     }
 
-    private static Match classify(ActionItemCandidate a, ActionItemCandidate b) {
-        if (!sameOwner(a.owner(), b.owner())) {
+    private Match classify(ActionItemCandidate a, ActionItemCandidate b) {
+        if (!sameOwner(a, b)) {
             return Match.NONE;
         }
         boolean evidenceOverlap = evidenceOverlap(a.evidenceSegmentIds(), b.evidenceSegmentIds());
-        String coreA = actionCore(a.text());
-        String coreB = actionCore(b.text());
+        String coreA = identity.canonicalCore(a);
+        String coreB = identity.canonicalCore(b);
         if (coreA.isBlank() || coreB.isBlank()) {
             return Match.NONE;
         }
@@ -93,7 +90,7 @@ public final class ActionDeduplicator {
         return Match.NONE;
     }
 
-    private static ActionItemCandidate merge(ActionItemCandidate a, ActionItemCandidate b) {
+    private ActionItemCandidate merge(ActionItemCandidate a, ActionItemCandidate b) {
         ActionItemCandidate primary = prefer(a, b);
         ActionItemCandidate secondary = primary == a ? b : a;
         String text = preferText(primary, secondary);
@@ -103,6 +100,13 @@ public final class ActionDeduplicator {
         String dueDate = firstNonBlank(primary.dueDate(), secondary.dueDate());
         String relative = firstNonBlank(primary.relativeDate(), secondary.relativeDate());
         String dueAt = firstNonBlank(primary.dueAt(), secondary.dueAt());
+        if ((dueDate == null || dueDate.isBlank()) && dueAt != null && !dueAt.isBlank()) {
+            try {
+                dueDate = java.time.OffsetDateTime.parse(dueAt).toLocalDate().toString();
+            } catch (RuntimeException ignored) {
+                // Keep original dueDate null when dueAt is malformed.
+            }
+        }
         Set<String> evidence = new HashSet<>(primary.evidenceSegmentIds());
         evidence.addAll(secondary.evidenceSegmentIds());
         double confidence = Math.max(primary.confidence(), secondary.confidence());
@@ -119,7 +123,7 @@ public final class ActionDeduplicator {
         );
     }
 
-    private static ActionItemCandidate prefer(ActionItemCandidate a, ActionItemCandidate b) {
+    private ActionItemCandidate prefer(ActionItemCandidate a, ActionItemCandidate b) {
         int scoreA = score(a);
         int scoreB = score(b);
         if (scoreA != scoreB) {
@@ -129,7 +133,7 @@ public final class ActionDeduplicator {
         return a.text().length() <= b.text().length() ? a : b;
     }
 
-    private static int score(ActionItemCandidate a) {
+    private int score(ActionItemCandidate a) {
         int s = 0;
         if (!looksCompound(a.text())) {
             s += 8;
@@ -151,7 +155,7 @@ public final class ActionDeduplicator {
         return s;
     }
 
-    private static String preferText(ActionItemCandidate primary, ActionItemCandidate secondary) {
+    private String preferText(ActionItemCandidate primary, ActionItemCandidate secondary) {
         if (looksCompound(primary.text()) && !looksCompound(secondary.text())) {
             return secondary.text();
         }
@@ -165,18 +169,20 @@ public final class ActionDeduplicator {
                 && !new ActionDiscoursePrefixNormalizer().startsWithDiscoursePrefix(s)) {
             return s;
         }
-        return actionCore(p).length() >= actionCore(s).length() ? p : s;
+        return identity.canonicalCore(p).length() >= identity.canonicalCore(s).length() ? p : s;
     }
 
     static boolean looksCompound(String text) {
         return text != null && text.contains(";");
     }
 
-    static boolean sameOwner(String a, String b) {
-        if (a == null || a.isBlank() || b == null || b.isBlank()) {
-            return a == null || a.isBlank() ? b == null || b.isBlank() : false;
+    boolean sameOwner(ActionItemCandidate a, ActionItemCandidate b) {
+        String left = identity.canonicalOwner(a);
+        String right = identity.canonicalOwner(b);
+        if (left.isBlank() || right.isBlank()) {
+            return false;
         }
-        return a.strip().equalsIgnoreCase(b.strip());
+        return left.equals(right);
     }
 
     static boolean evidenceOverlap(List<String> a, List<String> b) {
@@ -192,22 +198,8 @@ public final class ActionDeduplicator {
         return false;
     }
 
-    static String actionCore(String text) {
-        if (text == null) {
-            return "";
-        }
-        String t = new ActionDiscoursePrefixNormalizer().strip(text).toLowerCase(Locale.ROOT);
-        t = t.replace("correlation id", "correlationid")
-                .replace("correlation ıd", "correlationid")
-                .replace("id eklemesini", "correlationid")
-                .replace("id ekleyecek", "correlationid")
-                .replace("correlationid", "correlationid");
-        t = PUNCT.matcher(t).replaceAll(" ");
-        // Drop finite verbs / gerunds for core comparison.
-        t = t.replaceAll("\\b(gerceklestirecek|gerçekleştirecek|yapacak|ekleyecek|tamamlayacak|eklemesini)\\b", " ");
-        // Drop a leading person-name token only when more content remains.
-        t = t.replaceAll("(?iu)^(?!correlationid\\b)(\\p{L}{2,20})\\s+(?=\\p{L})", "");
-        return t.replaceAll("\\s+", " ").strip();
+    String actionCore(String text) {
+        return identity.canonicalCore(text);
     }
 
     private static boolean containsCore(String a, String b) {
