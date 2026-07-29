@@ -44,7 +44,6 @@ class ValidationCandidateMapperTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(),
                 List.of("seg-1"),
                 0.9,
                 false
