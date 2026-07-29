@@ -301,7 +301,7 @@ class ExtractionPipelineServiceTest {
             @Override
             public ModelDescriptor descriptor() {
                 // Tiny window forces many chunks from padded segments.
-                return new ModelDescriptor("local.test", "tiny", "tiny@1", 9_000, 512);
+                return new ModelDescriptor("local.test", "tiny", "tiny@1", 12_000, 512);
             }
 
             @Override
