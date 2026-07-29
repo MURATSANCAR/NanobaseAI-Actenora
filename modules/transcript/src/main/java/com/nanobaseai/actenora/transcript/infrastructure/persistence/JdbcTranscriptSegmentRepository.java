@@ -75,6 +75,35 @@ public final class JdbcTranscriptSegmentRepository implements TranscriptSegmentR
     }
 
     @Override
+    public List<TranscriptSegment> searchByTranscript(
+            TenantId tenantId,
+            TranscriptId transcriptId,
+            String query,
+            int limit
+    ) {
+        String sql = """
+                SELECT id, tenant_id, transcript_id, sequence, speaker_id, speaker_display_name,
+                       start_offset_ms, end_offset_ms, content
+                FROM transcript.transcript_segments
+                WHERE tenant_id = ?
+                  AND transcript_id = ?
+                  AND content_tsv @@ websearch_to_tsquery('simple', ?)
+                ORDER BY ts_rank_cd(content_tsv, websearch_to_tsquery('simple', ?)) DESC,
+                         sequence ASC
+                LIMIT ?
+                """;
+        return jdbc.query(
+                sql,
+                ROW_MAPPER,
+                tenantId.value(),
+                transcriptId.value(),
+                query,
+                query,
+                limit
+        );
+    }
+
+    @Override
     public void deleteByTranscript(TenantId tenantId, TranscriptId transcriptId) {
         jdbc.update(
                 "DELETE FROM transcript.transcript_segments WHERE tenant_id = ? AND transcript_id = ?",

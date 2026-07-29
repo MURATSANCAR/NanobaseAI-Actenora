@@ -6,7 +6,9 @@ import com.nanobaseai.actenora.transcript.application.port.out.TranscriptSegment
 import com.nanobaseai.actenora.transcript.domain.TranscriptSegment;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -25,11 +27,37 @@ public final class InMemoryTranscriptSegmentRepository implements TranscriptSegm
     }
 
     @Override
+    public List<TranscriptSegment> searchByTranscript(
+            TenantId tenantId,
+            TranscriptId transcriptId,
+            String query,
+            int limit
+    ) {
+        List<String> terms = List.of(query.toLowerCase(Locale.ROOT).split("\\s+")).stream()
+                .filter(term -> !term.isBlank())
+                .distinct()
+                .toList();
+        return byTranscript.getOrDefault(key(tenantId, transcriptId), List.of()).stream()
+                .map(segment -> Map.entry(segment, relevance(segment, terms)))
+                .filter(entry -> entry.getValue() > 0)
+                .sorted(Map.Entry.<TranscriptSegment, Integer>comparingByValue(Comparator.reverseOrder())
+                        .thenComparing(entry -> entry.getKey().sequence()))
+                .limit(limit)
+                .map(Map.Entry::getKey)
+                .toList();
+    }
+
+    @Override
     public void deleteByTranscript(TenantId tenantId, TranscriptId transcriptId) {
         byTranscript.remove(key(tenantId, transcriptId));
     }
 
     private static String key(TenantId tenantId, TranscriptId transcriptId) {
         return tenantId.value() + "|" + transcriptId.value();
+    }
+
+    private static int relevance(TranscriptSegment segment, List<String> terms) {
+        String content = segment.content().toLowerCase(Locale.ROOT);
+        return (int) terms.stream().filter(content::contains).count();
     }
 }

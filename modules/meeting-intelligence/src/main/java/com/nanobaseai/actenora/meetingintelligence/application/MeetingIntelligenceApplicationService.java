@@ -126,6 +126,13 @@ public final class MeetingIntelligenceApplicationService {
                 .toList();
     }
 
+    public List<ActionItemResponse> listActionItems() {
+        TenantId tenantId = tenantContext.requireTenantId();
+        return actionItemRepository.findByTenantId(tenantId).stream()
+                .map(IntelligenceMapper::toActionItemResponse)
+                .toList();
+    }
+
     public MeetingNoteDetailResponse updateNote(UUID noteId, MeetingNoteUpdateRequest request) {
         TenantId tenantId = tenantContext.requireTenantId();
         UUID actor = tenantContext.requireActorUserId();

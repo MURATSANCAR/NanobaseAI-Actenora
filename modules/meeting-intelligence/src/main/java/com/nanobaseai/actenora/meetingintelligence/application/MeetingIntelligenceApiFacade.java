@@ -50,6 +50,11 @@ public final class MeetingIntelligenceApiFacade implements MeetingIntelligenceAp
     }
 
     @Override
+    public List<ActionItemResponse> listActionItems() {
+        return service.listActionItems();
+    }
+
+    @Override
     public MeetingNoteDetailResponse updateNote(UUID noteId, MeetingNoteUpdateRequest request) {
         return service.updateNote(noteId, request);
     }

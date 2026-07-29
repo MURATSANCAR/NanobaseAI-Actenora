@@ -109,6 +109,28 @@ public class TranscriptApi {
                 .toList();
     }
 
+    public List<TranscriptSegmentView> searchSegmentsForMeeting(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            String query,
+            int limit
+    ) {
+        requireRepositories();
+        if (query == null || query.isBlank()) {
+            throw new IllegalArgumentException("query must not be blank");
+        }
+        if (limit < 1 || limit > 100) {
+            throw new IllegalArgumentException("limit must be between 1 and 100");
+        }
+        Transcript transcript = transcriptRepository.findLatestByMeetingOccurrenceId(tenantId, meetingOccurrenceId)
+                .orElseThrow(() -> new TranscriptDomainException(
+                        "TRANSCRIPT_NOT_FOUND",
+                        "No transcript found for meeting occurrence"));
+        return segmentRepository.searchByTranscript(tenantId, transcript.id(), query.trim(), limit).stream()
+                .map(TranscriptSegmentView::from)
+                .toList();
+    }
+
     public boolean hasTranscriptForMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
         requireRepositories();
         return transcriptRepository.findLatestByMeetingOccurrenceId(tenantId, meetingOccurrenceId).isPresent();
