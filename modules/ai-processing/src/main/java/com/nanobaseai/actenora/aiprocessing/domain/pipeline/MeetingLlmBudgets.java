@@ -35,8 +35,12 @@ public final class MeetingLlmBudgets {
     /** Safety margin so prompt+chunk+output never saturates KV cache. */
     public static final int SAFETY_MARGIN_TOKENS = 1_000;
 
-    /** CHUNK_EXTRACTION generation cap — 1200 truncates dense TR JSON on 35B (finish_reason=length). */
-    public static final int EXTRACTION_MAX_TOKENS = 4_096;
+    /**
+     * CHUNK_EXTRACTION generation cap. Dense, evidence-rich 15-minute transcripts can exceed
+     * 4k JSON tokens; 6k still keeps prompt + target chunk + output inside the 16k operational
+     * context while avoiding partial-JSON recovery.
+     */
+    public static final int EXTRACTION_MAX_TOKENS = 6_144;
 
     /** MEETING_TRIAGE generation cap (tiny JSON classifier). */
     public static final int TRIAGE_MAX_TOKENS = 512;
