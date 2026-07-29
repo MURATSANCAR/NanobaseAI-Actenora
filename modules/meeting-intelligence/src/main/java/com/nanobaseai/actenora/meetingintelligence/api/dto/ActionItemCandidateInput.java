@@ -11,7 +11,8 @@ public record ActionItemCandidateInput(
         double confidence,
         String ownerType,
         String priority,
-        String relativeDate
+        String relativeDate,
+        String dueAt
 ) {
     public ActionItemCandidateInput(
             String text,
@@ -20,7 +21,20 @@ public record ActionItemCandidateInput(
             List<String> evidenceSegmentIds,
             double confidence
     ) {
-        this(text, owner, dueDate, evidenceSegmentIds, confidence, null, null, null);
+        this(text, owner, dueDate, evidenceSegmentIds, confidence, null, null, null, null);
+    }
+
+    public ActionItemCandidateInput(
+            String text,
+            String owner,
+            String dueDate,
+            List<String> evidenceSegmentIds,
+            double confidence,
+            String ownerType,
+            String priority,
+            String relativeDate
+    ) {
+        this(text, owner, dueDate, evidenceSegmentIds, confidence, ownerType, priority, relativeDate, null);
     }
 
     public ActionItemCandidateInput {

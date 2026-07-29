@@ -73,7 +73,8 @@ public final class FinalNoteDraftMapper {
                 clamp(candidate.confidence()),
                 candidate.ownerType(),
                 candidate.priority(),
-                candidate.relativeDate()
+                candidate.relativeDate(),
+                candidate.dueAt()
         );
     }
 

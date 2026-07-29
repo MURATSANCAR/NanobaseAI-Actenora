@@ -78,6 +78,7 @@ public final class CrossTypeConsistencyAuditor {
             flags.add(AUDIT_STATUS_PREFIX + "NEEDS_REVIEW");
         } else {
             flags.add(AUDIT_PASSED);
+            flags.add("DECISION_CONSISTENCY_AUDIT_PASSED");
             flags.add(AUDIT_STATUS_PREFIX + "PASSED");
         }
 

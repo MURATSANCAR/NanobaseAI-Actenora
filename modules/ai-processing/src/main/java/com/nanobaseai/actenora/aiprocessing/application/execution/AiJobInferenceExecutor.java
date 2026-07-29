@@ -18,6 +18,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.JobScheduler;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProviderLocator;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.MeetingOccurrenceClockPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ServedModelResolverPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
@@ -72,6 +73,7 @@ public final class AiJobInferenceExecutor {
     private final PipelineQualityMetricsPort qualityMetrics;
     private final PriorMeetingContextPort priorMeetingContext;
     private final StagedPipelineRunner stagedPipelineRunner;
+    private final MeetingOccurrenceClockPort meetingClock;
     private final int maxAttempts;
     private final int maxTimeoutSeconds;
 
@@ -263,6 +265,40 @@ public final class AiJobInferenceExecutor {
             int maxAttempts,
             int maxTimeoutSeconds
     ) {
+        this(
+                jobService,
+                providers,
+                inputResolver,
+                servedModels,
+                extractionPipeline,
+                segmentSource,
+                routingCoordinator,
+                noteHandoff,
+                qualityMetrics,
+                priorMeetingContext,
+                stagedPipelineRunner,
+                MeetingOccurrenceClockPort.unsupported(),
+                maxAttempts,
+                maxTimeoutSeconds
+        );
+    }
+
+    public AiJobInferenceExecutor(
+            AiJobService jobService,
+            LocalModelProviderLocator providers,
+            InferenceInputResolverPort inputResolver,
+            ServedModelResolverPort servedModels,
+            ExtractionPipelineService extractionPipeline,
+            TranscriptSegmentSourcePort segmentSource,
+            JobRoutingCoordinatorPort routingCoordinator,
+            MeetingNoteHandoffPort noteHandoff,
+            PipelineQualityMetricsPort qualityMetrics,
+            PriorMeetingContextPort priorMeetingContext,
+            StagedPipelineRunner stagedPipelineRunner,
+            MeetingOccurrenceClockPort meetingClock,
+            int maxAttempts,
+            int maxTimeoutSeconds
+    ) {
         this.jobService = Objects.requireNonNull(jobService, "jobService");
         this.providers = Objects.requireNonNull(providers, "providers");
         this.inputResolver = Objects.requireNonNull(inputResolver, "inputResolver");
@@ -276,6 +312,9 @@ public final class AiJobInferenceExecutor {
                 ? PriorMeetingContextPort.noop()
                 : priorMeetingContext;
         this.stagedPipelineRunner = stagedPipelineRunner;
+        this.meetingClock = meetingClock == null
+                ? MeetingOccurrenceClockPort.unsupported()
+                : meetingClock;
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
@@ -427,6 +466,11 @@ public final class AiJobInferenceExecutor {
                 .load(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
                 .orElse(PriorMeetingContext.EMPTY);
 
+        String meetingStartIso = meetingClock
+                .scheduledStart(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
+                .map(java.time.OffsetDateTime::toString)
+                .orElse(null);
+
         PipelineRunResult result = extractionPipeline.run(new PipelineRunRequest(
                 TenantId.of(job.tenantId()),
                 job.transcriptId(),
@@ -436,7 +480,8 @@ public final class AiJobInferenceExecutor {
                 job.language(),
                 timeoutSecondsFor(job, now),
                 PipelineRunRequest.DEFAULT_PARALLEL_CHUNK_LIMIT,
-                prior
+                prior,
+                meetingStartIso
         ));
 
         if (result.success()) {

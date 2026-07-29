@@ -1,0 +1,197 @@
+                    
+                    
+┌──────────────────┐
+│ 20 Code Findings │
+└──────────────────┘
+                                   
+    .github/workflows/cd-images.yml
+    ❯❱ yaml.github-actions.security.github-actions-mutable-action-tag.github-
+       actions-mutable-action-tag                                            
+          ❰❰ Blocking ❱❱
+          GitHub Actions step uses a mutable tag or branch reference. 
+          Tags and branch names can be silently repointed by the      
+          action owner, enabling supply-chain attacks — as seen in the
+          trivy-action and kics-github-action compromises. Pin the    
+          reference to a full 40-character commit SHA instead, e.g.   
+          `uses:                                                      
+          actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608`. 
+          Details: https://sg.run/2LgAL                               
+                                                                      
+           21┆ - uses: actions/checkout@v4
+            ⋮┆----------------------------------------
+           24┆ uses: docker/setup-buildx-action@v3
+            ⋮┆----------------------------------------
+           38┆ uses: docker/build-push-action@v6
+            ⋮┆----------------------------------------
+           51┆ uses: aquasecurity/trivy-action@0.28.0
+            ⋮┆----------------------------------------
+           72┆ uses: actions/upload-artifact@v4
+            ⋮┆----------------------------------------
+           81┆ uses: docker/login-action@v3
+            ⋮┆----------------------------------------
+           89┆ uses: docker/build-push-action@v6
+                            
+    .github/workflows/ci.yml
+    ❯❱ yaml.github-actions.security.github-actions-mutable-action-tag.github-
+       actions-mutable-action-tag                                            
+          ❰❰ Blocking ❱❱
+          GitHub Actions step uses a mutable tag or branch reference. 
+          Tags and branch names can be silently repointed by the      
+          action owner, enabling supply-chain attacks — as seen in the
+          trivy-action and kics-github-action compromises. Pin the    
+          reference to a full 40-character commit SHA instead, e.g.   
+          `uses:                                                      
+          actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608`. 
+          Details: https://sg.run/2LgAL                               
+                                                                      
+           12┆ - uses: actions/checkout@v4
+            ⋮┆----------------------------------------
+           35┆ uses: actions/upload-artifact@v4
+            ⋮┆----------------------------------------
+           46┆ - uses: actions/checkout@v4
+            ⋮┆----------------------------------------
+           47┆ - uses: actions/setup-java@v4
+          
+    .npmrc
+    ❯❱ package_managers.npm.npm-missing-minimum-release-age.npm-missing-
+       minimum-release-age                                              
+          ❰❰ Blocking ❱❱
+          This .npmrc does not set a minimum release age or sets it   
+          too low. Newly published packages can be malicious or       
+          unstable. Add `min-release-age = 7` to wait 7 days before   
+          resolving newly published package versions. Added in: v11.10
+          Reference: https://github.blog/changelog/2026-02-18-npm-    
+          bulk-trusted-publishing-config-and-script-security-now-     
+          generally-available/                                        
+          Details: https://sg.run/GRo1z                               
+                                                                      
+            1┆ engine-strict=true
+            2┆ auto-install-peers=true
+                                                                                
+    modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoft
+  connection/infrastructure/auth/ClientAssertionJwtFactory.java                 
+    ❯❱ java.lang.security.audit.crypto.use-of-sha1.use-of-sha1
+          ❰❰ Blocking ❱❱
+          Detected SHA1 hash algorithm which is considered insecure.
+          SHA1 is not collision resistant and is therefore not      
+          suitable as a cryptographic signature. Instead, use PBKDF2
+          for password hashing or SHA256 or SHA512 for other hash   
+          function applications.                                    
+          Details: https://sg.run/bXNp                              
+                                                                    
+           53┆ MessageDigest md =                 
+               MessageDigest.getInstance("SHA-1");
+                       
+    pnpm-workspace.yaml
+    ❯❱ package_managers.pnpm.pnpm-block-exotic-sub-dependencies.pnpm-block-
+       exotic-sub-dependencies                                             
+          ❰❰ Blocking ❱❱
+          Missing or incorrect blockExoticSubdeps. Set              
+          `blockExoticSubdeps: true` to transitive dependencies from
+          being installed from untrusted sources. Added in: v10.26.0
+          Reference: https://pnpm.io/settings#blockexoticsubdeps    
+          Details: https://sg.run/RrWRv                             
+                                                                    
+            1┆ packages:
+   
+    ❯❱ package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-
+       release-age                                                         
+          ❰❰ Blocking ❱❱
+          This pnpm workspace configuration does not set a minimum  
+          release age. Newly published packages can be malicious or 
+          unstable. Add `minimumReleaseAge: 10080` (minutes) to wait
+          at least seven days before installing newly published     
+          package versions. Added in: v10.16.0 Reference:           
+          https://pnpm.io/settings#minimumreleaseage                
+          Details: https://sg.run/Aj0o0                             
+                                                                    
+            1┆ packages:
+   
+    ❯❱ package_managers.pnpm.pnpm-trust-policy.pnpm-trust-policy
+          ❰❰ Blocking ❱❱
+          Missing or incorrect trustPolicy. Set `trustPolicy: no-     
+          downgrade` to prevent malicious package updates from        
+          downgrading security settings. Added in: v10.21.0 Reference:
+          https://pnpm.io/settings#trustpolicy                        
+          Details: https://sg.run/B2Kz7                               
+                                                                      
+            1┆ packages:
+                  
+    pyproject.toml
+    ❯❱ package_managers.uv.uv-missing-dependency-cooldown.uv-missing-
+       dependency-cooldown                                           
+          ❰❰ Blocking ❱❱
+          This pyproject.toml configures uv but does not set a       
+          dependency cooldown. Newly published packages can be       
+          malicious or unstable. Add `exclude-newer = "7 days"` under
+          `[tool.uv]` to wait 7 days before resolving newly published
+          package versions. Added in: 0.9.17 Reference:              
+          https://docs.astral.sh/uv/concepts/resolution/#dependency- 
+          cooldowns                                                  
+          Details: https://sg.run/WeY0Z                              
+                                                                     
+           15┆ [tool.uv]
+           16┆ package = false
+           17┆
+                                                             
+    scripts/server/nginx/actenora-microsoft-api.location.conf
+    ❯❱ generic.nginx.security.request-host-used.request-host-used
+          ❰❰ Blocking ❱❱
+          '$http_host' and '$host' variables may contain a malicious  
+          value from attacker controlled 'Host' request header. Use an
+          explicitly configured host value or a allow list for        
+          validation.                                                 
+          Details: https://sg.run/4x3Z                                
+                                                                      
+            6┆ proxy_set_header Host $host;
+                                                          
+    scripts/server/nginx/actenora-portal-api.location.conf
+    ❯❱ generic.nginx.security.request-host-used.request-host-used
+          ❰❰ Blocking ❱❱
+          '$http_host' and '$host' variables may contain a malicious  
+          value from attacker controlled 'Host' request header. Use an
+          explicitly configured host value or a allow list for        
+          validation.                                                 
+          Details: https://sg.run/4x3Z                                
+                                                                      
+            6┆ proxy_set_header Host $host;
+                                                          
+    scripts/server/nginx/actenora-portal-spa.location.conf
+    ❯❱ generic.nginx.security.insecure-redirect.insecure-redirect
+          ❰❰ Blocking ❱❱
+          Detected an insecure redirect in this nginx configuration.
+          If no scheme is specified, nginx will forward the request 
+          with the incoming scheme. This could result in unencrypted
+          communications. To fix this, include the 'https' scheme.  
+          Details: https://sg.run/8y14                              
+                                                                    
+            9┆ rewrite ^/actenora/(.*)$ /easymeeting/$1 permanent;
+
+
+=== semgrep summary ===
+findings: 20
+  WARNING: 15
+  MEDIUM: 5
+scanner-errors: 8
+  [WARNING] .github/workflows/cd-images.yml:21  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/cd-images.yml:24  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/cd-images.yml:38  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/cd-images.yml:51  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/cd-images.yml:72  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/cd-images.yml:81  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/cd-images.yml:89  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/ci.yml:12  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/ci.yml:35  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/ci.yml:46  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] .github/workflows/ci.yml:47  yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag — GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently repointed by the actio
+  [WARNING] modules/microsoft-connection/src/main/java/com/nanobaseai/actenora/microsoftconnection/infrastructure/auth/ClientAssertionJwtFactory.java:53  java.lang.security.audit.crypto.use-of-sha1.use-of-sha1 — Detected SHA1 hash algorithm which is considered insecure. SHA1 is not collision resistant and is therefore not suitable
+  [WARNING] scripts/server/nginx/actenora-microsoft-api.location.conf:6  generic.nginx.security.request-host-used.request-host-used — '$http_host' and '$host' variables may contain a malicious value from attacker controlled 'Host' request header. Use an 
+  [WARNING] scripts/server/nginx/actenora-portal-api.location.conf:6  generic.nginx.security.request-host-used.request-host-used — '$http_host' and '$host' variables may contain a malicious value from attacker controlled 'Host' request header. Use an 
+  [WARNING] scripts/server/nginx/actenora-portal-spa.location.conf:9  generic.nginx.security.insecure-redirect.insecure-redirect — Detected an insecure redirect in this nginx configuration. If no scheme is specified, nginx will forward the request wit
+  [MEDIUM] .npmrc:1  package_managers.npm.npm-missing-minimum-release-age.npm-missing-minimum-release-age — This .npmrc does not set a minimum release age or sets it too low. Newly published packages can be malicious or unstable
+  [MEDIUM] pnpm-workspace.yaml:1  package_managers.pnpm.pnpm-block-exotic-sub-dependencies.pnpm-block-exotic-sub-dependencies — Missing or incorrect blockExoticSubdeps. Set `blockExoticSubdeps: true` to transitive dependencies from being installed 
+  [MEDIUM] pnpm-workspace.yaml:1  package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-release-age — This pnpm workspace configuration does not set a minimum release age. Newly published packages can be malicious or unsta
+  [MEDIUM] pnpm-workspace.yaml:1  package_managers.pnpm.pnpm-trust-policy.pnpm-trust-policy — Missing or incorrect trustPolicy. Set `trustPolicy: no-downgrade` to prevent malicious package updates from downgrading 
+  [MEDIUM] pyproject.toml:15  package_managers.uv.uv-missing-dependency-cooldown.uv-missing-dependency-cooldown — This pyproject.toml configures uv but does not set a dependency cooldown. Newly published packages can be malicious or u
+EXIT:0
+semgrep-scan:ok

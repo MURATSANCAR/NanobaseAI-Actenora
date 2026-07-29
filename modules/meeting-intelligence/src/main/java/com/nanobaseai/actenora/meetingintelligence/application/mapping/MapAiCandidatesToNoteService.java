@@ -153,10 +153,14 @@ public final class MapAiCandidatesToNoteService {
             boolean missing = candidate.evidenceSegmentIds().isEmpty();
             anyMissingEvidence |= missing;
             LocalDate due = parseDueDate(candidate.dueDate());
+            Instant dueAt = parseDueAt(candidate.dueAt());
+            if (due == null && dueAt != null) {
+                due = dueAt.atZone(java.time.ZoneId.of("Europe/Istanbul")).toLocalDate();
+            }
             ActionItem item = ActionItem.createFromMapping(
                     tenantId, note.id(), version.id(), candidate.text(), candidate.owner(), due,
                     missing, candidate.confidence(),
-                    candidate.ownerType(), candidate.priority(), candidate.relativeDate(), now
+                    candidate.ownerType(), candidate.priority(), candidate.relativeDate(), dueAt, now
             );
             actionItemRepository.save(item);
             linkEvidence(tenantId, note.id(), version.id(), EvidenceSubjectType.ACTION_ITEM, item.id(),
@@ -330,6 +334,21 @@ public final class MapAiCandidatesToNoteService {
         } catch (RuntimeException ex) {
             // Relative phrases ("gelecek hafta cuma") stay in text; do not fail the mapping.
             return null;
+        }
+    }
+
+    private static Instant parseDueAt(String dueAt) {
+        if (dueAt == null || dueAt.isBlank()) {
+            return null;
+        }
+        try {
+            return java.time.OffsetDateTime.parse(dueAt.trim()).toInstant();
+        } catch (RuntimeException ex) {
+            try {
+                return Instant.parse(dueAt.trim());
+            } catch (RuntimeException ignored) {
+                return null;
+            }
         }
     }
 

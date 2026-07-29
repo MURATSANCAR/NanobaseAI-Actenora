@@ -17,7 +17,8 @@ public record PipelineRunRequest(
         String language,
         int timeoutSeconds,
         int parallelChunkLimit,
-        PriorMeetingContext priorMeetingContext
+        PriorMeetingContext priorMeetingContext,
+        String meetingStartedAtIso
 ) {
     public static final int DEFAULT_PARALLEL_CHUNK_LIMIT = 2;
 
@@ -37,7 +38,8 @@ public record PipelineRunRequest(
                 "tr",
                 0,
                 DEFAULT_PARALLEL_CHUNK_LIMIT,
-                PriorMeetingContext.EMPTY
+                PriorMeetingContext.EMPTY,
+                null
         );
     }
 
@@ -58,7 +60,8 @@ public record PipelineRunRequest(
                 language,
                 0,
                 DEFAULT_PARALLEL_CHUNK_LIMIT,
-                PriorMeetingContext.EMPTY
+                PriorMeetingContext.EMPTY,
+                null
         );
     }
 
@@ -80,7 +83,8 @@ public record PipelineRunRequest(
                 language,
                 timeoutSeconds,
                 DEFAULT_PARALLEL_CHUNK_LIMIT,
-                PriorMeetingContext.EMPTY
+                PriorMeetingContext.EMPTY,
+                null
         );
     }
 
@@ -103,7 +107,33 @@ public record PipelineRunRequest(
                 language,
                 timeoutSeconds,
                 parallelChunkLimit,
-                PriorMeetingContext.EMPTY
+                PriorMeetingContext.EMPTY,
+                null
+        );
+    }
+
+    public PipelineRunRequest(
+            TenantId tenantId,
+            UUID transcriptId,
+            UUID meetingOccurrenceId,
+            String promptId,
+            List<SegmentInput> segments,
+            String language,
+            int timeoutSeconds,
+            int parallelChunkLimit,
+            PriorMeetingContext priorMeetingContext
+    ) {
+        this(
+                tenantId,
+                transcriptId,
+                meetingOccurrenceId,
+                promptId,
+                segments,
+                language,
+                timeoutSeconds,
+                parallelChunkLimit,
+                priorMeetingContext,
+                null
         );
     }
 
@@ -121,5 +151,20 @@ public record PipelineRunRequest(
             throw new IllegalArgumentException("parallelChunkLimit must be >= 1");
         }
         priorMeetingContext = priorMeetingContext == null ? PriorMeetingContext.EMPTY : priorMeetingContext;
+    }
+
+    public PipelineRunRequest withMeetingStartedAtIso(String iso) {
+        return new PipelineRunRequest(
+                tenantId,
+                transcriptId,
+                meetingOccurrenceId,
+                promptId,
+                segments,
+                language,
+                timeoutSeconds,
+                parallelChunkLimit,
+                priorMeetingContext,
+                iso
+        );
     }
 }

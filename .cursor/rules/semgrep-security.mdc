@@ -1,0 +1,18 @@
+---
+description: Run Semgrep SAST when doing security review or shipping security-sensitive changes
+alwaysApply: false
+---
+
+# Semgrep security scanning
+
+When the user asks for a security scan, SAST, Semgrep, or code security review of this repo:
+
+1. Ensure Semgrep is available (`semgrep` on PATH, or `uv tool install semgrep`).
+2. Run from repo root: `make semgrep` or `./scripts/scan-semgrep`.
+3. Read findings from `artifacts/security/semgrep-scan.txt` and `artifacts/security/semgrep-scan.json`.
+4. Summarize ERROR/WARNING findings by severity with `file:line`, rule id, and a short fix hint.
+5. Do not invent demo/fixture data while remediating findings (see `no-mock-demo-datasets`).
+
+Optional Cursor IDE extension: install **Semgrep** from the marketplace for inline findings while editing.
+
+Strict mode (fail on any finding): `SEMGREP_STRICT=1 make semgrep`.

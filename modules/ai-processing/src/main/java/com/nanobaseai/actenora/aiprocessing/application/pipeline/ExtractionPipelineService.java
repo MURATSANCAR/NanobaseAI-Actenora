@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
@@ -85,6 +87,8 @@ public final class ExtractionPipelineService {
     private final EvidenceReferenceScrubber evidenceScrubber;
     private final PartialExtractionJsonRecovery partialJsonRecovery;
     private final PipelineQualityMetricsPort qualityMetrics;
+    /** Meeting start ISO for prompt {{meetingDate}}; set per {@link #run}. */
+    private volatile String meetingDateForPrompt = "";
 
     public ExtractionPipelineService(
             PromptRegistryPort promptRegistry,
@@ -191,6 +195,7 @@ public final class ExtractionPipelineService {
         this.evidenceScrubber = new EvidenceReferenceScrubber(EvidenceNearMissConfig.load());
         this.partialJsonRecovery = new PartialExtractionJsonRecovery();
         this.qualityMetrics = qualityMetrics == null ? PipelineQualityMetricsPort.noop() : qualityMetrics;
+        this.meetingDateForPrompt = "";
     }
 
     public static ExtractionPipelineService create(
@@ -237,6 +242,7 @@ public final class ExtractionPipelineService {
             }
 
             List<SegmentInput> normalized = normalizer.normalize(request.segments());
+            this.meetingDateForPrompt = request.meetingStartedAtIso() == null ? "" : request.meetingStartedAtIso();
             ChunkingConfig chunkingConfig = ChunkingConfig.productionDefaults(descriptor.contextWindowTokens())
                     .withMaxOutput(MeetingLlmBudgets.EXTRACTION_MAX_TOKENS);
             contextWindowGuard.assertTranscriptFitsBudget(normalized, chunkingConfig);
@@ -263,6 +269,14 @@ public final class ExtractionPipelineService {
             merged = ProposalCuePostProcessor.productionDefaults().process(merged, normalized);
             merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(merged);
             merged = new CrossTypeConsistencyAuditor().auditBundle(merged);
+            ActionPostProcessingPipeline.Context actionCtx = new ActionPostProcessingPipeline.Context(
+                    normalized,
+                    ActionPostProcessingPipeline.participantsFromSegments(normalized),
+                    ActionPostProcessingPipeline.parseMeetingStart(request.meetingStartedAtIso(), ActionPostProcessingPipeline.DEFAULT_ZONE),
+                    ActionPostProcessingPipeline.DEFAULT_ZONE,
+                    request.meetingOccurrenceId() == null ? null : request.meetingOccurrenceId().toString()
+            );
+            merged = ActionPostProcessingPipeline.productionDefaults().applyToBundle(merged, actionCtx);
             Set<String> allowed = normalized.stream()
                     .map(SegmentInput::segmentId)
                     .collect(Collectors.toCollection(HashSet::new));
@@ -280,6 +294,7 @@ public final class ExtractionPipelineService {
                     );
             note = new CrossTypeConsistencyAuditor().audit(note);
             note = new ActionContextualEnricher().enrich(note, normalized);
+            note = ActionPostProcessingPipeline.productionDefaults().applyToDraft(note, actionCtx);
             note = FinalNoteConfidencePolicy.productionDefaults().apply(note);
             metrics.addDurationMs((System.nanoTime() - pipelineStarted) / 1_000_000L);
             return PipelineRunResult.succeeded(promptVersionId, modelVersion, note, metrics);
@@ -634,7 +649,14 @@ public final class ExtractionPipelineService {
             int maxOutputTokens
     ) {
         List<String> evidenceIds = chunk.segmentIds();
-        String userPrompt = renderPrompt(prompt.template(), chunk, evidenceIds, meetingTitle, language);
+        String userPrompt = renderPrompt(
+                prompt.template(),
+                chunk,
+                evidenceIds,
+                meetingTitle,
+                language,
+                meetingDateForPrompt
+        );
         String systemPrompt = ExtractionPromptRules.systemRulesFor(language);
 
         contextWindowGuard.assertFits(
@@ -719,9 +741,20 @@ public final class ExtractionPipelineService {
             String meetingTitle,
             String language
     ) {
+        return renderPrompt(template, chunk, evidenceIds, meetingTitle, language, "");
+    }
+
+    private static String renderPrompt(
+            String template,
+            TranscriptChunk chunk,
+            List<String> evidenceIds,
+            String meetingTitle,
+            String language,
+            String meetingDate
+    ) {
         return ExtractionPromptRules.applyLanguage(template, language)
                 .replace("{{meetingTitle}}", meetingTitle == null ? "" : meetingTitle)
-                .replace("{{meetingDate}}", "")
+                .replace("{{meetingDate}}", meetingDate == null ? "" : meetingDate)
                 .replace("{{participants}}", "")
                 .replace("{{evidenceSegmentIds}}", String.join(",", evidenceIds))
                 .replace("{{chunk}}", formatChunk(chunk));

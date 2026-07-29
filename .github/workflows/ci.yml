@@ -21,6 +21,13 @@ jobs:
         run: ./scripts/scan-secrets
       - name: Dependency vulnerability scan
         run: ./scripts/scan-dependencies
+      - name: Install Semgrep
+        run: |
+          pip install --user "semgrep==1.172.0"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          semgrep --version
+      - name: Semgrep SAST
+        run: ./scripts/scan-semgrep
       - name: Lint + test
         run: ./scripts/ci-test
       - name: Upload timings & SBOM & security

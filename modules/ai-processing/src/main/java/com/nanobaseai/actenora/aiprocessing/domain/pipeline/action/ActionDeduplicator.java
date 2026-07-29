@@ -81,7 +81,7 @@ public final class ActionDeduplicator {
             return Match.NONE;
         }
         boolean coreEqual = coreA.equals(coreB);
-        boolean coreSimilar = coreEqual || tokenJaccard(coreA, coreB) >= 0.55d
+        boolean coreSimilar = coreEqual || tokenJaccard(coreA, coreB) >= 0.50d
                 || containsCore(coreA, coreB) || containsCore(coreB, coreA);
         boolean compoundChild = looksCompound(a.text()) != looksCompound(b.text());
         if (coreSimilar && (evidenceOverlap || coreEqual || compoundChild)) {
@@ -200,10 +200,13 @@ public final class ActionDeduplicator {
         t = t.replace("correlation id", "correlationid")
                 .replace("correlation ıd", "correlationid")
                 .replace("id eklemesini", "correlationid")
-                .replace("id ekleyecek", "correlationid");
+                .replace("id ekleyecek", "correlationid")
+                .replace("correlationid", "correlationid");
         t = PUNCT.matcher(t).replaceAll(" ");
-        // Drop owner-like leading token when followed by common verbs later — keep tokens.
-        t = t.replaceAll("\\b(gerceklestirecek|gerçekleştirecek|yapacak|ekleyecek|tamamlayacak)\\b", " ");
+        // Drop finite verbs / gerunds for core comparison.
+        t = t.replaceAll("\\b(gerceklestirecek|gerçekleştirecek|yapacak|ekleyecek|tamamlayacak|eklemesini)\\b", " ");
+        // Drop a leading person-name token only when more content remains.
+        t = t.replaceAll("(?iu)^(?!correlationid\\b)(\\p{L}{2,20})\\s+(?=\\p{L})", "");
         return t.replaceAll("\\s+", " ").strip();
     }
 

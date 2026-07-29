@@ -1,4 +1,4 @@
-.PHONY: bootstrap build test lint run stop sbom ci-build ci-test verify verify-faz27 faz28 secret-scan dep-scan deploy-portal deploy-portal-full deploy-backend help
+.PHONY: bootstrap build test lint run stop sbom ci-build ci-test verify verify-faz27 faz28 secret-scan dep-scan semgrep deploy-portal deploy-portal-full deploy-backend help
 
 bootstrap:
 	./scripts/bootstrap
@@ -26,6 +26,9 @@ secret-scan:
 
 dep-scan:
 	./scripts/scan-dependencies
+
+semgrep:
+	./scripts/scan-semgrep
 
 ci-build:
 	./scripts/ci-build
@@ -55,6 +58,7 @@ help:
 	@echo "  make faz28          - FAZ-28 load/resilience/failover scenarios"
 	@echo "  make secret-scan    - secret leak scan"
 	@echo "  make dep-scan       - dependency vulnerability scan"
+	@echo "  make semgrep        - Semgrep SAST security scan"
 	@echo "  make sbom           - generate CycloneDX SBOMs"
 	@echo "  make ci-build       - CI bootstrap+build+sbom"
 	@echo "  make ci-test        - CI lint+test"

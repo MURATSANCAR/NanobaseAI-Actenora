@@ -30,6 +30,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.LocalDeploymentCata
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProviderLocator;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.MeetingOccurrenceClockPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelCatalogPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ModelRouter;
@@ -366,7 +367,8 @@ public class AiProcessingPlatformConfiguration {
             PipelineQualityMetricsPort pipelineQualityMetrics,
             PriorMeetingContextPort priorMeetingContext,
             ObjectProvider<com.nanobaseai.actenora.aiprocessing.application.pipeline.staged.StagedPipelineRunner> stagedRunner,
-            AiPipelineProperties pipelineProperties
+            AiPipelineProperties pipelineProperties,
+            MeetingOccurrenceClockPort meetingOccurrenceClock
     ) {
         return new AiJobInferenceExecutor(
                 aiJobService,
@@ -380,9 +382,22 @@ public class AiProcessingPlatformConfiguration {
                 pipelineQualityMetrics,
                 priorMeetingContext,
                 pipelineProperties.isStaged() ? stagedRunner.getIfAvailable() : null,
+                meetingOccurrenceClock,
                 properties.getMaxAttempts(),
                 (int) Math.max(1, properties.getReadTimeout().toSeconds())
         );
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(MeetingOccurrenceClockPort.class)
+    MeetingOccurrenceClockPort meetingOccurrenceClockPort(
+            ObjectProvider<com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository> meetings
+    ) {
+        com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository repo = meetings.getIfAvailable();
+        if (repo == null) {
+            return MeetingOccurrenceClockPort.unsupported();
+        }
+        return new com.nanobaseai.actenora.security.meeting.MeetingOccurrenceClockAdapter(repo);
     }
 
     @Bean

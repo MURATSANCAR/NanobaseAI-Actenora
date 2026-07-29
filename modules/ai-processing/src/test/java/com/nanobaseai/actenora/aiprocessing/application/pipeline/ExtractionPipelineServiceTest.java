@@ -255,7 +255,7 @@ class ExtractionPipelineServiceTest {
                 segment("seg-1", 0, "Alice", "We decided to ship Friday.")
         )));
 
-        assertTrue(result.success(), () -> result.failureCategory() + " / " + result.failureMessage());
+        assertTrue(result.success(), () -> String.valueOf(result.failureCategory()) + " / " + result.failureMessage());
         assertTrue(result.metrics().partialJsonRecoveries() >= 1);
         assertFalse(result.finalNote().decisions().isEmpty());
     }

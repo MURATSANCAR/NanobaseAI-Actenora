@@ -1,0 +1,35 @@
+# Build / deps / local tooling
+.git/
+.tools/
+.venv/
+.uv/
+node_modules/
+**/node_modules/
+**/target/
+**/dist/
+**/build/
+**/out/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.turbo/
+**/.pnpm-store/
+
+# Generated / local artifacts
+artifacts/
+tmp/
+data/
+coverage/
+htmlcov/
+sbom/
+*.min.js
+*.min.css
+pnpm-lock.yaml
+uv.lock
+package-lock.json
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.log

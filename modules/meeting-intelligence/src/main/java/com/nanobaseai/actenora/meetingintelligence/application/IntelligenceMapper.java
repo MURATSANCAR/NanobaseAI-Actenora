@@ -117,6 +117,7 @@ final class IntelligenceMapper {
                 item.ownerType(),
                 item.priority(),
                 item.relativeDate(),
+                item.dueAt(),
                 item.version(),
                 item.updatedAt()
         );

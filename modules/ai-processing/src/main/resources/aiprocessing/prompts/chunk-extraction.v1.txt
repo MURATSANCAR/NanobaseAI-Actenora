@@ -17,6 +17,12 @@ taahhütler, issues, riskler (+likelihood/mitigation), açık sorular, proposals
 Durum güncellemesi / tek konuşmacılı brifing olsa bile: kim neyi ne zamana bitirecek → commitments + actionItems;
 katılım yokluğu, iletilmeyen takvim, belirsiz teslim → risks ve/veya openQuestions.
 dueDate yalnızca konuşmada geçen tarih ifadesini aynen yaz (ISO uydurma); relativeDate kullanabilirsin.
+dueAt alanını doldurma (takvim çözümlemesi backend'de yapılır).
+Bir cümlede birden fazla owner+iş varsa her birini ayrı actionItems kaydı olarak döndür; tek satırda birleştirme.
+"Aksiyon kaydı:", "Aksiyon:", "Görev:" gibi söylem etiketlerini action text'e yazma.
+Tarih ifadesini yalnızca ilgili owner clause'una bağla (Selin'in tarihi Can'a taşınmasın).
+"Yapacağım/ekleyeceğim/göndereceğim" açık self-commitment ise commitments.owner = konuşmacı olabilir;
+yalnızca konuşmacı olduğu için otomatik owner atama.
 KARAR DEĞİL / DOLGU: "mevcut kararı değiştirmiyoruz", "yeni karar yok", "sadece bağlam paylaşımı",
 ekran/mikrofon/UI operasyon, "bu noktayı açalım", not alma / kapanış meta cümleleri —
 bunları decisions, importantFacts, openQuestions, topics, commitments, actions veya proposals
@@ -32,7 +38,7 @@ Aşağıdaki JSON şemasında yanıt ver (yalnızca JSON):
 {
   "topics": [{"candidateId":null,"text":"","summary":null,"evidenceSegmentIds":[],"confidence":0.0}],
   "decisions": [{"candidateId":null,"text":"","rationale":null,"status":"DECIDED","evidenceSegmentIds":[],"confidence":0.0}],
-  "actionItems": [{"candidateId":null,"text":"","owner":null,"ownerType":null,"dueDate":null,"relativeDate":null,"priority":null,"evidenceSegmentIds":[],"confidence":0.0}],
+  "actionItems": [{"candidateId":null,"text":"","owner":null,"ownerType":null,"dueDate":null,"relativeDate":null,"dueAt":null,"priority":null,"evidenceSegmentIds":[],"confidence":0.0}],
   "risks": [{"candidateId":null,"text":"","likelihood":null,"mitigation":null,"evidenceSegmentIds":[],"confidence":0.0}],
   "openQuestions": [{"candidateId":null,"text":"","evidenceSegmentIds":[],"confidence":0.0}],
   "commitments": [{"candidateId":null,"text":"","owner":null,"evidenceSegmentIds":[],"confidence":0.0}],

@@ -20,6 +20,7 @@ public record ActionItemResponse(
         String ownerType,
         String priority,
         String relativeDate,
+        Instant dueAt,
         long version,
         Instant updatedAt
 ) {

@@ -26,6 +26,7 @@ public final class ActionItem {
     private final String ownerType;
     private final String priority;
     private final String relativeDate;
+    private final Instant dueAt;
     private final Instant createdAt;
     private Instant updatedAt;
     private long version;
@@ -45,6 +46,7 @@ public final class ActionItem {
             String ownerType,
             String priority,
             String relativeDate,
+            Instant dueAt,
             Instant createdAt,
             Instant updatedAt,
             long version
@@ -63,6 +65,7 @@ public final class ActionItem {
         this.ownerType = blankToNull(ownerType);
         this.priority = blankToNull(priority);
         this.relativeDate = blankToNull(relativeDate);
+        this.dueAt = dueAt;
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
         this.version = version;
@@ -81,7 +84,7 @@ public final class ActionItem {
     ) {
         return createFromMapping(
                 tenantId, noteId, noteVersionId, text, owner, dueDate,
-                requiresManualReview, aiConfidence, null, null, null, now
+                requiresManualReview, aiConfidence, null, null, null, null, now
         );
     }
 
@@ -99,6 +102,27 @@ public final class ActionItem {
             String relativeDate,
             Instant now
     ) {
+        return createFromMapping(
+                tenantId, noteId, noteVersionId, text, owner, dueDate,
+                requiresManualReview, aiConfidence, ownerType, priority, relativeDate, null, now
+        );
+    }
+
+    public static ActionItem createFromMapping(
+            TenantId tenantId,
+            UUID noteId,
+            UUID noteVersionId,
+            String text,
+            String owner,
+            LocalDate dueDate,
+            boolean requiresManualReview,
+            Double aiConfidence,
+            String ownerType,
+            String priority,
+            String relativeDate,
+            Instant dueAt,
+            Instant now
+    ) {
         return new ActionItem(
                 UUID.randomUUID(),
                 tenantId,
@@ -114,6 +138,7 @@ public final class ActionItem {
                 ownerType,
                 priority,
                 relativeDate,
+                dueAt,
                 now,
                 now,
                 0L
@@ -139,10 +164,37 @@ public final class ActionItem {
             Instant updatedAt,
             long version
     ) {
+        return rehydrate(
+                id, tenantId, noteId, noteVersionId, text, owner, dueDate, status,
+                requiresManualReview, aiConfidence, humanApprovalStatus,
+                ownerType, priority, relativeDate, null, createdAt, updatedAt, version
+        );
+    }
+
+    public static ActionItem rehydrate(
+            UUID id,
+            TenantId tenantId,
+            UUID noteId,
+            UUID noteVersionId,
+            String text,
+            String owner,
+            LocalDate dueDate,
+            ActionItemStatus status,
+            boolean requiresManualReview,
+            Double aiConfidence,
+            HumanApprovalStatus humanApprovalStatus,
+            String ownerType,
+            String priority,
+            String relativeDate,
+            Instant dueAt,
+            Instant createdAt,
+            Instant updatedAt,
+            long version
+    ) {
         return new ActionItem(
                 id, tenantId, noteId, noteVersionId, text, owner, dueDate, status,
                 requiresManualReview, aiConfidence, humanApprovalStatus,
-                ownerType, priority, relativeDate, createdAt, updatedAt, version
+                ownerType, priority, relativeDate, dueAt, createdAt, updatedAt, version
         );
     }
 
@@ -218,6 +270,7 @@ public final class ActionItem {
     public String ownerType() { return ownerType; }
     public String priority() { return priority; }
     public String relativeDate() { return relativeDate; }
+    public Instant dueAt() { return dueAt; }
     public Instant createdAt() { return createdAt; }
     public Instant updatedAt() { return updatedAt; }
     public long version() { return version; }

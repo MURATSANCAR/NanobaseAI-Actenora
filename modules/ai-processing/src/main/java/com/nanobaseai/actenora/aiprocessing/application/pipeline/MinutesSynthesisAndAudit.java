@@ -248,7 +248,7 @@ public final class MinutesSynthesisAndAudit {
             return new FinalNoteDraft(
                     summary,
                     preferNonEmpty(bundle.decisions(), fallback.decisions()),
-                    preferNonEmpty(bundle.actionItems(), fallback.actionItems()),
+                    preferActionsPreserveDates(bundle.actionItems(), fallback.actionItems()),
                     preferNonEmpty(bundle.risks(), fallback.risks()),
                     preferNonEmpty(bundle.openQuestions(), fallback.openQuestions()),
                     preferNonEmpty(bundle.commitments(), fallback.commitments()),
@@ -445,6 +445,79 @@ public final class MinutesSynthesisAndAudit {
             return primary;
         }
         return fallback == null ? List.of() : fallback;
+    }
+
+    /**
+     * Prefer synthesis actions when present, but restore relativeDate/dueAt/dueDate from
+     * deterministic candidates when the model drops structured date fields.
+     */
+    private static List<ActionItemCandidate> preferActionsPreserveDates(
+            List<ActionItemCandidate> primary,
+            List<ActionItemCandidate> fallback
+    ) {
+        if (primary == null || primary.isEmpty()) {
+            return fallback == null ? List.of() : fallback;
+        }
+        if (fallback == null || fallback.isEmpty()) {
+            return primary;
+        }
+        List<ActionItemCandidate> out = new ArrayList<>();
+        for (ActionItemCandidate item : primary) {
+            ActionItemCandidate donor = findDateDonor(item, fallback);
+            if (donor == null) {
+                out.add(item);
+                continue;
+            }
+            String relative = blankToNull(item.relativeDate()) != null ? item.relativeDate() : donor.relativeDate();
+            String dueAt = blankToNull(item.dueAt()) != null ? item.dueAt() : donor.dueAt();
+            String dueDate = blankToNull(item.dueDate()) != null ? item.dueDate() : donor.dueDate();
+            String owner = blankToNull(item.owner()) != null ? item.owner() : donor.owner();
+            out.add(new ActionItemCandidate(
+                    item.text(),
+                    owner,
+                    dueDate,
+                    item.evidenceSegmentIds(),
+                    item.confidence(),
+                    blankToNull(item.ownerType()) != null ? item.ownerType() : donor.ownerType(),
+                    blankToNull(item.priority()) != null ? item.priority() : donor.priority(),
+                    relative,
+                    dueAt
+            ));
+        }
+        return out;
+    }
+
+    private static ActionItemCandidate findDateDonor(
+            ActionItemCandidate item,
+            List<ActionItemCandidate> fallback
+    ) {
+        String owner = item.owner() == null ? "" : item.owner().toLowerCase(Locale.ROOT);
+        String core = item.text() == null ? "" : item.text().toLowerCase(Locale.ROOT);
+        ActionItemCandidate best = null;
+        for (ActionItemCandidate f : fallback) {
+            String fo = f.owner() == null ? "" : f.owner().toLowerCase(Locale.ROOT);
+            if (!owner.isBlank() && !fo.equals(owner)) {
+                continue;
+            }
+            if (blankToNull(f.relativeDate()) == null && blankToNull(f.dueAt()) == null && blankToNull(f.dueDate()) == null) {
+                continue;
+            }
+            String fc = f.text() == null ? "" : f.text().toLowerCase(Locale.ROOT);
+            if (core.contains(fc) || fc.contains(core) || (!owner.isBlank() && fo.equals(owner))) {
+                best = f;
+                if (!owner.isBlank() && fo.equals(owner)) {
+                    return f;
+                }
+            }
+        }
+        return best;
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value;
     }
 
     private ObjectNode toCandidateNode(ExtractionBundle bundle) {

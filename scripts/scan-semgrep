@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Semgrep SAST security scan (Java / Python / TypeScript / JavaScript).
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+ensure_path_tools
+
+REPORT_DIR="${REPO_ROOT}/artifacts/security"
+mkdir -p "${REPORT_DIR}"
+REPORT_TXT="${REPORT_DIR}/semgrep-scan.txt"
+REPORT_JSON="${REPORT_DIR}/semgrep-scan.json"
+REPORT_SARIF="${REPORT_DIR}/semgrep-scan.sarif"
+
+: >"${REPORT_TXT}"
+log "Semgrep SAST scan → ${REPORT_DIR}"
+
+if ! command -v semgrep >/dev/null 2>&1; then
+  log "semgrep not on PATH — installing via uv tool"
+  if command -v uv >/dev/null 2>&1; then
+    uv tool install semgrep
+    export PATH="${HOME}/.local/bin:${PATH}"
+  else
+    die "semgrep not found and uv unavailable; install: uv tool install semgrep"
+  fi
+fi
+
+SEMGREP_BIN="$(command -v semgrep)"
+log "Using ${SEMGREP_BIN} ($(semgrep --version 2>/dev/null | head -1))"
+
+# Report all severities. Fail on ERROR by default; SEMGREP_STRICT=1 fails on any finding.
+CONFIGS=(
+  --config=p/security-audit
+  --config=p/owasp-top-ten
+  --config=p/java
+  --config=p/python
+  --config=p/typescript
+  --config=p/javascript
+  --config=p/secrets
+)
+
+set +e
+(
+  cd "${REPO_ROOT}"
+  semgrep scan \
+    "${CONFIGS[@]}" \
+    --metrics=off \
+    --quiet \
+    --text \
+    --json-output="${REPORT_JSON}" \
+    --sarif-output="${REPORT_SARIF}" \
+    .
+) 2>&1 | tee -a "${REPORT_TXT}"
+SCAN_RC=${PIPESTATUS[0]}
+set -e
+
+FAIL=0
+# Summarize JSON findings for the text report and decide exit status
+if [[ -f "${REPORT_JSON}" ]]; then
+  EVAL="$(
+    python3 - "${REPORT_JSON}" "${SEMGREP_STRICT:-0}" <<'PY'
+import json, sys
+from collections import Counter
+from pathlib import Path
+
+path = Path(sys.argv[1])
+strict = sys.argv[2] == "1"
+data = json.loads(path.read_text())
+results = data.get("results") or []
+errors = data.get("errors") or []
+by_sev = Counter((r.get("extra") or {}).get("severity", "UNKNOWN").upper() for r in results)
+print()
+print("=== semgrep summary ===")
+print(f"findings: {len(results)}")
+for sev in ("ERROR", "WARNING", "MEDIUM", "INFO", "UNKNOWN"):
+    if by_sev.get(sev):
+        print(f"  {sev}: {by_sev[sev]}")
+if errors:
+    print(f"scanner-errors: {len(errors)}")
+for r in sorted(
+    results,
+    key=lambda x: (
+        {"ERROR": 0, "WARNING": 1, "INFO": 2}.get((x.get("extra") or {}).get("severity", "").upper(), 9),
+        x.get("path", ""),
+        x.get("start", {}).get("line", 0),
+    ),
+)[:80]:
+    sev = (r.get("extra") or {}).get("severity", "?")
+    msg = ((r.get("extra") or {}).get("message") or r.get("check_id") or "").split("\n")[0][:120]
+    print(f"  [{sev}] {r.get('path')}:{r.get('start', {}).get('line')}  {r.get('check_id')} — {msg}")
+if len(results) > 80:
+    print(f"  … {len(results) - 80} more (see semgrep-scan.json)")
+
+error_n = by_sev.get("ERROR", 0)
+if strict and results:
+    print("EXIT:1")
+elif error_n:
+    print("EXIT:1")
+else:
+    print("EXIT:0")
+PY
+  )"
+  echo "${EVAL}" >>"${REPORT_TXT}"
+  if echo "${EVAL}" | grep -q '^EXIT:1$'; then
+    FAIL=1
+  fi
+fi
+
+if [[ "${SCAN_RC}" -ne 0 && "${SCAN_RC}" -ne 1 ]]; then
+  # 1 can mean findings depending on flags; other non-zero is scanner failure
+  echo "semgrep-scan:fail:scanner-exit-${SCAN_RC}" >>"${REPORT_TXT}"
+  log "Semgrep scanner failed (exit ${SCAN_RC}) — see ${REPORT_TXT}"
+  exit "${SCAN_RC}"
+fi
+
+if [[ "${FAIL}" -ne 0 ]]; then
+  echo "semgrep-scan:fail" >>"${REPORT_TXT}"
+  log "Semgrep found blocking issues — see ${REPORT_TXT}"
+  exit 1
+fi
+
+echo "semgrep-scan:ok" >>"${REPORT_TXT}"
+log "Semgrep scan completed — ${REPORT_TXT}"

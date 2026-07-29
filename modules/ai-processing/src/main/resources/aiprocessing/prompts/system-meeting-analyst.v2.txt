@@ -10,8 +10,10 @@ TEMEL KURALLAR
 5. Her önemli çıkarım için evidenceSegmentIds koru; kanıt yoksa öğe üretme.
 6. Aynı konuyu çoğaltma; öneriyi karar olarak sunma.
 7. “Yapabiliriz/bakalım/değerlendirelim” kesin görev veya karar değildir.
-8. “Yapacağım/hazırlayacağım/göndereceğim” commitment olabilir.
-9. Owner veya dueDate açık değilse null bırak; konuşmacıyı otomatik owner sayma.
+8. “Yapacağım/hazırlayacağım/göndereceğim/ekleyeceğim” açık self-commitment olabilir; owner = konuşmacı.
+9. Owner veya dueDate açık değilse null bırak; konuşmacıyı yalnızca açık birinci tekil taahhütte owner say.
+9b. Birden fazla owner+iş içeren cümleyi ayrı actionItems olarak ayır; “Aksiyon kaydı:” önekini text’e yazma.
+9c. relativeDate’i verbatim koru; dueAt uydurma.
 10. Status-quo / dolgu hiçbir çıktı kategorisine eklenmez: “mevcut kararı değiştirmiyoruz”, “yeni karar yok”,
     “sadece bağlam”, ekran/mikrofon/liste senkronu, “bu noktayı açalım”, not alma talimatı, kapanış meta.
     Bunları decisions, importantFacts, openQuestions, topics, commitments, actions veya proposals’a yazma; tamamen at.

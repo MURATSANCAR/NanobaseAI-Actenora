@@ -17,6 +17,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.ApprovedKnowledgeIn
 import com.nanobaseai.actenora.aiprocessing.application.port.JobScheduler;
 import com.nanobaseai.actenora.aiprocessing.application.port.LocalModelProvider;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.MeetingOccurrenceClockPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingJobDependencyRepository;
@@ -162,7 +163,8 @@ public class StagedPipelinePlatformConfiguration {
             ObjectProvider<MeetingNoteHandoffPort> noteHandoff,
             ApprovedKnowledgeIndexPort knowledgeIndex,
             com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService,
-            PipelineQualityMetricsPort pipelineQualityMetrics
+            PipelineQualityMetricsPort pipelineQualityMetrics,
+            MeetingOccurrenceClockPort meetingOccurrenceClock
     ) {
         return DefaultStageExecutors.createAll(
                 prompts,
@@ -175,7 +177,8 @@ public class StagedPipelinePlatformConfiguration {
                         : noteHandoff.getIfAvailable(),
                 knowledgeIndex,
                 chunkExtractionService,
-                pipelineQualityMetrics
+                pipelineQualityMetrics,
+                meetingOccurrenceClock
         );
     }
 

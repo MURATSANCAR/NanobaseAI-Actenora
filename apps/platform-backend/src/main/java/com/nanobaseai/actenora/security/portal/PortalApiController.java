@@ -394,13 +394,21 @@ public class PortalApiController {
                     if (action == null || !seenActionIds.add(action.id())) {
                         continue;
                     }
+                    String dueAtDisplay = null;
+                    if (action.dueAt() != null) {
+                        dueAtDisplay = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+                                .withZone(java.time.ZoneId.of("Europe/Istanbul"))
+                                .format(action.dueAt());
+                    } else if (action.dueDate() != null) {
+                        dueAtDisplay = action.dueDate().toString();
+                    }
                     actions.add(new ActionItemView(
                             action.id(),
                             meetingId,
                             action.text(),
                             action.status() == null ? "OPEN" : action.status().name(),
                             action.owner() == null || action.owner().isBlank() ? "—" : action.owner(),
-                            action.dueDate() == null ? null : action.dueDate().toString(),
+                            dueAtDisplay,
                             evidenceBySubject.getOrDefault(action.id(), List.of()),
                             blankToNull(action.ownerType()),
                             blankToNull(action.priority()),
@@ -1387,7 +1395,9 @@ public class PortalApiController {
         appendMinutesSection(sb, "3. ALINAN KARARLAR", decisions);
 
         List<String> actions = new ArrayList<>();
-        boolean anyActionWithoutHardDue = false;
+        boolean anyStructuredMissing = false;
+        boolean anyDateCueWithoutStructured = false;
+        boolean anyUnresolvedRelative = false;
         if (note.actionItems() != null) {
             int i = 0;
             for (var a : note.actionItems()) {
@@ -1397,13 +1407,22 @@ public class PortalApiController {
                 i++;
                 String owner = a.owner() == null || a.owner().isBlank() ? "—" : a.owner().trim();
                 String due;
-                if (a.dueDate() != null) {
-                    due = a.dueDate().toString();
+                Instant dueAtInstant = a.dueAt();
+                if (dueAtInstant != null) {
+                    due = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+                            .withZone(java.time.ZoneId.of("Europe/Istanbul"))
+                            .format(dueAtInstant);
                 } else if (a.relativeDate() != null && !a.relativeDate().isBlank()) {
                     due = a.relativeDate().trim();
+                    anyUnresolvedRelative = true;
+                } else if (a.dueDate() != null) {
+                    due = a.dueDate().toString();
                 } else {
                     due = "—";
-                    anyActionWithoutHardDue = true;
+                    anyStructuredMissing = true;
+                    if (containsDateCue(a.text())) {
+                        anyDateCueWithoutStructured = true;
+                    }
                 }
                 StringBuilder line = new StringBuilder(corporateId("A", i))
                         .append(" — ").append(a.text().trim())
@@ -1418,8 +1437,15 @@ public class PortalApiController {
             }
         }
         appendMinutesSection(sb, "4. AKSİYON MADDELERİ", actions);
-        if (anyActionWithoutHardDue && !actions.isEmpty()) {
-            sb.append("Not: Toplantıda aksiyonlar için kesin teslim tarihi belirtilmedi.").append('\n');
+        if (!actions.isEmpty()) {
+            if (anyDateCueWithoutStructured) {
+                sb.append("Not: Aksiyon metninde tarih ifadesi bulundu ancak yapılandırılmış son tarih çözümlenemedi.")
+                        .append('\n');
+            } else if (anyUnresolvedRelative) {
+                sb.append("Not: Tarih henüz takvim değerine çözümlenemedi.").append('\n');
+            } else if (anyStructuredMissing) {
+                sb.append("Not: Aksiyonlar için yapılandırılmış son tarih bulunmuyor.").append('\n');
+            }
         }
 
         List<String> risks = new ArrayList<>();
@@ -1443,7 +1469,18 @@ public class PortalApiController {
         }
         appendMinutesSection(sb, "5. RİSKLER", risks);
         appendMinutesSection(sb, "6. TAAHHÜTLER", note.commitments() == null ? List.of()
-                : note.commitments().stream().map(c -> c.text()).filter(Objects::nonNull).toList());
+                : note.commitments().stream()
+                .filter(Objects::nonNull)
+                .map(c -> {
+                    String text = c.text() == null ? "" : c.text().trim();
+                    String owner = c.owner() == null || c.owner().isBlank() ? null : c.owner().trim();
+                    if (owner == null) {
+                        return text;
+                    }
+                    return text + " (Sorumlu: " + owner + ")";
+                })
+                .filter(t -> t != null && !t.isBlank())
+                .toList());
         appendMinutesSection(sb, "7. AÇIK SORULAR", note.openQuestions() == null ? List.of()
                 : note.openQuestions().stream().map(q -> q.text()).filter(Objects::nonNull).toList());
         appendMinutesSection(sb, "8. SORUNLAR", note.issues() == null ? List.of()
@@ -1465,6 +1502,21 @@ public class PortalApiController {
             return null;
         }
         return value.trim();
+    }
+
+    private static boolean containsDateCue(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        String n = text.toLowerCase(java.util.Locale.ROOT)
+                .replace('ı', 'i').replace('ş', 's').replace('ğ', 'g')
+                .replace('ü', 'u').replace('ö', 'o').replace('ç', 'c');
+        return n.contains("bugun")
+                || n.contains("yarin")
+                || n.contains("hafta sonu")
+                || n.contains("kadar") && n.matches(".*\\d{1,2}([.:]\\d{2})?.*")
+                || n.contains("pazartesi")
+                || n.contains("cuma");
     }
 
     /**

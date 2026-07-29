@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.aiprocessing.application.pipeline.PriorMeetingCon
 import com.nanobaseai.actenora.aiprocessing.application.pipeline.PromptRegistryPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ApprovedKnowledgeIndexPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingNoteHandoffPort;
+import com.nanobaseai.actenora.aiprocessing.application.port.MeetingOccurrenceClockPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSourcePort;
@@ -23,6 +24,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingArtifact;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
@@ -135,6 +137,24 @@ public final class DefaultStageExecutors {
             ChunkExtractionService chunkExtraction,
             PipelineQualityMetricsPort qualityMetrics
     ) {
+        return createAll(
+                prompts, modelRuntime, segments, artifacts, priorContext, noteHandoff, knowledgeIndex,
+                chunkExtraction, qualityMetrics, MeetingOccurrenceClockPort.unsupported()
+        );
+    }
+
+    public static Map<ProcessingStage, StageExecutor> createAll(
+            PromptRegistryPort prompts,
+            ModelRuntimePort modelRuntime,
+            TranscriptSegmentSourcePort segments,
+            ProcessingArtifactRepository artifacts,
+            PriorMeetingContextPort priorContext,
+            MeetingNoteHandoffPort noteHandoff,
+            ApprovedKnowledgeIndexPort knowledgeIndex,
+            ChunkExtractionService chunkExtraction,
+            PipelineQualityMetricsPort qualityMetrics,
+            MeetingOccurrenceClockPort meetingClock
+    ) {
         SegmentNormalizer normalizer = new SegmentNormalizer();
         TranscriptChunker chunker = new TranscriptChunker();
         ContextWindowGuard guard = new ContextWindowGuard();
@@ -150,6 +170,9 @@ public final class DefaultStageExecutors {
         PipelineQualityMetricsPort metrics = qualityMetrics == null
                 ? PipelineQualityMetricsPort.noop()
                 : qualityMetrics;
+        MeetingOccurrenceClockPort clock = meetingClock == null
+                ? MeetingOccurrenceClockPort.unsupported()
+                : meetingClock;
 
         return Map.of(
                 ProcessingStage.NORMALIZE, new NormalizeExecutor(segments, normalizer, artifacts),
@@ -170,7 +193,8 @@ public final class DefaultStageExecutors {
                         normalizer,
                         priorContext == null ? PriorMeetingContextPort.noop() : priorContext,
                         noteHandoff == null ? MeetingNoteHandoffPort.noop() : noteHandoff,
-                        metrics
+                        metrics,
+                        clock
                 ),
                 ProcessingStage.EMBEDDING, new EmbeddingExecutor(
                         knowledgeIndex == null ? ApprovedKnowledgeIndexPort.noop() : knowledgeIndex
@@ -796,6 +820,7 @@ public final class DefaultStageExecutors {
         private final PriorMeetingContextPort priorContext;
         private final MeetingNoteHandoffPort noteHandoff;
         private final PipelineQualityMetricsPort qualityMetrics;
+        private final MeetingOccurrenceClockPort meetingClock;
 
         MinutesExecutor(
                 ModelRuntimePort modelRuntime,
@@ -807,6 +832,23 @@ public final class DefaultStageExecutors {
                 MeetingNoteHandoffPort noteHandoff,
                 PipelineQualityMetricsPort qualityMetrics
         ) {
+            this(
+                    modelRuntime, artifacts, noteAssembler, segments, normalizer, priorContext, noteHandoff,
+                    qualityMetrics, MeetingOccurrenceClockPort.unsupported()
+            );
+        }
+
+        MinutesExecutor(
+                ModelRuntimePort modelRuntime,
+                ProcessingArtifactRepository artifacts,
+                FinalNoteAssembler noteAssembler,
+                TranscriptSegmentSourcePort segments,
+                SegmentNormalizer normalizer,
+                PriorMeetingContextPort priorContext,
+                MeetingNoteHandoffPort noteHandoff,
+                PipelineQualityMetricsPort qualityMetrics,
+                MeetingOccurrenceClockPort meetingClock
+        ) {
             this.modelRuntime = modelRuntime;
             this.artifacts = artifacts;
             this.noteAssembler = noteAssembler;
@@ -815,6 +857,9 @@ public final class DefaultStageExecutors {
             this.priorContext = priorContext;
             this.noteHandoff = noteHandoff;
             this.qualityMetrics = qualityMetrics == null ? PipelineQualityMetricsPort.noop() : qualityMetrics;
+            this.meetingClock = meetingClock == null
+                    ? MeetingOccurrenceClockPort.unsupported()
+                    : meetingClock;
         }
 
         @Override
@@ -832,6 +877,7 @@ public final class DefaultStageExecutors {
                 FinalNoteDraft draft;
                 int inTok = 0;
                 int outTok = 0;
+                Map<String, Object> actionPostStats = null;
                 if (source == null) {
                     draft = noteAssembler.assemble(ExtractionBundle.empty(), job.language());
                 } else {
@@ -841,6 +887,8 @@ public final class DefaultStageExecutors {
                     bundle = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
                             ProposalCuePostProcessor.productionDefaults().process(bundle, normalized));
                     bundle = new CrossTypeConsistencyAuditor().auditBundle(bundle);
+                    ActionPostProcessingPipeline.Context actionCtx = actionContext(job, normalized);
+                    bundle = ActionPostProcessingPipeline.productionDefaults().applyToBundle(bundle, actionCtx);
                     FinalNoteDraft deterministic = noteAssembler.assemble(bundle, job.language());
                     // Same allowlist as VALIDATE / legacy ExtractionPipelineService: all transcript segment ids.
                     Set<String> allowed = normalized.stream()
@@ -860,7 +908,27 @@ public final class DefaultStageExecutors {
                             );
                     draft = new CrossTypeConsistencyAuditor().audit(draft);
                     draft = new ActionContextualEnricher().enrich(draft, normalized);
+                    ActionPostProcessingPipeline.Result post =
+                            ActionPostProcessingPipeline.productionDefaults().postProcess(
+                                    draft.actionItems(), draft.commitments(), actionCtx);
+                    draft = new FinalNoteDraft(
+                            draft.executiveSummary(),
+                            draft.decisions(),
+                            post.actions(),
+                            draft.risks(),
+                            draft.openQuestions(),
+                            post.commitments(),
+                            draft.topics(),
+                            draft.issues(),
+                            draft.proposals(),
+                            draft.importantFacts(),
+                            mergeFlags(draft.qualityFlags(), post.qualityFlags()),
+                            draft.evidenceSegmentIds(),
+                            draft.confidence(),
+                            draft.requiresManualReview() || post.requiresManualReview()
+                    );
                     draft = FinalNoteConfidencePolicy.productionDefaults().apply(draft);
+                    actionPostStats = post.stats().toArtifactMap(job.meetingOccurrenceId().toString());
                 }
                 Optional<UUID> noteId = noteHandoff.handoff(new MeetingNoteHandoffPort.HandoffCommand(
                         job.tenantId(),
@@ -877,6 +945,9 @@ public final class DefaultStageExecutors {
                 payload.put("requiresManualReview", draft.requiresManualReview());
                 payload.put("meetingNoteId", noteId.map(UUID::toString).orElse(""));
                 payload.put("qualityFlags", draft.qualityFlags());
+                if (actionPostStats != null) {
+                    payload.put("actionPostProcessing", actionPostStats);
+                }
                 String json = MAPPER.writeValueAsString(payload);
                 return StageExecutionResult.success(
                         job, "final-minutes", json, inTok, outTok, (System.nanoTime() - t0) / 1_000_000L, now);
@@ -885,6 +956,27 @@ public final class DefaultStageExecutors {
                         job, true, "MINUTES_FAILED", safe(ex.getMessage()),
                         (System.nanoTime() - t0) / 1_000_000L, now);
             }
+        }
+
+        private ActionPostProcessingPipeline.Context actionContext(AiJob job, List<SegmentInput> normalized) {
+            var start = meetingClock.scheduledStart(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
+                    .orElse(null);
+            var zone = meetingClock.timezone(TenantId.of(job.tenantId()), job.meetingOccurrenceId());
+            return new ActionPostProcessingPipeline.Context(
+                    normalized,
+                    ActionPostProcessingPipeline.participantsFromSegments(normalized),
+                    start,
+                    zone,
+                    job.meetingOccurrenceId().toString()
+            );
+        }
+
+        private static List<String> mergeFlags(List<String> base, List<String> extra) {
+            java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>(base == null ? List.of() : base);
+            if (extra != null) {
+                out.addAll(extra);
+            }
+            return new ArrayList<>(out);
         }
     }
 

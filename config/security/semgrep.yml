@@ -1,0 +1,17 @@
+# Actenora Semgrep policy — SAST security rules for Java / Python / TS / JS.
+# Invoked by: make semgrep  |  ./scripts/scan-semgrep
+#
+# Rulesets: https://semgrep.dev/r
+rules: []
+
+# Prefer rule packs via CLI (--config). This file documents the project policy
+# and can hold custom rules later under `rules:`.
+#
+# Default packs used by scripts/scan-semgrep:
+#   p/security-audit
+#   p/owasp-top-ten
+#   p/java
+#   p/python
+#   p/typescript
+#   p/javascript
+#   p/secrets
