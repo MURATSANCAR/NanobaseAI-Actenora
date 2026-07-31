@@ -11,6 +11,8 @@ import com.nanobaseai.actenora.microsoftconnection.domain.identity.GraphSeriesRe
 import com.nanobaseai.actenora.microsoftconnection.domain.identity.SeriesOccurrenceResolution;
 
 import java.time.Instant;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -60,7 +62,7 @@ public final class GraphCalendarGateway implements CalendarGateway {
     @Override
     public Optional<CalendarEvent> getEvent(UUID tenantId, String userId, String eventId) {
         Objects.requireNonNull(eventId, "eventId");
-        String path = "v1.0/users/" + userId + "/events/" + eventId;
+        String path = "v1.0/users/" + urlEncode(userId) + "/events/" + urlEncode(eventId);
         var response = http.send(token -> http.authorizedGet(path, token));
         try {
             return parseEvent(objectMapper.readTree(response.body()));
@@ -69,6 +71,10 @@ public final class GraphCalendarGateway implements CalendarGateway {
         } catch (Exception ex) {
             throw GraphApiException.transport("Failed to parse calendar event", ex);
         }
+    }
+
+    private static String urlEncode(String value) {
+        return URLEncoder.encode(Objects.requireNonNull(value, "value"), StandardCharsets.UTF_8);
     }
 
     Optional<CalendarEvent> parseEvent(JsonNode item) {
