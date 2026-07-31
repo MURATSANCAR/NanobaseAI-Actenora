@@ -323,10 +323,14 @@ public final class GraphHttpClient {
     }
 
     public HttpRequest authorizedGet(String absoluteOrRelative, AccessToken token) {
+        return authorizedGet(absoluteOrRelative, token, "application/json");
+    }
+
+    public HttpRequest authorizedGet(String absoluteOrRelative, AccessToken token, String accept) {
         return HttpRequest.newBuilder(resolve(absoluteOrRelative))
                 .timeout(Duration.ofSeconds(30))
                 .header("Authorization", "Bearer " + token.value())
-                .header("Accept", "application/json")
+                .header("Accept", accept == null || accept.isBlank() ? "application/json" : accept)
                 .GET()
                 .build();
     }

@@ -59,12 +59,55 @@ public final class GraphTranscriptGateway implements TranscriptGateway {
     ) {
         Objects.requireNonNull(meetingId, "meetingId");
         Objects.requireNonNull(transcriptId, "transcriptId");
-        String path = "v1.0/users/" + userId + "/onlineMeetings/" + meetingId
-                + "/transcripts/" + transcriptId + "/content?$format=text/vtt";
-        var response = http.send(token -> http.authorizedGet(path, token), true);
-        String contentType = response.headers().firstValue("Content-Type").orElse("text/vtt");
-        byte[] body = response.body() == null ? new byte[0] : response.body().getBytes();
-        return Optional.of(new TranscriptContent(meetingId, transcriptId, contentType, body));
+        String base = "v1.0/users/" + userId + "/onlineMeetings/" + meetingId
+                + "/transcripts/" + transcriptId + "/content";
+        try {
+            return Optional.of(downloadOnce(base + "?$format=text/vtt", "text/vtt", meetingId, transcriptId));
+        } catch (GraphApiException ex) {
+            // Tenant may enable Graph transcript access but leave speaker attribution off.
+            if (!isSpeakerAttributionBlocked(ex)) {
+                throw ex;
+            }
+            return Optional.of(downloadOnce(
+                    base,
+                    "application/vnd.microsoft.graph.transcript+text",
+                    meetingId,
+                    transcriptId));
+        }
+    }
+
+    private TranscriptContent downloadOnce(
+            String path,
+            String accept,
+            String meetingId,
+            String transcriptId
+    ) {
+        var response = http.send(token -> http.authorizedGet(path, token, accept), true);
+        String contentType = response.headers().firstValue("Content-Type").orElse(accept);
+        byte[] body = response.body() == null
+                ? new byte[0]
+                : response.body().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        // Non-attributed Graph format is cue text without a WEBVTT header; wrap for our VTT parser.
+        if (contentType != null
+                && contentType.contains("vnd.microsoft.graph.transcript+text")
+                && !startsWithWebVtt(body)) {
+            String wrapped = "WEBVTT\n\n" + new String(body, java.nio.charset.StandardCharsets.UTF_8);
+            body = wrapped.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            contentType = "text/vtt";
+        }
+        return new TranscriptContent(meetingId, transcriptId, contentType, body);
+    }
+
+    private static boolean startsWithWebVtt(byte[] body) {
+        String head = new String(body, 0, Math.min(body.length, 16), java.nio.charset.StandardCharsets.UTF_8)
+                .trim();
+        return head.startsWith("WEBVTT");
+    }
+
+    private static boolean isSpeakerAttributionBlocked(GraphApiException ex) {
+        String msg = ex.getMessage() == null ? "" : ex.getMessage();
+        return msg.contains("SpeakerAttributionNotAllowed")
+                || msg.contains("Speaker-attributed transcript content is disabled");
     }
 
     private static Instant parseInstant(String value) {
