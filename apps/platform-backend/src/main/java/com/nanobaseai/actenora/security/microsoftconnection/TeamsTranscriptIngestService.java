@@ -153,25 +153,31 @@ public final class TeamsTranscriptIngestService {
                 .findFirst();
         if (organizer.isPresent()) {
             ParticipantResponse p = organizer.get();
-            if (StringUtils.hasText(p.entraUserId())) {
+            // Graph onlineMeetings URLs require a GUID. Calendar sync may store email in entraUserId.
+            if (isEntraObjectId(p.entraUserId())) {
                 return p.entraUserId();
-            }
-            if (StringUtils.hasText(p.email())) {
-                return p.email();
             }
         }
         List<String> subscriptionMailboxes = subscriptionStore.findAllForTenant(tenantId.value()).stream()
                 .map(subscription -> GraphChangeNotificationProcessor.parseMailboxUserId(subscription.resource()))
                 .flatMap(Optional::stream)
+                .filter(TeamsTranscriptIngestService::isEntraObjectId)
                 .distinct()
                 .toList();
         if (subscriptionMailboxes.size() == 1) {
             return subscriptionMailboxes.getFirst();
         }
-        if (StringUtils.hasText(defaultMailboxUserId)) {
+        if (isEntraObjectId(defaultMailboxUserId)) {
             return defaultMailboxUserId;
         }
         return null;
+    }
+
+    static boolean isEntraObjectId(String value) {
+        if (!StringUtils.hasText(value)) {
+            return false;
+        }
+        return value.matches("(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
     }
 
     public enum PollResult {

@@ -30,7 +30,8 @@ public final class GraphTranscriptGateway implements TranscriptGateway {
     @Override
     public TranscriptAvailability checkAvailability(UUID tenantId, String userId, String meetingId) {
         Objects.requireNonNull(meetingId, "meetingId");
-        String path = "v1.0/users/" + userId + "/onlineMeetings/" + meetingId + "/transcripts";
+        String organizer = resolveOrganizerUserId(userId, meetingId);
+        String path = "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId + "/transcripts";
         var response = http.send(token -> http.authorizedGet(path, token), true);
         try {
             List<TranscriptAvailability.TranscriptRef> refs = new ArrayList<>();
@@ -59,10 +60,13 @@ public final class GraphTranscriptGateway implements TranscriptGateway {
     ) {
         Objects.requireNonNull(meetingId, "meetingId");
         Objects.requireNonNull(transcriptId, "transcriptId");
-        String base = "v1.0/users/" + userId + "/onlineMeetings/" + meetingId
+        String organizer = resolveOrganizerUserId(userId, meetingId);
+        String base = "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId
                 + "/transcripts/" + transcriptId + "/content";
         try {
-            return Optional.of(downloadOnce(base + "?$format=text/vtt", "text/vtt", meetingId, transcriptId));
+            // Prefer speaker-attributed VTT. Do not send Accept: application/json — Graph returns a
+            // misleading GraphAccessToTranscriptsDisabled for that combination.
+            return Optional.of(downloadOnce(base, "text/vtt", meetingId, transcriptId));
         } catch (GraphApiException ex) {
             // Tenant may enable Graph transcript access but leave speaker attribution off.
             if (!isSpeakerAttributionBlocked(ex)) {
@@ -74,6 +78,15 @@ public final class GraphTranscriptGateway implements TranscriptGateway {
                     meetingId,
                     transcriptId));
         }
+    }
+
+    /**
+     * Graph {@code /users/{id}/onlineMeetings/...} requires an Entra object id (GUID). Calendar
+     * sync often stores the organizer email in {@code entra_user_id}; prefer the OID embedded in
+     * the Teams onlineMeeting id (same strategy as {@link GraphOnlineMeetingGateway}).
+     */
+    static String resolveOrganizerUserId(String userId, String meetingId) {
+        return GraphOnlineMeetingGateway.organizerFromMeetingId(meetingId).orElse(userId);
     }
 
     private TranscriptContent downloadOnce(
