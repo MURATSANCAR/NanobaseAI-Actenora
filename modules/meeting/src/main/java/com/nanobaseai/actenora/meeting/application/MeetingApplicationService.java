@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.meeting.api.dto.MeetingListResponse;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingStatusTransitionRequest;
 import com.nanobaseai.actenora.meeting.api.dto.ParticipantResponse;
+import com.nanobaseai.actenora.meeting.api.dto.SyncInviteesRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
 import com.nanobaseai.actenora.meeting.application.port.BusinessContextRepository;
 import com.nanobaseai.actenora.meeting.application.port.ClockPort;
@@ -303,6 +304,79 @@ public final class MeetingApplicationService {
         return participantRepository.findByMeetingOccurrenceIdAndTenantId(meetingId, tenantId).stream()
                 .map(MeetingMapper::toResponse)
                 .toList();
+    }
+
+    /**
+     * Upserts Graph calendar invitees by email. Existing attendance JOINED/LEFT/ABSENT is preserved;
+     * RSVP (ACCEPTED/…) is applied when the role carries a {@code type|response} suffix.
+     */
+    public List<ParticipantResponse> syncInvitees(UUID meetingId, SyncInviteesRequest request) {
+        TenantId tenantId = tenantContext.requireTenantId();
+        UUID actor = tenantContext.requireActorUserId();
+        requireOccurrence(meetingId, tenantId);
+        Objects.requireNonNull(request, "request");
+        List<CreateMeetingRequest.ParticipantInput> invitees = request.invitees();
+        if (invitees.isEmpty()) {
+            return listParticipants(meetingId);
+        }
+
+        List<MeetingParticipant> existing =
+                new ArrayList<>(participantRepository.findByMeetingOccurrenceIdAndTenantId(meetingId, tenantId));
+        int created = 0;
+        int updated = 0;
+
+        for (CreateMeetingRequest.ParticipantInput input : invitees) {
+            String email = normalizeEmail(input.email());
+            if (email == null) {
+                continue;
+            }
+            ParticipantType type = parseParticipantType(input.participantType());
+            MeetingParticipant match = findInviteeByEmail(existing, email);
+            if (match != null) {
+                if (input.displayName() != null && !input.displayName().isBlank()) {
+                    match.rename(input.displayName());
+                }
+                match.assignParticipantType(type);
+                applyInviteResponse(match, input.participantType());
+                participantRepository.save(match);
+                updated++;
+            } else {
+                boolean external = input.external();
+                String entra = input.entraUserId();
+                if (!external && (entra == null || entra.isBlank())) {
+                    // Graph calendar attendees often lack OID; email is a stable internal key (same as create path).
+                    entra = email;
+                }
+                MeetingParticipant participant = MeetingParticipant.create(
+                        tenantId,
+                        meetingId,
+                        entra,
+                        input.displayName() != null && !input.displayName().isBlank() ? input.displayName() : email,
+                        email,
+                        type,
+                        external
+                );
+                applyInviteResponse(participant, input.participantType());
+                participantRepository.save(participant);
+                existing.add(participant);
+                created++;
+            }
+        }
+
+        auditPort.record(tenantId, actor, "MEETING_INVITEES_SYNCED", "MeetingOccurrence", meetingId,
+                Map.of("invitees", invitees.size(), "created", created, "updated", updated));
+        return participantRepository.findByMeetingOccurrenceIdAndTenantId(meetingId, tenantId).stream()
+                .map(MeetingMapper::toResponse)
+                .toList();
+    }
+
+    private static MeetingParticipant findInviteeByEmail(List<MeetingParticipant> existing, String email) {
+        for (MeetingParticipant participant : existing) {
+            if (email.equals(normalizeEmail(participant.email()))) {
+                return participant;
+            }
+        }
+        return null;
     }
 
     public List<ParticipantResponse> applyAttendance(UUID meetingId, ApplyAttendanceRequest request) {

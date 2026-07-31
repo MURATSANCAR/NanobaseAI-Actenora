@@ -10,6 +10,7 @@ import com.nanobaseai.actenora.meeting.api.dto.MeetingListResponse;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingStatusTransitionRequest;
 import com.nanobaseai.actenora.meeting.api.dto.ParticipantResponse;
+import com.nanobaseai.actenora.meeting.api.dto.SyncInviteesRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateBusinessContextRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
 import com.nanobaseai.actenora.meeting.application.MeetingMapper;
@@ -87,6 +88,11 @@ public final class MeetingApiFacade implements MeetingApi {
     @Override
     public List<ParticipantResponse> listParticipants(UUID meetingId) {
         return meetingService.listParticipants(meetingId);
+    }
+
+    @Override
+    public List<ParticipantResponse> syncInvitees(UUID meetingId, SyncInviteesRequest request) {
+        return meetingService.syncInvitees(meetingId, request);
     }
 
     @Override

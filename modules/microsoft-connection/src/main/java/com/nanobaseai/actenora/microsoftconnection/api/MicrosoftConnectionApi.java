@@ -107,6 +107,11 @@ public final class MicrosoftConnectionApi {
         return calendarSyncService.syncMailbox(tenantId, userId, onPage);
     }
 
+    /** Full calendar event (includes attendees) — use when delta payloads are sparse. */
+    public Optional<CalendarEvent> getCalendarEvent(UUID tenantId, String userId, String eventId) {
+        return calendarSyncService.getEvent(tenantId, userId, eventId);
+    }
+
     public void ensureTranscriptionForCalendarEvents(UUID tenantId, String userId, List<CalendarEvent> events) {
         transcriptionEnabler.enableForUpcomingMeetings(tenantId, userId, events);
     }

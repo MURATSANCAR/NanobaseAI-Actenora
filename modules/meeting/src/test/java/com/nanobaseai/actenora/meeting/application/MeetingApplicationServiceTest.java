@@ -6,6 +6,7 @@ import com.nanobaseai.actenora.meeting.api.dto.CursorPageRequest;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingStatusTransitionRequest;
 import com.nanobaseai.actenora.meeting.api.dto.ParticipantResponse;
+import com.nanobaseai.actenora.meeting.api.dto.SyncInviteesRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
 import com.nanobaseai.actenora.meeting.api.event.MeetingIntegrationEvents;
 import com.nanobaseai.actenora.meeting.domain.exception.BusinessContextNotFoundException;
@@ -18,6 +19,7 @@ import com.nanobaseai.actenora.meeting.domain.exception.InvalidParticipantExcept
 import com.nanobaseai.actenora.meeting.domain.collaboration.UnauthorizedMeetingAccessException;
 import com.nanobaseai.actenora.meeting.domain.exception.MeetingNotFoundException;
 import com.nanobaseai.actenora.meeting.domain.exception.OptimisticLockConflictException;
+import com.nanobaseai.actenora.meeting.domain.model.AttendanceStatus;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus;
 import com.nanobaseai.actenora.meeting.domain.model.ProcessingPriority;
 import com.nanobaseai.actenora.meeting.infrastructure.audit.InMemoryMeetingAuditPort;
@@ -166,6 +168,45 @@ class MeetingApplicationServiceTest {
                         contextId, null, null, "g-date", "i-date", start, null, null, null,
                         "Bad range", null, start, end, null, List.of()
                 )));
+    }
+
+    @Test
+    void syncInviteesUpsertsByEmailAndAppliesAcceptedRsvp() {
+        UUID contextId = createContext().id();
+        Instant start = Instant.parse("2026-07-31T08:00:00Z");
+        MeetingResponse meeting = api.createMeeting(new CreateMeetingRequest(
+                contextId, null, null, "g-invite", "i-invite", start, null, null, null,
+                "Yapay Zeka", null, start, start.plusSeconds(3600), null,
+                List.of(new CreateMeetingRequest.ParticipantInput(
+                        "org@example.com", "Organizer", "org@example.com", "ORGANIZER", false
+                ))
+        ));
+        assertEquals(1, api.listParticipants(meeting.id()).size());
+
+        List<ParticipantResponse> synced = api.syncInvitees(meeting.id(), new SyncInviteesRequest(List.of(
+                new CreateMeetingRequest.ParticipantInput(
+                        "org@example.com", "Organizer", "org@example.com", "organizer|accepted", false
+                ),
+                new CreateMeetingRequest.ParticipantInput(
+                        "alice@example.com", "Alice", "alice@example.com", "required|accepted", false
+                ),
+                new CreateMeetingRequest.ParticipantInput(
+                        "bob@example.com", "Bob", "bob@example.com", "optional|tentativelyAccepted", false
+                )
+        )));
+
+        assertEquals(3, synced.size());
+        ParticipantResponse alice = synced.stream()
+                .filter(p -> "alice@example.com".equals(p.email()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(AttendanceStatus.ACCEPTED, alice.attendanceStatus());
+        ParticipantResponse bob = synced.stream()
+                .filter(p -> "bob@example.com".equals(p.email()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(AttendanceStatus.TENTATIVE, bob.attendanceStatus());
+        assertTrue(audit.entries().stream().anyMatch(e -> e.action().equals("MEETING_INVITEES_SYNCED")));
     }
 
     @Test

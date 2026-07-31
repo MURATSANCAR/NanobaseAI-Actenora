@@ -10,6 +10,7 @@ import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -69,5 +70,12 @@ public final class CalendarSyncService {
             cursorStore.save(cursor);
         } while (page.hasMore());
         return total.get();
+    }
+
+    public Optional<CalendarEvent> getEvent(UUID tenantId, String userId, String eventId) {
+        Objects.requireNonNull(tenantId, "tenantId");
+        Objects.requireNonNull(userId, "userId");
+        Objects.requireNonNull(eventId, "eventId");
+        return calendarGateway.getEvent(tenantId, userId, eventId);
     }
 }

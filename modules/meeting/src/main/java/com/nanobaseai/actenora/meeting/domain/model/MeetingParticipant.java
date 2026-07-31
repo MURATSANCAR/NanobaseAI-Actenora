@@ -161,6 +161,21 @@ public final class MeetingParticipant {
         this.participantType = ParticipantType.ORGANIZER;
     }
 
+    public void rename(String newDisplayName) {
+        this.displayName = requireText(newDisplayName, "displayName");
+    }
+
+    public void assignParticipantType(ParticipantType type) {
+        if (type == null) {
+            return;
+        }
+        // Do not demote organizer once set (calendar re-sync may send required|accepted for organizer row).
+        if (this.participantType == ParticipantType.ORGANIZER && type != ParticipantType.ORGANIZER) {
+            return;
+        }
+        this.participantType = type;
+    }
+
     public UUID id() { return id; }
     public TenantId tenantId() { return tenantId; }
     public UUID meetingOccurrenceId() { return meetingOccurrenceId; }

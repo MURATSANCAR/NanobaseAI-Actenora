@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.meeting.api.dto.MeetingListResponse;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingStatusTransitionRequest;
 import com.nanobaseai.actenora.meeting.api.dto.ParticipantResponse;
+import com.nanobaseai.actenora.meeting.api.dto.SyncInviteesRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateBusinessContextRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus;
@@ -59,6 +60,12 @@ public interface MeetingApi {
     List<MeetingResponse> listMeetingsDueForLifecycleAdvance(int limit);
 
     List<ParticipantResponse> listParticipants(UUID meetingId);
+
+    /**
+     * Upserts calendar invitees by email (Graph attendees). Does not remove existing rows.
+     * RSVP status is applied when {@code participantType} carries a {@code type|response} suffix.
+     */
+    List<ParticipantResponse> syncInvitees(UUID meetingId, SyncInviteesRequest request);
 
     /**
      * Applies Teams attendance-report rows onto stored invitees (katıldı / katılmadı).

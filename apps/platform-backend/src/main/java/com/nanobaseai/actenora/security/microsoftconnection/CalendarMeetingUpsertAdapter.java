@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meeting.api.dto.BusinessContextResponse;
 import com.nanobaseai.actenora.meeting.api.dto.CreateMeetingRequest;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
+import com.nanobaseai.actenora.meeting.api.dto.SyncInviteesRequest;
 import com.nanobaseai.actenora.meeting.api.dto.UpdateMeetingRequest;
 import com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateGraphIdentityException;
@@ -117,7 +118,25 @@ public final class CalendarMeetingUpsertAdapter {
             log.debug("Updated meeting from Graph calendar event graphEventImmutableId={}", graphId);
         }
         meeting = advanceLifecycleQuietly(meeting);
+        syncInviteesQuietly(meeting.id(), event);
         linkContinuity(tenantId, businessContextId, meeting);
+    }
+
+    private void syncInviteesQuietly(UUID meetingId, CalendarEvent event) {
+        List<CreateMeetingRequest.ParticipantInput> invitees = mapParticipants(event.attendees());
+        if (invitees.isEmpty()) {
+            return;
+        }
+        try {
+            meetingApi.syncInvitees(meetingId, new SyncInviteesRequest(invitees));
+        } catch (RuntimeException ex) {
+            log.warn(
+                    "Invitee sync failed for meetingId={} attendeeCount={} reason={}",
+                    meetingId,
+                    invitees.size(),
+                    ex.getMessage()
+            );
+        }
     }
 
     private MeetingResponse advanceLifecycleQuietly(MeetingResponse meeting) {

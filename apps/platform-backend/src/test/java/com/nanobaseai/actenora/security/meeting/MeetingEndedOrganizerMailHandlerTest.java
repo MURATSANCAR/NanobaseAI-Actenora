@@ -197,6 +197,14 @@ class MeetingEndedOrganizerMailHandlerTest {
         }
 
         @Override
+        public List<ParticipantResponse> syncInvitees(
+                UUID meetingId,
+                com.nanobaseai.actenora.meeting.api.dto.SyncInviteesRequest request
+        ) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public BusinessContextResponse createBusinessContext(CreateBusinessContextRequest request) {
             throw new UnsupportedOperationException();
         }
