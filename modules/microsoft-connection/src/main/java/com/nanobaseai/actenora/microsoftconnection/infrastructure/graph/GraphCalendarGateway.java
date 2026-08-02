@@ -10,6 +10,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.port.CalendarGate
 import com.nanobaseai.actenora.microsoftconnection.domain.identity.GraphSeriesResolver;
 import com.nanobaseai.actenora.microsoftconnection.domain.identity.SeriesOccurrenceResolution;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -24,24 +25,41 @@ import java.util.UUID;
  */
 public final class GraphCalendarGateway implements CalendarGateway {
 
+    private static final Duration DEFAULT_LOOKBACK = Duration.ofDays(90);
+    private static final Duration DEFAULT_LOOKAHEAD = Duration.ofDays(180);
+
     private final GraphHttpClient http;
     private final ObjectMapper objectMapper;
+    private final Duration syncLookback;
+    private final Duration syncLookahead;
     private final GraphSeriesResolver seriesResolver = new GraphSeriesResolver();
 
     public GraphCalendarGateway(GraphHttpClient http, ObjectMapper objectMapper) {
+        this(http, objectMapper, DEFAULT_LOOKBACK, DEFAULT_LOOKAHEAD);
+    }
+
+    public GraphCalendarGateway(
+            GraphHttpClient http,
+            ObjectMapper objectMapper,
+            Duration syncLookback,
+            Duration syncLookahead
+    ) {
         this.http = Objects.requireNonNull(http, "http");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+        this.syncLookback = requirePositive(syncLookback, "syncLookback");
+        this.syncLookahead = requirePositive(syncLookahead, "syncLookahead");
     }
 
     @Override
     public CalendarDeltaPage syncDelta(UUID tenantId, String userId, CalendarSyncCursor cursor) {
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(userId, "userId");
+        Instant now = Instant.now();
         String path = cursor.deltaLinkOptional()
                 .or(() -> cursor.nextLinkOptional())
                 .orElse("v1.0/users/" + userId + "/calendarView/delta?startDateTime="
-                        + Instant.now().minusSeconds(86_400) + "&endDateTime="
-                        + Instant.now().plusSeconds(86_400 * 30));
+                        + now.minus(syncLookback) + "&endDateTime="
+                        + now.plus(syncLookahead));
         var response = http.send(token -> http.authorizedGet(path, token));
         try {
             JsonNode root = objectMapper.readTree(response.body());
@@ -187,5 +205,13 @@ public final class GraphCalendarGateway implements CalendarGateway {
         }
         String text = value.asText();
         return text == null || text.isBlank() ? null : text;
+    }
+
+    private static Duration requirePositive(Duration value, String name) {
+        Objects.requireNonNull(value, name);
+        if (value.isZero() || value.isNegative()) {
+            throw new IllegalArgumentException(name + " must be positive");
+        }
+        return value;
     }
 }

@@ -558,6 +558,8 @@ public final class AiJobInferenceExecutor {
                 .scheduledStart(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
                 .map(java.time.OffsetDateTime::toString)
                 .orElse(null);
+        List<String> meetingParticipants = meetingClock.participantDisplayNames(
+                TenantId.of(job.tenantId()), job.meetingOccurrenceId());
 
         PipelineRunResult result = extractionPipeline.run(new PipelineRunRequest(
                 TenantId.of(job.tenantId()),
@@ -569,7 +571,8 @@ public final class AiJobInferenceExecutor {
                 timeoutSecondsFor(job, now),
                 parallelChunkLimit,
                 prior,
-                meetingStartIso
+                meetingStartIso,
+                meetingParticipants
         ));
 
         if (result.success()) {

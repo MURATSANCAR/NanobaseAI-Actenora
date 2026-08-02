@@ -503,6 +503,37 @@ class ActionPostProcessingPipelineTest {
     }
 
     @Test
+    void unknownOwnersAreClearedAgainstRoster() {
+        ActionItemCandidate known = action("Murat dokümanı paylaşacak.", "Murat", List.of("s1"));
+        ActionItemCandidate garbage = action("Mevcut mimari değerlendirilecek.", "Mevcut", List.of("s1"));
+        var result = pipeline.postProcess(
+                List.of(known, garbage),
+                List.of(),
+                new ActionPostProcessingPipeline.Context(
+                        List.of(),
+                        Set.of("Murat Sancar", "Ahmet Faruk"),
+                        MEETING_START,
+                        IST,
+                        "meeting-teams"
+                )
+        );
+        assertEquals("Murat", result.actions().get(0).owner());
+        assertNull(result.actions().get(1).owner());
+        assertEquals(1, result.stats().toArtifactMap("m").get("ownersCleared"));
+    }
+
+    @Test
+    void emptyRosterClearsAllOwners() {
+        ActionItemCandidate withOwner = action("Test senaryosu yazılacak.", "Test", List.of("s1"));
+        var result = pipeline.postProcess(
+                List.of(withOwner),
+                List.of(),
+                new ActionPostProcessingPipeline.Context(List.of(), Set.of(), MEETING_START, IST, "m")
+        );
+        assertNull(result.actions().getFirst().owner());
+    }
+
+    @Test
     void commitmentOwnerBoundFromFirstPersonSpeaker() {
         CommitmentCandidate c = new CommitmentCandidate(
                 "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını ekleyeceğim.",

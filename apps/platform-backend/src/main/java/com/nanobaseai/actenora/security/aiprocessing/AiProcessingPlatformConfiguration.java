@@ -396,13 +396,17 @@ public class AiProcessingPlatformConfiguration {
     @Bean
     @ConditionalOnMissingBean(MeetingOccurrenceClockPort.class)
     MeetingOccurrenceClockPort meetingOccurrenceClockPort(
-            ObjectProvider<com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository> meetings
+            ObjectProvider<com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository> meetings,
+            ObjectProvider<com.nanobaseai.actenora.meeting.application.port.MeetingParticipantRepository> participants
     ) {
         com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository repo = meetings.getIfAvailable();
         if (repo == null) {
             return MeetingOccurrenceClockPort.unsupported();
         }
-        return new com.nanobaseai.actenora.security.meeting.MeetingOccurrenceClockAdapter(repo);
+        return new com.nanobaseai.actenora.security.meeting.MeetingOccurrenceClockAdapter(
+                repo,
+                participants.getIfAvailable()
+        );
     }
 
     @Bean

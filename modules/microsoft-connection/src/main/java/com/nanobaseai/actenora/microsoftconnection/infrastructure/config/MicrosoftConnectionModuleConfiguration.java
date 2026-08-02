@@ -141,8 +141,13 @@ public class MicrosoftConnectionModuleConfiguration {
     }
 
     @Bean
-    CalendarGateway calendarGateway(GraphHttpClient http, ObjectMapper mapper) {
-        return new GraphCalendarGateway(http, mapper);
+    CalendarGateway calendarGateway(
+            GraphHttpClient http,
+            ObjectMapper mapper,
+            @Value("${actenora.microsoft-graph.calendar-sync-lookback:P90D}") Duration lookback,
+            @Value("${actenora.microsoft-graph.calendar-sync-lookahead:P180D}") Duration lookahead
+    ) {
+        return new GraphCalendarGateway(http, mapper, lookback, lookahead);
     }
 
     @Bean

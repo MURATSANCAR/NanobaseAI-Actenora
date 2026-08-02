@@ -17,6 +17,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResp
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.QualityGateOutcome;
+import com.nanobaseai.actenora.meetingintelligence.domain.validation.ValidationParticipant;
 import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import org.slf4j.Logger;
@@ -294,6 +295,14 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private ValidationExecutionResult runValidation(HandoffCommand command) {
         List<SegmentInput> segments = segmentSource.segmentsFor(
                 TenantId.of(command.tenantId()), command.transcriptId());
+        List<ValidationParticipant> speakers = ValidationCandidateMapper.participantsFromSpeakers(segments);
+        List<ValidationParticipant> invitees = List.of();
+        if (meetingApi.isPresent()) {
+            invitees = meetingApi.get().listParticipants(command.meetingOccurrenceId()).stream()
+                    .map(p -> ValidationCandidateMapper.fromInvitee(
+                            p.displayName(), p.email(), p.entraUserId()))
+                    .toList();
+        }
         return evidenceValidationApi.validate(new RunValidationCommand(
                 command.tenantId(),
                 command.meetingOccurrenceId(),
@@ -303,7 +312,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                         command.meetingStartedAtIso(),
                         command.meetingTimezone()),
                 ValidationCandidateMapper.toSegments(segments),
-                ValidationCandidateMapper.participantsFromSpeakers(segments)
+                ValidationCandidateMapper.mergeParticipants(speakers, invitees)
         ));
     }
 

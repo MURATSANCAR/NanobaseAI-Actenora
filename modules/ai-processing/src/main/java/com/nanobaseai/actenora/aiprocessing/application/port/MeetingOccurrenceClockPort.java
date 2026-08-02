@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,13 @@ public interface MeetingOccurrenceClockPort {
 
     default ZoneId timezone(TenantId tenantId, UUID meetingOccurrenceId) {
         return ZoneId.of("Europe/Istanbul");
+    }
+
+    /**
+     * Calendar invitee display names (and email local-parts) for owner binding / validation.
+     */
+    default List<String> participantDisplayNames(TenantId tenantId, UUID meetingOccurrenceId) {
+        return List.of();
     }
 
     static MeetingOccurrenceClockPort unsupported() {

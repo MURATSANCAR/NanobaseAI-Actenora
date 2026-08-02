@@ -32,6 +32,13 @@ class ValidationCandidateMapperTest {
         assertEquals(1, participants.size());
         assertEquals("Alice", participants.getFirst().displayName());
 
+        List<ValidationParticipant> merged = ValidationCandidateMapper.mergeParticipants(
+                participants,
+                List.of(ValidationCandidateMapper.fromInvitee("Murat Sancar", "murat@example.com", "oid-1"))
+        );
+        assertEquals(2, merged.size());
+        assertTrue(merged.stream().anyMatch(p -> "Murat Sancar".equals(p.displayName())));
+
         FinalNoteDraft draft = new FinalNoteDraft(
                 "Summary",
                 List.of(new DecisionCandidate("Ship Friday", List.of("seg-1"), 0.9)),

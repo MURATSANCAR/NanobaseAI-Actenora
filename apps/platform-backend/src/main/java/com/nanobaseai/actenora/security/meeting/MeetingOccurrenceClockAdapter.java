@@ -2,12 +2,18 @@ package com.nanobaseai.actenora.security.meeting;
 
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingOccurrenceClockPort;
 import com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository;
+import com.nanobaseai.actenora.meeting.application.port.MeetingParticipantRepository;
+import com.nanobaseai.actenora.meeting.domain.model.MeetingParticipant;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public final class MeetingOccurrenceClockAdapter implements MeetingOccurrenceClockPort {
@@ -15,9 +21,18 @@ public final class MeetingOccurrenceClockAdapter implements MeetingOccurrenceClo
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Europe/Istanbul");
 
     private final MeetingOccurrenceRepository repository;
+    private final MeetingParticipantRepository participantRepository;
 
     public MeetingOccurrenceClockAdapter(MeetingOccurrenceRepository repository) {
+        this(repository, null);
+    }
+
+    public MeetingOccurrenceClockAdapter(
+            MeetingOccurrenceRepository repository,
+            MeetingParticipantRepository participantRepository
+    ) {
         this.repository = Objects.requireNonNull(repository, "repository");
+        this.participantRepository = participantRepository;
     }
 
     @Override
@@ -31,5 +46,28 @@ public final class MeetingOccurrenceClockAdapter implements MeetingOccurrenceClo
     @Override
     public ZoneId timezone(TenantId tenantId, UUID meetingOccurrenceId) {
         return DEFAULT_ZONE;
+    }
+
+    @Override
+    public List<String> participantDisplayNames(TenantId tenantId, UUID meetingOccurrenceId) {
+        if (participantRepository == null) {
+            return List.of();
+        }
+        Set<String> names = new LinkedHashSet<>();
+        for (MeetingParticipant p : participantRepository.findByMeetingOccurrenceIdAndTenantId(
+                meetingOccurrenceId, tenantId)) {
+            if (p.displayName() != null && !p.displayName().isBlank()) {
+                names.add(p.displayName().strip());
+            }
+            if (p.email() != null && !p.email().isBlank()) {
+                String email = p.email().strip();
+                names.add(email);
+                int at = email.indexOf('@');
+                if (at > 0) {
+                    names.add(email.substring(0, at));
+                }
+            }
+        }
+        return List.copyOf(new ArrayList<>(names));
     }
 }

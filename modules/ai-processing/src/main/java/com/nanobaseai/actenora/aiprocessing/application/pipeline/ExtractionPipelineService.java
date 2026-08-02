@@ -48,6 +48,7 @@ import com.nanobaseai.actenora.aiprocessing.infrastructure.json.PartialExtractio
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -312,9 +313,17 @@ public final class ExtractionPipelineService {
             merged = ProposalCuePostProcessor.productionDefaults().process(merged, normalized);
             merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(merged);
             merged = new CrossTypeConsistencyAuditor().auditBundle(merged);
+            Set<String> roster = new LinkedHashSet<>(ActionPostProcessingPipeline.participantsFromSegments(normalized));
+            if (request.meetingParticipantNames() != null) {
+                for (String name : request.meetingParticipantNames()) {
+                    if (name != null && !name.isBlank()) {
+                        roster.add(name.strip());
+                    }
+                }
+            }
             ActionPostProcessingPipeline.Context actionCtx = new ActionPostProcessingPipeline.Context(
                     normalized,
-                    ActionPostProcessingPipeline.participantsFromSegments(normalized),
+                    roster,
                     ActionPostProcessingPipeline.parseMeetingStart(request.meetingStartedAtIso(), ActionPostProcessingPipeline.DEFAULT_ZONE),
                     ActionPostProcessingPipeline.DEFAULT_ZONE,
                     request.meetingOccurrenceId() == null ? null : request.meetingOccurrenceId().toString()

@@ -72,6 +72,50 @@ public final class ValidationCandidateMapper {
         return List.copyOf(byName.values());
     }
 
+    /**
+     * Merges transcript speakers with calendar invitees. Invitees win for email/entra when present.
+     */
+    public static List<ValidationParticipant> mergeParticipants(
+            List<ValidationParticipant> speakers,
+            List<ValidationParticipant> invitees
+    ) {
+        Map<String, ValidationParticipant> byKey = new LinkedHashMap<>();
+        if (speakers != null) {
+            for (ValidationParticipant p : speakers) {
+                byKey.putIfAbsent(participantMergeKey(p), p);
+            }
+        }
+        if (invitees != null) {
+            for (ValidationParticipant p : invitees) {
+                byKey.put(participantMergeKey(p), p);
+            }
+        }
+        return List.copyOf(byKey.values());
+    }
+
+    public static ValidationParticipant fromInvitee(
+            String displayName,
+            String email,
+            String entraUserId
+    ) {
+        String name = displayName == null || displayName.isBlank()
+                ? (email == null || email.isBlank() ? "participant" : email.trim())
+                : displayName.trim();
+        return new ValidationParticipant(
+                toParticipantUuid(name),
+                name,
+                email == null || email.isBlank() ? null : email.trim(),
+                entraUserId == null || entraUserId.isBlank() ? null : entraUserId.trim()
+        );
+    }
+
+    private static String participantMergeKey(ValidationParticipant participant) {
+        if (participant.emailOptional().isPresent()) {
+            return "email:" + participant.emailOptional().orElseThrow().toLowerCase();
+        }
+        return "name:" + participant.displayName().trim().toLowerCase();
+    }
+
     public static List<ValidationCandidate> toCandidates(FinalNoteDraft draft) {
         return toCandidates(draft, null, null);
     }

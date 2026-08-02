@@ -135,7 +135,9 @@ public final class ActionPostProcessingPipeline {
             dated.add(resolveDates(action, ctx, stats, flags));
         }
 
-        ActionDeduplicator.Result dedup = deduplicator.deduplicate(dated);
+        List<ActionItemCandidate> ownerSanitized = sanitizeUnknownOwners(dated, participants, stats);
+
+        ActionDeduplicator.Result dedup = deduplicator.deduplicate(ownerSanitized);
         List<ActionItemCandidate> dedupedActions = new ArrayList<>();
         for (ActionItemCandidate action : dedup.actions()) {
             dedupedActions.add(ensureDueDateFromDueAt(action));
@@ -399,6 +401,79 @@ public final class ActionPostProcessingPipeline {
             s.speakerDisplayNameOptional().ifPresent(name -> set.add(name.strip()));
         }
         return set;
+    }
+
+    /**
+     * Drops hallucinated / sentence-fragment owners that do not match the meeting roster.
+     * When the roster is empty (unattributed transcript + no invitees), clear all owners so
+     * the quality gate does not hard-reject the entire draft.
+     */
+    static List<ActionItemCandidate> sanitizeUnknownOwners(
+            List<ActionItemCandidate> actions,
+            Set<String> participants,
+            ActionPostProcessingStats stats
+    ) {
+        List<ActionItemCandidate> out = new ArrayList<>(actions.size());
+        for (ActionItemCandidate action : actions) {
+            String owner = action.owner();
+            if (owner == null || owner.isBlank()) {
+                out.add(action);
+                continue;
+            }
+            if (participants.isEmpty() || !ownerMatchesParticipant(owner, participants)) {
+                stats.incrementOwnersCleared();
+                out.add(action.withOwner(null));
+            } else {
+                out.add(action);
+            }
+        }
+        return out;
+    }
+
+    static boolean ownerMatchesParticipant(String owner, Set<String> participants) {
+        String ownerNorm = normalizePersonToken(owner);
+        if (ownerNorm.isBlank()) {
+            return false;
+        }
+        String ownerFirst = firstToken(ownerNorm);
+        for (String participant : participants) {
+            String pNorm = normalizePersonToken(participant);
+            if (pNorm.isBlank()) {
+                continue;
+            }
+            if (pNorm.equals(ownerNorm) || firstToken(pNorm).equals(ownerFirst)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizePersonToken(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim()
+                .toLowerCase(Locale.ROOT)
+                .replace('ı', 'i')
+                .replace('İ', 'i')
+                .replace('ş', 's')
+                .replace('Ş', 's')
+                .replace('ğ', 'g')
+                .replace('Ğ', 'g')
+                .replace('ç', 'c')
+                .replace('Ç', 'c')
+                .replace('ö', 'o')
+                .replace('Ö', 'o')
+                .replace('ü', 'u')
+                .replace('Ü', 'u')
+                .replaceAll("[^\\p{Alnum}]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private static String firstToken(String normalized) {
+        int space = normalized.indexOf(' ');
+        return space < 0 ? normalized : normalized.substring(0, space);
     }
 
     public static OffsetDateTime parseMeetingStart(String isoOrEmpty, ZoneId zone) {

@@ -1073,9 +1073,17 @@ public final class DefaultStageExecutors {
             var start = meetingClock.scheduledStart(TenantId.of(job.tenantId()), job.meetingOccurrenceId())
                     .orElse(null);
             var zone = meetingClock.timezone(TenantId.of(job.tenantId()), job.meetingOccurrenceId());
+            java.util.LinkedHashSet<String> roster = new java.util.LinkedHashSet<>(
+                    ActionPostProcessingPipeline.participantsFromSegments(normalized));
+            for (String name : meetingClock.participantDisplayNames(
+                    TenantId.of(job.tenantId()), job.meetingOccurrenceId())) {
+                if (name != null && !name.isBlank()) {
+                    roster.add(name.strip());
+                }
+            }
             return new ActionPostProcessingPipeline.Context(
                     normalized,
-                    ActionPostProcessingPipeline.participantsFromSegments(normalized),
+                    roster,
                     start,
                     zone,
                     job.meetingOccurrenceId().toString()
