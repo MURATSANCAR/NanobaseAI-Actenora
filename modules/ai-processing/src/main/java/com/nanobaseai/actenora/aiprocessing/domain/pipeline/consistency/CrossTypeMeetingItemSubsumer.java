@@ -157,13 +157,9 @@ public final class CrossTypeMeetingItemSubsumer {
                 continue;
             }
             // Keep the most informative action in the decision cluster.
-            ActionItemCandidate best = cluster.getFirst();
-            for (int i = 1; i < cluster.size(); i++) {
-                ActionItemCandidate candidate = cluster.get(i);
-                if (candidate.text().length() > best.text().length()) {
-                    best = candidate;
-                }
-            }
+            ActionItemCandidate best = cluster.stream()
+                    .max(java.util.Comparator.comparingInt(a -> a.text().length()))
+                    .orElseThrow();
             others.add(best);
             remaining = others;
         }

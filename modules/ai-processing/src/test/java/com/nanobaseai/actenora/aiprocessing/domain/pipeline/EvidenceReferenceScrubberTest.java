@@ -28,7 +28,14 @@ class EvidenceReferenceScrubberTest {
                 .scrub(bundle, Set.of(REAL_A, REAL_B));
 
         assertEquals(1, outcome.bundle().decisions().size());
-        assertEquals("Keep me", outcome.bundle().decisions().get(0).text());
+        assertEquals(
+                "Keep me",
+                outcome.bundle().decisions().stream()
+                        .filter(d -> d.text().equals("Keep me"))
+                        .findFirst()
+                        .orElseThrow()
+                        .text()
+        );
         assertEquals(1, outcome.droppedItems());
         assertTrue(outcome.droppedRefs() >= 1);
         assertTrue(outcome.bundle().qualityFlags().contains("EVIDENCE_ITEM_SOFT_DROPPED"));
@@ -72,7 +79,14 @@ class EvidenceReferenceScrubberTest {
                 .scrub(bundle, Set.of(REAL_PREFIX_TARGET, REAL_A));
 
         assertEquals(1, outcome.bundle().decisions().size());
-        assertEquals(List.of(REAL_PREFIX_TARGET), outcome.bundle().decisions().get(0).evidenceSegmentIds());
+        assertEquals(
+                List.of(REAL_PREFIX_TARGET),
+                outcome.bundle().decisions().stream()
+                        .filter(d -> d.text().equals("Prefix"))
+                        .findFirst()
+                        .orElseThrow()
+                        .evidenceSegmentIds()
+        );
         assertEquals(1, outcome.correctedRefs());
         assertTrue(outcome.bundle().qualityFlags().contains("EVIDENCE_REF_CORRECTED"));
     }
@@ -100,7 +114,14 @@ class EvidenceReferenceScrubberTest {
                 .scrub(bundle, Set.of(REAL_B, REAL_A));
 
         assertEquals(1, outcome.bundle().decisions().size());
-        assertEquals(List.of(REAL_B), outcome.bundle().decisions().get(0).evidenceSegmentIds());
+        assertEquals(
+                List.of(REAL_B),
+                outcome.bundle().decisions().stream()
+                        .filter(d -> d.text().equals("Near miss"))
+                        .findFirst()
+                        .orElseThrow()
+                        .evidenceSegmentIds()
+        );
         assertEquals(1, outcome.correctedRefs());
     }
 

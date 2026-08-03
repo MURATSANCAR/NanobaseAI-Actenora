@@ -85,8 +85,20 @@ public final class ActionTitleEvidenceBackfiller {
             return true;
         }
         // Starts mid-phrase: lowercase connective / possessive stem after strip
-        String first = t.split("\\s+")[0].toLowerCase(Locale.ROOT);
+        String first = firstWhitespaceToken(t).toLowerCase(Locale.ROOT);
         return LIKELY_INCOMPLETE.matcher(first + " x").matches() && t.length() < 80;
+    }
+
+    private static String firstWhitespaceToken(String text) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+        for (String token : text.strip().split("\\s+")) {
+            if (!token.isBlank()) {
+                return token;
+            }
+        }
+        return "";
     }
 
     private static String pickEvidenceSentence(ActionItemCandidate action, Map<String, String> byId) {

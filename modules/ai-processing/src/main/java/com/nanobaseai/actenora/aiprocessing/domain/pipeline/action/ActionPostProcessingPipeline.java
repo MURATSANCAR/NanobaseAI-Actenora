@@ -383,11 +383,24 @@ public final class ActionPostProcessingPipeline {
                 continue;
             }
             String finalCore = identityNormalizer.canonicalCore(finalAction);
-            if (!finalCore.isBlank() && originalText.contains(finalCore.split("\\s+")[0])) {
+            String coreAnchor = firstCoreToken(finalCore);
+            if (!finalCore.isBlank() && !coreAnchor.isBlank() && originalText.contains(coreAnchor)) {
                 return original;
             }
         }
         return null;
+    }
+
+    private static String firstCoreToken(String core) {
+        if (core == null || core.isBlank()) {
+            return "";
+        }
+        for (String token : core.split("\\s+")) {
+            if (!token.isBlank()) {
+                return token;
+            }
+        }
+        return "";
     }
 
     private String firstEvidenceSpeaker(ActionItemCandidate action, List<SegmentInput> segments) {

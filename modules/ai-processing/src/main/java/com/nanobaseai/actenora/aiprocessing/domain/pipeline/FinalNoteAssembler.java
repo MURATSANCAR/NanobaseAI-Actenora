@@ -72,25 +72,26 @@ public final class FinalNoteAssembler {
 
         if (!decisions.isEmpty()) {
             sb.append(en ? "Outcomes:" : "Sonuçlar:").append('\n');
-            int limit = Math.min(MAX_SUMMARY_DECISIONS, decisions.size());
-            for (int i = 0; i < limit; i++) {
-                sb.append(i + 1).append(". ").append(decisions.get(i).text().strip()).append('\n');
-            }
+            appendNumberedLines(sb, decisions.stream()
+                    .limit(MAX_SUMMARY_DECISIONS)
+                    .map(d -> d.text().strip())
+                    .toList());
         }
         if (!actions.isEmpty()) {
             if (!sb.isEmpty()) {
                 sb.append('\n');
             }
             sb.append(en ? "Next steps:" : "Sonraki adımlar:").append('\n');
-            int limit = Math.min(MAX_SUMMARY_ACTIONS, actions.size());
-            for (int i = 0; i < limit; i++) {
-                ActionItemCandidate item = actions.get(i);
-                sb.append(i + 1).append(". ").append(item.text().strip());
-                if (item.owner() != null && !item.owner().isBlank()) {
-                    sb.append(" (").append(item.owner().strip()).append(')');
-                }
-                sb.append('\n');
-            }
+            appendNumberedLines(sb, actions.stream()
+                    .limit(MAX_SUMMARY_ACTIONS)
+                    .map(item -> {
+                        String line = item.text().strip();
+                        if (item.owner() != null && !item.owner().isBlank()) {
+                            line = line + " (" + item.owner().strip() + ")";
+                        }
+                        return line;
+                    })
+                    .toList());
             if (actions.size() > MAX_SUMMARY_ACTIONS) {
                 int more = actions.size() - MAX_SUMMARY_ACTIONS;
                 sb.append(en
@@ -103,10 +104,10 @@ public final class FinalNoteAssembler {
                 sb.append('\n');
             }
             sb.append(en ? "Watchouts:" : "Dikkat:").append('\n');
-            int limit = Math.min(MAX_SUMMARY_RISKS, risks.size());
-            for (int i = 0; i < limit; i++) {
-                sb.append(i + 1).append(". ").append(risks.get(i).text().strip()).append('\n');
-            }
+            appendNumberedLines(sb, risks.stream()
+                    .limit(MAX_SUMMARY_RISKS)
+                    .map(r -> r.text().strip())
+                    .toList());
         }
         if (sb.isEmpty() && !bundle.openQuestions().isEmpty()) {
             sb.append(en ? "Open questions remain." : "Açık sorular devam ediyor.");
@@ -120,6 +121,14 @@ public final class FinalNoteAssembler {
             return OutputLanguagePolicy.unreliableSummary(language);
         }
         return sb.toString().trim();
+    }
+
+    /** Display ordinals only — entities already selected by stream/limit, not by magic index. */
+    private static void appendNumberedLines(StringBuilder sb, List<String> lines) {
+        int n = 1;
+        for (String line : lines) {
+            sb.append(n++).append(". ").append(line).append('\n');
+        }
     }
 
     /** Kept for callers/tests that still filter agenda-quality topics for the topics field. */

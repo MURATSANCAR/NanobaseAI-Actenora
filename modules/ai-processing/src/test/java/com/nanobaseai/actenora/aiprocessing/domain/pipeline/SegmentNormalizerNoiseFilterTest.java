@@ -23,9 +23,9 @@ class SegmentNormalizerNoiseFilterTest {
                         "Risk için erken smoke yapacağız.", false)
         ));
         assertEquals(2, normalized.size());
-        assertEquals("s1", normalized.get(0).segmentId());
-        assertEquals("s4", normalized.get(1).segmentId());
-        assertTrue(normalized.get(0).markerNear());
+        assertTrue(normalized.stream().anyMatch(s -> "s1".equals(s.segmentId()) && s.markerNear()));
+        assertTrue(normalized.stream().anyMatch(s -> "s4".equals(s.segmentId())));
+        assertTrue(normalized.stream().noneMatch(s -> "s2".equals(s.segmentId()) || "s3".equals(s.segmentId())));
     }
 
     @Test

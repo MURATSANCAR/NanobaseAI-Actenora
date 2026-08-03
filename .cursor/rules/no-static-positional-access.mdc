@@ -1,43 +1,46 @@
 ---
-description: Never assert or branch on static list indices — select by meaning
+description: No positional/static list access — prefer generic predicate/id selection
 alwaysApply: true
 ---
 
-# No static / positional progression
+# Generic selection — no static / positional progression
 
-Actenora must **never** advance logic or tests by magic list positions (`get(0)`, `get(1)`, `[0]`, “first element means X”).
+Actenora must stay **generic**: never advance domain logic or tests by magic list positions or “slot N means entity X”.
 
 ## Forbidden
 
-- `list.get(0)` / `list.get(1)` / `arr[0]` to mean a **specific** domain entity (owner, action, decision, …)
-- Assuming stable order: “index 0 = known owner, index 1 = garbage”
-- Positional coupling between arrange data and assertions when identity is available in the object itself
+- `list.get(0)`, `list.get(1)`, `arr[0]`, `split(...)[0]` when the index encodes **domain meaning**
+- Assuming stable order between arrange data and assertions (“first = Murat, second = garbage”)
+- Index loops whose purpose is “pick the special one at slot i” instead of a predicate/score
+- Hard-wiring pipeline behavior to a fixed ordinal in decisions/actions/commitments/segments
 
 ## Required
 
-- Select by **meaning**: text, id, owner, evidence id, status, or a named finder helper
-- For “exactly one” results, prefer `getFirst()` / `orElseThrow()` only after filtering to that singleton
-- When comparing two outcomes, find each by its distinctive field, then assert
+- Select by **identity or meaning**: id, text/content cue, owner, evidence id, status, hash, or scored preference
+- Prefer `stream().filter(...).findFirst()`, `max(Comparator)`, maps keyed by id
+- After filtering to a **verified singleton**, `getFirst()` / `orElseThrow()` is fine
+- Numbered UI/summary lines may use an iteration counter for display only — not for resolving which entity is which
+
+## Allowed exceptions (narrow)
+
+- External protocol shapes that are defined as “first choice” (e.g. OpenAI `choices[0]`) — wrap once at the adapter boundary
+- Mutable accumulators / token counters that are not domain entities
 
 ## Examples
 
 ```java
-// BAD
+// BAD — positional meaning
 assertEquals("Murat Sancar", result.actions().get(0).owner());
-assertNull(result.actions().get(1).owner());
+ActionItemCandidate best = cluster.get(0);
 
-// GOOD
-ActionItemCandidate muratAction = result.actions().stream()
-        .filter(a -> a.text().contains("dokümanı paylaşacak"))
+// GOOD — generic
+ActionItemCandidate murat = result.actions().stream()
+        .filter(a -> a.text().contains("paylaşacak"))
         .findFirst()
         .orElseThrow();
-assertEquals("Murat Sancar", muratAction.owner());
+assertEquals("Murat Sancar", murat.owner());
 
-ActionItemCandidate unknown = result.actions().stream()
-        .filter(a -> a.text().contains("Mevcut mimari"))
-        .findFirst()
+ActionItemCandidate best = cluster.stream()
+        .max(Comparator.comparingInt(a -> a.text().length()))
         .orElseThrow();
-assertNull(unknown.owner());
 ```
-
-Same rule applies in production code: resolve by id/key/predicate, not by slot in a list.
