@@ -28,11 +28,12 @@
     "repeatRunsMinimum": 5,
     "servedModelExpected": "nanobase-qwen36-35b-a3b-mtp"
   },
-  "status": "RUNNING_B",
+  "status": "RUNNING_B_ON_NANOBASE",
   "notes": [
     "Fresh campaign restart 2026-08-03 after orphan-reclaim fix deploy.",
     "Infra patch AiJobOrphanReclaimOnStartup applied on top of B/A trees (AI code unchanged).",
-    "Detached screen session actenora-ba survives Cursor close."
+    "Detached screen session actenora-ba survives Cursor close.",
+    "Campaign relocated to nanobase screen actenora-ba (not Mac) after laptop sleep killed local screen."
   ],
   "deploy": {
     "B": {
@@ -41,5 +42,13 @@
       "jarSha256": "b8880134bd482ff2371b64f2e1346fd0bc3d4b3083d26a380ad1c745357e8c18",
       "note": "B AI=f9c699f + AiJobOrphanReclaimOnStartup infra patch"
     }
-  }
+  },
+  "campaignHost": "nanobase",
+  "campaignScreen": "actenora-ba",
+  "campaignPaths": {
+    "status": "/data/nanobaseai/actenora/eval/standup-v0.1/campaign.STATUS.txt",
+    "log": "/data/nanobaseai/actenora/eval/standup-v0.1/campaign.log",
+    "artifacts": "/data/nanobaseai/actenora/eval/standup-v0.1/"
+  },
+  "updatedAt": "2026-08-03T20:18:50Z"
 }
