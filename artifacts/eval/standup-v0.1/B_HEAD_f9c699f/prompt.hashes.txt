@@ -1,5 +1,0 @@
-3658d784add04c443eb93205a491edeafac5e71f4c89807b9d95512c471f62d7  modules/ai-processing/src/main/resources/aiprocessing/prompts/chunk-extraction.v1.txt
-c9e9675832018cc8eadf49237ab82c5d18d4560871a9f37f0fc0462cbbca4936  modules/ai-processing/src/main/resources/aiprocessing/prompts/editorial-summary.v1.txt
-660adb7807646f7e5e178147bbe50e395346f1e207ba4cf8e053ff8d54868b3c  modules/ai-processing/src/main/resources/aiprocessing/prompts/system-meeting-analyst.v2.txt
-8fe0cdf537701d6f3b4bb6d05cd26e98ff1f6069936def2754b3b8d2ab5f2ae4  modules/ai-processing/src/test/resources/aiprocessing/eval/01_15dk_daily_standup.vtt
-beb7f1610d0ed36401bb5ab592a1f2bfa9b8411ce4588c37828a8570023cda46  modules/ai-processing/src/test/resources/aiprocessing/eval/gold/01_15dk_daily_standup.gold.v1.json
