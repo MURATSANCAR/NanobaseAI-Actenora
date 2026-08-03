@@ -554,7 +554,8 @@ class ActionPostProcessingPipelineTest {
                 List.of(),
                 new ActionPostProcessingPipeline.Context(List.of(), Set.of(), MEETING_START, IST, "m")
         );
-        assertNull(result.actions().getFirst().owner());
+        assertEquals(1, result.actions().size());
+        assertNull(requireActionContaining(result.actions(), "yazılacak").owner());
     }
 
     @Test
@@ -575,7 +576,10 @@ class ActionPostProcessingPipelineTest {
                         "meeting-teams"
                 )
         );
-        assertEquals("Ahmet Faruk Çatlar", result.actions().getFirst().owner());
+        assertEquals(
+                "Ahmet Faruk Çatlar",
+                requireActionContaining(result.actions(), "veri tabanı").owner()
+        );
         assertEquals(1, result.stats().toArtifactMap("m").get("ownersBound"));
     }
 
@@ -638,7 +642,10 @@ class ActionPostProcessingPipelineTest {
                         "meeting-teams"
                 )
         );
-        assertEquals("Ahmet Faruk Çatlar", result.actions().getFirst().owner());
+        assertEquals(
+                "Ahmet Faruk Çatlar",
+                requireActionContaining(result.actions(), "ERP paneli").owner()
+        );
         assertEquals(1, result.stats().toArtifactMap("m").get("ownersBound"));
     }
 
@@ -667,8 +674,19 @@ class ActionPostProcessingPipelineTest {
                         "m"
                 )
         );
-        assertTrue(result.actions().getFirst().text().contains("Veri tabanına erişim"));
-        assertFalse(result.actions().getFirst().text().endsWith("…"));
+        ActionItemCandidate repaired = requireActionContaining(result.actions(), "erişim");
+        assertTrue(repaired.text().contains("Veri tabanına erişim"));
+        assertFalse(repaired.text().endsWith("…"));
+    }
+
+    private static ActionItemCandidate requireActionContaining(
+            List<ActionItemCandidate> actions,
+            String textCue
+    ) {
+        return actions.stream()
+                .filter(a -> a.text().contains(textCue))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No action containing: " + textCue));
     }
 
     private static ActionItemCandidate action(String text, String owner, List<String> evidence) {

@@ -36,8 +36,12 @@ class ActionTitleEvidenceBackfillerTest {
         );
         List<ActionItemCandidate> out = backfiller.backfill(List.of(truncated), segments);
         assertEquals(1, out.size());
-        assertTrue(out.getFirst().text().contains("Veri tabanına erişim"));
-        assertTrue(out.getFirst().text().length() > truncated.text().length());
+        ActionItemCandidate repaired = out.stream()
+                .filter(a -> a.evidenceSegmentIds().contains("seg-db"))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(repaired.text().contains("Veri tabanına erişim"));
+        assertTrue(repaired.text().length() > truncated.text().length());
     }
 
     @Test
@@ -63,7 +67,11 @@ class ActionTitleEvidenceBackfillerTest {
                 )
         );
         List<ActionItemCandidate> out = backfiller.backfill(List.of(action), segments);
-        assertEquals(complete, out.getFirst().text());
+        ActionItemCandidate kept = out.stream()
+                .filter(a -> a.evidenceSegmentIds().contains("seg-long"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(complete, kept.text());
     }
 
     @Test

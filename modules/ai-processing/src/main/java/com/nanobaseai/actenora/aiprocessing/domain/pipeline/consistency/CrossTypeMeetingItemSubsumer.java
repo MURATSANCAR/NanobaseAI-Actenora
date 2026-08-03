@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionDedupli
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionIdentityNormalizer;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -158,7 +159,7 @@ public final class CrossTypeMeetingItemSubsumer {
             }
             // Keep the most informative action in the decision cluster.
             ActionItemCandidate best = cluster.stream()
-                    .max(java.util.Comparator.comparingInt(a -> a.text().length()))
+                    .max(Comparator.comparingInt(a -> a.text().length()))
                     .orElseThrow();
             others.add(best);
             remaining = others;

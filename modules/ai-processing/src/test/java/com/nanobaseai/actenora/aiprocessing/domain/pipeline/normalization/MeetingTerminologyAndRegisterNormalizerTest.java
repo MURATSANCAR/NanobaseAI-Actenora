@@ -32,9 +32,13 @@ class MeetingTerminologyAndRegisterNormalizerTest {
                 )
         ));
         assertEquals(1, out.size());
-        assertTrue(out.getFirst().content().contains("MySQL"));
-        assertTrue(out.getFirst().content().contains("PostgreSQL"));
-        assertFalse(out.getFirst().content().contains("Mayusque"));
+        SegmentInput rewritten = out.stream()
+                .filter(s -> "s1".equals(s.segmentId()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(rewritten.content().contains("MySQL"));
+        assertTrue(rewritten.content().contains("PostgreSQL"));
+        assertFalse(rewritten.content().contains("Mayusque"));
     }
 
     @Test
@@ -70,7 +74,11 @@ class MeetingTerminologyAndRegisterNormalizerTest {
                         "m"
                 )
         );
-        assertTrue(result.actions().getFirst().text().contains("gereksinim dokümanı"));
-        assertFalse(result.actions().getFirst().text().toLowerCase().contains("reçete"));
+        ActionItemCandidate rewritten = result.actions().stream()
+                .filter(a -> a.evidenceSegmentIds().contains("s1"))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(rewritten.text().contains("gereksinim dokümanı"));
+        assertFalse(rewritten.text().toLowerCase().contains("reçete"));
     }
 }
