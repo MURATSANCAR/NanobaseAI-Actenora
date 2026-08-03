@@ -39,7 +39,7 @@ public final class AiJobOrphanReclaimOnStartup {
 
     public AiJobOrphanReclaimOnStartup(
             AiProcessingApi aiProcessingApi,
-            @Value("${actenora.ai.local-provider.max-attempts:3}") int maxAttempts
+            @Value("${actenora.ai.provider.max-attempts:5}") int maxAttempts
     ) {
         this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
         if (maxAttempts < 1) {
