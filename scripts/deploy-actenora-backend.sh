@@ -38,6 +38,8 @@ p = Path("/etc/nanobaseai/actenora.env")
 keys = {
     "ACTENORA_AI_PROVIDER_READ_TIMEOUT": "7200s",
     "ACTENORA_AI_WORKER_STALE_RUNNING_AFTER": "PT24H",
+    # Single-instance prodlike: requeue RUNNING jobs orphaned by container restart.
+    "ACTENORA_AI_WORKER_RECLAIM_ORPHANS_ON_STARTUP": "true",
 }
 lines = p.read_text().splitlines()
 out, seen = [], set()
@@ -125,6 +127,7 @@ ACTENORA_AI_FINALIZATION_TIMEOUT_SECONDS=1800
 ACTENORA_AI_FINALIZATION_FAILURE_MODE=deterministic
 ACTENORA_AI_WORKER_ENABLED=true
 ACTENORA_AI_WORKER_STALE_RUNNING_AFTER=PT24H
+ACTENORA_AI_WORKER_RECLAIM_ORPHANS_ON_STARTUP=true
 ACTENORA_ALLOW_DEFAULT_SECRETS=false
 EOF
 }

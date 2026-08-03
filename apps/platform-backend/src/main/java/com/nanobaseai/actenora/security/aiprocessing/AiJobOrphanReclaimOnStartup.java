@@ -26,30 +26,33 @@ import java.util.Objects;
  */
 @Component
 @ConditionalOnProperty(name = "actenora.ai.worker.enabled", havingValue = "true", matchIfMissing = true)
-@ConditionalOnProperty(
-        name = "actenora.ai.worker.reclaim-orphans-on-startup",
-        havingValue = "true",
-        matchIfMissing = true)
 public final class AiJobOrphanReclaimOnStartup {
 
     private static final Logger log = LoggerFactory.getLogger(AiJobOrphanReclaimOnStartup.class);
 
     private final AiProcessingApi aiProcessingApi;
     private final int maxAttempts;
+    private final boolean reclaimOnStartup;
 
     public AiJobOrphanReclaimOnStartup(
             AiProcessingApi aiProcessingApi,
-            @Value("${actenora.ai.provider.max-attempts:5}") int maxAttempts
+            @Value("${actenora.ai.provider.max-attempts:5}") int maxAttempts,
+            @Value("${actenora.ai.worker.reclaim-orphans-on-startup:true}") boolean reclaimOnStartup
     ) {
         this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
         this.maxAttempts = maxAttempts;
+        this.reclaimOnStartup = reclaimOnStartup;
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void reclaimOrphans() {
+        if (!reclaimOnStartup) {
+            log.info("AI worker startup orphan reclaim disabled");
+            return;
+        }
         Instant now = Instant.now();
         // Duration.ZERO ⇒ every RUNNING job with started_at <= now is stale (all crash orphans).
         int recovered = aiProcessingApi.recoverStaleRunning(now, Duration.ZERO, maxAttempts);

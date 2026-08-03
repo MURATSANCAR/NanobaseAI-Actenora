@@ -223,6 +223,15 @@ class AiJobAdmissionRoutingSchedulerTest {
     }
 
     @Test
+    void zeroDurationStaleRecoveryRequeuesImmediately() {
+        // Mirrors startup orphan reclaim: Duration.ZERO treats every RUNNING job as abandoned.
+        AiJob running = admitAndForceRunning(tenantA, "orphan-boot-1");
+        int recovered = service.recoverStale(now.plus(Duration.ofSeconds(1)), Duration.ZERO);
+        assertEquals(1, recovered);
+        assertEquals(AiJobStatus.QUEUED, jobs.findById(running.id()).orElseThrow().status());
+    }
+
+    @Test
     void priorityAgingPreventsStarvationOfLowPriority() {
         AiJob bulk = service.submit(commandWithCorrelation(tenantA, JobPriority.BULK, 1000, "bulk-1")).job();
         // Simulate age by using older queuedAt through re-save isn't possible; use claim score directly.
