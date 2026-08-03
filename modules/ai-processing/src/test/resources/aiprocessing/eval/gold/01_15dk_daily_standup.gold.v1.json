@@ -1,0 +1,932 @@
+{
+  "schemaVersion": "1.0",
+  "goldVersion": "0.1",
+  "fixture": "01_15dk_daily_standup.vtt",
+  "fixtureRelativePath": "modules/ai-processing/src/test/resources/aiprocessing/eval/01_15dk_daily_standup.vtt",
+  "fixtureSha256": "8fe0cdf537701d6f3b4bb6d05cd26e98ff1f6069936def2754b3b8d2ab5f2ae4",
+  "language": "tr",
+  "meetingType": "DAILY_STANDUP",
+  "baselineCommits": {
+    "control": "f9c699f",
+    "controlFull": "f9c699f4753d7017d64aede84c6ee7da056a5f66",
+    "candidate": "472172a",
+    "candidateFull": "472172a035da047189b292f7f6ee677c115963ad"
+  },
+  "evaluationConfig": {
+    "finalizationMode": "editorial",
+    "gateThreshold": 4.5,
+    "chunkTargetTokens": 3500,
+    "chunkOverlapTokens": 250,
+    "extractionMaxTokens": 6144,
+    "temperature": 0.1,
+    "topP": 0.85,
+    "topK": 20,
+    "repeatRunsMinimum": 5,
+    "runIdPatterns": {
+      "control": "B_HEAD_f9c699f_run_0N",
+      "candidate": "A_CAND_472172a_run_0N"
+    }
+  },
+  "promptHashes": {
+    "candidateChunkExtractionSha256": "3658d784add04c443eb93205a491edeafac5e71f4c89807b9d95512c471f62d7",
+    "candidateEditorialSummarySha256": "c9e9675832018cc8eadf49237ab82c5d18d4560871a9f37f0fc0462cbbca4936",
+    "systemV2Sha256": "660adb7807646f7e5e178147bbe50e395346f1e207ba4cf8e053ff8d54868b3c"
+  },
+  "topics": [
+    {
+      "id": "T-01",
+      "canonicalText": "Oturum yenileme sırasında paralel refresh çağrıları ve staging ortamındaki 401 hataları",
+      "acceptableParaphrases": [
+        "Oturum yenileme hatası / paralel refresh",
+        "Staging access token refresh yarış koşulu"
+      ],
+      "evidenceCueIds": [5, 7, 25],
+      "required": true,
+      "critical": false
+    },
+    {
+      "id": "T-02",
+      "canonicalText": "Yeni e-posta şablonlarında Outlook üzerinde Türkçe karakter bozulması",
+      "acceptableParaphrases": [
+        "E-posta karakter bozulması",
+        "Bildirim şablonlarında Türkçe karakter / Outlook"
+      ],
+      "evidenceCueIds": [29, 31, 49],
+      "required": true,
+      "critical": false
+    }
+  ],
+  "issues": [
+    {
+      "id": "I-01",
+      "canonicalText": "Access token süresi dolduğunda aynı anda iki refresh isteği oluşuyor.",
+      "acceptableParaphrases": [
+        "Staging'de access token süresi dolunca aynı anda iki refresh isteği oluşuyor."
+      ],
+      "evidenceCueIds": [5, 7],
+      "required": true,
+      "critical": false
+    },
+    {
+      "id": "I-02",
+      "canonicalText": "Yeni bildirim şablonlarında Türkçe karakterler Outlook'ta bozuk görünüyor.",
+      "acceptableParaphrases": [
+        "Yeni bildirim şablonlarında Türkçe karakterler Outlook'ta bozuk görünüyor."
+      ],
+      "evidenceCueIds": [29, 31],
+      "required": true,
+      "critical": false
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D-01",
+      "canonicalText": "Paralel refresh çağrıları tek promise üzerinde birleştirilecek.",
+      "acceptableParaphrases": [
+        "Paralel refresh çağrıları tek promise üzerinde birleştirilecek",
+        "Frontend tarafında tek promise üzerinden refresh yapılacak"
+      ],
+      "evidenceCueIds": [25],
+      "required": true,
+      "critical": true,
+      "supersedesProposalCueIds": [9]
+    },
+    {
+      "id": "D-02",
+      "canonicalText": "Yeni e-posta gönderimlerinde UTF-8 başlığı zorunlu olacak.",
+      "acceptableParaphrases": [
+        "Yeni gönderimlerde UTF-8 başlığı zorunlu olacak",
+        "Yeni e-posta gönderimlerinde UTF-8 başlığı zorunlu olacak"
+      ],
+      "evidenceCueIds": [49],
+      "required": true,
+      "critical": true,
+      "supersedesProposalCueIds": [33],
+      "notes": "Cue 33 UTF-8+quoted-printable önerisinden yalnızca UTF-8 bölümü karara dönüşür; quoted-printable açıkça bağlanmaz."
+    }
+  ],
+  "actionItems": [
+    {
+      "id": "A-01",
+      "canonicalText": "Owner veya tarihi bulunmayan kayıtların otomatik görev oluşturmadığını kontrol etmek",
+      "acceptableParaphrases": [
+        "Notlarda owner veya tarih yoksa otomatik görev oluşturulmamasını kontrol etmek"
+      ],
+      "evidenceCueIds": [4],
+      "required": true,
+      "critical": true,
+      "owner": "Burak",
+      "dueDateText": null,
+      "relativeDate": null,
+      "mustRemainAtomic": true,
+      "mustNotInheritDateFrom": [],
+      "mustNotTransferDateTo": []
+    },
+    {
+      "id": "A-02",
+      "canonicalText": "Oturum yenileme test planına timeout, retry, yetkisiz erişim, yarıda kalan işlem ve bekleyen isteklerin kilitlenmesi senaryolarını eklemek",
+      "acceptableParaphrases": [
+        "Test planına timeout, retry, yetkisiz erişim, yarıda kalan işlem ve bekleyen isteklerin kilitlenmesi senaryolarını eklemek"
+      ],
+      "evidenceCueIds": [12],
+      "required": true,
+      "critical": true,
+      "owner": "Burak",
+      "dueDateText": null,
+      "relativeDate": null,
+      "mustRemainAtomic": true,
+      "mustNotInheritDateFrom": [],
+      "mustNotTransferDateTo": []
+    },
+    {
+      "id": "A-03",
+      "canonicalText": "Paralel refresh çağrılarını tek promise üzerinde birleştiren düzeltmeyi uygulamak",
+      "acceptableParaphrases": [
+        "Selin düzeltmeyi bugün 16.00'ya kadar yapacak",
+        "Tek promise düzeltmesini uygulamak"
+      ],
+      "evidenceCueIds": [25, 27],
+      "required": true,
+      "critical": true,
+      "owner": "Selin",
+      "dueDateText": null,
+      "relativeDate": "bugün 16.00",
+      "mustRemainAtomic": true,
+      "mustNotInheritDateFrom": [],
+      "mustNotTransferDateTo": ["A-04"],
+      "compoundSourceCueId": 27,
+      "compoundSiblingIds": ["A-04"]
+    },
+    {
+      "id": "A-04",
+      "canonicalText": "Oturum yenileme akışına correlation ID eklemek",
+      "acceptableParaphrases": [
+        "Can correlation id ekleyecek",
+        "Correlation ID eklemek"
+      ],
+      "evidenceCueIds": [27],
+      "required": true,
+      "critical": true,
+      "owner": "Can",
+      "dueDateText": null,
+      "relativeDate": null,
+      "mustRemainAtomic": true,
+      "mustNotInheritDateFrom": ["A-03"],
+      "mustNotTransferDateTo": [],
+      "compoundSourceCueId": 27,
+      "compoundSiblingIds": ["A-03"]
+    },
+    {
+      "id": "A-05",
+      "canonicalText": "E-posta karakter bozulması test planına timeout, retry, yetkisiz erişim, yarıda kalan işlem ve eski şablon regresyon senaryolarını eklemek",
+      "acceptableParaphrases": [
+        "Test planına timeout, retry, yetkisiz erişim, yarıda kalan işlem ve eski şablonların geriye dönük etkilenmesi senaryolarını eklemek"
+      ],
+      "evidenceCueIds": [36],
+      "required": true,
+      "critical": true,
+      "owner": "Burak",
+      "dueDateText": null,
+      "relativeDate": null,
+      "mustRemainAtomic": true,
+      "mustNotInheritDateFrom": [],
+      "mustNotTransferDateTo": []
+    },
+    {
+      "id": "A-06",
+      "canonicalText": "Yeni gönderimlerde kullanılan e-posta başlığını UTF-8 zorunluluğuna göre düzeltmek",
+      "acceptableParaphrases": [
+        "Can başlığı düzeltecek",
+        "E-posta başlığını UTF-8 zorunluluğuna göre düzeltmek"
+      ],
+      "evidenceCueIds": [49, 51],
+      "required": true,
+      "critical": true,
+      "owner": "Can",
+      "dueDateText": null,
+      "relativeDate": null,
+      "mustRemainAtomic": true,
+      "mustNotInheritDateFrom": ["A-07"],
+      "mustNotTransferDateTo": [],
+      "compoundSourceCueId": 51,
+      "compoundSiblingIds": ["A-07"]
+    },
+    {
+      "id": "A-07",
+      "canonicalText": "Outlook ve Apple Mail regresyon testlerini tamamlamak",
+      "acceptableParaphrases": [
+        "Burak Outlook ve Apple Mail regresyonunu yarın öğlene kadar tamamlayacak",
+        "Outlook ve Apple Mail regresyonunu tamamlamak"
+      ],
+      "evidenceCueIds": [51],
+      "required": true,
+      "critical": true,
+      "owner": "Burak",
+      "dueDateText": null,
+      "relativeDate": "yarın öğlene kadar",
+      "mustRemainAtomic": true,
+      "mustNotInheritDateFrom": [],
+      "mustNotTransferDateTo": ["A-06"],
+      "compoundSourceCueId": 51,
+      "compoundSiblingIds": ["A-06"]
+    }
+  ],
+  "risks": [
+    {
+      "id": "R-01",
+      "canonicalText": "Tek promise değişikliğinin bekleyen isteklerin kilitlenmesine neden olması",
+      "acceptableParaphrases": [
+        "Bekleyen isteklerin kilitlenmesi",
+        "Bu seçeneğin ana riski: Bekleyen isteklerin kilitlenmesi"
+      ],
+      "evidenceCueIds": [10, 13],
+      "required": true,
+      "critical": true
+    },
+    {
+      "id": "R-02",
+      "canonicalText": "E-posta başlık değişikliğinin eski şablonları geriye dönük etkilemesi",
+      "acceptableParaphrases": [
+        "Eski şablonların geriye dönük etkilenmesi",
+        "Bu seçeneğin ana riski: Eski şablonların geriye dönük etkilenmesi"
+      ],
+      "evidenceCueIds": [34, 37],
+      "required": true,
+      "critical": true
+    }
+  ],
+  "importantFacts": [
+    {
+      "id": "F-01",
+      "canonicalText": "Oturum yenileme testi yapılan 40 tekrarın 3'ünde 401 görüldü.",
+      "acceptableParaphrases": [
+        "Kırk tekrardan üçünde 401 görüldü",
+        "40 tekrarın 3'ünde 401 görüldü"
+      ],
+      "evidenceCueIds": [6, 8],
+      "required": true,
+      "critical": true,
+      "mustBeUnique": true,
+      "notes": "Cue 6 ve 8 aynı ölçümü tekrarlar; tek fact kaydı üretilmeli."
+    },
+    {
+      "id": "F-02",
+      "canonicalText": "Test edilen 5 istemcinin 2'sinde e-posta konu satırı hatalı görüldü.",
+      "acceptableParaphrases": [
+        "Beş istemcinin ikisinde konu satırı hatalı",
+        "5 istemcinin 2'sinde konu satırı hatalı"
+      ],
+      "evidenceCueIds": [30, 32],
+      "required": true,
+      "critical": true,
+      "mustBeUnique": true,
+      "notes": "Cue 30 ve 32 aynı ölçümü tekrarlar; tek fact kaydı üretilmeli."
+    }
+  ],
+  "openQuestions": [
+    {
+      "id": "Q-01",
+      "canonicalText": "Yarış koşulunun hangi şartlarda başladığı loglardan ayrıştırılabiliyor mu?",
+      "acceptableParaphrases": [
+        "Bu davranışın hangi koşulda başladığını loglardan ayırabiliyor muyuz?"
+      ],
+      "evidenceCueIds": [7],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotDeduplicateWith": []
+    },
+    {
+      "id": "Q-02",
+      "canonicalText": "Değişiklikten sonraki ilk 30 dakikada hangi alarm ve dashboard izlenecek?",
+      "acceptableParaphrases": [
+        "İlk otuz dakikada hangi alarmı ve hangi dashboard'u izleyeceğiz?"
+      ],
+      "evidenceCueIds": [10],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotDeduplicateWith": ["Q-08"]
+    },
+    {
+      "id": "Q-03",
+      "canonicalText": "İş mevcut sprinte alınırsa hangi teslimat kayacak ve bağımlılık gecikirse alternatif plan ne olacak?",
+      "acceptableParaphrases": [
+        "Bu işi mevcut sprintte alırsak hangi teslimat kayıyor ve bağımlılık gecikirse ikinci planımız ne oluyor?"
+      ],
+      "evidenceCueIds": [16],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotDeduplicateWith": ["Q-09"]
+    },
+    {
+      "id": "Q-04",
+      "canonicalText": "Hata durumunda hangi config, migration veya queue geri alınacak?",
+      "acceptableParaphrases": [
+        "Hata görürsek hangi config'i, migration'ı veya kuyruğu geri alacağız?"
+      ],
+      "evidenceCueIds": [20],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotDeduplicateWith": ["Q-10"]
+    },
+    {
+      "id": "Q-05",
+      "canonicalText": "Mobil istemcide aynı yarış koşulu bulunuyor mu?",
+      "acceptableParaphrases": [
+        "Mobil istemcide aynı yarış koşulu var mı?"
+      ],
+      "evidenceCueIds": [22],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotDeduplicateWith": []
+    },
+    {
+      "id": "Q-06",
+      "canonicalText": "Kesinti veya gecikmede ilk kullanıcı iletişimini kim yapacak?",
+      "acceptableParaphrases": [
+        "Kesinti veya gecikme olduğunda ilk mesajı kim gönderecek?"
+      ],
+      "evidenceCueIds": [26],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotDeduplicateWith": ["Q-12"]
+    },
+    {
+      "id": "Q-07",
+      "canonicalText": "Karakter bozulmasının hangi şartlarda başladığı loglardan ayrıştırılabiliyor mu?",
+      "acceptableParaphrases": [
+        "Bu davranışın hangi koşulda başladığını loglardan ayırabiliyor muyuz?"
+      ],
+      "evidenceCueIds": [31],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotDeduplicateWith": ["Q-01"]
+    },
+    {
+      "id": "Q-08",
+      "canonicalText": "E-posta değişikliği sonrası ilk 30 dakikada hangi alarm ve dashboard izlenecek?",
+      "acceptableParaphrases": [
+        "İlk otuz dakikada hangi alarmı ve hangi dashboard'u izleyeceğiz?"
+      ],
+      "evidenceCueIds": [34],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotDeduplicateWith": ["Q-02"]
+    },
+    {
+      "id": "Q-09",
+      "canonicalText": "E-posta işi sprinte alınırsa hangi teslimat kayacak ve bağımlılık gecikirse alternatif plan ne olacak?",
+      "acceptableParaphrases": [
+        "Bu işi mevcut sprintte alırsak hangi teslimat kayıyor ve bağımlılık gecikirse ikinci planımız ne oluyor?"
+      ],
+      "evidenceCueIds": [40],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotDeduplicateWith": ["Q-03"]
+    },
+    {
+      "id": "Q-10",
+      "canonicalText": "E-posta değişikliği hata verirse hangi config, migration veya queue geri alınacak?",
+      "acceptableParaphrases": [
+        "Hata görürsek hangi config'i, migration'ı veya kuyruğu geri alacağız?"
+      ],
+      "evidenceCueIds": [44],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotDeduplicateWith": ["Q-04"]
+    },
+    {
+      "id": "Q-11",
+      "canonicalText": "Gmail test matrisi ayrıca çalıştırılmalı mı?",
+      "acceptableParaphrases": [
+        "Gmail test matrisi ayrıca koşulmalı mı?"
+      ],
+      "evidenceCueIds": [46],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotDeduplicateWith": []
+    },
+    {
+      "id": "Q-12",
+      "canonicalText": "Kesinti veya gecikmede ilk kullanıcı iletişimini kim yapacak?",
+      "acceptableParaphrases": [
+        "Kesinti veya gecikme olduğunda ilk mesajı kim gönderecek?"
+      ],
+      "evidenceCueIds": [50],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotDeduplicateWith": ["Q-06"]
+    }
+  ],
+  "proposals": [
+    {
+      "id": "P-01",
+      "canonicalText": "Frontend tarafında tek promise üzerinden refresh yapılması",
+      "acceptableParaphrases": [
+        "Refresh işlemini tek promise üzerinden yapmak"
+      ],
+      "evidenceCueIds": [9],
+      "required": true,
+      "critical": true,
+      "topicContext": "T-01",
+      "supersededByDecisionId": "D-01",
+      "mustNotRemainAsFinalProposal": true
+    },
+    {
+      "id": "P-02",
+      "canonicalText": "Değişikliği feature flag arkasında küçük bir grupla denemek",
+      "acceptableParaphrases": [
+        "Feature flag arkasında küçük grupla denemek"
+      ],
+      "evidenceCueIds": [14],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotRemainAsFinalProposal": false
+    },
+    {
+      "id": "P-03",
+      "canonicalText": "Mevcut davranışı değiştirmeden yalnız gözlemlenebilirliği artırmak",
+      "acceptableParaphrases": [
+        "Yalnız gözlemlenebilirliği artırmak"
+      ],
+      "evidenceCueIds": [18],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotRemainAsFinalProposal": false
+    },
+    {
+      "id": "P-04",
+      "canonicalText": "Teknik spike ile süre, hata oranı ve log görünürlüğünü ölçmek",
+      "acceptableParaphrases": [
+        "Küçük bir teknik spike"
+      ],
+      "evidenceCueIds": [23],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotRemainAsFinalProposal": false
+    },
+    {
+      "id": "P-05",
+      "canonicalText": "Kabul kriterinde beklenen davranış, hata mesajı ve tamamlanma süresini birlikte göstermek",
+      "acceptableParaphrases": [
+        "Kabul kriterini kullanıcı diliyle yazmak"
+      ],
+      "evidenceCueIds": [21],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-01",
+      "mustNotRemainAsFinalProposal": false
+    },
+    {
+      "id": "P-06",
+      "canonicalText": "UTF-8 ve quoted-printable başlıklarını servis katmanında sabitlemek",
+      "acceptableParaphrases": [
+        "UTF-8 ve quoted-printable başlıklarını servis katmanında sabitlemek"
+      ],
+      "evidenceCueIds": [33],
+      "required": true,
+      "critical": true,
+      "topicContext": "T-02",
+      "supersededByDecisionId": "D-02",
+      "mustNotRemainAsFinalProposal": false,
+      "notes": "UTF-8 bölümü D-02 ile karar olur ve final proposal olarak kalmamalı. quoted-printable açıkça karara bağlanmaz; sistem atomik ayırabiliyorsa yalnız bu kısım proposal olarak korunabilir."
+    },
+    {
+      "id": "P-07",
+      "canonicalText": "Değişikliği feature flag arkasında küçük bir grupla denemek",
+      "acceptableParaphrases": [
+        "Feature flag arkasında küçük grupla denemek"
+      ],
+      "evidenceCueIds": [38],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotRemainAsFinalProposal": false
+    },
+    {
+      "id": "P-08",
+      "canonicalText": "Mevcut davranışı değiştirmeden yalnız gözlemlenebilirliği artırmak",
+      "acceptableParaphrases": [
+        "Yalnız gözlemlenebilirliği artırmak"
+      ],
+      "evidenceCueIds": [42],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotRemainAsFinalProposal": false
+    },
+    {
+      "id": "P-09",
+      "canonicalText": "Teknik spike ile süre, hata oranı ve log görünürlüğünü ölçmek",
+      "acceptableParaphrases": [
+        "Küçük bir teknik spike"
+      ],
+      "evidenceCueIds": [47],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotRemainAsFinalProposal": false
+    },
+    {
+      "id": "P-10",
+      "canonicalText": "Kabul kriterinde beklenen davranış, hata mesajı ve tamamlanma süresini birlikte göstermek",
+      "acceptableParaphrases": [
+        "Kabul kriterini kullanıcı diliyle yazmak"
+      ],
+      "evidenceCueIds": [45],
+      "required": true,
+      "critical": false,
+      "topicContext": "T-02",
+      "mustNotRemainAsFinalProposal": false
+    }
+  ],
+  "forbiddenExtractions": [
+    {
+      "cueId": 3,
+      "reason": "Toplantı meta açıklaması; karar/öneri/risk ayrımı yöntem notu",
+      "reasonCode": "MEETING_META",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": false
+    },
+    {
+      "cueId": 17,
+      "reason": "UI gürültüsü / ekran paylaşımı",
+      "reasonCode": "UI_NOISE",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": false
+    },
+    {
+      "cueId": 19,
+      "reason": "Status-quo; token süresi değişmiyor; kalıcı ürün kararı değil",
+      "reasonCode": "STATUS_QUO_DECISION_FALSE_POSITIVE",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": true
+    },
+    {
+      "cueId": 41,
+      "reason": "Toplantı gürültüsü; ses kesilmesi / tekrar isteği",
+      "reasonCode": "MEETING_NOISE",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": false
+    },
+    {
+      "cueId": 43,
+      "reason": "Status-quo; SMTP sağlayıcısını bugün değiştirmiyoruz",
+      "reasonCode": "STATUS_QUO_DECISION_FALSE_POSITIVE",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": true
+    },
+    {
+      "cueId": 53,
+      "reason": "Kapanış meta",
+      "reasonCode": "CLOSING_META",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": false
+    },
+    {
+      "cueId": 54,
+      "reason": "Kapanış / not alma meta; status-quo cümleleri bağlam notunda kalacak",
+      "reasonCode": "CLOSING_META",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": false
+    },
+    {
+      "cueId": 55,
+      "reason": "Kapanış meta; owner/tarih eksik görev politikası",
+      "reasonCode": "CLOSING_META",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": false
+    },
+    {
+      "cueId": 56,
+      "reason": "Kapanış meta; trace ID ilişkilendirme",
+      "reasonCode": "CLOSING_META",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": false
+    },
+    {
+      "cueId": 57,
+      "reason": "Kapanış meta; sonraki toplantı gündemi",
+      "reasonCode": "CLOSING_META",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": false
+    },
+    {
+      "cueId": 58,
+      "reason": "Kapanış; toplantıyı kapatıyorum",
+      "reasonCode": "CLOSING_META",
+      "forbiddenTypes": [
+        "decision",
+        "actionItem",
+        "risk",
+        "importantFact",
+        "proposal",
+        "commitment",
+        "openQuestion",
+        "topic"
+      ],
+      "criticalIfExtractedAsDecision": false
+    }
+  ],
+  "optionalItems": [
+    {
+      "id": "OPT-R-AUDIT-01",
+      "type": "risk",
+      "canonicalText": "Oturum yenileme hatası için audit kaydı olmadan ilerlenmemesi",
+      "evidenceCueIds": [15],
+      "required": false,
+      "missingIsRecallFailure": false,
+      "topicContext": "T-01"
+    },
+    {
+      "id": "OPT-R-AUDIT-02",
+      "type": "risk",
+      "canonicalText": "E-posta karakter bozulması için audit kaydı olmadan ilerlenmemesi",
+      "evidenceCueIds": [39],
+      "required": false,
+      "missingIsRecallFailure": false,
+      "topicContext": "T-02"
+    },
+    {
+      "id": "OPT-R-USER-COMMS",
+      "type": "risk",
+      "canonicalText": "Kullanıcı iletişiminin gecikmesi",
+      "evidenceCueIds": [26, 50],
+      "required": false,
+      "missingIsRecallFailure": false
+    },
+    {
+      "id": "OPT-R-SPRINT",
+      "type": "risk",
+      "canonicalText": "Sprint teslimatının veya bağımlılıkların gecikmesi",
+      "evidenceCueIds": [16, 40],
+      "required": false,
+      "missingIsRecallFailure": false
+    },
+    {
+      "id": "OPT-Q-RISK-OWNER-01",
+      "type": "openQuestion",
+      "canonicalText": "Risk sahibini ve başarı ölçümünü görev kartında teyit etmek",
+      "evidenceCueIds": [28],
+      "required": false,
+      "missingIsRecallFailure": false,
+      "topicContext": "T-01",
+      "notes": "Açık soru veya owner'sız takip maddesi olarak çıkarılabilir."
+    },
+    {
+      "id": "OPT-Q-RISK-OWNER-02",
+      "type": "openQuestion",
+      "canonicalText": "Risk sahibini ve başarı ölçümünü görev kartında teyit etmek",
+      "evidenceCueIds": [52],
+      "required": false,
+      "missingIsRecallFailure": false,
+      "topicContext": "T-02",
+      "notes": "Açık soru veya owner'sız takip maddesi olarak çıkarılabilir."
+    }
+  ],
+  "compoundActionSplits": [
+    {
+      "cueId": 27,
+      "expectedActionIds": ["A-03", "A-04"],
+      "mustSplit": true,
+      "expectedActionCount": 2
+    },
+    {
+      "cueId": 51,
+      "expectedActionIds": ["A-06", "A-07"],
+      "mustSplit": true,
+      "expectedActionCount": 2
+    }
+  ],
+  "criticalAssertions": [
+    {
+      "id": "ASSERT-DECISION-COUNT",
+      "type": "EXACT_REQUIRED_COUNT",
+      "target": "decisions",
+      "expected": 2,
+      "critical": true
+    },
+    {
+      "id": "ASSERT-ACTION-COUNT",
+      "type": "EXACT_REQUIRED_COUNT",
+      "target": "actionItems",
+      "expected": 7,
+      "critical": true
+    },
+    {
+      "id": "ASSERT-RISK-COUNT",
+      "type": "EXACT_REQUIRED_COUNT",
+      "target": "risks",
+      "expected": 2,
+      "critical": true
+    },
+    {
+      "id": "ASSERT-FACT-COUNT",
+      "type": "EXACT_REQUIRED_COUNT",
+      "target": "importantFacts",
+      "expected": 2,
+      "critical": true
+    },
+    {
+      "id": "ASSERT-OPEN-QUESTION-COUNT",
+      "type": "EXACT_REQUIRED_COUNT",
+      "target": "openQuestions",
+      "expected": 12,
+      "critical": false
+    },
+    {
+      "id": "ASSERT-STATUS-QUO-FP",
+      "type": "FORBIDDEN_CUE_AS_TYPE",
+      "cueIds": [19, 43],
+      "forbiddenType": "decision",
+      "expected": 0,
+      "critical": true
+    },
+    {
+      "id": "ASSERT-COMPOUND-SPLIT-27",
+      "type": "COMPOUND_ACTION_SPLIT",
+      "cueId": 27,
+      "expectedActionIds": ["A-03", "A-04"],
+      "expectedActionCount": 2,
+      "critical": true
+    },
+    {
+      "id": "ASSERT-COMPOUND-SPLIT-51",
+      "type": "COMPOUND_ACTION_SPLIT",
+      "cueId": 51,
+      "expectedActionIds": ["A-06", "A-07"],
+      "expectedActionCount": 2,
+      "critical": true
+    },
+    {
+      "id": "ASSERT-DATE-NO-CROSSOVER-27",
+      "type": "DATE_OWNER_BINDING",
+      "datedActionId": "A-03",
+      "undatedActionId": "A-04",
+      "critical": true
+    },
+    {
+      "id": "ASSERT-DATE-NO-CROSSOVER-51",
+      "type": "DATE_OWNER_BINDING",
+      "datedActionId": "A-07",
+      "undatedActionId": "A-06",
+      "critical": true
+    },
+    {
+      "id": "ASSERT-FACT-UNIQUENESS",
+      "type": "NO_DUPLICATE_FACT",
+      "factIds": ["F-01", "F-02"],
+      "expectedDuplicates": 0,
+      "critical": true
+    },
+    {
+      "id": "ASSERT-OQ-NO-CROSS-TOPIC-DEDUP",
+      "type": "NO_CROSS_TOPIC_DEDUPLICATION",
+      "pairs": [
+        ["Q-02", "Q-08"],
+        ["Q-03", "Q-09"],
+        ["Q-04", "Q-10"],
+        ["Q-06", "Q-12"]
+      ],
+      "critical": true
+    },
+    {
+      "id": "ASSERT-META-LEAKAGE",
+      "type": "FORBIDDEN_CUE_LEAKAGE",
+      "cueIds": [3, 17, 41, 53, 54, 55, 56, 57, 58],
+      "expected": 0,
+      "critical": true
+    },
+    {
+      "id": "ASSERT-SUPERSEDED-PROPOSAL-P01",
+      "type": "SUPERSEDED_PROPOSAL_ABSENT",
+      "proposalId": "P-01",
+      "decisionId": "D-01",
+      "critical": true
+    }
+  ],
+  "acceptanceGates": {
+    "overallScoreMinimum": 85,
+    "criticalDecisionRecallMinimum": 0.95,
+    "actionRecallMinimum": 0.90,
+    "hallucinatedDecisionMaximum": 0,
+    "ownerHallucinationMaximum": 0,
+    "dateHallucinationMaximum": 0,
+    "statusQuoDecisionFalsePositiveMaximum": 0,
+    "crossTypeDuplicateRateMaximum": 0.03,
+    "closingMetaLeakageMaximum": 0
+  },
+  "expectedRequiredCounts": {
+    "topics": 2,
+    "issues": 2,
+    "decisions": 2,
+    "actionItems": 7,
+    "risks": 2,
+    "importantFacts": 2,
+    "openQuestions": 12
+  }
+}
