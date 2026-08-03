@@ -28,10 +28,18 @@
     "repeatRunsMinimum": 5,
     "servedModelExpected": "nanobase-qwen36-35b-a3b-mtp"
   },
-  "status": "DEPLOYING_B",
+  "status": "RUNNING_B",
   "notes": [
     "Fresh campaign restart 2026-08-03 after orphan-reclaim fix deploy.",
     "Infra patch AiJobOrphanReclaimOnStartup applied on top of B/A trees (AI code unchanged).",
     "Detached screen session actenora-ba survives Cursor close."
-  ]
+  ],
+  "deploy": {
+    "B": {
+      "commit": "f9c699f4753d7017d64aede84c6ee7da056a5f66",
+      "deployedAt": "2026-08-03T13:08:26Z",
+      "jarSha256": "b8880134bd482ff2371b64f2e1346fd0bc3d4b3083d26a380ad1c745357e8c18",
+      "note": "B AI=f9c699f + AiJobOrphanReclaimOnStartup infra patch"
+    }
+  }
 }
