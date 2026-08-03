@@ -383,18 +383,9 @@ public final class MinutesSynthesisAndAudit {
             String summary,
             boolean reviewRequired
     ) {
-        String renderedSummary = summary;
-        if (!source.topics().isEmpty()) {
-            int firstBlockEnd = source.executiveSummary().indexOf("\n\n");
-            String agendaBlock = firstBlockEnd < 0
-                    ? source.executiveSummary().trim()
-                    : source.executiveSummary().substring(0, firstBlockEnd).trim();
-            if (!agendaBlock.isBlank()) {
-                renderedSummary = agendaBlock + "\n\n" + summary;
-            }
-        }
+        // Do not prepend deterministic agenda/outcome dump onto editorial prose.
         return new FinalNoteDraft(
-                renderedSummary,
+                summary,
                 source.decisions(),
                 source.actionItems(),
                 source.risks(),

@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ExplicitActio
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeMeetingItemSubsumer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
@@ -329,6 +330,7 @@ public final class ExtractionPipelineService {
                     request.meetingOccurrenceId() == null ? null : request.meetingOccurrenceId().toString()
             );
             merged = ActionPostProcessingPipeline.productionDefaults().applyToBundle(merged, actionCtx);
+            merged = new CrossTypeMeetingItemSubsumer().applyToBundle(merged);
             Set<String> allowed = normalized.stream()
                     .map(SegmentInput::segmentId)
                     .collect(Collectors.toCollection(HashSet::new));
@@ -368,6 +370,7 @@ public final class ExtractionPipelineService {
                 applied.stats().incrementExplicitActionCuesRecovered();
             }
             note = applied.draft();
+            note = new CrossTypeMeetingItemSubsumer().applyToDraft(note);
             note = new CrossTypeConsistencyAuditor().audit(note, finalization.fallbackUsed());
             metrics.setActionPostProcessingStats(applied.stats().toArtifactMap(
                     request.meetingOccurrenceId() == null ? null : request.meetingOccurrenceId().toString()));

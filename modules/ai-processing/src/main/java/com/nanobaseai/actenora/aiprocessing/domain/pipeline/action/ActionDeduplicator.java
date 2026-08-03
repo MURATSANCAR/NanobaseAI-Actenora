@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -84,10 +85,69 @@ public final class ActionDeduplicator {
         if (coreSimilar && (evidenceOverlap || coreEqual || compoundChild)) {
             return Match.DUPLICATE;
         }
+        // Same evidence + shared product/channel anchor with related stem or modest overlap
+        if (evidenceOverlap && sharesDistinctiveAnchor(coreA, coreB)
+                && (tokenJaccard(coreA, coreB) >= 0.40d || sharesRelatedStem(coreA, coreB))) {
+            return Match.DUPLICATE;
+        }
         if (coreSimilar && !evidenceOverlap) {
             return Match.AMBIGUOUS;
         }
         return Match.NONE;
+    }
+
+    /**
+     * Shared long token (product/channel/system name) — used only with evidence overlap.
+     */
+    private static boolean sharesDistinctiveAnchor(String coreA, String coreB) {
+        Set<String> ta = tokenSet(coreA);
+        Set<String> tb = tokenSet(coreB);
+        for (String a : ta) {
+            if (a.length() < 6) {
+                continue;
+            }
+            if (tb.contains(a)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean sharesRelatedStem(String coreA, String coreB) {
+        Set<String> ta = tokenSet(coreA);
+        Set<String> tb = tokenSet(coreB);
+        for (String a : ta) {
+            if (a.length() < 4) {
+                continue;
+            }
+            for (String b : tb) {
+                if (b.length() < 4) {
+                    continue;
+                }
+                if (a.equals(b)) {
+                    continue;
+                }
+                int n = Math.min(a.length(), b.length());
+                int i = 0;
+                while (i < n && a.charAt(i) == b.charAt(i)) {
+                    i++;
+                }
+                if (i >= 4) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static Set<String> tokenSet(String core) {
+        Set<String> set = new LinkedHashSet<>();
+        for (String t : core.split("\\s+")) {
+            if (t.length() >= 3) {
+                set.add(t);
+            }
+        }
+        return set;
     }
 
     private ActionItemCandidate merge(ActionItemCandidate a, ActionItemCandidate b) {
@@ -176,16 +236,23 @@ public final class ActionDeduplicator {
         return text != null && text.contains(";");
     }
 
+    /**
+     * Owners match when equal. Both blank also match so near-duplicates without roster
+     * binding (unattributed transcripts) can still be merged by core + evidence.
+     */
     boolean sameOwner(ActionItemCandidate a, ActionItemCandidate b) {
         String left = identity.canonicalOwner(a);
         String right = identity.canonicalOwner(b);
+        if (left.isBlank() && right.isBlank()) {
+            return true;
+        }
         if (left.isBlank() || right.isBlank()) {
             return false;
         }
         return left.equals(right);
     }
 
-    static boolean evidenceOverlap(List<String> a, List<String> b) {
+    public static boolean evidenceOverlap(List<String> a, List<String> b) {
         if (a == null || b == null || a.isEmpty() || b.isEmpty()) {
             return false;
         }

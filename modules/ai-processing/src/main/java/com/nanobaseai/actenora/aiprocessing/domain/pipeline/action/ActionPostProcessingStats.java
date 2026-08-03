@@ -24,6 +24,7 @@ public final class ActionPostProcessingStats {
     private int commitmentsOwnerBound;
     private int explicitActionCuesRecovered;
     private int ownersCleared;
+    private int ownersBound;
     private String auditStatus = "PASSED";
     private final List<String> warnings = new ArrayList<>();
     private List<Map<String, Object>> actionTrace = List.of();
@@ -76,6 +77,10 @@ public final class ActionPostProcessingStats {
         ownersCleared++;
     }
 
+    public void incrementOwnersBound() {
+        ownersBound++;
+    }
+
     public void setAuditStatus(String auditStatus) {
         this.auditStatus = auditStatus == null || auditStatus.isBlank() ? "PASSED" : auditStatus.trim();
     }
@@ -107,6 +112,7 @@ public final class ActionPostProcessingStats {
         map.put("commitmentsOwnerBound", commitmentsOwnerBound);
         map.put("explicitActionCuesRecovered", explicitActionCuesRecovered);
         map.put("ownersCleared", ownersCleared);
+        map.put("ownersBound", ownersBound);
         map.put("auditStatus", auditStatus);
         map.put("warnings", List.copyOf(warnings));
         map.put("actionTrace", actionTrace);

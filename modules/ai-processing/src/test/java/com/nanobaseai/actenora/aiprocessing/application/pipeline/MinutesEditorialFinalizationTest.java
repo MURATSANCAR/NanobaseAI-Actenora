@@ -105,7 +105,7 @@ class MinutesEditorialFinalizationTest {
     }
 
     @Test
-    void editorialSummaryPreservesStructuredAgendaPrefix() {
+    void editorialSummaryDoesNotPrependAgendaBlock() {
         ModelRuntimePort runtime = runtime(request -> new InferenceResponse(
                 """
                         {
@@ -120,7 +120,7 @@ class MinutesEditorialFinalizationTest {
         ));
         FinalNoteDraft base = deterministicDraft();
         FinalNoteDraft deterministic = new FinalNoteDraft(
-                "Gündem:\n1. Oturum yenileme",
+                "Sonuçlar:\n1. Oturum yenileme",
                 base.decisions(),
                 base.actionItems(),
                 base.risks(),
@@ -150,10 +150,7 @@ class MinutesEditorialFinalizationTest {
                 PriorMeetingContext.EMPTY
         );
 
-        assertEquals(
-                "Gündem:\n1. Oturum yenileme\n\nKararlar ve aksiyonlar doğrulandı.",
-                result.draft().executiveSummary()
-        );
+        assertEquals("Kararlar ve aksiyonlar doğrulandı.", result.draft().executiveSummary());
         assertFalse(result.fallbackUsed());
     }
 

@@ -13,6 +13,10 @@ import java.util.Objects;
  */
 public final class FinalNoteAssembler {
 
+    private static final int MAX_SUMMARY_DECISIONS = 2;
+    private static final int MAX_SUMMARY_ACTIONS = 3;
+    private static final int MAX_SUMMARY_RISKS = 1;
+
     private final DeterministicExtractionValidator validator;
 
     public FinalNoteAssembler(DeterministicExtractionValidator validator) {
@@ -55,75 +59,62 @@ public final class FinalNoteAssembler {
     }
 
     /**
-     * Decision/action-first executive summary — never a topic dump with counters.
+     * Decision/action-first executive summary — never an agenda dump.
+     * Topics stay on {@link ExtractionBundle#topics()} / draft topics only.
      */
     private static String buildSummary(ExtractionBundle bundle, String language) {
         boolean en = "en".equals(language);
         StringBuilder sb = new StringBuilder();
 
-        List<TopicCandidate> usableTopics = bundle.topics().stream()
-                .filter(FinalNoteAssembler::isUsableTopic)
-                .toList();
-        if (!usableTopics.isEmpty()) {
-            sb.append(en ? "Agenda:" : "Gündem:").append('\n');
-            int i = 1;
-            for (TopicCandidate topic : usableTopics) {
-                sb.append(i++).append(". ").append(topic.text().strip()).append('\n');
+        List<DecisionCandidate> decisions = bundle.decisions();
+        List<ActionItemCandidate> actions = bundle.actionItems();
+        List<RiskCandidate> risks = bundle.risks();
+
+        if (!decisions.isEmpty()) {
+            sb.append(en ? "Outcomes:" : "Sonuçlar:").append('\n');
+            int limit = Math.min(MAX_SUMMARY_DECISIONS, decisions.size());
+            for (int i = 0; i < limit; i++) {
+                sb.append(i + 1).append(". ").append(decisions.get(i).text().strip()).append('\n');
             }
         }
-        if (!bundle.decisions().isEmpty()) {
+        if (!actions.isEmpty()) {
             if (!sb.isEmpty()) {
                 sb.append('\n');
             }
-            sb.append(en ? "Decisions" : "Kararlar").append('\n');
-            int i = 1;
-            for (DecisionCandidate decision : bundle.decisions()) {
-                sb.append(i++).append(". ").append(decision.text().strip()).append('\n');
+            sb.append(en ? "Next steps:" : "Sonraki adımlar:").append('\n');
+            int limit = Math.min(MAX_SUMMARY_ACTIONS, actions.size());
+            for (int i = 0; i < limit; i++) {
+                ActionItemCandidate item = actions.get(i);
+                sb.append(i + 1).append(". ").append(item.text().strip());
+                if (item.owner() != null && !item.owner().isBlank()) {
+                    sb.append(" (").append(item.owner().strip()).append(')');
+                }
+                sb.append('\n');
+            }
+            if (actions.size() > MAX_SUMMARY_ACTIONS) {
+                int more = actions.size() - MAX_SUMMARY_ACTIONS;
+                sb.append(en
+                        ? ("… +" + more + " more actions")
+                        : ("… +" + more + " aksiyon daha")).append('\n');
             }
         }
-        if (!bundle.actionItems().isEmpty()) {
+        if (!risks.isEmpty()) {
             if (!sb.isEmpty()) {
                 sb.append('\n');
             }
-            sb.append(en ? "Actions" : "Aksiyonlar").append('\n');
-            int i = 1;
-            for (ActionItemCandidate item : bundle.actionItems()) {
-                sb.append(i++).append(". ").append(item.text().strip()).append('\n');
-            }
-        }
-        if (!bundle.commitments().isEmpty()) {
-            if (!sb.isEmpty()) {
-                sb.append('\n');
-            }
-            sb.append(en ? "Commitments" : "Taahhütler").append('\n');
-            int i = 1;
-            for (CommitmentCandidate item : bundle.commitments()) {
-                sb.append(i++).append(". ").append(item.text().strip()).append('\n');
-            }
-        }
-        if (!bundle.risks().isEmpty()) {
-            if (!sb.isEmpty()) {
-                sb.append('\n');
-            }
-            sb.append(en ? "Risks" : "Riskler").append('\n');
-            int i = 1;
-            for (RiskCandidate risk : bundle.risks()) {
-                sb.append(i++).append(". ").append(risk.text().strip()).append('\n');
-            }
-        }
-        if (sb.isEmpty() && !bundle.importantFacts().isEmpty()) {
-            sb.append(en ? "Facts" : "Önemli noktalar").append('\n');
-            int i = 1;
-            for (ImportantFactCandidate fact : bundle.importantFacts()) {
-                sb.append(i++).append(". ").append(fact.text().strip()).append('\n');
+            sb.append(en ? "Watchouts:" : "Dikkat:").append('\n');
+            int limit = Math.min(MAX_SUMMARY_RISKS, risks.size());
+            for (int i = 0; i < limit; i++) {
+                sb.append(i + 1).append(". ").append(risks.get(i).text().strip()).append('\n');
             }
         }
         if (sb.isEmpty() && !bundle.openQuestions().isEmpty()) {
-            sb.append(en ? "Open questions" : "Açık konular").append('\n');
-            int i = 1;
-            for (OpenQuestionCandidate question : bundle.openQuestions()) {
-                sb.append(i++).append(". ").append(question.text().strip()).append('\n');
-            }
+            sb.append(en ? "Open questions remain." : "Açık sorular devam ediyor.");
+            sb.append('\n');
+        }
+        if (sb.isEmpty() && !bundle.importantFacts().isEmpty()) {
+            sb.append(en ? "Key facts captured." : "Önemli bulgular kaydedildi.");
+            sb.append('\n');
         }
         if (sb.isEmpty()) {
             return OutputLanguagePolicy.unreliableSummary(language);
@@ -131,7 +122,8 @@ public final class FinalNoteAssembler {
         return sb.toString().trim();
     }
 
-    private static boolean isUsableTopic(TopicCandidate topic) {
+    /** Kept for callers/tests that still filter agenda-quality topics for the topics field. */
+    static boolean isUsableTopic(TopicCandidate topic) {
         if (topic == null || topic.text() == null || topic.text().isBlank()) {
             return false;
         }

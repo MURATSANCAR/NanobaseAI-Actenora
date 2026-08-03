@@ -517,7 +517,7 @@ class ActionPostProcessingPipelineTest {
                         "meeting-teams"
                 )
         );
-        assertEquals("Murat", result.actions().get(0).owner());
+        assertEquals("Murat Sancar", result.actions().get(0).owner());
         assertNull(result.actions().get(1).owner());
         assertEquals(1, result.stats().toArtifactMap("m").get("ownersCleared"));
     }
@@ -531,6 +531,45 @@ class ActionPostProcessingPipelineTest {
                 new ActionPostProcessingPipeline.Context(List.of(), Set.of(), MEETING_START, IST, "m")
         );
         assertNull(result.actions().getFirst().owner());
+    }
+
+    @Test
+    void inviteeRosterBindsHonorificOwnerWhenSpeakersEmpty() {
+        ActionItemCandidate in = action(
+                "Test veya preprod ortamında veri tabanı oluşturulacak.",
+                "Ahmet bey",
+                List.of("s1")
+        );
+        var result = pipeline.postProcess(
+                List.of(in),
+                List.of(),
+                new ActionPostProcessingPipeline.Context(
+                        List.of(),
+                        Set.of("Murat Sancar", "Ahmet Faruk Çatlar", "Görkem Mergenay"),
+                        MEETING_START,
+                        IST,
+                        "meeting-teams"
+                )
+        );
+        assertEquals("Ahmet Faruk Çatlar", result.actions().getFirst().owner());
+        assertEquals(1, result.stats().toArtifactMap("m").get("ownersBound"));
+    }
+
+    @Test
+    void blankOwnersWithOverlappingEvidenceAreDeduped() {
+        ActionItemCandidate a = action(
+                "WhatsApp grubu oluşturulacak.",
+                null,
+                List.of("seg-wa")
+        );
+        ActionItemCandidate b = action(
+                "WhatsApp grubunu oluşturmak ve hızlıca yazışmak.",
+                null,
+                List.of("seg-wa")
+        );
+        ActionDeduplicator.Result dedup = deduplicator.deduplicate(List.of(a, b));
+        assertEquals(1, dedup.actions().size());
+        assertEquals(1, dedup.removed());
     }
 
     @Test
@@ -555,6 +594,35 @@ class ActionPostProcessingPipelineTest {
         );
         var result = pipeline.postProcess(List.of(), List.of(c), ctx(segments()));
         assertNull(result.commitments().getFirst().owner());
+    }
+
+    @Test
+    void truncatedTitleIsBackfilledFromEvidenceInPipeline() {
+        ActionItemCandidate truncated = action("Tabanına erişim…", "Murat", List.of("seg-db"));
+        List<SegmentInput> segments = List.of(
+                new SegmentInput(
+                        "seg-db",
+                        1,
+                        "Murat",
+                        0,
+                        1000,
+                        "Veri tabanına erişim için okuma yetkisi tanımlanacak.",
+                        true
+                )
+        );
+        var result = pipeline.postProcess(
+                List.of(truncated),
+                List.of(),
+                new ActionPostProcessingPipeline.Context(
+                        segments,
+                        Set.of("Murat Sancar"),
+                        MEETING_START,
+                        IST,
+                        "m"
+                )
+        );
+        assertTrue(result.actions().getFirst().text().contains("Veri tabanına erişim"));
+        assertFalse(result.actions().getFirst().text().endsWith("…"));
     }
 
     private static ActionItemCandidate action(String text, String owner, List<String> evidence) {

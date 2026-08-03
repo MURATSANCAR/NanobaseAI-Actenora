@@ -39,6 +39,7 @@ importantFacts altında korunmalı. Açıkça geçici mevcut durum veya “karar
 nitelenen davranış değişikliği ifadelerini importantFacts'a taşıma.
 Riskte konuşulan mitigation/likelihood varsa mutlaka doldur (ör. "erken smoke", HIGH/MEDIUM/LOW).
 Tüm metin alanlarını yalnızca {{outputLanguage}} dilinde yaz; kullanıcı dilinin dışında ifade üretme.
+ASR/ürün adı: Mayusque/Moyusque → MySQL; konuşma dili “reçete” → gereksinim dokümanı (PRD yazma).
 candidateId formatı: chunk-{n}-{type}-{seq} (ör. chunk-1-decision-01).
 
 Aşağıdaki JSON şemasında yanıt ver (yalnızca JSON):

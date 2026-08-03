@@ -26,6 +26,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingArtifact;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeMeetingItemSubsumer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ExplicitActionCueRecoverer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingStats;
@@ -959,6 +960,7 @@ public final class DefaultStageExecutors {
                     bundle = new CrossTypeConsistencyAuditor().auditBundle(bundle);
                     ActionPostProcessingPipeline.Context actionCtx = actionContext(job, normalized);
                     bundle = ActionPostProcessingPipeline.productionDefaults().applyToBundle(bundle, actionCtx);
+                    bundle = new CrossTypeMeetingItemSubsumer().applyToBundle(bundle);
                     FinalNoteDraft deterministic = noteAssembler.assemble(bundle, job.language());
                     // Same allowlist as VALIDATE / legacy ExtractionPipelineService: all transcript segment ids.
                     Set<String> allowed = normalized.stream()
@@ -1012,6 +1014,7 @@ public final class DefaultStageExecutors {
                             draft.confidence(),
                             draft.requiresManualReview() || post.requiresManualReview()
                     );
+                    draft = new CrossTypeMeetingItemSubsumer().applyToDraft(draft);
                     draft = new CrossTypeConsistencyAuditor().audit(draft, finalizationFallbackUsed);
                     draft = FinalNoteConfidencePolicy.productionDefaults().apply(draft);
                     actionPostStats = post.stats().toArtifactMap(job.meetingOccurrenceId().toString());

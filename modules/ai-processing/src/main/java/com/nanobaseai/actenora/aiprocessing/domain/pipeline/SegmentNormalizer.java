@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.InContentAttributionStripper;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.MeetingTerminologyNormalizer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,7 +9,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Light pipeline-entry normalization (FAZ 9 owns deep dictionary work).
+ * Light pipeline-entry normalization plus deterministic product-term ASR fixes.
  * Marks marker-adjacent segments for chunk prioritization.
  */
 public final class SegmentNormalizer {
@@ -20,13 +21,22 @@ public final class SegmentNormalizer {
     private static final Pattern CUE_MARKUP = Pattern.compile("</?v(?:\\s+[^>]*)?>|</?c(?:\\.[^>]*)?>|</?b>|</?i>|</?u>");
 
     private final InContentAttributionStripper attributionStripper;
+    private final MeetingTerminologyNormalizer terminologyNormalizer;
 
     public SegmentNormalizer() {
-        this(new InContentAttributionStripper());
+        this(new InContentAttributionStripper(), MeetingTerminologyNormalizer.productionDefaults());
     }
 
     public SegmentNormalizer(InContentAttributionStripper attributionStripper) {
+        this(attributionStripper, MeetingTerminologyNormalizer.productionDefaults());
+    }
+
+    public SegmentNormalizer(
+            InContentAttributionStripper attributionStripper,
+            MeetingTerminologyNormalizer terminologyNormalizer
+    ) {
         this.attributionStripper = Objects.requireNonNull(attributionStripper, "attributionStripper");
+        this.terminologyNormalizer = Objects.requireNonNull(terminologyNormalizer, "terminologyNormalizer");
     }
 
     public List<SegmentInput> normalize(List<SegmentInput> raw) {
@@ -54,7 +64,8 @@ public final class SegmentNormalizer {
     }
 
     private String prepareContent(String content) {
-        return collapseWhitespace(attributionStripper.strip(stripCueMarkup(content)));
+        return collapseWhitespace(
+                terminologyNormalizer.rewrite(attributionStripper.strip(stripCueMarkup(content))));
     }
 
     private static String stripCueMarkup(String content) {

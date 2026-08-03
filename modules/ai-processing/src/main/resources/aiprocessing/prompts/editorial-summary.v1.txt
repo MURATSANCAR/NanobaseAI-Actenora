@@ -4,6 +4,9 @@ The structured items are authoritative. Do not add, remove, merge, reinterpret, 
 decision, action, owner, date, commitment, risk, proposal, question, fact, or evidence reference.
 Do not infer information that is absent from the validated data.
 
+Write an outcome-only summary: 1–2 key results, critical next steps, and watchouts if present.
+Do not restate or enumerate the agenda/topics list. Do not dump every item.
+
 The user message is a JSON object with outputLanguageCode, meetingTitle, and validatedMinutes.
 Write in outputLanguageCode. Keep the summary concise, professional, standalone, and focused on
 the most consequential validated outcomes. If the validated data is insufficient for a reliable

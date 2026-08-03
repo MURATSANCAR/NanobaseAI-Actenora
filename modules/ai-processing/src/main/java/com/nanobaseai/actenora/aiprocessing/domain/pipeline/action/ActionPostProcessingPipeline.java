@@ -2,9 +2,12 @@ package com.nanobaseai.actenora.aiprocessing.domain.pipeline.action;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.DomainRegisterNormalizer;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.MeetingTerminologyNormalizer;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -35,6 +38,9 @@ public final class ActionPostProcessingPipeline {
     private final ActionDeduplicator deduplicator;
     private final CommitmentOwnerBinder commitmentOwnerBinder;
     private final ActionExtractionAuditor auditor;
+    private final ActionTitleEvidenceBackfiller titleBackfiller;
+    private final DomainRegisterNormalizer registerNormalizer;
+    private final MeetingTerminologyNormalizer terminologyNormalizer;
     private final ActionIdentityNormalizer identityNormalizer = new ActionIdentityNormalizer();
 
     public ActionPostProcessingPipeline() {
@@ -44,7 +50,10 @@ public final class ActionPostProcessingPipeline {
                 new TurkishRelativeDateResolver(),
                 new ActionDeduplicator(),
                 new CommitmentOwnerBinder(),
-                new ActionExtractionAuditor()
+                new ActionExtractionAuditor(),
+                new ActionTitleEvidenceBackfiller(),
+                new DomainRegisterNormalizer(),
+                MeetingTerminologyNormalizer.productionDefaults()
         );
     }
 
@@ -56,12 +65,39 @@ public final class ActionPostProcessingPipeline {
             CommitmentOwnerBinder commitmentOwnerBinder,
             ActionExtractionAuditor auditor
     ) {
+        this(
+                prefixNormalizer,
+                decomposer,
+                dateResolver,
+                deduplicator,
+                commitmentOwnerBinder,
+                auditor,
+                new ActionTitleEvidenceBackfiller(),
+                new DomainRegisterNormalizer(),
+                MeetingTerminologyNormalizer.productionDefaults()
+        );
+    }
+
+    public ActionPostProcessingPipeline(
+            ActionDiscoursePrefixNormalizer prefixNormalizer,
+            CompoundActionDecomposer decomposer,
+            TurkishRelativeDateResolver dateResolver,
+            ActionDeduplicator deduplicator,
+            CommitmentOwnerBinder commitmentOwnerBinder,
+            ActionExtractionAuditor auditor,
+            ActionTitleEvidenceBackfiller titleBackfiller,
+            DomainRegisterNormalizer registerNormalizer,
+            MeetingTerminologyNormalizer terminologyNormalizer
+    ) {
         this.prefixNormalizer = Objects.requireNonNull(prefixNormalizer);
         this.decomposer = Objects.requireNonNull(decomposer);
         this.dateResolver = Objects.requireNonNull(dateResolver);
         this.deduplicator = Objects.requireNonNull(deduplicator);
         this.commitmentOwnerBinder = Objects.requireNonNull(commitmentOwnerBinder);
         this.auditor = Objects.requireNonNull(auditor);
+        this.titleBackfiller = Objects.requireNonNull(titleBackfiller);
+        this.registerNormalizer = Objects.requireNonNull(registerNormalizer);
+        this.terminologyNormalizer = Objects.requireNonNull(terminologyNormalizer);
     }
 
     public static ActionPostProcessingPipeline productionDefaults() {
@@ -135,9 +171,18 @@ public final class ActionPostProcessingPipeline {
             dated.add(resolveDates(action, ctx, stats, flags));
         }
 
-        List<ActionItemCandidate> ownerSanitized = sanitizeUnknownOwners(dated, participants, stats);
+        List<ActionItemCandidate> ownerSanitized =
+                sanitizeUnknownOwners(dated, participants, ctx.transcriptSegments(), stats);
 
-        ActionDeduplicator.Result dedup = deduplicator.deduplicate(ownerSanitized);
+        List<ActionItemCandidate> titlesFilled =
+                titleBackfiller.backfill(ownerSanitized, ctx.transcriptSegments());
+        List<ActionItemCandidate> registerNormalized = new ArrayList<>(titlesFilled.size());
+        for (ActionItemCandidate action : titlesFilled) {
+            String rewritten = normalizeItemText(action.text());
+            registerNormalized.add(rewritten.equals(action.text()) ? action : action.withText(rewritten));
+        }
+
+        ActionDeduplicator.Result dedup = deduplicator.deduplicate(registerNormalized);
         List<ActionItemCandidate> dedupedActions = new ArrayList<>();
         for (ActionItemCandidate action : dedup.actions()) {
             dedupedActions.add(ensureDueDateFromDueAt(action));
@@ -149,6 +194,16 @@ public final class ActionPostProcessingPipeline {
 
         CommitmentOwnerBinder.Result commitmentsBound =
                 commitmentOwnerBinder.bind(commitments, ctx.transcriptSegments());
+        List<CommitmentCandidate> normalizedCommitments = new ArrayList<>();
+        for (CommitmentCandidate c : commitmentsBound.commitments()) {
+            String rewritten = normalizeItemText(c.text());
+            if (rewritten.equals(c.text())) {
+                normalizedCommitments.add(c);
+            } else {
+                normalizedCommitments.add(new CommitmentCandidate(
+                        rewritten, c.owner(), c.evidenceSegmentIds(), c.confidence()));
+            }
+        }
         for (int i = 0; i < commitmentsBound.bound(); i++) {
             stats.incrementCommitmentsOwnerBound();
         }
@@ -169,7 +224,7 @@ public final class ActionPostProcessingPipeline {
         }
         return new Result(
                 dedupedActions,
-                commitmentsBound.commitments(),
+                List.copyOf(normalizedCommitments),
                 List.copyOf(new LinkedHashSet<>(flags)),
                 stats,
                 manual
@@ -186,7 +241,7 @@ public final class ActionPostProcessingPipeline {
         }
         return new ExtractionBundle(
                 bundle.topics(),
-                bundle.decisions(),
+                normalizeDecisions(bundle.decisions()),
                 result.actions(),
                 bundle.risks(),
                 bundle.openQuestions(),
@@ -223,7 +278,7 @@ public final class ActionPostProcessingPipeline {
         boolean manual = draft.requiresManualReview() || result.requiresManualReview();
         FinalNoteDraft out = new FinalNoteDraft(
                 draft.executiveSummary(),
-                draft.decisions(),
+                normalizeDecisions(draft.decisions()),
                 result.actions(),
                 draft.risks(),
                 draft.openQuestions(),
@@ -241,6 +296,32 @@ public final class ActionPostProcessingPipeline {
     }
 
     public record AppliedDraft(FinalNoteDraft draft, ActionPostProcessingStats stats) {
+    }
+
+    private String normalizeItemText(String text) {
+        return registerNormalizer.rewrite(terminologyNormalizer.rewrite(text));
+    }
+
+    private List<DecisionCandidate> normalizeDecisions(List<DecisionCandidate> decisions) {
+        if (decisions == null || decisions.isEmpty()) {
+            return decisions == null ? List.of() : decisions;
+        }
+        List<DecisionCandidate> out = new ArrayList<>(decisions.size());
+        for (DecisionCandidate decision : decisions) {
+            String rewritten = normalizeItemText(decision.text());
+            if (rewritten.equals(decision.text())) {
+                out.add(decision);
+            } else {
+                out.add(new DecisionCandidate(
+                        rewritten,
+                        decision.evidenceSegmentIds(),
+                        decision.confidence(),
+                        decision.rationale(),
+                        decision.status()
+                ));
+            }
+        }
+        return List.copyOf(out);
     }
 
     private List<Map<String, Object>> buildActionTrace(
@@ -404,23 +485,53 @@ public final class ActionPostProcessingPipeline {
     }
 
     /**
-     * Drops hallucinated / sentence-fragment owners that do not match the meeting roster.
-     * When the roster is empty (unattributed transcript + no invitees), clear all owners so
-     * the quality gate does not hard-reject the entire draft.
+     * Binds owners to the meeting roster (invitees + transcript speakers) and drops
+     * hallucinated names. When the roster is empty, clear claimed owners so the quality
+     * gate does not hard-reject. When the roster is non-empty, blank owners may be filled
+     * from evidence speakers that match an invitee.
      */
     static List<ActionItemCandidate> sanitizeUnknownOwners(
             List<ActionItemCandidate> actions,
             Set<String> participants,
             ActionPostProcessingStats stats
     ) {
+        return sanitizeUnknownOwners(actions, participants, List.of(), stats);
+    }
+
+    static List<ActionItemCandidate> sanitizeUnknownOwners(
+            List<ActionItemCandidate> actions,
+            Set<String> participants,
+            List<SegmentInput> segments,
+            ActionPostProcessingStats stats
+    ) {
         List<ActionItemCandidate> out = new ArrayList<>(actions.size());
         for (ActionItemCandidate action : actions) {
             String owner = action.owner();
-            if (owner == null || owner.isBlank()) {
-                out.add(action);
+            if (participants.isEmpty()) {
+                if (owner != null && !owner.isBlank()) {
+                    stats.incrementOwnersCleared();
+                    out.add(action.withOwner(null));
+                } else {
+                    out.add(action);
+                }
                 continue;
             }
-            if (participants.isEmpty() || !ownerMatchesParticipant(owner, participants)) {
+            String resolved = resolveOwnerToParticipant(owner, participants);
+            if (resolved != null) {
+                if (owner == null || owner.isBlank() || !resolved.equals(owner)) {
+                    stats.incrementOwnersBound();
+                }
+                out.add(action.withOwner(resolved));
+                continue;
+            }
+            String evidenceSpeaker = firstEvidenceSpeakerName(action, segments);
+            String fromEvidence = resolveOwnerToParticipant(evidenceSpeaker, participants);
+            if (fromEvidence != null) {
+                stats.incrementOwnersBound();
+                out.add(action.withOwner(fromEvidence));
+                continue;
+            }
+            if (owner != null && !owner.isBlank()) {
                 stats.incrementOwnersCleared();
                 out.add(action.withOwner(null));
             } else {
@@ -430,22 +541,51 @@ public final class ActionPostProcessingPipeline {
         return out;
     }
 
-    static boolean ownerMatchesParticipant(String owner, Set<String> participants) {
-        String ownerNorm = normalizePersonToken(owner);
+    /**
+     * Returns the canonical roster display name when {@code owner} fuzzy-matches a participant,
+     * otherwise {@code null}.
+     */
+    static String resolveOwnerToParticipant(String owner, Set<String> participants) {
+        if (owner == null || owner.isBlank() || participants == null || participants.isEmpty()) {
+            return null;
+        }
+        String ownerNorm = stripHonorific(normalizePersonToken(owner));
         if (ownerNorm.isBlank()) {
-            return false;
+            return null;
         }
         String ownerFirst = firstToken(ownerNorm);
+        String best = null;
         for (String participant : participants) {
-            String pNorm = normalizePersonToken(participant);
+            String pNorm = stripHonorific(normalizePersonToken(participant));
             if (pNorm.isBlank()) {
                 continue;
             }
-            if (pNorm.equals(ownerNorm) || firstToken(pNorm).equals(ownerFirst)) {
-                return true;
+            if (pNorm.equals(ownerNorm) || firstToken(pNorm).equals(ownerFirst) || pNorm.startsWith(ownerFirst + " ")) {
+                if (best == null || participant.length() > best.length()) {
+                    best = participant;
+                }
             }
         }
-        return false;
+        return best;
+    }
+
+    static boolean ownerMatchesParticipant(String owner, Set<String> participants) {
+        return resolveOwnerToParticipant(owner, participants) != null;
+    }
+
+    private static String firstEvidenceSpeakerName(ActionItemCandidate action, List<SegmentInput> segments) {
+        if (segments == null || segments.isEmpty()) {
+            return null;
+        }
+        Set<String> evidenceIds = new LinkedHashSet<>(action.evidenceSegmentIds());
+        for (SegmentInput segment : segments) {
+            if (evidenceIds.contains(segment.segmentId())
+                    && segment.speakerDisplayName() != null
+                    && !segment.speakerDisplayName().isBlank()) {
+                return segment.speakerDisplayName();
+            }
+        }
+        return null;
     }
 
     private static String normalizePersonToken(String value) {
@@ -467,6 +607,17 @@ public final class ActionPostProcessingPipeline {
                 .replace('ü', 'u')
                 .replace('Ü', 'u')
                 .replaceAll("[^\\p{Alnum}]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    /** Drops Turkish honorifics so "Ahmet bey" matches "Ahmet Faruk". */
+    private static String stripHonorific(String normalized) {
+        if (normalized.isBlank()) {
+            return normalized;
+        }
+        return normalized
+                .replaceAll("\\b(bey|hanim|hanım|bay|bayan|mr|mrs|ms)\\b", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
     }
