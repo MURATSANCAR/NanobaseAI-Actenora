@@ -1,0 +1,36 @@
+{
+  "createdAt": "2026-08-03T11:27:00Z",
+  "fixture": "01_15dk_daily_standup.vtt",
+  "gold": "gold/01_15dk_daily_standup.gold.v1.json",
+  "goldVersion": "0.1",
+  "baselines": {
+    "B_control": {
+      "label": "B_HEAD_f9c699f",
+      "commit": "f9c699f4753d7017d64aede84c6ee7da056a5f66",
+      "short": "f9c699f"
+    },
+    "A_candidate": {
+      "label": "A_CAND_472172a",
+      "commit": "472172a035da047189b292f7f6ee677c115963ad",
+      "short": "472172a"
+    }
+  },
+  "sharedConfig": {
+    "finalizationMode": "editorial",
+    "pipelineMode": "legacy",
+    "gateThreshold": 4.5,
+    "chunkTargetTokens": 3500,
+    "chunkOverlapTokens": 250,
+    "extractionMaxTokens": 6144,
+    "temperature": 0.1,
+    "topP": 0.85,
+    "topK": 20,
+    "repeatRunsMinimum": 5,
+    "servedModelExpected": "nanobase-qwen36-35b-a3b-mtp"
+  },
+  "status": "RUNNING",
+  "notes": [
+    "Prodlike ACTENORA_AI_PIPELINE_MODE=legacy kept for B/A parity.",
+    "Each run uses scripts/run-realistic-vtt-suite.sh with ONLY=01_15dk_daily_standup.vtt"
+  ]
+}

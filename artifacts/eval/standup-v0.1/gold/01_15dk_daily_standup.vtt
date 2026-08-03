@@ -1,0 +1,236 @@
+WEBVTT
+
+NOTE Title: Ürün Ekibi Günlük Stand-up
+NOTE Type: Daily stand-up
+
+1
+00:00:04.609 --> 00:00:11.715
+<v Ece>Günaydın, on beş dakikada bitirelim. Dün, bugün ve blokaj şeklinde gidelim.</v>
+
+2
+00:00:13.136 --> 00:00:19.355
+<v Can>Bende iki kısa başlık var, biri staging hatası, diğeri bildirim servisi.</v>
+
+3
+00:00:22.368 --> 00:00:29.061
+<v Derya>Gündem ve beklenen çıktılar ekranda. Karar, öneri, risk ve mevcut durum ifadelerini ayrı tutacağız.</v>
+
+4
+00:00:33.605 --> 00:00:40.098
+<v Burak>Notlarda owner veya tarih yoksa otomatik görev oluşturulmamasını özellikle kontrol edeceğim.</v>
+
+5
+00:00:53.092 --> 00:01:01.982
+<v Can>Gündemde şimdi Oturum yenileme hatası var. Staging'de access token süresi dolunca aynı anda iki refresh isteği oluşuyor.</v>
+
+6
+00:01:12.006 --> 00:01:18.564
+<v Burak>Elimizdeki doğrulanmış veri şu: Kırk tekrardan üçünde 401 görüldü.</v>
+
+7
+00:01:28.719 --> 00:01:44.136
+<v Can>Buraya kadar aynı şeyi anladık. Oturum yenileme hatası için teknik sınırı netleştireyim: staging'de access token süresi dolunca aynı anda iki refresh isteği oluşuyor Bu davranışın hangi koşulda başladığını loglardan ayırabiliyor muyuz?</v>
+
+8
+00:01:49.250 --> 00:02:00.788
+<v Burak>Kırk tekrardan üçünde 401 görüldü. Bu sayı tek başına yeterli değil; aynı testi temiz veri, bozuk veri ve yoğunluk altında ayrı ayrı koşalım.</v>
+
+9
+00:02:07.298 --> 00:02:14.174
+<v Can>Henüz karar değil; değerlendirdiğimiz seçenek şu: Frontend tarafında tek promise üzerinden refresh yapılması.</v>
+
+10
+00:02:22.096 --> 00:02:31.739
+<v Derya>Canlı ortam açısından beni düşündüren konu bekleyen isteklerin kilitlenmesi. Değişiklik açılırsa ilk otuz dakikada hangi alarmı ve hangi dashboard'u izleyeceğiz?</v>
+
+11
+00:02:39.237 --> 00:02:49.084
+<v Ece>Kullanıcıya görünen tarafı da konuşalım. Oturum yenileme hatası nedeniyle davranış değişecekse bunu release notunda ve yardım metninde açıkça anlatmamız gerekiyor.</v>
+
+12
+00:02:53.176 --> 00:03:06.430
+<v Burak>Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını ekleyeceğim. Özellikle bekleyen isteklerin kilitlenmesi ihtimalini koruma testi yapalım.</v>
+
+13
+00:03:10.513 --> 00:03:16.323
+<v Burak>Bu seçeneğin ana riski: Bekleyen isteklerin kilitlenmesi.</v>
+
+14
+00:03:24.707 --> 00:03:37.206
+<v Can>Ben frontend tarafında tek promise üzerinden refresh yapılması seçeneğini doğrudan tüm kullanıcılara açmak yerine feature flag arkasında küçük bir grupla denemeyi tercih ederim.</v>
+
+15
+00:03:41.293 --> 00:03:52.803
+<v Selin>Güvenlik ve uyum açısından iki şeyi ayırmamız gerekiyor: işlemin yapılabilmesi ve işlemin kim tarafından görülebilmesi. Oturum yenileme hatası için audit kaydı olmadan ilerlemeyelim.</v>
+
+16
+00:04:01.916 --> 00:04:12.228
+<v Ece>Takvimi gerçekçi tutalım. Bu işi mevcut sprintte alırsak hangi teslimat kayıyor ve bağımlılık gecikirse ikinci planımız ne oluyor?</v>
+
+17
+00:04:20.063 --> 00:04:31.686
+<v Derya>Ekran paylaşımı bende bir sayfa geriden geliyor ama konuşmayı takip ediyorum. Oturum yenileme hatası başlığında kaldığımız yeri kısaca özetleyelim.</v>
+
+18
+00:04:35.633 --> 00:04:46.241
+<v Can>Alternatif olarak mevcut davranışı değiştirmeden yalnız gözlemlenebilirliği artırabiliriz. Böylece kırk tekrardan üçünde 401 görüldü sonucunun kalıcı mı geçici mi olduğunu daha güvenli görürüz.</v>
+
+19
+00:04:56.443 --> 00:05:08.183
+<v Can>Mevcut durum notu olarak söylüyorum: Token süresini şimdilik değiştirmiyoruz; bu kalıcı bir ürün kararı değil. Bu cümle karar listesine taşınmamalı.</v>
+
+20
+00:05:15.136 --> 00:05:27.363
+<v Can>Geri dönüş planını somutlaştıralım. frontend tarafında tek promise üzerinden refresh yapılması uygulandıktan sonra hata görürsek hangi config'i, migration'ı veya kuyruğu geri alacağız?</v>
+
+21
+00:05:34.615 --> 00:05:44.779
+<v Ece>Bu başlığın kabul kriterini kullanıcı diliyle yazmayı öneriyorum: beklenen davranış, hata mesajı ve tamamlanma süresi aynı maddede görünmeli.</v>
+
+22
+00:05:49.600 --> 00:05:56.132
+<v Burak>Açık kalan soru şu: Mobil istemcide aynı yarış koşulu var mı?</v>
+
+23
+00:06:05.574 --> 00:06:21.413
+<v Derya>Benim önerim küçük bir teknik spike. frontend tarafında tek promise üzerinden refresh yapılması için bir örnek akış kurup süreyi, hata oranını ve log görünürlüğünü ölçelim; sonuç iyi değilse uygulama işine girmeyelim.</v>
+
+24
+00:06:24.825 --> 00:06:34.754
+<v Ece>Owner konusunda ortak isim yazmak istemiyorum. Uygulamayı yapacak kişi, doğrulayacak kişi ve son onayı verecek kişi ayrı ayrı belli olsun.</v>
+
+25
+00:06:40.049 --> 00:06:47.792
+<v Can>Kararı açıkça kayda geçiriyorum: Paralel refresh çağrıları tek promise üzerinde birleştirilecek.</v>
+
+26
+00:06:53.318 --> 00:07:03.613
+<v Ece>Müşteri operasyonu açısından kesinti veya gecikme olduğunda ilk mesajı kim gönderecek? Teknik ekip kök nedeni ararken kullanıcı iletişimi beklememeli.</v>
+
+27
+00:07:07.630 --> 00:07:15.000
+<v Derya>Aksiyon kaydı: Selin düzeltmeyi bugün 16.00'ya kadar yapacak; Can correlation id ekleyecek.</v>
+
+28
+00:07:24.190 --> 00:07:31.926
+<v Burak>Bu başlığı kapatmadan önce risk sahibini ve başarı ölçümünü görev kartında ayrıca teyit edelim.</v>
+
+29
+00:07:44.771 --> 00:07:52.899
+<v Ece>Gündemde şimdi E-posta karakter bozulması var. Yeni bildirim şablonlarında Türkçe karakterler Outlook'ta bozuk görünüyor.</v>
+
+30
+00:07:58.426 --> 00:08:05.870
+<v Burak>Elimizdeki doğrulanmış veri şu: Beş istemcinin ikisinde konu satırı hatalı.</v>
+
+31
+00:08:11.708 --> 00:08:26.177
+<v Can>Teknik olarak mümkün, ama koşulları var. E-posta karakter bozulması için teknik sınırı netleştireyim: yeni bildirim şablonlarında türkçe karakterler outlook'ta bozuk görünüyor Bu davranışın hangi koşulda başladığını loglardan ayırabiliyor muyuz?</v>
+
+32
+00:08:32.768 --> 00:08:44.823
+<v Burak>Beş istemcinin ikisinde konu satırı hatalı. Bu sayı tek başına yeterli değil; aynı testi temiz veri, bozuk veri ve yoğunluk altında ayrı ayrı koşalım.</v>
+
+33
+00:08:53.419 --> 00:09:01.030
+<v Ece>Henüz karar değil; değerlendirdiğimiz seçenek şu: UTF-8 ve quoted-printable başlıklarını servis katmanında sabitlemek.</v>
+
+34
+00:09:05.499 --> 00:09:17.437
+<v Derya>Canlı ortam açısından beni düşündüren konu eski şablonların geriye dönük etkilenmesi. Değişiklik açılırsa ilk otuz dakikada hangi alarmı ve hangi dashboard'u izleyeceğiz?</v>
+
+35
+00:09:22.814 --> 00:09:34.124
+<v Ece>Kullanıcıya görünen tarafı da konuşalım. E-posta karakter bozulması nedeniyle davranış değişecekse bunu release notunda ve yardım metninde açıkça anlatmamız gerekiyor.</v>
+
+36
+00:09:40.660 --> 00:09:52.381
+<v Burak>Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını ekleyeceğim. Özellikle eski şablonların geriye dönük etkilenmesi ihtimalini koruma testi yapalım.</v>
+
+37
+00:10:02.377 --> 00:10:07.377
+<v Burak>Bu seçeneğin ana riski: Eski şablonların geriye dönük etkilenmesi.</v>
+
+38
+00:10:13.207 --> 00:10:24.982
+<v Selin>Ben uTF-8 ve quoted-printable başlıklarını servis katmanında sabitlemek seçeneğini doğrudan tüm kullanıcılara açmak yerine feature flag arkasında küçük bir grupla denemeyi tercih ederim.</v>
+
+39
+00:10:28.338 --> 00:10:41.125
+<v Can>Güvenlik ve uyum açısından iki şeyi ayırmamız gerekiyor: işlemin yapılabilmesi ve işlemin kim tarafından görülebilmesi. E-posta karakter bozulması için audit kaydı olmadan ilerlemeyelim.</v>
+
+40
+00:10:47.019 --> 00:10:55.961
+<v Ece>Takvimi gerçekçi tutalım. Bu işi mevcut sprintte alırsak hangi teslimat kayıyor ve bağımlılık gecikirse ikinci planımız ne oluyor?</v>
+
+41
+00:11:05.019 --> 00:11:15.979
+<v Burak>Bir saniye, son cümlede ses kesildi. Risk kısmını tekrar eder misiniz? E-posta karakter bozulması başlığında kaldığımız yeri kısaca özetleyelim.</v>
+
+42
+00:11:20.368 --> 00:11:31.497
+<v Can>Alternatif olarak mevcut davranışı değiştirmeden yalnız gözlemlenebilirliği artırabiliriz. Böylece beş istemcinin ikisinde konu satırı hatalı sonucunun kalıcı mı geçici mi olduğunu daha güvenli görürüz.</v>
+
+43
+00:11:35.952 --> 00:11:42.857
+<v Ece>Mevcut durum notu olarak söylüyorum: SMTP sağlayıcısını bugün değiştirmiyoruz. Bu cümle karar listesine taşınmamalı.</v>
+
+44
+00:11:51.602 --> 00:12:02.289
+<v Derya>Geri dönüş planını somutlaştıralım. uTF-8 ve quoted-printable başlıklarını servis katmanında sabitlemek uygulandıktan sonra hata görürsek hangi config'i, migration'ı veya kuyruğu geri alacağız?</v>
+
+45
+00:12:12.267 --> 00:12:21.380
+<v Ece>Bu başlığın kabul kriterini kullanıcı diliyle yazmayı öneriyorum: beklenen davranış, hata mesajı ve tamamlanma süresi aynı maddede görünmeli.</v>
+
+46
+00:12:31.620 --> 00:12:38.724
+<v Burak>Açık kalan soru şu: Gmail test matrisi ayrıca koşulmalı mı?</v>
+
+47
+00:12:45.463 --> 00:13:01.295
+<v Burak>Benim önerim küçük bir teknik spike. uTF-8 ve quoted-printable başlıklarını servis katmanında sabitlemek için bir örnek akış kurup süreyi, hata oranını ve log görünürlüğünü ölçelim; sonuç iyi değilse uygulama işine girmeyelim.</v>
+
+48
+00:13:09.790 --> 00:13:20.410
+<v Ece>Owner konusunda ortak isim yazmak istemiyorum. Uygulamayı yapacak kişi, doğrulayacak kişi ve son onayı verecek kişi ayrı ayrı belli olsun.</v>
+
+49
+00:13:24.676 --> 00:13:31.568
+<v Ece>Kararı açıkça kayda geçiriyorum: Yeni gönderimlerde UTF-8 başlığı zorunlu olacak.</v>
+
+50
+00:13:40.987 --> 00:13:49.973
+<v Ece>Müşteri operasyonu açısından kesinti veya gecikme olduğunda ilk mesajı kim gönderecek? Teknik ekip kök nedeni ararken kullanıcı iletişimi beklememeli.</v>
+
+51
+00:13:53.047 --> 00:14:00.269
+<v Can>Aksiyon kaydı: Can başlığı düzeltecek; Burak Outlook ve Apple Mail regresyonunu yarın öğlene kadar tamamlayacak.</v>
+
+52
+00:14:08.005 --> 00:14:15.118
+<v Burak>Bu başlığı kapatmadan önce risk sahibini ve başarı ölçümünü görev kartında ayrıca teyit edelim.</v>
+
+53
+00:14:25.561 --> 00:14:30.216
+<v Derya>Kapanışa geçiyorum. Kararları, açık soruları ve görev sahiplerini ayrı ayrı kontrol edeceğiz.</v>
+
+54
+00:14:31.322 --> 00:14:36.369
+<v Burak>Karar olmayan mevcut durum cümleleri bağlam notunda kalacak; karar listesine taşınmayacak.</v>
+
+55
+00:14:37.203 --> 00:14:43.640
+<v Ece>Owner veya tarihi eksik kalan görevler atanmış kabul edilmeyecek ve takip listesinde belirsiz olarak görünecek.</v>
+
+56
+00:14:44.387 --> 00:14:48.598
+<v Can>Toplantı kaydı, VTT dosyası ve işlem metrikleri aynı trace kimliğiyle ilişkilendirilecek.</v>
+
+57
+00:14:49.097 --> 00:14:54.350
+<v Ece>Bir sonraki toplantının gündemi bugün kapanmayan açık sorular ve risk kayıtlarından oluşturulacak.</v>
+
+58
+00:14:55.471 --> 00:14:59.000
+<v Ece>Toplantıyı burada kapatıyorum. Katılımınız için teşekkürler.</v>
