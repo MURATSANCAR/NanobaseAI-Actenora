@@ -531,14 +531,43 @@ public final class ActionPostProcessingPipeline {
                 out.add(action.withOwner(fromEvidence));
                 continue;
             }
-            if (owner != null && !owner.isBlank()) {
-                stats.incrementOwnersCleared();
-                out.add(action.withOwner(null));
-            } else {
+            if (owner == null || owner.isBlank()) {
+                String fromText = ownerHintFromActionText(action.text());
+                String boundFromText = resolveOwnerToParticipant(fromText, participants);
+                if (boundFromText != null) {
+                    stats.incrementOwnersBound();
+                    out.add(action.withOwner(boundFromText));
+                    continue;
+                }
                 out.add(action);
+                continue;
             }
+            stats.incrementOwnersCleared();
+            out.add(action.withOwner(null));
         }
         return out;
+    }
+
+    /**
+     * Pulls a leading person name / honorific from action text when the owner field is blank
+     * (common with unattributed ASR where the LLM embeds "Ahmet Bey'in …" in the sentence).
+     */
+    static String ownerHintFromActionText(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String hint = new ActionIdentityNormalizer().ownerHintFromText(text);
+        if (hint != null && !hint.isBlank()) {
+            return hint;
+        }
+        // "Ahmet Bey'in …" / "Murat Bey'den …" / "Görkem Hocam'ın …"
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                "(?iu)^\\s*([\\p{L}][\\p{L}'\\-]{1,40})(?:\\s+(?:bey|han[ıi]m|hocam))?['’]?[a-zçğıöşü]*\\b"
+        ).matcher(text.strip());
+        if (m.find()) {
+            return m.group(1);
+        }
+        return null;
     }
 
     /**

@@ -42,5 +42,30 @@
       "jarSha256": "fe832931e1f84189437e4f5a3b3e052cead320977381696854c743dbad7227c6",
       "note": "Built from worktree with gitignored port/out/*.java copied from local disk (.gitignore out/ swallows port/out/). AI code is f9c699f."
     }
+  },
+  "runProgress": {
+    "B_HEAD_f9c699f": {
+      "run_01": {
+        "status": "SUCCEEDED",
+        "elapsedApproxMin": 24,
+        "counts": {
+          "decisions": 2,
+          "actionItems": 5,
+          "risks": 2,
+          "proposals": 1,
+          "openQuestions": 2,
+          "importantFacts": 4
+        },
+        "goldRequired": {
+          "decisions": 2,
+          "actions": 7,
+          "risks": 2,
+          "facts": 2,
+          "openQuestions": 12
+        },
+        "finishedAt": "2026-08-03T11:56:25Z"
+      },
+      "run_02": "IN_PROGRESS"
+    }
   }
 }
