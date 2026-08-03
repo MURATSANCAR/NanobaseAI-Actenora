@@ -28,9 +28,19 @@
     "repeatRunsMinimum": 5,
     "servedModelExpected": "nanobase-qwen36-35b-a3b-mtp"
   },
-  "status": "RUNNING",
+  "status": "RUNNING_B",
   "notes": [
     "Prodlike ACTENORA_AI_PIPELINE_MODE=legacy kept for B/A parity.",
-    "Each run uses scripts/run-realistic-vtt-suite.sh with ONLY=01_15dk_daily_standup.vtt"
-  ]
+    "Each run uses scripts/run-realistic-vtt-suite.sh with ONLY=01_15dk_daily_standup.vtt",
+    "BLOCKER mitigated: root .gitignore pattern out/ ignores **/port/out/** Java ports; worktree builds require copying those local files.",
+    "B control deployed 2026-08-03T11:31Z; starting 5 warmup/eval runs."
+  ],
+  "deploy": {
+    "B": {
+      "commit": "f9c699f4753d7017d64aede84c6ee7da056a5f66",
+      "deployedAt": "2026-08-03T11:31:16Z",
+      "jarSha256": "fe832931e1f84189437e4f5a3b3e052cead320977381696854c743dbad7227c6",
+      "note": "Built from worktree with gitignored port/out/*.java copied from local disk (.gitignore out/ swallows port/out/). AI code is f9c699f."
+    }
+  }
 }
