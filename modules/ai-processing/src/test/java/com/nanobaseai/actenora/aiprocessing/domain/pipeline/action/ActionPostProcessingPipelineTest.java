@@ -74,8 +74,23 @@ class ActionPostProcessingPipelineTest {
         );
         var result = pipeline.postProcess(List.of(in), List.of(), ctx(segments()));
         assertEquals(2, result.actions().size());
-        assertEquals("Selin", result.actions().get(0).owner());
-        assertEquals("Can", result.actions().get(1).owner());
+        assertEquals(
+                "Selin",
+                result.actions().stream()
+                        .filter(a -> a.text().toLowerCase().contains("düzeltme")
+                                || a.text().toLowerCase().contains("duzeltme"))
+                        .findFirst()
+                        .orElseThrow()
+                        .owner()
+        );
+        assertEquals(
+                "Can",
+                result.actions().stream()
+                        .filter(a -> a.text().toLowerCase().contains("correlation"))
+                        .findFirst()
+                        .orElseThrow()
+                        .owner()
+        );
     }
 
     @Test
@@ -517,8 +532,17 @@ class ActionPostProcessingPipelineTest {
                         "meeting-teams"
                 )
         );
-        assertEquals("Murat Sancar", result.actions().get(0).owner());
-        assertNull(result.actions().get(1).owner());
+        ActionItemCandidate muratAction = result.actions().stream()
+                .filter(a -> a.text().contains("paylaşacak"))
+                .findFirst()
+                .orElseThrow();
+        ActionItemCandidate unknownAction = result.actions().stream()
+                .filter(a -> a.text().contains("değerlendirilecek")
+                        || a.text().contains("degerlendirilecek"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("Murat Sancar", muratAction.owner());
+        assertNull(unknownAction.owner());
         assertEquals(1, result.stats().toArtifactMap("m").get("ownersCleared"));
     }
 

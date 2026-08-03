@@ -1,0 +1,43 @@
+---
+description: Never assert or branch on static list indices — select by meaning
+alwaysApply: true
+---
+
+# No static / positional progression
+
+Actenora must **never** advance logic or tests by magic list positions (`get(0)`, `get(1)`, `[0]`, “first element means X”).
+
+## Forbidden
+
+- `list.get(0)` / `list.get(1)` / `arr[0]` to mean a **specific** domain entity (owner, action, decision, …)
+- Assuming stable order: “index 0 = known owner, index 1 = garbage”
+- Positional coupling between arrange data and assertions when identity is available in the object itself
+
+## Required
+
+- Select by **meaning**: text, id, owner, evidence id, status, or a named finder helper
+- For “exactly one” results, prefer `getFirst()` / `orElseThrow()` only after filtering to that singleton
+- When comparing two outcomes, find each by its distinctive field, then assert
+
+## Examples
+
+```java
+// BAD
+assertEquals("Murat Sancar", result.actions().get(0).owner());
+assertNull(result.actions().get(1).owner());
+
+// GOOD
+ActionItemCandidate muratAction = result.actions().stream()
+        .filter(a -> a.text().contains("dokümanı paylaşacak"))
+        .findFirst()
+        .orElseThrow();
+assertEquals("Murat Sancar", muratAction.owner());
+
+ActionItemCandidate unknown = result.actions().stream()
+        .filter(a -> a.text().contains("Mevcut mimari"))
+        .findFirst()
+        .orElseThrow();
+assertNull(unknown.owner());
+```
+
+Same rule applies in production code: resolve by id/key/predicate, not by slot in a list.
