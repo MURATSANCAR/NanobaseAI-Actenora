@@ -218,6 +218,21 @@ public final class FairJobScheduler implements JobScheduler {
 
     @Override
     public int recoverStaleRunning(Instant now, Duration staleAfter, int maxAttempts) {
+        return recoverStaleRunning(now, staleAfter, maxAttempts, null);
+    }
+
+    @Override
+    public int recoverRunningStartedBefore(Instant now, Instant startedBefore, int maxAttempts) {
+        Objects.requireNonNull(startedBefore, "startedBefore");
+        return recoverStaleRunning(now, Duration.ZERO, maxAttempts, startedBefore);
+    }
+
+    private int recoverStaleRunning(
+            Instant now,
+            Duration staleAfter,
+            int maxAttempts,
+            Instant startedBeforeExclusive
+    ) {
         Objects.requireNonNull(now, "now");
         Objects.requireNonNull(staleAfter, "staleAfter");
         int attemptCap = maxAttempts < 1 ? this.maxAttempts : maxAttempts;
@@ -225,6 +240,9 @@ public final class FairJobScheduler implements JobScheduler {
         for (AiJob job : jobs.findByStatus(AiJobStatus.RUNNING)) {
             Instant started = job.startedAt().orElse(null);
             if (started == null) {
+                continue;
+            }
+            if (startedBeforeExclusive != null && !started.isBefore(startedBeforeExclusive)) {
                 continue;
             }
             if (!started.plus(staleAfter).isAfter(now)) {

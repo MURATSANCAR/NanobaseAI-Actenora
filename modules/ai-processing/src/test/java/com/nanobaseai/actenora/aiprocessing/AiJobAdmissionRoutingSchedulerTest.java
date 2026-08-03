@@ -224,11 +224,26 @@ class AiJobAdmissionRoutingSchedulerTest {
 
     @Test
     void zeroDurationStaleRecoveryRequeuesImmediately() {
-        // Mirrors startup orphan reclaim: Duration.ZERO treats every RUNNING job as abandoned.
+        // Mirrors coarse reclaim; prefer recoverRunningStartedBefore for boot orphans.
         AiJob running = admitAndForceRunning(tenantA, "orphan-boot-1");
         int recovered = service.recoverStale(now.plus(Duration.ofSeconds(1)), Duration.ZERO);
         assertEquals(1, recovered);
         assertEquals(AiJobStatus.QUEUED, jobs.findById(running.id()).orElseThrow().status());
+    }
+
+    @Test
+    void recoverRunningStartedBeforeSkipsJobsClaimedAfterCutoff() {
+        Instant cutoff = now.plus(Duration.ofSeconds(5));
+        AiJob prior = admitAndForceRunning(tenantA, "prior-process");
+        AiJob fresh = service.submit(commandWithCorrelation(tenantA, JobPriority.NORMAL, 1000, "fresh")).job();
+        var attempt = fresh.markRunning(cutoff.plus(Duration.ofSeconds(1)));
+        jobs.save(fresh);
+        attempts.save(attempt);
+
+        int recovered = service.recoverRunningStartedBefore(cutoff.plus(Duration.ofSeconds(2)), cutoff, 5);
+        assertEquals(1, recovered);
+        assertEquals(AiJobStatus.QUEUED, jobs.findById(prior.id()).orElseThrow().status());
+        assertEquals(AiJobStatus.RUNNING, jobs.findById(fresh.id()).orElseThrow().status());
     }
 
     @Test

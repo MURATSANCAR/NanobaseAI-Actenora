@@ -9,7 +9,6 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -18,8 +17,11 @@ import java.util.Objects;
  *
  * <p>Periodic stale recovery uses a long grace ({@code stale-running-after}, default 24h) so
  * multi-hour legitimate pipelines are not killed. That same timer leaves crash orphans stuck
- * until cancel or day-long reclaim. On single-instance deploys, reclaiming all RUNNING jobs at
- * startup is safe: this process is the only worker and cannot resume lost in-memory inference.
+ * until cancel or day-long reclaim. On single-instance deploys, reclaiming RUNNING jobs that
+ * started <em>before this process</em> is safe.
+ *
+ * <p>Jobs claimed after this bean is constructed are left alone, so startup reclaim cannot
+ * race with the first post-boot {@code claimNext}.
  *
  * <p>Disable with {@code ACTENORA_AI_WORKER_RECLAIM_ORPHANS_ON_STARTUP=false} when multiple
  * backend replicas share the job table (needs lease/heartbeat ownership first).
@@ -33,6 +35,8 @@ public final class AiJobOrphanReclaimOnStartup {
     private final AiProcessingApi aiProcessingApi;
     private final int maxAttempts;
     private final boolean reclaimOnStartup;
+    /** Exclusive upper bound: only jobs started before this Instant are previous-process orphans. */
+    private final Instant processEpoch;
 
     public AiJobOrphanReclaimOnStartup(
             AiProcessingApi aiProcessingApi,
@@ -45,6 +49,7 @@ public final class AiJobOrphanReclaimOnStartup {
         }
         this.maxAttempts = maxAttempts;
         this.reclaimOnStartup = reclaimOnStartup;
+        this.processEpoch = Instant.now();
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -54,14 +59,14 @@ public final class AiJobOrphanReclaimOnStartup {
             return;
         }
         Instant now = Instant.now();
-        // Duration.ZERO ⇒ every RUNNING job with started_at <= now is stale (all crash orphans).
-        int recovered = aiProcessingApi.recoverStaleRunning(now, Duration.ZERO, maxAttempts);
+        int recovered = aiProcessingApi.recoverRunningStartedBefore(now, processEpoch, maxAttempts);
         if (recovered > 0) {
             log.warn(
-                    "Reclaimed {} orphaned RUNNING AI job(s) after startup (in-memory work lost on restart)",
-                    recovered);
+                    "Reclaimed {} orphaned RUNNING AI job(s) after startup (started before processEpoch={})",
+                    recovered,
+                    processEpoch);
         } else {
-            log.info("AI worker startup orphan reclaim: no RUNNING jobs to requeue");
+            log.info("AI worker startup orphan reclaim: no pre-boot RUNNING jobs to requeue");
         }
     }
 }

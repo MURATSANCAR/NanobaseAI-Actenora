@@ -157,6 +157,10 @@ public final class AiJobService {
         return scheduler.recoverStaleRunning(now, staleAfter, maxAttempts);
     }
 
+    public int recoverRunningStartedBefore(Instant now, Instant startedBefore, int maxAttempts) {
+        return scheduler.recoverRunningStartedBefore(now, startedBefore, maxAttempts);
+    }
+
     public Optional<AiJob> find(UUID jobId) {
         return jobs.findById(jobId);
     }

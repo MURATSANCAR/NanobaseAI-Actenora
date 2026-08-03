@@ -39,6 +39,13 @@ public interface AiProcessingApi {
         return recoverStaleRunning(now, staleAfter);
     }
 
+    /**
+     * Requeue RUNNING jobs started strictly before {@code startedBefore} (previous-process orphans).
+     */
+    default int recoverRunningStartedBefore(Instant now, Instant startedBefore, int maxAttempts) {
+        return recoverStaleRunning(now, Duration.ZERO, maxAttempts);
+    }
+
     Optional<AiJob> findJob(UUID jobId);
 
     List<AiJob> listJobsForTenant(UUID tenantId);
@@ -89,6 +96,11 @@ public interface AiProcessingApi {
         @Override
         public int recoverStaleRunning(Instant now, Duration staleAfter, int maxAttempts) {
             return service.recoverStale(now, staleAfter, maxAttempts);
+        }
+
+        @Override
+        public int recoverRunningStartedBefore(Instant now, Instant startedBefore, int maxAttempts) {
+            return service.recoverRunningStartedBefore(now, startedBefore, maxAttempts);
         }
 
         @Override

@@ -6,6 +6,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.JobPriority;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,6 +30,16 @@ public interface JobScheduler {
     Duration estimateQueueWait(UUID tenantId, JobPriority priority, Instant now);
 
     int recoverStaleRunning(Instant now, Duration staleAfter, int maxAttempts);
+
+    /**
+     * Requeue RUNNING jobs whose {@code startedAt} is strictly before {@code startedBefore}.
+     * Used on process boot to reclaim crash orphans without touching jobs claimed after startup.
+     */
+    default int recoverRunningStartedBefore(Instant now, Instant startedBefore, int maxAttempts) {
+        Objects.requireNonNull(startedBefore, "startedBefore");
+        // Fallback for test fakes: age-based reclaim with zero grace is too broad; prefer override.
+        return recoverStaleRunning(now, Duration.ZERO, maxAttempts);
+    }
 
     default int recoverStaleRunning(Instant now, Duration staleAfter) {
         return recoverStaleRunning(now, staleAfter, Integer.MAX_VALUE);
