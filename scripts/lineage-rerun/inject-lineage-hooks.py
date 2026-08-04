@@ -575,13 +575,13 @@ def patch_json_repair(path: Path) -> None:
             helper + "    public boolean needsRepair(String raw)",
             1,
         )
-    # B/A LimitedJsonRepair uses method arg `raw` (not `original`)
-    raw_name = "raw" if re.search(r"repair\([^)]*\braw\b", t) else "original"
+    # B/A LimitedJsonRepair uses method arg `raw`
     t = re.sub(
-        r"return candidate;",
-        f"observeRepair({raw_name}, candidate);\n            return candidate;",
+        r"^(\s*)return candidate;",
+        r"\1observeRepair(raw, candidate);\n\1return candidate;",
         t,
         count=3,
+        flags=re.M,
     )
     path.write_text(t)
 
