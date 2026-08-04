@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ImportantFactCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import org.junit.jupiter.api.Test;
@@ -139,6 +140,40 @@ class CrossTypeConsistencyQualityGateTest {
         assertEquals(2, audited.openQuestions().size());
         assertTrue(audited.openQuestions().stream().anyMatch(q -> q.text().contains("loglardan")));
         assertTrue(audited.openQuestions().stream().anyMatch(q -> q.text().contains("iletişimini kim")));
+    }
+
+
+    @Test
+    void measuredObservationFactSurvivesActionSubsumption() {
+        FinalNoteDraft draft = new FinalNoteDraft(
+                "Özet",
+                List.of(),
+                List.of(new ActionItemCandidate(
+                        "Oturum yenileme yarış koşulunu düzeltecek.",
+                        "Selin",
+                        null,
+                        List.of("seg-1"),
+                        0.95
+                )),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(new ImportantFactCandidate(
+                        "Oturum yenileme testi yapılan 40 tekrarın 3'ünde 401 görüldü.",
+                        List.of("seg-2"),
+                        0.9
+                )),
+                List.of(),
+                List.of("seg-1", "seg-2"),
+                0.9,
+                false
+        );
+        FinalNoteDraft audited = new CrossTypeConsistencyAuditor().audit(draft);
+        assertEquals(1, audited.importantFacts().size());
+        assertTrue(audited.importantFacts().getFirst().text().contains("401"));
     }
 
     private static FinalNoteDraft draftWithAction(ActionItemCandidate action) {

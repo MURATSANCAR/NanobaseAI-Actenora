@@ -159,6 +159,11 @@ public final class CrossTypeConsistencyAuditor {
         }
         List<ImportantFactCandidate> kept = new ArrayList<>();
         for (ImportantFactCandidate fact : facts) {
+            // Measured observations (n/m rates, error counts) are not "covered" by a fix action.
+            if (looksLikeMeasuredObservation(fact.text())) {
+                kept.add(fact);
+                continue;
+            }
             SemanticCore fCore = SemanticCore.extract(ItemTextViews.comparisonCore(fact.text()));
             boolean covered = false;
             for (ActionItemCandidate action : actions) {
@@ -175,6 +180,28 @@ public final class CrossTypeConsistencyAuditor {
             }
         }
         return kept;
+    }
+
+    /** Gold F-01/F-02 style: quantified test/error observations must survive action subsumption. */
+    private static boolean looksLikeMeasuredObservation(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        String t = text.toLowerCase(Locale.ROOT);
+        boolean hasNumber = t.chars().anyMatch(Character::isDigit);
+        if (!hasNumber) {
+            return false;
+        }
+        return t.contains("tekrar")
+                || t.contains("istemci")
+                || t.contains("görüldü")
+                || t.contains("goruldu")
+                || t.contains("hata")
+                || t.contains("401")
+                || t.contains("oran")
+                || t.contains("test edilen")
+                || t.contains("test yapılan")
+                || t.contains("test yapilan");
     }
 
     private static int countUnsupported(Set<String> flags) {

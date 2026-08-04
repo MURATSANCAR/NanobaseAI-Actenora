@@ -36,6 +36,9 @@ GÖREVLER
    Model özeti kısaltırken açık soruları silme veya tek satırda birleştirme. Aynı konu için karar olsa bile
    cevapsız kalan yan soruyu (izleme, rollback, iletişim sahibi, kök neden logları, sprint trade-off) koru.
    Yalnızca metin olarak neredeyse birebir aynı soruları tekilleştir; konusal benzerlik silme gerekçesi değildir.
+6c. IMPORTANT FACTS RECALL: CANDIDATE_JSON.importantFacts içindeki ölçüm, oran, adet, hata gözlemi
+   ve deney sonuçlarını final importantFacts’a taşı. Özet kısaltılırken “40 tekrarın 3’ünde 401” gibi
+   kanıtlı gözlemleri silme; aksiyon/karar ile aynı konuda olsa bile ölçümü düşürme.
 7. Risk adaylarındaki likelihood ve mitigation alanlarını koru; boşaltma.
 8. PRIOR_MEETING_CONTEXT içindeki açık görev/risk/soruları nextSteps veya openQuestions ile ilişkilendir; kanıt yoksa yeni karar üretme. RELATED_KNOWLEDGE yalnızca süreklilik ipucu olarak kullan.
 9. reviewRequired=true yalnızca belirsiz/eksik kritik alan varsa.

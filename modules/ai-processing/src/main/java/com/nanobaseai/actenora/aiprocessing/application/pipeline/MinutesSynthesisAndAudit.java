@@ -461,6 +461,9 @@ public final class MinutesSynthesisAndAudit {
             // pre-synthesis candidates so recall does not collapse to the LLM subset.
             List<OpenQuestionCandidate> openQuestions = unionOpenQuestions(
                     bundle.openQuestions(), fallback.openQuestions());
+            // Important facts: synthesis often drops measured observations (n/m error rates).
+            List<ImportantFactCandidate> importantFacts = unionImportantFacts(
+                    bundle.importantFacts(), fallback.importantFacts());
             return successfulStep(
                     new FinalNoteDraft(
                             summary,
@@ -472,7 +475,7 @@ public final class MinutesSynthesisAndAudit {
                             preferNonEmpty(bundle.topics(), fallback.topics()),
                             preferNonEmpty(bundle.issues(), fallback.issues()),
                             proposals,
-                            preferNonEmpty(bundle.importantFacts(), fallback.importantFacts()),
+                            importantFacts,
                             flags,
                             bundle.evidenceSegmentIds().isEmpty()
                                     ? fallback.evidenceSegmentIds()
@@ -764,6 +767,59 @@ public final class MinutesSynthesisAndAudit {
     private static OpenQuestionCandidate preferRicherQuestion(
             OpenQuestionCandidate left,
             OpenQuestionCandidate right
+    ) {
+        int leftEvidence = left.evidenceSegmentIds() == null ? 0 : left.evidenceSegmentIds().size();
+        int rightEvidence = right.evidenceSegmentIds() == null ? 0 : right.evidenceSegmentIds().size();
+        if (rightEvidence > leftEvidence) {
+            return right;
+        }
+        if (rightEvidence < leftEvidence) {
+            return left;
+        }
+        return right.confidence() > left.confidence() ? right : left;
+    }
+
+    /**
+     * Union synthesis important facts with pre-synthesis candidates so measured
+     * observations (error rates, client counts) survive partial LLM final-minutes output.
+     */
+    static List<ImportantFactCandidate> unionImportantFacts(
+            List<ImportantFactCandidate> primary,
+            List<ImportantFactCandidate> fallback
+    ) {
+        List<ImportantFactCandidate> a = primary == null ? List.of() : primary;
+        List<ImportantFactCandidate> b = fallback == null ? List.of() : fallback;
+        if (a.isEmpty()) {
+            return b;
+        }
+        if (b.isEmpty()) {
+            return a;
+        }
+        Map<String, ImportantFactCandidate> byKey = new LinkedHashMap<>();
+        for (ImportantFactCandidate f : a) {
+            if (f == null || f.text() == null || f.text().isBlank()) {
+                continue;
+            }
+            byKey.put(normalizeQuestionKey(f.text()), f);
+        }
+        for (ImportantFactCandidate f : b) {
+            if (f == null || f.text() == null || f.text().isBlank()) {
+                continue;
+            }
+            String key = normalizeQuestionKey(f.text());
+            ImportantFactCandidate existing = byKey.get(key);
+            if (existing == null) {
+                byKey.put(key, f);
+                continue;
+            }
+            byKey.put(key, preferRicherFact(existing, f));
+        }
+        return List.copyOf(byKey.values());
+    }
+
+    private static ImportantFactCandidate preferRicherFact(
+            ImportantFactCandidate left,
+            ImportantFactCandidate right
     ) {
         int leftEvidence = left.evidenceSegmentIds() == null ? 0 : left.evidenceSegmentIds().size();
         int rightEvidence = right.evidenceSegmentIds() == null ? 0 : right.evidenceSegmentIds().size();
