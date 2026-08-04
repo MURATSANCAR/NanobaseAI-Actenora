@@ -195,13 +195,13 @@ public class ModelManagementPlatformConfiguration {
             }
             if (capabilityEnabled(definition, ModelCapabilityType.FINAL_NOTE)
                     || capabilityEnabled(definition, ModelCapabilityType.SUMMARIZATION)) {
-                roles.add(ModelRole.QWEN27_FINAL);
+                roles.add(ModelRole.PRIMARY_QUALITY);
             }
             if (capabilityEnabled(definition, ModelCapabilityType.VALIDATION)) {
                 roles.add(ModelRole.VALIDATION);
             }
             if (roles.isEmpty()) {
-                roles.add(ModelRole.QWEN27_FINAL);
+                roles.add(ModelRole.PRIMARY_QUALITY);
             }
             return List.copyOf(roles);
         }

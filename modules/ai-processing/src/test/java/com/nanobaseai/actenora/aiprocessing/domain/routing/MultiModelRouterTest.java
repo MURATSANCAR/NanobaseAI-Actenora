@@ -43,11 +43,11 @@ class MultiModelRouterTest {
     @Test
     void candidateMergeAndFinalNoteUseQwen27Final() {
         assertEquals(
-                ModelRole.QWEN27_FINAL,
+                ModelRole.PRIMARY_QUALITY,
                 route(InferenceTaskType.CANDIDATE_MERGE, false, Set.of(), true, true, false)
                         .decision().requestedRole());
         assertEquals(
-                ModelRole.QWEN27_FINAL,
+                ModelRole.PRIMARY_QUALITY,
                 route(InferenceTaskType.FINAL_NOTE, false, Set.of(), true, true, false)
                         .decision().requestedRole());
         assertEquals(
@@ -59,7 +59,7 @@ class MultiModelRouterTest {
     @Test
     void validationUsesQwenByDefaultOrSeparateModelPerPolicy() {
         assertEquals(
-                ModelRole.QWEN27_FINAL,
+                ModelRole.PRIMARY_QUALITY,
                 route(InferenceTaskType.VALIDATION, false, Set.of(), true, true, false)
                         .decision().requestedRole());
 
@@ -244,7 +244,7 @@ class MultiModelRouterTest {
                 approvedAlternates,
                 allowDowngrade,
                 criticalForbidDowngrade,
-                ValidationModelPreference.QWEN27_FINAL,
+                ValidationModelPreference.PRIMARY_QUALITY,
                 shadow,
                 ConsensusMode.OFF);
         RoutingRequest request = new RoutingRequest(

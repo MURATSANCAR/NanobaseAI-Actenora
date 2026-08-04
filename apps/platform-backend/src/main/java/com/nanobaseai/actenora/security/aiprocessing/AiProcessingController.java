@@ -235,7 +235,7 @@ public class AiProcessingController {
                 body.allowQualityDowngrade(),
                 !tenantAiPolicy.isCriticalFallbackAllowed(tenantId),
                 body.validationModelPreference() == null
-                        ? ValidationModelPreference.QWEN27_FINAL
+                        ? ValidationModelPreference.PRIMARY_QUALITY
                         : body.validationModelPreference(),
                 body.shadowExecutionEnabled()
         );

@@ -178,7 +178,7 @@ class ModelAuthBindingTest {
         var listed = catalog.listLocalDeployments();
         assertFalse(listed.isEmpty());
         assertEquals("local-final", listed.getFirst().modelKey());
-        assertEquals(ModelRole.QWEN27_FINAL, listed.getFirst().role());
+        assertEquals(ModelRole.PRIMARY_QUALITY, listed.getFirst().role());
         assertTrue(listed.getFirst().healthy());
     }
 

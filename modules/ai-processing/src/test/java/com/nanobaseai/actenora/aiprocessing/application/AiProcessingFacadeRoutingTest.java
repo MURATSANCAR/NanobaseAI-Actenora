@@ -31,7 +31,7 @@ class AiProcessingFacadeRoutingTest {
                 Set.of(),
                 true,
                 true,
-                ValidationModelPreference.QWEN27_FINAL,
+                ValidationModelPreference.PRIMARY_QUALITY,
                 true));
 
         assertEquals(FallbackStep.PRIMARY, view.fallbackStep());

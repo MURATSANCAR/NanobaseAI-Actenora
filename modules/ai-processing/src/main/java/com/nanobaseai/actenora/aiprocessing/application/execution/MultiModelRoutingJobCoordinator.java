@@ -89,7 +89,7 @@ public final class MultiModelRoutingJobCoordinator implements JobRoutingCoordina
                 tenantPolicy.allowedModelKeys(job.tenantId()),
                 job.fallbackPermitted(),
                 !criticalFallbackAllowed,
-                ValidationModelPreference.QWEN27_FINAL,
+                ValidationModelPreference.PRIMARY_QUALITY,
                 shadowExecutionEnabled,
                 ConsensusMode.OFF);
     }

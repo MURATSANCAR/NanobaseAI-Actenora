@@ -133,7 +133,7 @@ class ModelFailoverAndAiFailureScenarioTest {
                 Set.of(DefaultModelRoleBootstrap.FAST_EXTRACTION_MODEL_KEY),
                 true,
                 true,
-                com.nanobaseai.actenora.aiprocessing.domain.routing.ValidationModelPreference.QWEN27_FINAL,
+                com.nanobaseai.actenora.aiprocessing.domain.routing.ValidationModelPreference.PRIMARY_QUALITY,
                 false,
                 com.nanobaseai.actenora.aiprocessing.domain.routing.ConsensusMode.OFF
         );

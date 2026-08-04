@@ -37,7 +37,7 @@ public record TenantRoutingPolicy(
                 Set.of(),
                 true,
                 true,
-                ValidationModelPreference.QWEN27_FINAL,
+                ValidationModelPreference.PRIMARY_QUALITY,
                 false,
                 ConsensusMode.OFF
         );

@@ -34,7 +34,7 @@ public final class RoleAwareModelRuntimePort implements ModelRuntimePort {
         this.policySupplier = Objects.requireNonNull(policySupplier, "policySupplier");
         this.byRole = new EnumMap<>(ModelRole.class);
         this.byRole.put(ModelRole.FAST_EXTRACTION, fastRuntime);
-        this.byRole.put(ModelRole.QWEN27_FINAL, finalRuntime);
+        this.byRole.put(ModelRole.PRIMARY_QUALITY, finalRuntime);
         this.byRole.put(ModelRole.VALIDATION, finalRuntime);
     }
 

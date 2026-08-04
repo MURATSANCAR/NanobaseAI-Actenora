@@ -214,7 +214,7 @@ public final class MultiModelRoutingService {
         Optional<LocalDeploymentRef> challenger = catalogPort.listLocalDeployments().stream()
                 .filter(LocalDeploymentRef::healthy)
                 .filter(d -> !d.deploymentId().equals(championDeploymentId))
-                .filter(d -> d.role() == ModelRole.QWEN27_FINAL || d.role() == decision.requestedRole())
+                .filter(d -> d.role() == ModelRole.PRIMARY_QUALITY || d.role() == decision.requestedRole())
                 .sorted(Comparator.comparingInt(LocalDeploymentRef::priority))
                 .findFirst();
         if (challenger.isEmpty()) {

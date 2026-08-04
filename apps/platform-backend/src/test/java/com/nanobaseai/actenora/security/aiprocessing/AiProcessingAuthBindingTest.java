@@ -261,7 +261,7 @@ class AiProcessingAuthBindingTest {
         registry.heartbeat(admin, "final-primary");
         registry.heartbeat(admin, "final-secondary");
         deploymentCatalog.markHealthy(
-                deploymentCatalog.findByRole(ModelRole.QWEN27_FINAL).stream()
+                deploymentCatalog.findByRole(ModelRole.PRIMARY_QUALITY).stream()
                         .filter(d -> d.deploymentKey().equals("final-primary"))
                         .findFirst()
                         .orElseThrow()
