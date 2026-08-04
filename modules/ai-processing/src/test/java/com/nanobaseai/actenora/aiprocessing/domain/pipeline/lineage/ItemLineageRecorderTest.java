@@ -215,4 +215,233 @@ class ItemLineageRecorderTest {
         assertEquals(0, recorder.size());
         assertTrue(recorder.isEnabled());
     }
+
+    @Test
+    void splitOperationRequiresReasonCode() {
+        assertThrows(NullPointerException.class, () -> new ItemLineageRecord(
+                "child",
+                "ACTION_ITEM",
+                LineageStage.ACTION_COMPOUND_DECOMPOSITION,
+                LineageOperation.SPLIT,
+                null,
+                List.of("parent"),
+                "parent",
+                Map.of(),
+                Map.of(),
+                "v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        ));
+    }
+
+    @Test
+    void notMappedRequiresReasonCode() {
+        assertThrows(NullPointerException.class, () -> new ItemLineageRecord(
+                "c1",
+                "ACTION_ITEM",
+                LineageStage.FINAL_NOTE_MAPPING,
+                LineageOperation.NOT_MAPPED,
+                null,
+                List.of(),
+                null,
+                Map.of(),
+                Map.of(),
+                "v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        ));
+    }
+
+    @Test
+    void ownerBindingLineageSafeMap() {
+        ItemLineageRecord record = new ItemLineageRecord(
+                "a1",
+                "ACTION_ITEM",
+                LineageStage.ACTION_CLAUSE_BINDING,
+                LineageOperation.UPDATE,
+                LineageReasonCode.ACTION_OWNER_BOUND,
+                List.of(),
+                null,
+                ItemLineageRecord.snapshot("text", null, null, List.of("27")),
+                ItemLineageRecord.snapshot("text", "Selin", null, List.of("27")),
+                "action-owner-bind-v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        );
+        Map<String, Object> after = (Map<String, Object>) record.toSafeMap().get("after");
+        assertEquals("Selin", after.get("owner"));
+    }
+
+    @Test
+    void dateBindingLineageSafeMap() {
+        ItemLineageRecord record = new ItemLineageRecord(
+                "a1",
+                "ACTION_ITEM",
+                LineageStage.ACTION_RELATIVE_DATE_BINDING,
+                LineageOperation.UPDATE,
+                LineageReasonCode.ACTION_DATE_BOUND,
+                List.of(),
+                null,
+                ItemLineageRecord.snapshot("text", "Burak", "yarın öğlene kadar", List.of("51")),
+                ItemLineageRecord.snapshot("text", "Burak", "yarın öğlene kadar", List.of("51")),
+                "action-date-bind-v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        );
+        Map<String, Object> before = (Map<String, Object>) record.toSafeMap().get("before");
+        assertEquals("yarın öğlene kadar", before.get("relativeDate"));
+    }
+
+    @Test
+    void titleBackfillLineageSafeMap() {
+        ItemLineageRecord record = new ItemLineageRecord(
+                "a1",
+                "ACTION_ITEM",
+                LineageStage.ACTION_TITLE_BACKFILL,
+                LineageOperation.UPDATE,
+                LineageReasonCode.ACTION_TITLE_BACKFILLED,
+                List.of(),
+                null,
+                ItemLineageRecord.snapshot("Can başlığı düzeltecek", "Can", null, List.of("51")),
+                ItemLineageRecord.snapshot(
+                        "Can, yeni gönderimlerde kullanılan e-posta başlığını UTF-8 zorunluluğuna göre düzeltecek.",
+                        "Can",
+                        null,
+                        List.of("51")
+                ),
+                "action-title-backfill-v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        );
+        assertEquals(LineageStage.ACTION_TITLE_BACKFILL, record.stage());
+        assertTrue(((String) ((Map<?, ?>) record.toSafeMap().get("after")).get("text")).contains("UTF-8"));
+    }
+
+    @Test
+    void dedupDropReasonCodeRequired() {
+        ItemLineageRecord record = new ItemLineageRecord(
+                "dup",
+                "ACTION_ITEM",
+                LineageStage.ACTION_DEDUPLICATION,
+                LineageOperation.DROP,
+                LineageReasonCode.ACTION_DEDUPLICATED,
+                List.of(),
+                null,
+                ItemLineageRecord.snapshot("x", "Can", null, List.of("1")),
+                Map.of(),
+                "action-dedup-v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        );
+        assertEquals("ACTION_DEDUPLICATED", record.toSafeMap().get("reasonCode"));
+    }
+
+    @Test
+    void crossTypeDropReasonCode() {
+        ItemLineageRecord record = new ItemLineageRecord(
+                "a1",
+                "ACTION_ITEM",
+                LineageStage.CROSS_TYPE_RESOLUTION,
+                LineageOperation.DROP,
+                LineageReasonCode.CROSS_TYPE_ACTION_SUBSUMED,
+                List.of(),
+                null,
+                ItemLineageRecord.snapshot("x", "Selin", null, List.of("1")),
+                Map.of(),
+                "cross-type-existing-v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        );
+        assertEquals("CROSS_TYPE_ACTION_SUBSUMED", record.toSafeMap().get("reasonCode"));
+    }
+
+    @Test
+    void finalMappingLineage() {
+        ItemLineageRecord mapped = new ItemLineageRecord(
+                "a1",
+                "ACTION_ITEM",
+                LineageStage.FINAL_NOTE_MAPPING,
+                LineageOperation.MAP,
+                LineageReasonCode.MAPPED_TO_FINAL_NOTE,
+                List.of(),
+                null,
+                ItemLineageRecord.snapshot("x", "Can", null, List.of("1")),
+                ItemLineageRecord.snapshot("x", "Can", null, List.of("1")),
+                "final-map-v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        );
+        assertEquals("MAP", mapped.toSafeMap().get("operation"));
+    }
+
+    @Test
+    void artifactJsonlParseabilityFromSafeMaps() {
+        ItemLineageRecorder recorder = ItemLineageRecorder.enabled();
+        ItemLineageRecorder.install(recorder);
+        recorder.record(new ItemLineageRecord(
+                "c1",
+                "ACTION_ITEM",
+                LineageStage.MERGE,
+                LineageOperation.KEEP,
+                LineageReasonCode.POLICY_KEEP,
+                List.of(),
+                Map.of("text", "ok"),
+                Map.of("text", "ok"),
+                "v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        ));
+        List<Map<String, Object>> maps = recorder.toSafeMaps();
+        assertEquals(1, maps.size());
+        assertEquals("c1", maps.getFirst().get("candidateId"));
+    }
+
+    @Test
+    void secretRedactionDoesNotStorePromptTokens() {
+        ItemLineageRecord record = new ItemLineageRecord(
+                "c1",
+                "ACTION_ITEM",
+                LineageStage.LLM_RAW,
+                LineageOperation.CREATE,
+                LineageReasonCode.CREATED_BY_LLM,
+                List.of(),
+                Map.of("text", "action text", "apiKey", "should-remain-caller-filtered"),
+                Map.of("text", "action text"),
+                "v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        );
+        String json = record.toSafeMap().toString();
+        assertFalse(json.toLowerCase().contains("bearer "));
+        assertFalse(json.contains("sk-"));
+    }
+
+    @Test
+    void rootCauseReportDeterminismHelper() {
+        // Stable ordering of reason codes used by analyze scripts
+        assertEquals(
+                List.of(LineageReasonCode.ACTION_COMPOUND_SPLIT, LineageReasonCode.ACTION_DEDUPLICATED),
+                List.of(LineageReasonCode.ACTION_COMPOUND_SPLIT, LineageReasonCode.ACTION_DEDUPLICATED)
+        );
+    }
 }

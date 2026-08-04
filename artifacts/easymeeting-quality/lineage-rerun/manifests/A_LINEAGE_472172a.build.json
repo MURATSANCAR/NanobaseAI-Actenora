@@ -1,0 +1,31 @@
+{
+  "buildName": "A_LINEAGE_472172a",
+  "baseCommit": "472172a",
+  "baseCommitFull": "472172a035da047189b292f7f6ee677c115963ad",
+  "lineagePatchHash": "c5737ad810022ae27bb354958a1594945329cd6582976f438ada12cda498fb7f",
+  "lineagePatchSource": "worktree-overlay-from-HEAD-lineage-package+inject-hooks",
+  "lineagePatchNote": "Observability-only; extraction keep/drop logic from base commit retained. CrossType absent on B.",
+  "builtAt": "2026-08-04T06:27:21Z",
+  "javaVersion": "openjdk version \"21.0.11\" 2026-04-21 LTS",
+  "jarSha256": "a1b921a5e8dae30fd49aad9ef366a04caac1efece4969f8b5e66935a597efbdc",
+  "fixtureSha256": "8fe0cdf537701d6f3b4bb6d05cd26e98ff1f6069936def2754b3b8d2ab5f2ae4",
+  "promptHashes": {
+    "systemMeetingAnalystV2": "660adb7807646f7e5e178147bbe50e395346f1e207ba4cf8e053ff8d54868b3c",
+    "chunkExtraction": "3658d784add04c443eb93205a491edeafac5e71f4c89807b9d95512c471f62d7",
+    "editorialSummary": "c9e9675832018cc8eadf49237ab82c5d18d4560871a9f37f0fc0462cbbca4936"
+  },
+  "schemaHashes": {
+    "extraction": "3c2b29649be027b91c49580a142c1bec3673c114ac0eb32c3b83370e735950f1",
+    "editorialSummary": "63a959cacc8a9d767a6f986e3220a7260c84b33f1612eef714d2025cbaf08dea"
+  },
+  "config": {
+    "finalizationMode": "editorial",
+    "gateThreshold": 4.5,
+    "lineageEnv": "ACTENORA_MEETING_LINEAGE_ENABLED=true",
+    "productionDeploy": false
+  },
+  "knownBaseDifferences": {
+    "crossTypeSubsumer": "present_on_A_absent_on_B",
+    "titleBackfiller": "present_on_A_absent_on_B"
+  }
+}

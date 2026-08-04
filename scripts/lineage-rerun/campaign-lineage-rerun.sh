@@ -28,8 +28,10 @@ status() { printf '%s\n' "$1" | tee "$STATUS"; }
 echo "==== lineage-rerun campaign start $(ts) pid=$$ host=$(hostname) ===="
 status "BOOT at=$(ts)"
 
-# Eval-only env: copy secrets file and force lineage on (no tokens written to artifacts)
-cp -f "$REMOTE_ENV" "$LINEAGE_ENV"
+# Eval-only env: copy secrets file (root-owned) and force lineage on (no tokens written to artifacts)
+sudo cp -f "$REMOTE_ENV" "$LINEAGE_ENV"
+sudo chown "$(id -u):$(id -g)" "$LINEAGE_ENV"
+chmod 600 "$LINEAGE_ENV"
 if ! grep -q '^ACTENORA_MEETING_LINEAGE_ENABLED=' "$LINEAGE_ENV"; then
   echo 'ACTENORA_MEETING_LINEAGE_ENABLED=true' >>"$LINEAGE_ENV"
 else
@@ -37,7 +39,11 @@ else
 fi
 if ! grep -q '^ACTENORA_AI_PIPELINE_LINEAGE_RECORDING=' "$LINEAGE_ENV"; then
   echo 'ACTENORA_AI_PIPELINE_LINEAGE_RECORDING=true' >>"$LINEAGE_ENV"
+else
+  sed -i 's/^ACTENORA_AI_PIPELINE_LINEAGE_RECORDING=.*/ACTENORA_AI_PIPELINE_LINEAGE_RECORDING=true/' "$LINEAGE_ENV"
 fi
+# Ensure lineage env is not world-readable
+chmod 600 "$LINEAGE_ENV"
 
 psql() { docker exec -i actenora-prodlike-postgres psql -U actenora -d actenora "$@"; }
 
