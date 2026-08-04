@@ -34,6 +34,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FailureCategory;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingStats;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.QualityEvalPack;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecorder;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.prompt.InMemoryPromptRegistry;
@@ -644,6 +645,7 @@ public final class AiJobInferenceExecutor {
             } catch (RuntimeException ex) {
                 // Job already succeeded; handoff failures must not unwind the attempt.
             }
+            persistQualityEvalPack(job, result, meetingNoteId);
             return ExecutionOutcome.succeeded(
                     completed.id(), attemptId, completed.status(), latencyMs, meetingNoteId);
         }
@@ -774,6 +776,39 @@ public final class AiJobInferenceExecutor {
                         meetingTimezone == null ? null : meetingTimezone.getId(),
                         draft
                 )));
+    }
+
+
+    private void persistQualityEvalPack(AiJob job, PipelineRunResult result, UUID meetingNoteId) {
+        if (artifacts == null || result == null) {
+            return;
+        }
+        result.finalNoteOptional().ifPresent(draft -> {
+            try {
+                var pack = QualityEvalPack.build(
+                        job.tenantId(),
+                        job.id(),
+                        job.meetingOccurrenceId(),
+                        job.transcriptId(),
+                        meetingNoteId,
+                        result.modelVersion(),
+                        result.promptVersionId(),
+                        job.schemaVersion(),
+                        draft,
+                        Instant.now()
+                );
+                artifacts.save(ProcessingArtifact.inlineJson(
+                        job.tenantId(),
+                        job.id(),
+                        job.meetingOccurrenceId(),
+                        QualityEvalPack.ARTIFACT_TYPE,
+                        artifactMapper.writeValueAsString(pack),
+                        Instant.now()
+                ));
+            } catch (Exception ignored) {
+                // Observability must not fail the job.
+            }
+        });
     }
 
     private void persistActionPostProcessingArtifact(AiJob job, PipelineRunResult result) {

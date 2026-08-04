@@ -34,6 +34,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostPro
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.QualityEvalPack;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingLlmBudgets;
@@ -1053,6 +1054,33 @@ public final class DefaultStageExecutors {
                         meetingTimezone == null ? null : meetingTimezone.getId(),
                         draft
                 ));
+                // Automatic quality eval pack — every successful minutes run (no manual capture).
+                if (artifacts != null) {
+                    try {
+                        var pack = QualityEvalPack.build(
+                                job.tenantId(),
+                                job.id(),
+                                job.meetingOccurrenceId(),
+                                job.transcriptId(),
+                                noteId.orElse(null),
+                                modelRuntime.descriptor().servedModelId(),
+                                job.promptVersion(),
+                                job.schemaVersion(),
+                                draft,
+                                now
+                        );
+                        artifacts.save(ProcessingArtifact.inlineJson(
+                                job.tenantId(),
+                                job.id(),
+                                job.meetingOccurrenceId(),
+                                QualityEvalPack.ARTIFACT_TYPE,
+                                MAPPER.writeValueAsString(pack),
+                                now
+                        ));
+                    } catch (Exception ignored) {
+                        // Observability must not fail minutes stage.
+                    }
+                }
                 java.util.LinkedHashMap<String, Object> payload = new java.util.LinkedHashMap<>();
                 payload.put("executiveSummary", draft.executiveSummary() == null ? "" : draft.executiveSummary());
                 payload.put("requiresManualReview", draft.requiresManualReview());

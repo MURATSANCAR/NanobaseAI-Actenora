@@ -1,0 +1,58 @@
+{
+  "matchConfig": {
+    "textJaccardMin": 0.32,
+    "decisionJaccardMin": 0.35,
+    "requireEvidenceOverlapForCritical": false
+  },
+  "decision": {
+    "truePositive": 2,
+    "falsePositive": 0,
+    "falseNegative": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "criticalRecall": 1.0
+  },
+  "actionItem": {
+    "truePositive": 6,
+    "falsePositive": 0,
+    "falseNegative": 1,
+    "precision": 1.0,
+    "recall": 0.8571,
+    "f1": 0.9231
+  },
+  "risk": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  "openQuestion": {
+    "recall": 0.8333,
+    "truePositive": 10,
+    "required": 12
+  },
+  "importantFact": {
+    "recall": 1.0,
+    "duplicateCount": 0
+  },
+  "ownerAccuracy": 1.0,
+  "dateAccuracy": null,
+  "evidenceCoverage": null,
+  "compoundSplitAccuracy": 1.0,
+  "statusQuoFalsePositiveCount": 0,
+  "hallucinatedDecisionCount": 0,
+  "ownerHallucinationCount": 0,
+  "ownerMisBindingCount": 0,
+  "dateHallucinationCount": 0,
+  "dateCrossoverCount": 0,
+  "crossTypeDuplicateCount": 0,
+  "crossTypeDuplicateRate": 0.0,
+  "closingMetaLeakageCount": 0,
+  "overallScore": 96.31,
+  "criticalGatePassed": false,
+  "failureReasonCodes": [],
+  "lineageEventsObserved": 0,
+  "artifacts": {
+    "lineage": "NOT_AVAILABLE"
+  }
+}
