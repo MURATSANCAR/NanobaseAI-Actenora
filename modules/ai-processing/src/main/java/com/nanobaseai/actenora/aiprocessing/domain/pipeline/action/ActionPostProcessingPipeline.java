@@ -137,6 +137,15 @@ public final class ActionPostProcessingPipeline {
             List<CommitmentCandidate> commitments,
             Context context
     ) {
+        return postProcess(actions, commitments, context, List.of());
+    }
+
+    public Result postProcess(
+            List<ActionItemCandidate> actions,
+            List<CommitmentCandidate> commitments,
+            Context context,
+            List<DecisionCandidate> decisions
+    ) {
         Objects.requireNonNull(actions, "actions");
         Objects.requireNonNull(commitments, "commitments");
         Context ctx = context == null
@@ -200,7 +209,10 @@ public final class ActionPostProcessingPipeline {
                 sanitizeUnknownOwners(dated, participants, ctx.transcriptSegments(), stats);
 
         List<ActionItemCandidate> titlesFilled =
-                titleBackfiller.backfill(ownerSanitized, ctx.transcriptSegments());
+                titleBackfiller.backfill(
+                        ownerSanitized,
+                        ctx.transcriptSegments(),
+                        decisions == null ? List.of() : decisions);
         List<ActionItemCandidate> registerNormalized = new ArrayList<>(titlesFilled.size());
         for (ActionItemCandidate action : titlesFilled) {
             String rewritten = normalizeItemText(action.text());
@@ -266,7 +278,8 @@ public final class ActionPostProcessingPipeline {
     }
 
     public ExtractionBundle applyToBundle(ExtractionBundle bundle, Context context) {
-        Result result = postProcess(bundle.actionItems(), bundle.commitments(), context);
+        Result result = postProcess(
+                bundle.actionItems(), bundle.commitments(), context, bundle.decisions());
         List<String> flags = new ArrayList<>(bundle.qualityFlags());
         for (String f : result.qualityFlags()) {
             if (!flags.contains(f)) {
@@ -297,7 +310,8 @@ public final class ActionPostProcessingPipeline {
      * Same as {@link #applyToDraft} but preserves structured post-processing stats for artifacts.
      */
     public AppliedDraft applyToDraftDetailed(FinalNoteDraft draft, Context context) {
-        Result result = postProcess(draft.actionItems(), draft.commitments(), context);
+        Result result = postProcess(
+                draft.actionItems(), draft.commitments(), context, draft.decisions());
         List<String> flags = auditor.remapDecisionFlags(draft.qualityFlags(), false);
         for (String f : result.qualityFlags()) {
             if (!flags.contains(f)) {
