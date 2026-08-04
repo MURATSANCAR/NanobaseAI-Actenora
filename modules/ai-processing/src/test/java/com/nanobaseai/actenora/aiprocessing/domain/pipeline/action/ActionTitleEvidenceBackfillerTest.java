@@ -639,6 +639,39 @@ class ActionTitleEvidenceBackfillerTest {
                 || !ActionTitleEvidenceBackfiller.isLowSpecificity(can.text()));
     }
 
+
+    @Test
+    void decisionContextUsedEvenWhenDecisionSegmentMissingFromWindow() {
+        // Production gap: action evidence window may omit prior decision segment IDs.
+        ActionItemCandidate can = new ActionItemCandidate(
+                "Başlık düzeltmesini yapacak.",
+                "Can",
+                null,
+                List.of("seg-51"),
+                0.92);
+        SegmentInput actionOnly = new SegmentInput(
+                "seg-51",
+                51,
+                "Can",
+                2000,
+                3000,
+                "Aksiyon kaydı: Can başlığı düzeltecek; Burak Outlook ve Apple Mail regresyonunu "
+                        + "yarın öğlene kadar tamamlayacak.",
+                true);
+        DecisionCandidate decision = new DecisionCandidate(
+                "Yeni gönderimlerde UTF-8 başlığı zorunlu olacak.",
+                List.of("seg-49"),
+                0.95);
+        ActionTitleEvidenceBackfiller.ActionBackfillResult result =
+                backfiller.backfill(can, backfiller.buildContext(can, List.of(actionOnly), List.of(decision)));
+        assertEquals(ActionTitleEvidenceBackfiller.BackfillDecision.UPDATED, result.decision(), result.reasonCode());
+        String after = result.afterText().toLowerCase(Locale.ROOT);
+        assertTrue(after.contains("utf-8") || after.contains("utf8"), after);
+        assertTrue(after.contains("gönderim") || after.contains("gonderim") || after.contains("başlık"), after);
+        assertFalse(after.contains("outlook"), after);
+        assertFalse(after.contains("yarın") || after.contains("öğlen"), after);
+    }
+
     private static ActionItemCandidate lowSpec(String text, String owner, String evidenceId) {
         return new ActionItemCandidate(text, owner, null, List.of(evidenceId), 0.9);
     }

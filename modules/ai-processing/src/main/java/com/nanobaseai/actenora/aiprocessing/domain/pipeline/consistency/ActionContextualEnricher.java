@@ -158,10 +158,21 @@ public final class ActionContextualEnricher {
             return null;
         }
         String text = action.text().strip();
-        if (!text.toLowerCase(Locale.ROOT).matches(".*düzeltmeyi\\s+yapacak\\.?")) {
-            return null;
+        String lower = text.toLowerCase(Locale.ROOT);
+        if (lower.matches(".*düzeltmeyi\\s+yapacak\\.?")) {
+            return nearest.text().strip() + " için düzeltmeyi yapacak.";
         }
-        return nearest.text().strip() + " için düzeltmeyi yapacak.";
+        if (lower.matches(".*ba[sş]l[ıi][gğ][ıi]\\s+d[uü]zeltecek\\.?")
+                || lower.matches(".*ba[sş]l[ıi][gğ]\\s+d[uü]zeltmesini\\s+yapacak\\.?")) {
+            String topic = nearest.text().strip();
+            if (topic.toLowerCase(Locale.ROOT).contains("utf")
+                    || topic.toLowerCase(Locale.ROOT).contains("e-posta")
+                    || topic.toLowerCase(Locale.ROOT).contains("gönderim")
+                    || topic.toLowerCase(Locale.ROOT).contains("gonderim")) {
+                return topic + " kapsamında başlığı düzeltecek.";
+            }
+        }
+        return null;
     }
 
     private static Map<String, String> indexSegments(List<SegmentInput> segments) {

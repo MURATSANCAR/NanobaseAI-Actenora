@@ -267,19 +267,30 @@ public final class ActionTitleEvidenceBackfiller {
         }
 
         List<ContextCandidate> preceding = new ArrayList<>();
-        // Decision candidates with evidence before action
+        // Decision candidates with evidence before action (or decision-only when segments omit IDs)
         if (decisions != null) {
             for (DecisionCandidate d : decisions) {
-                int seq = minSeq(d.evidenceSegmentIds(), byId, actionSeq);
-                if (seq >= actionSeq) {
-                    continue;
-                }
-                if (!CROSS_CHUNK_LOOKUP && !sameLocalWindow(seq, actionSeq)) {
-                    continue;
-                }
-                int distance = cueDistanceBetween(seq, actionSeq, segments);
-                if (distance > MAX_CONTEXT_CUE_DISTANCE) {
-                    continue;
+                boolean evidenceInIndex = d.evidenceSegmentIds().stream().anyMatch(byId::containsKey);
+                int seq = minSeq(d.evidenceSegmentIds(), byId, Integer.MIN_VALUE);
+                int distance;
+                if (!evidenceInIndex || seq == Integer.MIN_VALUE) {
+                    // Decision evidence not in the transcript window — still usable as topic scope.
+                    distance = 1;
+                    seq = Math.max(0, actionSeq - 1);
+                } else {
+                    if (seq >= actionSeq) {
+                        continue;
+                    }
+                    if (!CROSS_CHUNK_LOOKUP && !sameLocalWindow(seq, actionSeq)) {
+                        continue;
+                    }
+                    distance = cueDistanceBetween(seq, actionSeq, segments);
+                    if (distance > MAX_CONTEXT_CUE_DISTANCE) {
+                        continue;
+                    }
+                    if (distance < 1) {
+                        distance = 1;
+                    }
                 }
                 preceding.add(new ContextCandidate(
                         d.text(), d.evidenceSegmentIds(), "DECISION", distance, seq));
@@ -293,18 +304,26 @@ public final class ActionTitleEvidenceBackfiller {
             if (!CROSS_CHUNK_LOOKUP && !sameLocalWindow(s.sequence(), actionSeq)) {
                 continue;
             }
-            if (!DECISION_CUE.matcher(s.content()).find() && !looksLikeClosedDecision(s.content())) {
+            boolean decisionLike = DECISION_CUE.matcher(s.content()).find()
+                    || looksLikeClosedDecision(s.content());
+            // Also accept nearby segments that supply missing object specificity for generic titles
+            // (e.g. UTF-8 / e-posta başlığı context for "Başlık düzeltmesini yapacak").
+            boolean specificityDonor = providesMissingSpecificity(
+                    action.text() == null ? "" : action.text(), s.content())
+                    && sharesObjectFamily(action.text() == null ? "" : action.text(), s.content());
+            if (!decisionLike && !specificityDonor) {
                 continue;
             }
             int distance = cueDistanceBetween(s.sequence(), actionSeq, segments);
-            if (distance > MAX_CONTEXT_CUE_DISTANCE || distance < 1) {
-                // distance 0 means same cue — still allow if decision text differs from action
-                if (distance > MAX_CONTEXT_CUE_DISTANCE) {
-                    continue;
-                }
+            if (distance > MAX_CONTEXT_CUE_DISTANCE) {
+                continue;
             }
             preceding.add(new ContextCandidate(
-                    s.content(), List.of(s.segmentId()), "SEGMENT_DECISION", Math.max(1, distance), s.sequence()));
+                    s.content(),
+                    List.of(s.segmentId()),
+                    decisionLike ? "SEGMENT_DECISION" : "SEGMENT_SCOPE",
+                    Math.max(1, distance),
+                    s.sequence()));
         }
         // Deduplicate by normalized text / overlapping specificity; prefer DECISION kind
         Map<String, ContextCandidate> uniq = new LinkedHashMap<>();
@@ -434,12 +453,14 @@ public final class ActionTitleEvidenceBackfiller {
     }
 
     private static String relevantEvidenceClause(String content, String owner, String action) {
-        String[] parts = content.split("[;\\n]");
+        // Prefer owner-scoped clause; also split on Turkish compound separators.
+        String[] parts = content.split("[;\\n]|\\s+ve\\s+(?=[A-ZÇĞİÖŞÜ])");
         if (parts.length <= 1) {
-            return content;
+            // Strip speech-act prefixes so generic "Aksiyon kaydı: Can başlığı…" can still match.
+            return content.replaceFirst("(?iu)^\\s*aksiyon\\s+kayd[ıi]\\s*:\\s*", "").strip();
         }
         for (String raw : parts) {
-            String part = raw.strip();
+            String part = raw.strip().replaceFirst("(?iu)^\\s*aksiyon\\s+kayd[ıi]\\s*:\\s*", "");
             if (part.isEmpty()) {
                 continue;
             }
@@ -450,12 +471,14 @@ public final class ActionTitleEvidenceBackfiller {
             }
         }
         for (String raw : parts) {
-            String part = raw.strip();
-            if (sharesObjectFamily(action, part)) {
+            String part = raw.strip().replaceFirst("(?iu)^\\s*aksiyon\\s+kayd[ıi]\\s*:\\s*", "");
+            if (sharesObjectFamily(action, part)
+                    && (owner == null || owner.isBlank()
+                    || !part.toLowerCase(Locale.ROOT).matches("(?iu).*\\b(outlook|apple\\s*mail|regresyon).*"))) {
                 return part;
             }
         }
-        return content;
+        return content.replaceFirst("(?iu)^\\s*aksiyon\\s+kayd[ıi]\\s*:\\s*", "").strip();
     }
 
     private static boolean sharesObjectFamily(String action, String evidence) {
@@ -597,6 +620,19 @@ public final class ActionTitleEvidenceBackfiller {
         if (m.find()) {
             String phrase = m.group().replaceFirst("(?iu)\\s+(zorunlu\\s+)?olacak\\s*$", "").strip();
             if (providesMissingSpecificity(action, phrase)) {
+                return phrase;
+            }
+        }
+        // Explicit UTF-8 / encoding header scopes (Cue 51 / A-06)
+        Matcher utf = Pattern.compile(
+                "(?iu)((?:yeni\\s+)?g[oö]nderim(?:lerde)?[^.]{0,40}?utf-?8[^.]{0,30}?ba[sş]l[ıi][gğ]\\w*)"
+        ).matcher(c);
+        if (utf.find()) {
+            String phrase = utf.group(1).strip()
+                    .replaceFirst("(?iu)\\s+(zorunlu\\s+)?olacak\\s*$", "")
+                    .replaceFirst("(?iu)\\s+d[uü]zeltecek\\.?$", "")
+                    .strip();
+            if (phrase.length() >= 8 && providesMissingSpecificity(action, phrase)) {
                 return phrase;
             }
         }
