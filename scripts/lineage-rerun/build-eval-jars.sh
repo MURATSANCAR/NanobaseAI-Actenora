@@ -25,6 +25,23 @@ copy_lineage_pkg() {
     "$dest/modules/ai-processing/src/main/java/com/nanobaseai/actenora/aiprocessing/domain/pipeline/"
 }
 
+# .gitignore has a bare "out/" rule, so application/port/out/*.java are never in git
+# and clean worktrees cannot compile without copying them from the local working tree.
+copy_gitignored_port_out() {
+  local dest="$1"
+  local rel
+  for rel in \
+    modules/transcript/src/main/java/com/nanobaseai/actenora/transcript/application/port/out \
+    modules/template/src/main/java/com/nanobaseai/actenora/template/application/port/out
+  do
+    if [[ -d "$ROOT/$rel" ]]; then
+      mkdir -p "$dest/$(dirname "$rel")"
+      rm -rf "$dest/$rel"
+      cp -R "$ROOT/$rel" "$dest/$rel"
+    fi
+  done
+}
+
 # Apply observability overlay from CURRENT main onto a base worktree without replacing
 # base extraction logic wholesale. Uses python injector for ActionPostProcessing + CrossType.
 apply_L() {
@@ -63,6 +80,7 @@ prepare_worktree() {
   else
     git worktree add --detach "$dir" "$commit" >/dev/null
   fi
+  copy_gitignored_port_out "$dir"
   apply_L "$dir" "$name" >/dev/null
   printf '%s\n' "$dir"
 }
