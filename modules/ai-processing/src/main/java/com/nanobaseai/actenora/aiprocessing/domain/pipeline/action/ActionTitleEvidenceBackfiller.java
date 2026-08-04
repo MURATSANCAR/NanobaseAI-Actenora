@@ -173,15 +173,33 @@ public final class ActionTitleEvidenceBackfiller {
             return noUpdate(action, "ACTION_TITLE_ALREADY_SPECIFIC", before);
         }
 
-        // 1. Already specific?
-        if (!isLowSpecificity(before)) {
+        // 1. Already specific? — exception: header-fix with wrong/missing encoding scope
+        // (e.g. "E-posta karakter bozulması başlığındaki başlık düzeltmesini yapacak."
+        //  while decision says "Yeni gönderimlerde UTF-8 başlığı zorunlu olacak.")
+        // Only force for semi-specific titles; low-spec keeps the normal donor/ambiguity path.
+        boolean lowSpec = isLowSpecificity(before);
+        boolean forceEncodingScope = !lowSpec && needsEncodingScopeQualification(before, ctx);
+        if (!lowSpec && !forceEncodingScope) {
             return noUpdate(action, "ACTION_TITLE_ALREADY_SPECIFIC", before);
         }
 
-        // 2. Own evidence first
-        String fromOwn = completeFromOwnEvidence(action, before, ctx.ownEvidence());
-        if (fromOwn != null) {
-            return update(action, fromOwn, evidenceIds(ctx.ownEvidence()), "ACTION_TITLE_CONTEXT_BACKFILLED", before);
+        // 2. Own evidence first. When forcing encoding scope, only trust own if it already
+        // carries UTF-8 (correct donor); wrong-scope echoes like "e-posta karakter…" must lose
+        // to the decision donor.
+        boolean ownHasEncoding = false;
+        if (ctx.ownEvidence() != null) {
+            for (SegmentInput s : ctx.ownEvidence()) {
+                if (s != null && textHasEncodingScope(s.content())) {
+                    ownHasEncoding = true;
+                    break;
+                }
+            }
+        }
+        if (!forceEncodingScope || ownHasEncoding) {
+            String fromOwn = completeFromOwnEvidence(action, before, ctx.ownEvidence());
+            if (fromOwn != null) {
+                return update(action, fromOwn, evidenceIds(ctx.ownEvidence()), "ACTION_TITLE_CONTEXT_BACKFILLED", before);
+            }
         }
 
         // 3–4. Preceding contexts within cue distance
@@ -209,6 +227,10 @@ public final class ActionTitleEvidenceBackfiller {
                 continue;
             }
             if (verbConflict(before, c.text())) {
+                continue;
+            }
+            // Encoding-scope force: only accept donors that actually carry UTF-8 scope
+            if (forceEncodingScope && !textHasEncodingScope(c.text())) {
                 continue;
             }
             eligible.add(c);
@@ -241,7 +263,13 @@ public final class ActionTitleEvidenceBackfiller {
         if (rewritten == null || rewritten.equalsIgnoreCase(before)) {
             return noUpdate(action, "ACTION_TITLE_BACKFILL_CONFIDENCE_LOW", before);
         }
-        if (!isMoreSpecific(before, rewritten)) {
+        // Wrong-scope titles are often longer than the UTF-8 donor rewrite; length-based
+        // isMoreSpecific would reject the correct shorter title.
+        if (forceEncodingScope) {
+            if (!textHasEncodingScope(rewritten)) {
+                return noUpdate(action, "ACTION_TITLE_BACKFILL_CONFIDENCE_LOW", before);
+            }
+        } else if (!isMoreSpecific(before, rewritten)) {
             return noUpdate(action, "ACTION_TITLE_BACKFILL_CONFIDENCE_LOW", before);
         }
         if (!isStandaloneUnderstandable(rewritten)) {
@@ -376,6 +404,62 @@ public final class ActionTitleEvidenceBackfiller {
         return (action.dueDate() != null && !action.dueDate().isBlank())
                 || (action.relativeDate() != null && !action.relativeDate().isBlank())
                 || (action.dueAt() != null && !action.dueAt().isBlank());
+    }
+
+    /**
+     * Semi-specific but wrong-scope header fixes: action talks about başlık düzelt*
+     * without UTF-8/encoding tokens, while preceding decision/evidence carries them.
+     */
+    static boolean needsEncodingScopeQualification(String actionText, ActionBackfillContext ctx) {
+        if (actionText == null || actionText.isBlank()) {
+            return false;
+        }
+        String a = actionText.toLowerCase(Locale.ROOT);
+        boolean headerFix = (a.contains("başlık") || a.contains("baslik") || a.contains("başlığ") || a.contains("baslig"))
+                && (a.contains("düzelt") || a.contains("duzelt") || a.contains("yapacak") || a.contains("yapmak"));
+        if (!headerFix) {
+            return false;
+        }
+        if (textHasEncodingScope(a) || a.contains("encoding")) {
+            return false;
+        }
+        if (ctx == null) {
+            return false;
+        }
+        List<String> donorTexts = new ArrayList<>();
+        for (ContextCandidate c : ctx.precedingCandidates() == null ? List.<ContextCandidate>of() : ctx.precedingCandidates()) {
+            if (c != null && c.text() != null) {
+                donorTexts.add(c.text());
+            }
+        }
+        for (SegmentInput s : ctx.ownEvidence() == null ? List.<SegmentInput>of() : ctx.ownEvidence()) {
+            if (s != null && s.content() != null) {
+                donorTexts.add(s.content());
+            }
+        }
+        return anyTextHasEncodingScope(donorTexts);
+    }
+
+    private static boolean textHasEncodingScope(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        String t = text.toLowerCase(Locale.ROOT);
+        return (t.contains("utf-8") || t.contains("utf8"))
+                && (t.contains("gönderim") || t.contains("gonderim") || t.contains("başlık") || t.contains("baslik")
+                || t.contains("başlığ") || t.contains("baslig"));
+    }
+
+    private static boolean anyTextHasEncodingScope(List<String> texts) {
+        if (texts == null) {
+            return false;
+        }
+        for (String t : texts) {
+            if (textHasEncodingScope(t)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static boolean isLowSpecificity(String text) {

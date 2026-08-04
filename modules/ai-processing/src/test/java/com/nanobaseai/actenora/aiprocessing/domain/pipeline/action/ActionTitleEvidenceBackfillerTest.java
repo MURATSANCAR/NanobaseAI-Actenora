@@ -705,6 +705,42 @@ class ActionTitleEvidenceBackfillerTest {
         assertFalse(after.contains("outlook"), after);
     }
 
+
+    @Test
+    void semiSpecificWrongScopeEmailHeaderStillGetsUtf8FromDecision() {
+        // Production miss: model wrote long but wrong-scope title → ALREADY_SPECIFIC short-circuit.
+        ActionItemCandidate can = new ActionItemCandidate(
+                "E-posta karakter bozulması başlığındaki başlık düzeltmesini yapacak.",
+                "Can",
+                null,
+                List.of("seg-51"),
+                0.92);
+        assertFalse(ActionTitleEvidenceBackfiller.isLowSpecificity(can.text()));
+        List<SegmentInput> segments = List.of(
+                new SegmentInput(
+                        "seg-49", 49, "Ece", 0, 1000,
+                        "Kararı açıkça kayda geçiriyorum: Yeni gönderimlerde UTF-8 başlığı zorunlu olacak.",
+                        true),
+                new SegmentInput(
+                        "seg-51", 51, "Can", 2000, 3000,
+                        "Aksiyon kaydı: Can e-posta karakter bozulması başlığındaki başlık düzeltmesini yapacak.",
+                        true)
+        );
+        DecisionCandidate decision = new DecisionCandidate(
+                "Yeni gönderimlerde UTF-8 başlığı zorunlu olacak.",
+                List.of("seg-49"),
+                0.95);
+        ActionTitleEvidenceBackfiller.ActionBackfillContext ctx =
+                backfiller.buildContext(can, segments, List.of(decision));
+        assertTrue(ActionTitleEvidenceBackfiller.needsEncodingScopeQualification(can.text(), ctx));
+        ActionTitleEvidenceBackfiller.ActionBackfillResult result = backfiller.backfill(can, ctx);
+        assertEquals(ActionTitleEvidenceBackfiller.BackfillDecision.UPDATED, result.decision(), result.reasonCode());
+        String after = result.afterText().toLowerCase(Locale.ROOT);
+        assertTrue(after.contains("utf-8") || after.contains("utf8"), after);
+        assertTrue(after.contains("gönderim") || after.contains("gonderim") || after.contains("başlık"), after);
+        assertFalse(after.contains("karakter bozul"), "wrong scope should be replaced: " + after);
+    }
+
     private static ActionItemCandidate lowSpec(String text, String owner, String evidenceId) {
         return new ActionItemCandidate(text, owner, null, List.of(evidenceId), 0.9);
     }
