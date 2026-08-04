@@ -143,7 +143,7 @@ actenora:
       finalization-timeout-seconds: ${ACTENORA_AI_FINALIZATION_TIMEOUT_SECONDS:1800}
       finalization-failure-mode: ${ACTENORA_AI_FINALIZATION_FAILURE_MODE:deterministic}
       # Observability only: item-level lineage recording (does not change extraction).
-      lineage-recording-enabled: ${ACTENORA_AI_PIPELINE_LINEAGE_RECORDING:false}
+      lineage-recording-enabled: ${ACTENORA_MEETING_LINEAGE_ENABLED:${ACTENORA_AI_PIPELINE_LINEAGE_RECORDING:false}}
     worker:
       enabled: ${ACTENORA_AI_WORKER_ENABLED:true}
       poll-interval: ${ACTENORA_AI_WORKER_POLL_INTERVAL:PT15S}

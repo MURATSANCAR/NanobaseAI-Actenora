@@ -389,7 +389,8 @@ public class AiProcessingPlatformConfiguration {
                 artifacts.getIfAvailable(),
                 properties.getMaxAttempts(),
                 (int) Math.max(1, properties.getReadTimeout().toSeconds()),
-                properties.getMaxConcurrencyExtraction()
+                properties.getMaxConcurrencyExtraction(),
+                pipelineProperties.isLineageRecordingEnabled()
         );
     }
 

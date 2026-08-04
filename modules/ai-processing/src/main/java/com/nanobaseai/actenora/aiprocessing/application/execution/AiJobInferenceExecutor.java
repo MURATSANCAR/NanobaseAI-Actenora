@@ -604,19 +604,30 @@ public final class AiJobInferenceExecutor {
         List<String> meetingParticipants = meetingClock.participantDisplayNames(
                 TenantId.of(job.tenantId()), job.meetingOccurrenceId());
 
-        PipelineRunResult result = extractionPipeline.run(new PipelineRunRequest(
-                TenantId.of(job.tenantId()),
-                job.transcriptId(),
-                job.meetingOccurrenceId(),
-                promptId,
-                segments,
-                job.language(),
-                timeoutSecondsFor(job, now),
-                parallelChunkLimit,
-                prior,
-                meetingStartIso,
-                meetingParticipants
-        ));
+        PipelineRunResult result;
+        if (lineageRecordingEnabled) {
+            ItemLineageRecorder.install(ItemLineageRecorder.enabled());
+        }
+        try {
+            result = extractionPipeline.run(new PipelineRunRequest(
+                    TenantId.of(job.tenantId()),
+                    job.transcriptId(),
+                    job.meetingOccurrenceId(),
+                    promptId,
+                    segments,
+                    job.language(),
+                    timeoutSecondsFor(job, now),
+                    parallelChunkLimit,
+                    prior,
+                    meetingStartIso,
+                    meetingParticipants
+            ));
+        } finally {
+            if (lineageRecordingEnabled) {
+                persistItemLineageArtifact(job);
+                ItemLineageRecorder.clear();
+            }
+        }
 
         if (result.success()) {
             int inputTokens = (int) Math.min(Integer.MAX_VALUE, result.metrics().inputTokens());
@@ -783,6 +794,34 @@ public final class AiJobInferenceExecutor {
                     job.id(),
                     job.meetingOccurrenceId(),
                     ActionPostProcessingStats.ARTIFACT_TYPE,
+                    json,
+                    Instant.now()
+            ));
+        } catch (Exception ignored) {
+            // Observability must not fail the job.
+        }
+    }
+
+    private void persistItemLineageArtifact(AiJob job) {
+        if (!lineageRecordingEnabled || artifacts == null || job == null) {
+            return;
+        }
+        try {
+            ItemLineageRecorder recorder = ItemLineageRecorder.current();
+            if (!recorder.isEnabled() || recorder.size() == 0) {
+                return;
+            }
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("schemaVersion", "1.0");
+            payload.put("meetingId", job.meetingOccurrenceId() == null ? null : job.meetingOccurrenceId().toString());
+            payload.put("jobId", job.id() == null ? null : job.id().toString());
+            payload.put("events", recorder.toSafeMaps());
+            String json = artifactMapper.writeValueAsString(payload);
+            artifacts.save(ProcessingArtifact.inlineJson(
+                    job.tenantId(),
+                    job.id(),
+                    job.meetingOccurrenceId(),
+                    ItemLineageRecorder.ARTIFACT_TYPE,
                     json,
                     Instant.now()
             ));
