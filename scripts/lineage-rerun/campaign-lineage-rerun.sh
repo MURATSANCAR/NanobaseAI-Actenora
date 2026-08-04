@@ -154,12 +154,16 @@ deploy_jar() {
   sudo docker compose \
     -f docker-compose.prod-like.yml \
     -f docker-compose.portal-server.override.yml \
+    -f /data/nanobaseai/actenora/eval/standup-ba/phase1b/docker-compose.lineage-eval.override.yml \
     --env-file "$LINEAGE_ENV" \
     up -d --build --no-deps --force-recreate platform-backend
   for i in $(seq 1 90); do
     if curl -sf -o /dev/null http://127.0.0.1:8088/actuator/health/liveness; then
       echo "backend up after ${i}s"
-      docker exec actenora-prodlike-platform-backend printenv | grep -E 'LINEAGE' || true
+      docker exec actenora-prodlike-platform-backend printenv | grep -E 'LINEAGE' || {
+        echo "ERROR: LINEAGE env not present in container"
+        status "FAILED_LINEAGE_ENV_${label} at=$(ts)"; exit 1;
+      }
       break
     fi
     sleep 2

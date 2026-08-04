@@ -1,0 +1,7 @@
+# Eval-only overlay: expose lineage flags into platform-backend.
+# Defaults false so omitting this file (or unset vars) keeps production behavior.
+services:
+  platform-backend:
+    environment:
+      ACTENORA_MEETING_LINEAGE_ENABLED: ${ACTENORA_MEETING_LINEAGE_ENABLED:-false}
+      ACTENORA_AI_PIPELINE_LINEAGE_RECORDING: ${ACTENORA_AI_PIPELINE_LINEAGE_RECORDING:-false}
