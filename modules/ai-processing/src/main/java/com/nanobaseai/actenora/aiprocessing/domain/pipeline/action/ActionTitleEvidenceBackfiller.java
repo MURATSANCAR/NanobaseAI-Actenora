@@ -55,6 +55,11 @@ public final class ActionTitleEvidenceBackfiller {
             "\\b([\\p{L}]+(?:yacak|yecek|acak|ecek))\\b",
             RX
     );
+    /** Bare infinitive task cards: "Başlığı düzeltmek." / "Kontrol etmek." */
+    private static final Pattern INFINITIVE_VERB = Pattern.compile(
+            "\\b([\\p{L}]+(?:mak|mek))\\b",
+            RX
+    );
     private static final Pattern GENERIC_OBJECT = Pattern.compile(
             "\\b(ba[sş]l[ıi][gğk]\\w*|d[uü]zeltme\\w*|kontrol\\w*|de[gğ]i[sş]iklik\\w*|"
                     + "g[uü]ncelleme\\w*|i[sş]lem\\w*|kay[ıi]t\\w*|konu\\w*|madde\\w*|nokta\\w*|"
@@ -391,15 +396,20 @@ public final class ActionTitleEvidenceBackfiller {
         if (LIKELY_INCOMPLETE.matcher(t).matches() && !HAS_VERBISH.matcher(t).find()) {
             return true;
         }
-        // Generic object + future verb, few distinctive tokens
+        // Generic object + future/infinitive verb, few distinctive tokens
         boolean genericObj = GENERIC_OBJECT.matcher(t).find();
         boolean future = FUTURE_VERB.matcher(t).find();
+        boolean infinitive = INFINITIVE_VERB.matcher(t).find();
         Set<String> distinctive = distinctiveTokens(t);
-        if (genericObj && future && distinctive.size() <= 1) {
+        if (genericObj && (future || infinitive) && distinctive.size() <= 1) {
             return true;
         }
         // Short title with only generic object and verbish
         if (genericObj && t.length() < 55 && distinctive.isEmpty()) {
+            return true;
+        }
+        // Infinitive-only task card with generic object ("Başlığı düzeltmek.")
+        if (genericObj && infinitive && !future && t.length() < 60) {
             return true;
         }
         return false;
@@ -550,9 +560,9 @@ public final class ActionTitleEvidenceBackfiller {
         }
         String context = contextText.replace('\u00A0', ' ').replaceAll("\\s+", " ").strip();
 
-        String verb = extractFutureVerb(actionBody);
+        String verb = extractActionVerb(actionBody);
         if (verb == null) {
-            verb = extractFutureVerb(action);
+            verb = extractActionVerb(action);
         }
         if (verb == null) {
             return null;
@@ -565,7 +575,8 @@ public final class ActionTitleEvidenceBackfiller {
                 preciseVerb = "düzeltecek";
             }
         }
-        if (actionBody.toLowerCase(Locale.ROOT).matches("(?iu).*d[uü]zeltecek.*")) {
+        if (actionBody.toLowerCase(Locale.ROOT).matches("(?iu).*d[uü]zeltecek.*")
+                || actionBody.toLowerCase(Locale.ROOT).matches("(?iu).*d[uü]zeltmek.*")) {
             preciseVerb = extractFutureVerb(actionBody);
             if (preciseVerb == null) {
                 preciseVerb = "düzeltecek";
@@ -730,7 +741,9 @@ public final class ActionTitleEvidenceBackfiller {
         if (GENERIC_OBJECT.matcher(t).find() && distinctiveTokens(t).isEmpty()) {
             return false;
         }
-        return FUTURE_VERB.matcher(t).find() || HAS_VERBISH.matcher(t).find();
+        return FUTURE_VERB.matcher(t).find()
+                || INFINITIVE_VERB.matcher(t).find()
+                || HAS_VERBISH.matcher(t).find();
     }
 
     private static boolean sameSpecificTokenSet(List<ContextCandidate> nearest) {
@@ -790,6 +803,51 @@ public final class ActionTitleEvidenceBackfiller {
             last = m.group(1);
         }
         return last;
+    }
+
+    /**
+     * Prefer future tense; otherwise map common infinitives onto 3rd-person future
+     * so bare task cards like "Başlığı düzeltmek." can still be rewritten with scope.
+     */
+    private static String extractActionVerb(String action) {
+        String future = extractFutureVerb(action);
+        if (future != null) {
+            return future;
+        }
+        if (action == null || action.isBlank()) {
+            return null;
+        }
+        Matcher m = INFINITIVE_VERB.matcher(action);
+        String last = null;
+        while (m.find()) {
+            last = m.group(1);
+        }
+        if (last == null) {
+            return null;
+        }
+        String lower = last.toLowerCase(Locale.ROOT);
+        if (lower.matches("(?iu)d[uü]zeltmek")) {
+            return "düzeltecek";
+        }
+        if (lower.matches("(?iu)yapmak")) {
+            return "yapacak";
+        }
+        if (lower.matches("(?iu)tamamlamak")) {
+            return "tamamlayacak";
+        }
+        if (lower.matches("(?iu)g[uü]ncellemek")) {
+            return "güncelleyecek";
+        }
+        if (lower.matches("(?iu)kontrol\\s*etmek|kontrol etmek")) {
+            return "kontrol edecek";
+        }
+        if (lower.endsWith("mak")) {
+            return last.substring(0, last.length() - 3) + "yacak";
+        }
+        if (lower.endsWith("mek")) {
+            return last.substring(0, last.length() - 3) + "yecek";
+        }
+        return null;
     }
 
     private static boolean containsRelativeDate(String text) {

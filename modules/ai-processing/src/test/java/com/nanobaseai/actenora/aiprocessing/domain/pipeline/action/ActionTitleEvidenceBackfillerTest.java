@@ -672,6 +672,39 @@ class ActionTitleEvidenceBackfillerTest {
         assertFalse(after.contains("yarın") || after.contains("öğlen"), after);
     }
 
+
+    @Test
+    void infinitiveBasligiDuzeltmekGetsUtf8Scope() {
+        ActionItemCandidate can = new ActionItemCandidate(
+                "Başlığı düzeltmek.",
+                "Can",
+                null,
+                List.of("seg-51"),
+                0.92);
+        List<SegmentInput> segments = List.of(
+                new SegmentInput(
+                        "seg-49", 49, "Ece", 0, 1000,
+                        "Kararı açıkça kayda geçiriyorum: Yeni gönderimlerde UTF-8 başlığı zorunlu olacak.",
+                        true),
+                new SegmentInput(
+                        "seg-51", 51, "Can", 2000, 3000,
+                        "Aksiyon kaydı: Can başlığı düzeltecek.",
+                        true)
+        );
+        DecisionCandidate decision = new DecisionCandidate(
+                "Yeni gönderimlerde UTF-8 başlığı zorunlu olacak.",
+                List.of("seg-49"),
+                0.95);
+        assertTrue(ActionTitleEvidenceBackfiller.isLowSpecificity("Başlığı düzeltmek."));
+        ActionTitleEvidenceBackfiller.ActionBackfillResult result =
+                backfiller.backfill(can, backfiller.buildContext(can, segments, List.of(decision)));
+        assertEquals(ActionTitleEvidenceBackfiller.BackfillDecision.UPDATED, result.decision(), result.reasonCode());
+        String after = result.afterText().toLowerCase(Locale.ROOT);
+        assertTrue(after.contains("utf-8") || after.contains("utf8"), after);
+        assertTrue(after.contains("düzelt") || after.contains("duzelt"), after);
+        assertFalse(after.contains("outlook"), after);
+    }
+
     private static ActionItemCandidate lowSpec(String text, String owner, String evidenceId) {
         return new ActionItemCandidate(text, owner, null, List.of(evidenceId), 0.9);
     }
