@@ -30,6 +30,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeet
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeMeetingItemSubsumer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ExplicitActionCueRecoverer;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.VerificationControlActionSeeder;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingStats;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
@@ -996,9 +997,12 @@ public final class DefaultStageExecutors {
                     draft = new ActionContextualEnricher().enrich(draft, normalized);
                     ExplicitActionCueRecoverer.Result recovered =
                             new ExplicitActionCueRecoverer().recover(draft.actionItems(), normalized);
+                    VerificationControlActionSeeder.Result verification =
+                            new VerificationControlActionSeeder().seed(
+                                    recovered.actions(), draft.commitments(), normalized);
                     ActionPostProcessingPipeline.Result post =
                             ActionPostProcessingPipeline.productionDefaults().postProcess(
-                                    recovered.actions(), draft.commitments(), actionCtx);
+                                    verification.actions(), draft.commitments(), actionCtx);
                     for (int i = 0; i < recovered.recovered(); i++) {
                         post.stats().incrementExplicitActionCuesRecovered();
                     }

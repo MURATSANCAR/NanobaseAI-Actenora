@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalC
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ExplicitActionCueRecoverer;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.VerificationControlActionSeeder;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
@@ -365,7 +366,10 @@ public final class ExtractionPipelineService {
             note = new ActionContextualEnricher().enrich(note, normalized);
             ExplicitActionCueRecoverer.Result recovered =
                     new ExplicitActionCueRecoverer().recover(note.actionItems(), normalized);
-            note = withActions(note, recovered.actions());
+            VerificationControlActionSeeder.Result verification =
+                    new VerificationControlActionSeeder().seed(
+                            recovered.actions(), note.commitments(), normalized);
+            note = withActions(note, verification.actions());
             ActionPostProcessingPipeline.AppliedDraft applied =
                     ActionPostProcessingPipeline.productionDefaults().applyToDraftDetailed(note, actionCtx);
             for (int i = 0; i < recovered.recovered(); i++) {
