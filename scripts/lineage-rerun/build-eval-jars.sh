@@ -88,11 +88,21 @@ prepare_worktree() {
 build_one() {
   local dir="$1" jar_name="$2"
   (cd "$dir" && ./mvnw -pl apps/platform-backend -am package -DskipTests -q)
-  local built
-  built=$(find "$dir/apps/platform-backend/target" -maxdepth 1 -name 'platform-backend-*.jar' ! -name '*original*' | head -1)
+  local built=""
+  local f
+  for f in "$dir"/apps/platform-backend/target/platform-backend-*.jar; do
+    [[ -f "$f" ]] || continue
+    [[ "$f" == *original* ]] && continue
+    built="$f"
+    break
+  done
   [[ -n "$built" && -f "$built" ]] || { echo "missing jar in $dir"; exit 1; }
   cp -f "$built" "$OUT_DIR/$jar_name"
-  sha256sum "$OUT_DIR/$jar_name" | tee "$OUT_DIR/$jar_name.sha256"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$OUT_DIR/$jar_name" | tee "$OUT_DIR/$jar_name.sha256"
+  else
+    shasum -a 256 "$OUT_DIR/$jar_name" | tee "$OUT_DIR/$jar_name.sha256"
+  fi
 }
 
 echo "Preparing B worktree..."

@@ -95,6 +95,20 @@ SQL
   fi
 }
 
+dump_action_post_processing() {
+  local job="$1" out="$2"
+  JOB="$job" psql -v ON_ERROR_STOP=1 -At <<SQL >"$out"
+SELECT coalesce(payload_json::text, '')
+FROM aiprocessing.processing_artifact
+WHERE job_id = '$JOB' AND artifact_type = 'action-post-processing'
+ORDER BY created_at DESC
+LIMIT 1;
+SQL
+  if [[ ! -s "$out" ]]; then
+    echo '{"status":"NOT_AVAILABLE"}' >"$out"
+  fi
+}
+
 write_run_manifest() {
   local dir="$1" tree="$2" run="$3" commit="$4" status="$5"
   python3 - <<PY >"$dir/run-manifest.json"
@@ -206,6 +220,7 @@ print(json.dumps({
 PY
   dump_final_note "$MEETING" "$JOB" "$dir/final.note.json"
   dump_lineage "$JOB" "$dir/lineage.json"
+  dump_action_post_processing "$JOB" "$dir/action-post-processing.json"
   # also write lineage.jsonl if events present
   python3 - <<PY
 import json
@@ -220,10 +235,13 @@ out=Path("$dir/lineage.jsonl")
 with out.open("w") as f:
   for e in events:
     f.write(json.dumps(e, ensure_ascii=False)+"\n")
+app=Path("$dir/action-post-processing.json")
+app_ok=app.exists() and "NOT_AVAILABLE" not in (app.read_text()[:80] if app.exists() else "")
 Path("$dir/ARTIFACT_AVAILABILITY.json").write_text(json.dumps({
   "final-note.json": "AVAILABLE" if Path("$dir/final.note.json").stat().st_size>10 else "NOT_AVAILABLE",
   "lineage.json": "AVAILABLE" if events else "NOT_AVAILABLE",
   "lineage.jsonl": "AVAILABLE" if events else "NOT_AVAILABLE",
+  "action-post-processing.json": "AVAILABLE" if app_ok else "NOT_AVAILABLE",
   "raw-extractions.json": "NOT_AVAILABLE",
   "gate-decisions.json": "NOT_AVAILABLE",
   "chunks.json": "NOT_AVAILABLE",
@@ -246,11 +264,18 @@ d=Path("$dir")
 note=json.loads((d/"final.note.json").read_text())
 lin=json.loads((d/"lineage.json").read_text() or "{}")
 events=lin.get("events") or []
-# Smoke: pipeline completed + lineage artifact parseable. Event count may be 0 if hooks missed — fail soft with warning.
 print("smoke_note_actions", len(note.get("actionItems") or []))
 print("smoke_lineage_events", len(events))
 if not note.get("decisions") and not note.get("actionItems"):
   sys.exit(2)
+# Require observable lineage for stage-level diagnosis
+if len(events) < 1:
+  print("smoke_fail: lineage events empty")
+  sys.exit(3)
+stages={e.get("stage") for e in events}
+needed={"ACTION_COMPOUND_DECOMPOSITION"}
+if not needed.issubset(stages) and "ACTION_POST_PROCESSING" not in stages:
+  print("smoke_warn: compound stage missing; stages=", sorted(stages))
 PY
 }
 
