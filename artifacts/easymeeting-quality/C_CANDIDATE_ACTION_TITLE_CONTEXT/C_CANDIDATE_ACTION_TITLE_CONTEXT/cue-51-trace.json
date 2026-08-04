@@ -1,0 +1,347 @@
+{
+  "run": "01",
+  "actionItems": [
+    {
+      "owner": "Burak",
+      "text": "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek.",
+      "dueDate": null,
+      "relativeDate": null,
+      "dueAt": null,
+      "confidence": 0.7
+    },
+    {
+      "owner": "Selin",
+      "text": "Oturum yenileme hatası (Staging) için düzeltmeyi yapacak.",
+      "dueDate": "2026-08-04",
+      "relativeDate": "bugün 16.00'ya kadar",
+      "dueAt": "2026-08-04T13:00:00+00:00",
+      "confidence": 0.7
+    },
+    {
+      "owner": "Can",
+      "text": "Correlation ID ekleyecek.",
+      "dueDate": null,
+      "relativeDate": null,
+      "dueAt": null,
+      "confidence": 0.7
+    },
+    {
+      "owner": "Can",
+      "text": "Başlığı düzeltmek.",
+      "dueDate": null,
+      "relativeDate": null,
+      "dueAt": null,
+      "confidence": 0.7
+    },
+    {
+      "owner": "Burak",
+      "text": "Outlook ve Apple Mail regresyonunu tamamlamak.",
+      "dueDate": "2026-08-05",
+      "relativeDate": "yarın öğlene kadar",
+      "dueAt": "2026-08-05T09:00:00+00:00",
+      "confidence": 0.7
+    }
+  ],
+  "titleBackfillEvents": [
+    {
+      "after": {
+        "text": "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek.",
+        "owner": "Burak",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "ddc33bdb-2f34-4d6c-aef6-92cdf24bc996"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek.",
+        "owner": "Burak",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "ddc33bdb-2f34-4d6c-aef6-92cdf24bc996"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:36:48.399873352Z",
+      "reasonCode": "ACTION_TITLE_ALREADY_SPECIFIC",
+      "candidateId": "action-3ec4f668",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    },
+    {
+      "after": {
+        "text": "Düzeltmeyi yapacak.",
+        "owner": "Selin",
+        "relativeDate": "bugün 16.00'ya kadar",
+        "evidenceSegmentIds": [
+          "ea68ef25-15b4-4c1a-a4cc-af7fe1736bf2"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Düzeltmeyi yapacak.",
+        "owner": "Selin",
+        "relativeDate": "bugün 16.00'ya kadar",
+        "evidenceSegmentIds": [
+          "ea68ef25-15b4-4c1a-a4cc-af7fe1736bf2"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:36:48.401277877Z",
+      "reasonCode": "ACTION_TITLE_ALREADY_SPECIFIC",
+      "candidateId": "action-f630e939",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    },
+    {
+      "after": {
+        "text": "Correlation ID ekleyecek.",
+        "owner": "Can",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "ea68ef25-15b4-4c1a-a4cc-af7fe1736bf2"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Correlation ID ekleyecek.",
+        "owner": "Can",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "ea68ef25-15b4-4c1a-a4cc-af7fe1736bf2"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:36:48.402626922Z",
+      "reasonCode": "ACTION_TITLE_ALREADY_SPECIFIC",
+      "candidateId": "action-ce110389",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    },
+    {
+      "after": {
+        "text": "Başlığı düzeltmek.",
+        "owner": "Can",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "7426e0e8-ac7b-472e-af82-2754a9943258"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Başlığı düzeltmek.",
+        "owner": "Can",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "7426e0e8-ac7b-472e-af82-2754a9943258"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:36:48.404596157Z",
+      "reasonCode": "ACTION_TITLE_BACKFILL_CONFIDENCE_LOW",
+      "candidateId": "action-7681f887",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    },
+    {
+      "after": {
+        "text": "Outlook ve Apple Mail regresyonunu tamamlamak.",
+        "owner": "Burak",
+        "relativeDate": "yarın öğlene kadar",
+        "evidenceSegmentIds": [
+          "7426e0e8-ac7b-472e-af82-2754a9943258"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Outlook ve Apple Mail regresyonunu tamamlamak.",
+        "owner": "Burak",
+        "relativeDate": "yarın öğlene kadar",
+        "evidenceSegmentIds": [
+          "7426e0e8-ac7b-472e-af82-2754a9943258"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:36:48.406088107Z",
+      "reasonCode": "ACTION_TITLE_ALREADY_SPECIFIC",
+      "candidateId": "action-76754d29",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    },
+    {
+      "after": {
+        "text": "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek.",
+        "owner": "Burak",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "ddc33bdb-2f34-4d6c-aef6-92cdf24bc996"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek.",
+        "owner": "Burak",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "ddc33bdb-2f34-4d6c-aef6-92cdf24bc996"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:38:23.338947201Z",
+      "reasonCode": "ACTION_TITLE_ALREADY_SPECIFIC",
+      "candidateId": "action-3ec4f668",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    },
+    {
+      "after": {
+        "text": "Oturum yenileme hatası (Staging) için düzeltmeyi yapacak.",
+        "owner": "Selin",
+        "relativeDate": "bugün 16.00'ya kadar",
+        "evidenceSegmentIds": [
+          "ea68ef25-15b4-4c1a-a4cc-af7fe1736bf2"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Oturum yenileme hatası (Staging) için düzeltmeyi yapacak.",
+        "owner": "Selin",
+        "relativeDate": "bugün 16.00'ya kadar",
+        "evidenceSegmentIds": [
+          "ea68ef25-15b4-4c1a-a4cc-af7fe1736bf2"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:38:23.339957424Z",
+      "reasonCode": "ACTION_TITLE_ALREADY_SPECIFIC",
+      "candidateId": "action-5c4d60d2",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    },
+    {
+      "after": {
+        "text": "Correlation ID ekleyecek.",
+        "owner": "Can",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "ea68ef25-15b4-4c1a-a4cc-af7fe1736bf2"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Correlation ID ekleyecek.",
+        "owner": "Can",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "ea68ef25-15b4-4c1a-a4cc-af7fe1736bf2"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:38:23.341009124Z",
+      "reasonCode": "ACTION_TITLE_ALREADY_SPECIFIC",
+      "candidateId": "action-ce110389",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    },
+    {
+      "after": {
+        "text": "Başlığı düzeltmek.",
+        "owner": "Can",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "7426e0e8-ac7b-472e-af82-2754a9943258"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Başlığı düzeltmek.",
+        "owner": "Can",
+        "relativeDate": null,
+        "evidenceSegmentIds": [
+          "7426e0e8-ac7b-472e-af82-2754a9943258"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:38:23.342580965Z",
+      "reasonCode": "ACTION_TITLE_BACKFILL_CONFIDENCE_LOW",
+      "candidateId": "action-7681f887",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    },
+    {
+      "after": {
+        "text": "Outlook ve Apple Mail regresyonunu tamamlamak.",
+        "owner": "Burak",
+        "relativeDate": "yarın öğlene kadar",
+        "evidenceSegmentIds": [
+          "7426e0e8-ac7b-472e-af82-2754a9943258"
+        ]
+      },
+      "jobId": null,
+      "stage": "ACTION_TITLE_BACKFILL",
+      "before": {
+        "text": "Outlook ve Apple Mail regresyonunu tamamlamak.",
+        "owner": "Burak",
+        "relativeDate": "yarın öğlene kadar",
+        "evidenceSegmentIds": [
+          "7426e0e8-ac7b-472e-af82-2754a9943258"
+        ]
+      },
+      "chunkId": null,
+      "meetingId": null,
+      "operation": "KEEP",
+      "timestamp": "2026-08-04T11:38:23.343907693Z",
+      "reasonCode": "ACTION_TITLE_ALREADY_SPECIFIC",
+      "candidateId": "action-76754d29",
+      "ruleVersion": "action-title-context-v1",
+      "candidateType": "ACTION_ITEM",
+      "parentCandidateId": null,
+      "relatedCandidateIds": []
+    }
+  ]
+}

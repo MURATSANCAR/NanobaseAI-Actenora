@@ -5,7 +5,6 @@
 **Karar:** `COMPOUND_ACTION_ROOT_CAUSE_CONFIRMED`
 
 ---
-
 ## 1. Evaluation build’leri
 
 | | B (control) | A (candidate) |

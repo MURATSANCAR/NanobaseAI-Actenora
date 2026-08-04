@@ -1,0 +1,550 @@
+{
+  "candidate": "C_CANDIDATE_ACTION_TITLE_CONTEXT",
+  "runs": 5,
+  "criticalGatePassRate": null,
+  "a06PassRate": 0.6,
+  "a07PassRate": 0.0,
+  "a03PassRate": 0.0,
+  "a04PassRate": 0.0,
+  "cue51PassRate": 0.0,
+  "cue27PassRate": 0.0,
+  "actionRecall": [
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "overallScore": [
+    95.83,
+    95.83,
+    87.98,
+    87.98,
+    85.48
+  ],
+  "backfillUpdateCounts": [
+    0,
+    1,
+    0,
+    1,
+    1
+  ],
+  "ambiguousNoOpCounts": [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "durationMs": [
+    763537.067,
+    733515.216,
+    727618.316,
+    716219.977,
+    797322.004
+  ],
+  "p50DurationMs": 733515.216,
+  "p95DurationMs": 797322.004,
+  "runDetails": [
+    {
+      "run": "01",
+      "score": {
+        "matchConfig": {
+          "textJaccardMin": 0.32,
+          "decisionJaccardMin": 0.35,
+          "requireEvidenceOverlapForCritical": false
+        },
+        "decision": {
+          "truePositive": 2,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "criticalRecall": 1.0
+        },
+        "actionItem": {
+          "truePositive": 7,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "risk": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "openQuestion": {
+          "recall": 0.1667,
+          "truePositive": 2,
+          "required": 12
+        },
+        "importantFact": {
+          "recall": 0.0,
+          "duplicateCount": 0
+        },
+        "ownerAccuracy": 1.0,
+        "dateAccuracy": null,
+        "evidenceCoverage": null,
+        "compoundSplitAccuracy": 1.0,
+        "statusQuoFalsePositiveCount": 0,
+        "hallucinatedDecisionCount": 0,
+        "ownerHallucinationCount": 0,
+        "ownerMisBindingCount": 0,
+        "dateHallucinationCount": 0,
+        "dateCrossoverCount": 0,
+        "crossTypeDuplicateCount": 0,
+        "crossTypeDuplicateRate": 0.0,
+        "closingMetaLeakageCount": 0,
+        "overallScore": 95.83,
+        "criticalGatePassed": true,
+        "failureReasonCodes": [],
+        "lineageEventsObserved": 0,
+        "artifacts": {
+          "lineage": "NOT_AVAILABLE"
+        }
+      },
+      "criticalGate": null,
+      "actionRecall": null,
+      "overall": 95.83,
+      "a06": false,
+      "a07": false,
+      "a03": false,
+      "a04": false,
+      "cue51": false,
+      "cue27": false,
+      "backfillUpdate": 0,
+      "backfillAmbiguous": 0,
+      "durationMs": 763537.067,
+      "ownerErrors": 0,
+      "dateErrors": 0,
+      "hallucinatedDecisions": 0,
+      "statusQuoFp": 0,
+      "metaLeak": 0,
+      "actionsPreview": [
+        [
+          "Burak",
+          "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek."
+        ],
+        [
+          "Selin",
+          "Oturum yenileme hatası (Staging) için düzeltmeyi yapacak."
+        ],
+        [
+          "Can",
+          "Correlation ID ekleyecek."
+        ],
+        [
+          "Can",
+          "Başlığı düzeltmek."
+        ],
+        [
+          "Burak",
+          "Outlook ve Apple Mail regresyonunu tamamlamak."
+        ]
+      ]
+    },
+    {
+      "run": "02",
+      "score": {
+        "matchConfig": {
+          "textJaccardMin": 0.32,
+          "decisionJaccardMin": 0.35,
+          "requireEvidenceOverlapForCritical": false
+        },
+        "decision": {
+          "truePositive": 2,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "criticalRecall": 1.0
+        },
+        "actionItem": {
+          "truePositive": 7,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "risk": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "openQuestion": {
+          "recall": 0.1667,
+          "truePositive": 2,
+          "required": 12
+        },
+        "importantFact": {
+          "recall": 0.0,
+          "duplicateCount": 0
+        },
+        "ownerAccuracy": 1.0,
+        "dateAccuracy": null,
+        "evidenceCoverage": null,
+        "compoundSplitAccuracy": 1.0,
+        "statusQuoFalsePositiveCount": 0,
+        "hallucinatedDecisionCount": 0,
+        "ownerHallucinationCount": 0,
+        "ownerMisBindingCount": 0,
+        "dateHallucinationCount": 0,
+        "dateCrossoverCount": 0,
+        "crossTypeDuplicateCount": 0,
+        "crossTypeDuplicateRate": 0.0,
+        "closingMetaLeakageCount": 0,
+        "overallScore": 95.83,
+        "criticalGatePassed": true,
+        "failureReasonCodes": [],
+        "lineageEventsObserved": 0,
+        "artifacts": {
+          "lineage": "NOT_AVAILABLE"
+        }
+      },
+      "criticalGate": null,
+      "actionRecall": null,
+      "overall": 95.83,
+      "a06": true,
+      "a07": false,
+      "a03": false,
+      "a04": false,
+      "cue51": false,
+      "cue27": false,
+      "backfillUpdate": 1,
+      "backfillAmbiguous": 0,
+      "durationMs": 733515.216,
+      "ownerErrors": 0,
+      "dateErrors": 0,
+      "hallucinatedDecisions": 0,
+      "statusQuoFp": 0,
+      "metaLeak": 0,
+      "actionsPreview": [
+        [
+          "Selin",
+          "Oturum yenileme hatası (Staging) için düzeltmeyi yapacak."
+        ],
+        [
+          "Can",
+          "Correlation ID ekleyecek."
+        ],
+        [
+          "Burak",
+          "Outlook ve Apple Mail regresyon testlerini tamamlayacak."
+        ],
+        [
+          "Can",
+          "Yeni gönderimlerde UTF-8 başlığını düzeltecek."
+        ]
+      ]
+    },
+    {
+      "run": "03",
+      "score": {
+        "matchConfig": {
+          "textJaccardMin": 0.32,
+          "decisionJaccardMin": 0.35,
+          "requireEvidenceOverlapForCritical": false
+        },
+        "decision": {
+          "truePositive": 2,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "criticalRecall": 1.0
+        },
+        "actionItem": {
+          "truePositive": 6,
+          "falsePositive": 0,
+          "falseNegative": 1,
+          "precision": 1.0,
+          "recall": 0.8571,
+          "f1": 0.9231
+        },
+        "risk": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "openQuestion": {
+          "recall": 0.1667,
+          "truePositive": 2,
+          "required": 12
+        },
+        "importantFact": {
+          "recall": 0.0,
+          "duplicateCount": 0
+        },
+        "ownerAccuracy": 1.0,
+        "dateAccuracy": null,
+        "evidenceCoverage": null,
+        "compoundSplitAccuracy": 0.5,
+        "statusQuoFalsePositiveCount": 0,
+        "hallucinatedDecisionCount": 0,
+        "ownerHallucinationCount": 0,
+        "ownerMisBindingCount": 0,
+        "dateHallucinationCount": 0,
+        "dateCrossoverCount": 0,
+        "crossTypeDuplicateCount": 0,
+        "crossTypeDuplicateRate": 0.0,
+        "closingMetaLeakageCount": 0,
+        "overallScore": 87.98,
+        "criticalGatePassed": false,
+        "failureReasonCodes": [
+          "COMPOUND_ACTION_NOT_SPLIT"
+        ],
+        "lineageEventsObserved": 0,
+        "artifacts": {
+          "lineage": "NOT_AVAILABLE"
+        }
+      },
+      "criticalGate": null,
+      "actionRecall": null,
+      "overall": 87.98,
+      "a06": false,
+      "a07": false,
+      "a03": false,
+      "a04": false,
+      "cue51": false,
+      "cue27": false,
+      "backfillUpdate": 0,
+      "backfillAmbiguous": 0,
+      "durationMs": 727618.316,
+      "ownerErrors": 0,
+      "dateErrors": 0,
+      "hallucinatedDecisions": 0,
+      "statusQuoFp": 0,
+      "metaLeak": 0,
+      "actionsPreview": [
+        [
+          "Burak",
+          "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek."
+        ],
+        [
+          "Selin",
+          "Düzeltmeyi yapmak."
+        ],
+        [
+          "Can",
+          "Correlation ID eklemek."
+        ],
+        [
+          "Can",
+          "Başlığı düzeltmek."
+        ],
+        [
+          "Burak",
+          "Outlook ve Apple Mail regresyonunu tamamlamak."
+        ]
+      ]
+    },
+    {
+      "run": "04",
+      "score": {
+        "matchConfig": {
+          "textJaccardMin": 0.32,
+          "decisionJaccardMin": 0.35,
+          "requireEvidenceOverlapForCritical": false
+        },
+        "decision": {
+          "truePositive": 2,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "criticalRecall": 1.0
+        },
+        "actionItem": {
+          "truePositive": 6,
+          "falsePositive": 0,
+          "falseNegative": 1,
+          "precision": 1.0,
+          "recall": 0.8571,
+          "f1": 0.9231
+        },
+        "risk": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667
+        },
+        "openQuestion": {
+          "recall": 0.1667,
+          "truePositive": 2,
+          "required": 12
+        },
+        "importantFact": {
+          "recall": 0.0,
+          "duplicateCount": 0
+        },
+        "ownerAccuracy": 1.0,
+        "dateAccuracy": null,
+        "evidenceCoverage": null,
+        "compoundSplitAccuracy": 1.0,
+        "statusQuoFalsePositiveCount": 0,
+        "hallucinatedDecisionCount": 0,
+        "ownerHallucinationCount": 0,
+        "ownerMisBindingCount": 0,
+        "dateHallucinationCount": 0,
+        "dateCrossoverCount": 0,
+        "crossTypeDuplicateCount": 0,
+        "crossTypeDuplicateRate": 0.0,
+        "closingMetaLeakageCount": 0,
+        "overallScore": 87.98,
+        "criticalGatePassed": false,
+        "failureReasonCodes": [],
+        "lineageEventsObserved": 0,
+        "artifacts": {
+          "lineage": "NOT_AVAILABLE"
+        }
+      },
+      "criticalGate": null,
+      "actionRecall": null,
+      "overall": 87.98,
+      "a06": true,
+      "a07": false,
+      "a03": false,
+      "a04": false,
+      "cue51": false,
+      "cue27": false,
+      "backfillUpdate": 1,
+      "backfillAmbiguous": 0,
+      "durationMs": 716219.977,
+      "ownerErrors": 0,
+      "dateErrors": 0,
+      "hallucinatedDecisions": 0,
+      "statusQuoFp": 0,
+      "metaLeak": 0,
+      "actionsPreview": [
+        [
+          "Burak",
+          "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek."
+        ],
+        [
+          "Selin",
+          "Oturum yenileme hatası (Staging) için düzeltmeyi yapacak."
+        ],
+        [
+          "Can",
+          "Correlation ID ekleyecek."
+        ],
+        [
+          "Burak",
+          "Outlook ve Apple Mail regresyon testlerini tamamlayacak."
+        ],
+        [
+          "Can",
+          "Yeni gönderimlerde UTF-8 başlığını düzeltecek."
+        ]
+      ]
+    },
+    {
+      "run": "05",
+      "score": {
+        "matchConfig": {
+          "textJaccardMin": 0.32,
+          "decisionJaccardMin": 0.35,
+          "requireEvidenceOverlapForCritical": false
+        },
+        "decision": {
+          "truePositive": 1,
+          "falsePositive": 0,
+          "falseNegative": 1,
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "criticalRecall": 0.5
+        },
+        "actionItem": {
+          "truePositive": 6,
+          "falsePositive": 0,
+          "falseNegative": 1,
+          "precision": 1.0,
+          "recall": 0.8571,
+          "f1": 0.9231
+        },
+        "risk": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "openQuestion": {
+          "recall": 0.1667,
+          "truePositive": 2,
+          "required": 12
+        },
+        "importantFact": {
+          "recall": 0.0,
+          "duplicateCount": 0
+        },
+        "ownerAccuracy": 1.0,
+        "dateAccuracy": null,
+        "evidenceCoverage": null,
+        "compoundSplitAccuracy": 1.0,
+        "statusQuoFalsePositiveCount": 0,
+        "hallucinatedDecisionCount": 0,
+        "ownerHallucinationCount": 0,
+        "ownerMisBindingCount": 0,
+        "dateHallucinationCount": 0,
+        "dateCrossoverCount": 0,
+        "crossTypeDuplicateCount": 0,
+        "crossTypeDuplicateRate": 0.0,
+        "closingMetaLeakageCount": 0,
+        "overallScore": 85.48,
+        "criticalGatePassed": false,
+        "failureReasonCodes": [
+          "UNCLASSIFIED_MISS"
+        ],
+        "lineageEventsObserved": 0,
+        "artifacts": {
+          "lineage": "NOT_AVAILABLE"
+        }
+      },
+      "criticalGate": null,
+      "actionRecall": null,
+      "overall": 85.48,
+      "a06": true,
+      "a07": false,
+      "a03": false,
+      "a04": false,
+      "cue51": false,
+      "cue27": false,
+      "backfillUpdate": 1,
+      "backfillAmbiguous": 0,
+      "durationMs": 797322.004,
+      "ownerErrors": 0,
+      "dateErrors": 0,
+      "hallucinatedDecisions": 0,
+      "statusQuoFp": 0,
+      "metaLeak": 0,
+      "actionsPreview": [
+        [
+          "Selin",
+          "E-posta karakter bozulması düzeltmesini yapacak."
+        ],
+        [
+          "Burak",
+          "Outlook ve Apple Mail regresyon testlerini tamamlayacak."
+        ],
+        [
+          "Selin",
+          "Düzeltmeyi yapacak."
+        ],
+        [
+          "Can",
+          "Correlation ID ekleyecek."
+        ],
+        [
+          "Can",
+          "Yeni gönderimlerde UTF-8 başlığını düzeltecek."
+        ]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "metric": [
+    "actionRecall",
+    "overallScore",
+    "criticalGatePassRate",
+    "a06PassRate",
+    "cue51PassRate",
+    "cue27PassRate",
+    "ownerDateErrors",
+    "statusQuoFp",
+    "hallucinatedDecisions",
+    "metaLeakage",
+    "p50Duration",
+    "p95Duration",
+    "backfillTriggerCount",
+    "ambiguousNoOpCount"
+  ],
+  "C": {
+    "actionRecall": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "overallScore": [
+      95.83,
+      95.83,
+      87.98,
+      87.98,
+      85.48
+    ],
+    "criticalGatePassRate": null,
+    "a06PassRate": 0.6,
+    "cue51PassRate": 0.0,
+    "cue27PassRate": 0.0,
+    "backfillTriggerCount": [
+      0,
+      1,
+      0,
+      1,
+      1
+    ],
+    "ambiguousNoOpCount": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "p50Duration": 733515.216,
+    "p95Duration": 797322.004
+  },
+  "note": "B/A numeric baselines should be merged from prior campaign artifacts when mirrored on host."
+}

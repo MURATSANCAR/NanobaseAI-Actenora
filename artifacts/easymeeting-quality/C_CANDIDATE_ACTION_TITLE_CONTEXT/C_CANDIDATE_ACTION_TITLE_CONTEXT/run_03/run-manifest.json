@@ -1,0 +1,11 @@
+{
+  "runId": "C_CANDIDATE_ACTION_TITLE_CONTEXT_run_03",
+  "candidate": "C_CANDIDATE_ACTION_TITLE_CONTEXT",
+  "commit": "472172a",
+  "meetingOccurrenceId": "0a113b2c-935e-46ce-be2e-d79a19ab836d",
+  "transcriptId": "4ffe3261-47b5-43ff-85bb-d3879d26ac85",
+  "jobId": "96cd52d5-8503-4c97-bf3e-46884aafb471",
+  "lineageEnabled": true,
+  "finalizationMode": "editorial",
+  "productionDeploy": false
+}
