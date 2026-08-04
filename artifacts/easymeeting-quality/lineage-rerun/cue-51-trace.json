@@ -1,0 +1,871 @@
+{
+  "cue": 51,
+  "runs": [
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/B_LINEAGE_f9c699f/smoke_01",
+      "lineageEventCount": 84,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 52,
+        "MEETING_ITEM_POLICY": 20,
+        "ACTION_COMPOUND_DECOMPOSITION": 10,
+        "ACTION_RELATIVE_DATE_BINDING": 2
+      },
+      "operationsObserved": {
+        "FLAG": 52,
+        "KEEP": 30,
+        "UPDATE": 2
+      },
+      "splitEvents": 0,
+      "notSplitEvents": 10,
+      "dropEvents": 0,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.7
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.7
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": false,
+        "8_decomposer_child_count": 0,
+        "8b_not_split_count": 10,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 2,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 0,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "B_LINEAGE_f9c699f",
+      "run": "smoke_01"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/B_LINEAGE_f9c699f/run_01",
+      "lineageEventCount": 64,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 37,
+        "MEETING_ITEM_POLICY": 14,
+        "ACTION_COMPOUND_DECOMPOSITION": 8,
+        "ACTION_RELATIVE_DATE_BINDING": 3,
+        "ACTION_PREFIX_NORMALIZATION": 2
+      },
+      "operationsObserved": {
+        "FLAG": 37,
+        "KEEP": 16,
+        "DROP": 2,
+        "UPDATE": 5,
+        "SPLIT": 4
+      },
+      "splitEvents": 4,
+      "notSplitEvents": 4,
+      "dropEvents": 2,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.85
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.95
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": true,
+        "8_decomposer_child_count": 4,
+        "8b_not_split_count": 4,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 3,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 2,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "B_LINEAGE_f9c699f",
+      "run": "run_01"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/B_LINEAGE_f9c699f/run_02",
+      "lineageEventCount": 55,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 30,
+        "MEETING_ITEM_POLICY": 13,
+        "ACTION_COMPOUND_DECOMPOSITION": 8,
+        "ACTION_RELATIVE_DATE_BINDING": 3,
+        "ACTION_PREFIX_NORMALIZATION": 1
+      },
+      "operationsObserved": {
+        "FLAG": 30,
+        "KEEP": 19,
+        "UPDATE": 4,
+        "SPLIT": 2
+      },
+      "splitEvents": 2,
+      "notSplitEvents": 6,
+      "dropEvents": 0,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.85
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.85
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": true,
+        "8_decomposer_child_count": 2,
+        "8b_not_split_count": 6,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 3,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 1,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "B_LINEAGE_f9c699f",
+      "run": "run_02"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/B_LINEAGE_f9c699f/run_03",
+      "lineageEventCount": 59,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 33,
+        "MEETING_ITEM_POLICY": 14,
+        "ACTION_COMPOUND_DECOMPOSITION": 10,
+        "ACTION_RELATIVE_DATE_BINDING": 2
+      },
+      "operationsObserved": {
+        "FLAG": 33,
+        "KEEP": 24,
+        "UPDATE": 2
+      },
+      "splitEvents": 0,
+      "notSplitEvents": 10,
+      "dropEvents": 0,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.7
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.7
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": false,
+        "8_decomposer_child_count": 0,
+        "8b_not_split_count": 10,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 2,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 0,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "B_LINEAGE_f9c699f",
+      "run": "run_03"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/B_LINEAGE_f9c699f/run_04",
+      "lineageEventCount": 61,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 34,
+        "MEETING_ITEM_POLICY": 15,
+        "ACTION_COMPOUND_DECOMPOSITION": 10,
+        "ACTION_RELATIVE_DATE_BINDING": 2
+      },
+      "operationsObserved": {
+        "FLAG": 34,
+        "KEEP": 25,
+        "UPDATE": 2
+      },
+      "splitEvents": 0,
+      "notSplitEvents": 10,
+      "dropEvents": 0,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.95
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.95
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": false,
+        "8_decomposer_child_count": 0,
+        "8b_not_split_count": 10,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 2,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 0,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "B_LINEAGE_f9c699f",
+      "run": "run_04"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/B_LINEAGE_f9c699f/run_05",
+      "lineageEventCount": 59,
+      "stagesObserved": {
+        "JSON_REPAIR": 1,
+        "SPEECH_ACT_CLASSIFICATION": 31,
+        "MEETING_ITEM_POLICY": 12,
+        "ACTION_COMPOUND_DECOMPOSITION": 8,
+        "ACTION_RELATIVE_DATE_BINDING": 4,
+        "ACTION_PREFIX_NORMALIZATION": 2,
+        "ACTION_DEDUPLICATION": 1
+      },
+      "operationsObserved": {
+        "UPDATE": 7,
+        "FLAG": 31,
+        "KEEP": 16,
+        "SPLIT": 4,
+        "DROP": 1
+      },
+      "splitEvents": 4,
+      "notSplitEvents": 4,
+      "dropEvents": 1,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.85
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.85
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": true,
+        "8_decomposer_child_count": 4,
+        "8b_not_split_count": 4,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 4,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": true,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 2,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "B_LINEAGE_f9c699f",
+      "run": "run_05"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/A_LINEAGE_472172a/smoke_01",
+      "lineageEventCount": 91,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 49,
+        "MEETING_ITEM_POLICY": 19,
+        "ACTION_COMPOUND_DECOMPOSITION": 10,
+        "ACTION_RELATIVE_DATE_BINDING": 2,
+        "CROSS_TYPE_RESOLUTION": 11
+      },
+      "operationsObserved": {
+        "FLAG": 49,
+        "KEEP": 39,
+        "UPDATE": 2,
+        "DROP": 1
+      },
+      "splitEvents": 0,
+      "notSplitEvents": 10,
+      "dropEvents": 1,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.7
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.7
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": false,
+        "8_decomposer_child_count": 0,
+        "8b_not_split_count": 10,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 2,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": true,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 0,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "A_LINEAGE_472172a",
+      "run": "smoke_01"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/A_LINEAGE_472172a/run_01",
+      "lineageEventCount": 70,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 33,
+        "MEETING_ITEM_POLICY": 14,
+        "ACTION_COMPOUND_DECOMPOSITION": 10,
+        "ACTION_RELATIVE_DATE_BINDING": 3,
+        "CROSS_TYPE_RESOLUTION": 9,
+        "ACTION_PREFIX_NORMALIZATION": 1
+      },
+      "operationsObserved": {
+        "FLAG": 33,
+        "KEEP": 31,
+        "UPDATE": 4,
+        "SPLIT": 2
+      },
+      "splitEvents": 2,
+      "notSplitEvents": 8,
+      "dropEvents": 0,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.85
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.95
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": true,
+        "8_decomposer_child_count": 2,
+        "8b_not_split_count": 8,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 3,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 1,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "A_LINEAGE_472172a",
+      "run": "run_01"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/A_LINEAGE_472172a/run_02",
+      "lineageEventCount": 62,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 30,
+        "MEETING_ITEM_POLICY": 11,
+        "ACTION_COMPOUND_DECOMPOSITION": 8,
+        "ACTION_RELATIVE_DATE_BINDING": 4,
+        "CROSS_TYPE_RESOLUTION": 6,
+        "ACTION_PREFIX_NORMALIZATION": 2,
+        "ACTION_DEDUPLICATION": 1
+      },
+      "operationsObserved": {
+        "FLAG": 30,
+        "KEEP": 21,
+        "UPDATE": 6,
+        "SPLIT": 4,
+        "DROP": 1
+      },
+      "splitEvents": 4,
+      "notSplitEvents": 4,
+      "dropEvents": 1,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.85
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.95
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": true,
+        "8_decomposer_child_count": 4,
+        "8b_not_split_count": 4,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 4,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": true,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 2,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "A_LINEAGE_472172a",
+      "run": "run_02"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/A_LINEAGE_472172a/run_03",
+      "lineageEventCount": 65,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 33,
+        "MEETING_ITEM_POLICY": 14,
+        "ACTION_COMPOUND_DECOMPOSITION": 8,
+        "ACTION_RELATIVE_DATE_BINDING": 2,
+        "CROSS_TYPE_RESOLUTION": 8
+      },
+      "operationsObserved": {
+        "FLAG": 33,
+        "KEEP": 30,
+        "UPDATE": 2
+      },
+      "splitEvents": 0,
+      "notSplitEvents": 8,
+      "dropEvents": 0,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.95
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.95
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": false,
+        "8_decomposer_child_count": 0,
+        "8b_not_split_count": 8,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 2,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 0,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "A_LINEAGE_472172a",
+      "run": "run_03"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/A_LINEAGE_472172a/run_04",
+      "lineageEventCount": 89,
+      "stagesObserved": {
+        "SPEECH_ACT_CLASSIFICATION": 49,
+        "MEETING_ITEM_POLICY": 18,
+        "ACTION_COMPOUND_DECOMPOSITION": 10,
+        "ACTION_RELATIVE_DATE_BINDING": 2,
+        "CROSS_TYPE_RESOLUTION": 10
+      },
+      "operationsObserved": {
+        "FLAG": 49,
+        "KEEP": 38,
+        "UPDATE": 2
+      },
+      "splitEvents": 0,
+      "notSplitEvents": 10,
+      "dropEvents": 0,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.95
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.95
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": false,
+        "8_decomposer_child_count": 0,
+        "8b_not_split_count": 10,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 2,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 0,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "A_LINEAGE_472172a",
+      "run": "run_04"
+    },
+    {
+      "runDir": "/data/nanobaseai/actenora/eval/standup-ba/phase1b/lineage-rerun/A_LINEAGE_472172a/run_05",
+      "lineageEventCount": 30,
+      "stagesObserved": {
+        "JSON_REPAIR": 1,
+        "SPEECH_ACT_CLASSIFICATION": 13,
+        "MEETING_ITEM_POLICY": 4,
+        "ACTION_PREFIX_NORMALIZATION": 2,
+        "ACTION_COMPOUND_DECOMPOSITION": 4,
+        "ACTION_RELATIVE_DATE_BINDING": 2,
+        "CROSS_TYPE_RESOLUTION": 4
+      },
+      "operationsObserved": {
+        "UPDATE": 5,
+        "FLAG": 13,
+        "KEEP": 8,
+        "SPLIT": 4
+      },
+      "splitEvents": 4,
+      "notSplitEvents": 0,
+      "dropEvents": 0,
+      "finalNote": {
+        "canPresent": true,
+        "canUtf8Present": false,
+        "secondPresent": true,
+        "canAction": {
+          "owner": "Can",
+          "text": "Başlık düzeltmesini yapacak.",
+          "dueDate": null,
+          "confidence": 0.85
+        },
+        "secondAction": {
+          "owner": "Burak",
+          "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+          "dueDate": "2026-08-05",
+          "confidence": 0.85
+        }
+      },
+      "traceAnswers": {
+        "1_chunk": "NOT_OBSERVABLE",
+        "2_gate": "NOT_OBSERVABLE",
+        "3_raw_action_count": "NOT_OBSERVABLE",
+        "4_raw_action_texts": "NOT_OBSERVABLE",
+        "5_can_clause_raw_or_lineage": true,
+        "6_second_clause_raw_or_lineage": true,
+        "7_compound_candidate": true,
+        "8_decomposer_child_count": 4,
+        "8b_not_split_count": 0,
+        "9_can_owner_bound": true,
+        "10_other_owner_bound": true,
+        "11_date_binding_events": 2,
+        "12_title_backfill_events": 0,
+        "13_backfill_cue49": "NOT_OBSERVABLE",
+        "14_dedup_drop": false,
+        "15_cross_type_drop": false,
+        "16_validated_bundle": "NOT_OBSERVABLE",
+        "17_final_note_mapped": {
+          "can_or_first": true,
+          "can_utf8": false,
+          "second": true
+        },
+        "action_post_processing_splits": 2,
+        "title_context_loss_observed": true
+      },
+      "reasonCodes": [
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+      ],
+      "failureStages": {
+        "ACTION_TITLE_BACKFILL": 1
+      },
+      "tree": "A_LINEAGE_472172a",
+      "run": "run_05"
+    }
+  ]
+}

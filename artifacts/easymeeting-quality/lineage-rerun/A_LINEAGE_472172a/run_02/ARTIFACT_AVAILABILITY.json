@@ -1,0 +1,11 @@
+{
+  "final-note.json": "AVAILABLE",
+  "lineage.json": "AVAILABLE",
+  "lineage.jsonl": "AVAILABLE",
+  "action-post-processing.json": "AVAILABLE",
+  "raw-extractions.json": "NOT_AVAILABLE",
+  "gate-decisions.json": "NOT_AVAILABLE",
+  "chunks.json": "NOT_AVAILABLE",
+  "merged-bundle.json": "NOT_AVAILABLE",
+  "validated-bundle.json": "NOT_AVAILABLE"
+}

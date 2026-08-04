@@ -1,0 +1,36 @@
+{
+  "cue27": {
+    "controlFailureCount": 0,
+    "candidateFailureCount": 0,
+    "failureCountsByStage": {},
+    "failureCountsByReasonCode": {},
+    "confirmedRootCauses": []
+  },
+  "cue51": {
+    "controlFailureCount": 5,
+    "candidateFailureCount": 5,
+    "failureCountsByStage": {
+      "ACTION_TITLE_BACKFILL": 10
+    },
+    "failureCountsByReasonCode": {
+      "ACTION_TITLE_CONTEXT_LOSS": 10,
+      "ACTION_TITLE_BACKFILL_NOT_TRIGGERED": 10
+    },
+    "confirmedRootCauses": [
+      "ACTION_TITLE_CONTEXT_LOSS",
+      "ACTION_TITLE_BACKFILL_NOT_TRIGGERED"
+    ]
+  },
+  "candidateImprovements": [],
+  "candidateRegressions": [],
+  "systemicRootCause": "ACTION_TITLE_CONTEXT_LOSS",
+  "recommendedFix": "Enable/strengthen ActionTitleEvidenceBackfiller for stripped Can/title clauses (cue 49 UTF-8 context) without changing gate/cross-type/compound heuristics yet.",
+  "recommendedFixScope": [
+    "action-title-backfill"
+  ],
+  "notRecommendedYet": [
+    "typed relation resolver",
+    "semantic speech-act classifier",
+    "tokenizer replacement"
+  ]
+}

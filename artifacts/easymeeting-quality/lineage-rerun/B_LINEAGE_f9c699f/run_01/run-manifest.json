@@ -1,0 +1,17 @@
+{
+  "runId": "B_LINEAGE_f9c699f_run_01",
+  "baseline": "B",
+  "commit": "f9c699f",
+  "status": "COMPLETED",
+  "lineageEnabled": true,
+  "productionDeploy": false,
+  "artifacts": {
+    "final-note.json": "AVAILABLE",
+    "lineage.json": "AVAILABLE",
+    "raw-extractions.json": "NOT_AVAILABLE",
+    "gate-decisions.json": "NOT_AVAILABLE",
+    "chunks.json": "NOT_AVAILABLE",
+    "merged-bundle.json": "NOT_AVAILABLE",
+    "validated-bundle.json": "NOT_AVAILABLE"
+  }
+}

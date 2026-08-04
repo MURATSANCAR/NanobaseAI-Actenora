@@ -1,0 +1,10 @@
+{
+  "runId": "B_LINEAGE_f9c699f_run_05",
+  "tree": "B_LINEAGE_f9c699f",
+  "commit": "f9c699f",
+  "meetingOccurrenceId": "2a273d21-88be-41f2-94ff-0e5f63d9d849",
+  "transcriptId": "4ffe3261-47b5-43ff-85bb-d3879d26ac85",
+  "jobId": "93402213-44f9-4809-a228-89443481e66d",
+  "lineageEnabled": true,
+  "finalizationMode": "editorial"
+}
