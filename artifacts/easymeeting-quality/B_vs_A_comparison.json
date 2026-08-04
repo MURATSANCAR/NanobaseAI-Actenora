@@ -1,0 +1,56 @@
+{
+  "control": {
+    "commit": "f9c699f"
+  },
+  "candidate": {
+    "commit": "472172a"
+  },
+  "metrics": {
+    "criticalDecisionRecall": {
+      "control": 1.0,
+      "candidate": 1.0,
+      "candidateNotWorse": true
+    },
+    "actionRecall": {
+      "control": 0.7143,
+      "candidate": 0.8,
+      "candidateNotWorse": true
+    },
+    "hallucinatedDecisionCount": {
+      "control": 0.0,
+      "candidate": 0.0,
+      "candidateNotWorse": true
+    },
+    "statusQuoFalsePositiveCount": {
+      "control": 0.0,
+      "candidate": 0.0,
+      "candidateNotWorse": true
+    },
+    "ownerDateErrorCount": {
+      "control": 0.0,
+      "candidate": 0.0,
+      "candidateNotWorse": true
+    },
+    "crossTypeDuplicateRate": {
+      "control": 0.0,
+      "candidate": 0.0,
+      "candidateImproved": false
+    },
+    "criticalGatePassRate": {
+      "control": 0.0,
+      "candidate": 0.0,
+      "candidateNotWorse": true
+    },
+    "p95DurationMs": {
+      "control": null,
+      "candidate": null,
+      "note": "NOT_AVAILABLE without runtime-metrics.json"
+    }
+  },
+  "candidateChampionEligible": false,
+  "blockingReasonCodes": [
+    "CROSS_TYPE_DUPLICATE_NOT_IMPROVED",
+    "CRITICAL_GATE_PASS_RATE_BELOW_0_95"
+  ],
+  "note": "Champion eligibility requires completed 5/5 runs and full acceptance gates."
+}

@@ -1,0 +1,20 @@
+{
+  "command": "./mvnw -pl modules/transcript,modules/ai-processing -am test -Dtest='!MessagingResilienceScenarioTest,!JdbcMessagingStoresPostgresTest'",
+  "total": 360,
+  "passed": 360,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "durationMs": 10851,
+  "failures": [],
+  "excludedPreExisting": [
+    "MessagingResilienceScenarioTest.dlqRecovery_replaysAndCompletes (shared-kernel; expected DEAD_LETTER was RETRY; unrelated to Phase 0/1)",
+    "JdbcMessagingStoresPostgresTest (requires Docker; skipped locally)"
+  ],
+  "notes": [
+    "ActionPostProcessingStats.datesResolved now counts final dated outputs (observability-only).",
+    "Correlation-clause presence asserted; Can owner-binding left as Phase-2 quality gap.",
+    "Gold + lineage unit tests included.",
+    "Real LLM A runs: 3/5 imported; campaign STATUS still RUNNING_A run_04 (possibly stalled)."
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "runId": "B_HEAD_f9c699f_run_04",
+  "baseline": "B",
+  "commit": "f9c699f",
+  "status": "COMPLETED",
+  "artifacts": {
+    "final-note.json": "AVAILABLE",
+    "lineage.jsonl": "NOT_AVAILABLE",
+    "normalized-transcript.json": "NOT_AVAILABLE",
+    "chunks.json": "NOT_AVAILABLE",
+    "raw-extractions.json": "NOT_AVAILABLE",
+    "repaired-extractions.json": "NOT_AVAILABLE",
+    "gate-decisions.json": "NOT_AVAILABLE",
+    "merged-bundle.json": "NOT_AVAILABLE",
+    "post-filter-bundle.json": "NOT_AVAILABLE",
+    "validated-bundle.json": "NOT_AVAILABLE",
+    "quality-flags.json": "NOT_AVAILABLE",
+    "runtime-metrics.json": "NOT_AVAILABLE",
+    "score.json": "AVAILABLE"
+  },
+  "retryCount": 0,
+  "gateSkipCount": 0,
+  "qualityFlags": []
+}

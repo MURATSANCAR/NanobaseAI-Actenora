@@ -7,12 +7,19 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionDeduplicator;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionIdentityNormalizer;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecord;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecorder;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageOperation;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageReasonCode;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageStage;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -77,7 +84,7 @@ public final class CrossTypeMeetingItemSubsumer {
             keptCommitments.add(commitment);
         }
 
-        return new Outcome(
+        Outcome outcome = new Outcome(
                 keptDecisions,
                 List.copyOf(keptActions),
                 List.copyOf(keptCommitments),
@@ -85,6 +92,90 @@ public final class CrossTypeMeetingItemSubsumer {
                 actionsDropped,
                 commitmentsDropped
         );
+        recordLineageObservability(actions, commitments, outcome);
+        return outcome;
+    }
+
+    /** Side-effect only: never mutates outcome; failures are swallowed by the recorder. */
+    private void recordLineageObservability(
+            List<ActionItemCandidate> inputActions,
+            List<CommitmentCandidate> inputCommitments,
+            Outcome outcome
+    ) {
+        try {
+            ItemLineageRecorder recorder = ItemLineageRecorder.current();
+            if (!recorder.isEnabled()) {
+                return;
+            }
+            Instant now = Instant.now();
+            Set<String> keptActionKeys = new HashSet<>();
+            for (ActionItemCandidate a : outcome.actions()) {
+                keptActionKeys.add(identity.canonicalCore(a) + "|" + String.join(",", a.evidenceSegmentIds()));
+                recorder.record(new ItemLineageRecord(
+                        "action-" + Integer.toHexString(Objects.hash(a.text(), a.evidenceSegmentIds())),
+                        "ACTION_ITEM",
+                        LineageStage.CROSS_TYPE_RESOLUTION,
+                        LineageOperation.KEEP,
+                        LineageReasonCode.POLICY_KEEP,
+                        List.of(),
+                        ItemLineageRecord.snapshot(a.text(), a.owner(), a.relativeDate(), a.evidenceSegmentIds()),
+                        ItemLineageRecord.snapshot(a.text(), a.owner(), a.relativeDate(), a.evidenceSegmentIds()),
+                        "cross-type-existing-v1",
+                        now,
+                        null,
+                        null,
+                        null
+                ));
+            }
+            for (ActionItemCandidate a : inputActions) {
+                String key = identity.canonicalCore(a) + "|" + String.join(",", a.evidenceSegmentIds());
+                if (keptActionKeys.contains(key)) {
+                    continue;
+                }
+                recorder.record(new ItemLineageRecord(
+                        "action-" + Integer.toHexString(Objects.hash(a.text(), a.evidenceSegmentIds())),
+                        "ACTION_ITEM",
+                        LineageStage.CROSS_TYPE_RESOLUTION,
+                        LineageOperation.DROP,
+                        LineageReasonCode.CROSS_TYPE_ACTION_SUBSUMED,
+                        List.of(),
+                        ItemLineageRecord.snapshot(a.text(), a.owner(), a.relativeDate(), a.evidenceSegmentIds()),
+                        Map.of(),
+                        "cross-type-existing-v1",
+                        now,
+                        null,
+                        null,
+                        null
+                ));
+            }
+            Set<String> keptCommitmentKeys = new HashSet<>();
+            for (CommitmentCandidate c : outcome.commitments()) {
+                keptCommitmentKeys.add(identity.canonicalCore(c.text()) + "|" + String.join(",", c.evidenceSegmentIds()));
+            }
+            for (CommitmentCandidate c : inputCommitments) {
+                String key = identity.canonicalCore(c.text()) + "|" + String.join(",", c.evidenceSegmentIds());
+                if (keptCommitmentKeys.contains(key)) {
+                    continue;
+                }
+                recorder.record(new ItemLineageRecord(
+                        "commitment-" + Integer.toHexString(Objects.hash(c.text(), c.evidenceSegmentIds())),
+                        "COMMITMENT",
+                        LineageStage.CROSS_TYPE_RESOLUTION,
+                        LineageOperation.DROP,
+                        LineageReasonCode.CROSS_TYPE_COMMITMENT_SUBSUMED,
+                        List.of(),
+                        ItemLineageRecord.snapshot(c.text(), c.owner(), null, c.evidenceSegmentIds()),
+                        Map.of(),
+                        "cross-type-existing-v1",
+                        now,
+                        null,
+                        null,
+                        null
+                ));
+            }
+        } catch (RuntimeException ignored) {
+            // Observability must never fail the pipeline.
+        }
     }
 
     public ExtractionBundle applyToBundle(ExtractionBundle bundle) {

@@ -57,6 +57,10 @@ public final class ActionPostProcessingStats {
         datesResolved++;
     }
 
+    public void setDatesResolved(int datesResolved) {
+        this.datesResolved = Math.max(0, datesResolved);
+    }
+
     public void incrementUnresolvedRelativeDates() {
         unresolvedRelativeDates++;
     }

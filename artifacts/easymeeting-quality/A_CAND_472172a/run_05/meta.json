@@ -1,0 +1,10 @@
+{
+  "runId": "A_CAND_472172a_run_05",
+  "tree": "A_CAND_472172a",
+  "commit": "472172a",
+  "meetingOccurrenceId": "1f8db35e-628a-41c7-b52f-434c7ce4865a",
+  "transcriptId": "4ffe3261-47b5-43ff-85bb-d3879d26ac85",
+  "jobId": "aea35d38-d02f-4e5d-a6d0-f3286df6fe2f",
+  "pipelineMode": "legacy",
+  "finalizationMode": "editorial"
+}

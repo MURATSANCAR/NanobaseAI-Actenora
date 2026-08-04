@@ -1,0 +1,39 @@
+{
+  "runCount": 5,
+  "completedRunCount": 5,
+  "criticalGatePassCount": 0,
+  "criticalGatePassRate": 0.0,
+  "decisionSetStability": null,
+  "actionSetStability": null,
+  "ownerStability": null,
+  "dateStability": null,
+  "evidenceStability": null,
+  "metricMean": {
+    "decision.criticalRecall": 1.0,
+    "actionItem.recall": 0.7143,
+    "risk.recall": 1.0,
+    "openQuestion.recall": 0.2667,
+    "overallScore": 84.62
+  },
+  "metricMinimum": {
+    "decision.criticalRecall": 1.0,
+    "actionItem.recall": 0.5714,
+    "risk.recall": 1.0,
+    "openQuestion.recall": 0.1667,
+    "overallScore": 80.12
+  },
+  "metricMaximum": {
+    "decision.criticalRecall": 1.0,
+    "actionItem.recall": 0.8571,
+    "risk.recall": 1.0,
+    "openQuestion.recall": 0.6667,
+    "overallScore": 87.98
+  },
+  "metricStandardDeviation": {
+    "decision.criticalRecall": 0.0,
+    "actionItem.recall": 0.0903,
+    "risk.recall": 0.0,
+    "openQuestion.recall": 0.2,
+    "overallScore": 2.5322
+  }
+}

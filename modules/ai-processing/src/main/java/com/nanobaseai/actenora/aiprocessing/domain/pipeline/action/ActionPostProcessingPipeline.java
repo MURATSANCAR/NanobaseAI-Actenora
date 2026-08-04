@@ -214,6 +214,15 @@ public final class ActionPostProcessingPipeline {
         stats.setActionTrace(buildActionTrace(dedupedActions, actions, ctx));
 
         stats.setOutputActionCount(dedupedActions.size());
+        // Observability: datesResolved reflects final output actions with a structured dueAt,
+        // not intermediate recoveries that were later deduplicated.
+        int datedOutputs = 0;
+        for (ActionItemCandidate action : dedupedActions) {
+            if (action.dueAt() != null && !action.dueAt().isBlank()) {
+                datedOutputs++;
+            }
+        }
+        stats.setDatesResolved(datedOutputs);
         boolean manual = !audit.passed()
                 || flags.contains(CompoundActionDecomposer.AMBIGUOUS_SPLIT)
                 || flags.contains(ActionDeduplicator.AMBIGUOUS_DEDUP)

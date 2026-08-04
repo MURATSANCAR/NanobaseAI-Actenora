@@ -19,6 +19,8 @@ public class AiPipelineProperties {
     private int finalizationMaxOutputTokens;
     private int finalizationTimeoutSeconds;
     private String finalizationFailureMode;
+    /** Observability only — never changes extraction keep/drop logic. */
+    private boolean lineageRecordingEnabled;
 
     public String getMode() {
         return mode;
@@ -112,5 +114,13 @@ public class AiPipelineProperties {
 
     public void setFinalizationFailureMode(String finalizationFailureMode) {
         this.finalizationFailureMode = finalizationFailureMode;
+    }
+
+    public boolean isLineageRecordingEnabled() {
+        return lineageRecordingEnabled;
+    }
+
+    public void setLineageRecordingEnabled(boolean lineageRecordingEnabled) {
+        this.lineageRecordingEnabled = lineageRecordingEnabled;
     }
 }

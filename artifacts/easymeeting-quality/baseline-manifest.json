@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "1.0",
+  "createdAt": "2026-08-03T22:19:00Z",
+  "fixture": {
+    "path": "modules/ai-processing/src/test/resources/aiprocessing/eval/01_15dk_daily_standup.vtt",
+    "sha256": "8fe0cdf537701d6f3b4bb6d05cd26e98ff1f6069936def2754b3b8d2ab5f2ae4"
+  },
+  "baselines": {
+    "control": {
+      "name": "B_HEAD_f9c699f",
+      "commit": "f9c699f",
+      "commitFull": "f9c699f4753d7017d64aede84c6ee7da056a5f66"
+    },
+    "candidate": {
+      "name": "A_CAND_472172a",
+      "commit": "472172a",
+      "commitFull": "472172a035da047189b292f7f6ee677c115963ad"
+    }
+  },
+  "evaluationConfig": {
+    "pipelineMode": "staged",
+    "finalizationMode": "editorial",
+    "gateThreshold": 4.5,
+    "chunkTargetTokens": 3500,
+    "chunkOverlapTokens": 250,
+    "extractionMaxTokens": 6144,
+    "temperature": 0.1,
+    "topP": 0.85,
+    "topK": 20
+  },
+  "runtime": {
+    "javaVersion": "openjdk version \"21.0.11\" 2026-04-21 LTS",
+    "mavenVersion": "3.9.9",
+    "operatingSystem": "macOS-26.5.2-arm64-arm-64bit"
+  },
+  "models": {
+    "fastExtractionServedModelId": "nanobase-qwen36-35b-a3b-mtp",
+    "finalServedModelId": "nanobase-qwen36-35b-a3b-mtp",
+    "validationServedModelId": "nanobase-qwen36-35b-a3b-mtp",
+    "note": "IDs from non-secret env snapshot / deploy defaults; not secrets."
+  },
+  "hashes": {
+    "systemMeetingAnalystV2Sha256": "660adb7807646f7e5e178147bbe50e395346f1e207ba4cf8e053ff8d54868b3c",
+    "chunkExtractionSha256": "3658d784add04c443eb93205a491edeafac5e71f4c89807b9d95512c471f62d7",
+    "editorialSummarySha256": "c9e9675832018cc8eadf49237ab82c5d18d4560871a9f37f0fc0462cbbca4936",
+    "extractionSchemaSha256": "3c2b29649be027b91c49580a142c1bec3673c114ac0eb32c3b83370e735950f1",
+    "editorialSummarySchemaSha256": "63a959cacc8a9d767a6f986e3220a7260c84b33f1612eef714d2025cbaf08dea"
+  },
+  "repository": {
+    "path": "/Users/msancar/Documents/GitHub/NanobaseAI-Actenora",
+    "branch": "main",
+    "head": "a65f72d",
+    "workingTreeClean": false
+  },
+  "knownExistingEvalRuns": {
+    "source": "nanobase:/data/nanobaseai/actenora/eval/standup-v0.1",
+    "note": "Real B/A LLM runs; imported under B_HEAD_f9c699f / A_CAND_472172a when available"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "normalized-transcript.json": "NOT_AVAILABLE",
+  "chunks.json": "NOT_AVAILABLE",
+  "gate-decisions.json": "NOT_AVAILABLE",
+  "raw-extractions.json": "NOT_AVAILABLE",
+  "repaired-extractions.json": "NOT_AVAILABLE",
+  "lineage.jsonl": "NOT_AVAILABLE",
+  "merged-bundle.json": "NOT_AVAILABLE",
+  "post-filter-bundle.json": "NOT_AVAILABLE",
+  "validated-bundle.json": "NOT_AVAILABLE",
+  "quality-flags.json": "NOT_AVAILABLE",
+  "runtime-metrics.json": "NOT_AVAILABLE",
+  "final-note.json": "AVAILABLE"
+}
