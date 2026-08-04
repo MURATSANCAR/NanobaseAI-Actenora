@@ -1,11 +1,14 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -92,6 +95,50 @@ class CrossTypeConsistencyQualityGateTest {
         assertTrue(audited.qualityFlags().contains("unsupportedItemCount=0"));
         assertTrue(audited.qualityFlags().contains(CrossTypeConsistencyAuditor.AUDIT_PASSED));
         assertFalse(audited.requiresManualReview());
+    }
+
+
+    @Test
+    void sameTopicDecisionDoesNotDropUnansweredSideOpenQuestion() {
+        FinalNoteDraft draft = new FinalNoteDraft(
+                "Özet",
+                List.of(new DecisionCandidate(
+                        "Paralel refresh çağrıları tek promise üzerinde birleştirilecek.",
+                        List.of("seg-1"),
+                        0.95,
+                        null,
+                        "DECIDED"
+                )),
+                List.of(),
+                List.of(),
+                List.of(
+                        new OpenQuestionCandidate(
+                                "Yarış koşulunun hangi şartlarda başladığı loglardan ayrıştırılabiliyor mu?",
+                                List.of("seg-2"),
+                                0.9
+                        ),
+                        new OpenQuestionCandidate(
+                                "Kesinti veya gecikmede ilk kullanıcı iletişimini kim yapacak?",
+                                List.of("seg-3"),
+                                0.88
+                        )
+                ),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("seg-1", "seg-2", "seg-3"),
+                0.9,
+                false
+        );
+
+        FinalNoteDraft audited = new CrossTypeConsistencyAuditor().audit(draft);
+
+        assertEquals(2, audited.openQuestions().size());
+        assertTrue(audited.openQuestions().stream().anyMatch(q -> q.text().contains("loglardan")));
+        assertTrue(audited.openQuestions().stream().anyMatch(q -> q.text().contains("iletişimini kim")));
     }
 
     private static FinalNoteDraft draftWithAction(ActionItemCandidate action) {

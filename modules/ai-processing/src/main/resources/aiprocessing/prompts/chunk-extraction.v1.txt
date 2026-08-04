@@ -16,6 +16,15 @@ taahhütler, issues, riskler (+likelihood/mitigation), açık sorular, proposals
 Öneriyi karar sayma (proposals'a koy). Sahibi/tarihi açık değilse null. Kanıtsız kayıt üretme.
 Durum güncellemesi / tek konuşmacılı brifing olsa bile: kim neyi ne zamana bitirecek → commitments + actionItems;
 katılım yokluğu, iletilmeyen takvim, belirsiz teslim → risks ve/veya openQuestions.
+
+AÇIK SORU (openQuestions) — YÜKSEK ÖNCELİK
+Şunları openQuestions olarak kaydet (karar/aksiyon uydurma):
+- Doğrudan soru cümleleri (? / “mi/mı/mu/mü”, “nasıl”, “kim”, “ne zaman”, “hangi”)
+- Cevapsız bırakılan belirsizlikler: izleme/alarm, rollback/geri alma, sprint kayması, iletişim sahibi,
+  loglardan kök neden ayrıştırma, mobil/diğer istemci etkisi, test matrisi kapsamı
+- “bilmiyoruz / net değil / bakacağız / emin değiliz” ile biten ama somut konusu olan noktalar
+Aynı konu için karar alınmış olsa bile, kararın kapsamadığı yan soruyu düşürme.
+Her openQuestion.text tek başına anlaşılır olsun; zamir/bağlam kaybı olmasın.
 dueDate yalnızca konuşmada geçen tarih ifadesini aynen yaz (ISO uydurma); relativeDate kullanabilirsin.
 dueAt alanını doldurma (takvim çözümlemesi backend'de yapılır).
 Bir cümlede birden fazla owner+iş varsa her birini ayrı actionItems kaydı olarak döndür; tek satırda birleştirme.

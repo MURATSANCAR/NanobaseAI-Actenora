@@ -33,8 +33,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -455,13 +457,17 @@ public final class MinutesSynthesisAndAudit {
                     || node.path("reviewRequired").asBoolean(false);
             // Final-minutes models often omit proposal cues; keep deterministic/seeded recoveries.
             List<ProposalCandidate> proposals = preferNonEmpty(bundle.proposals(), fallback.proposals());
+            // Open questions: models frequently return a partial list. Union with
+            // pre-synthesis candidates so recall does not collapse to the LLM subset.
+            List<OpenQuestionCandidate> openQuestions = unionOpenQuestions(
+                    bundle.openQuestions(), fallback.openQuestions());
             return successfulStep(
                     new FinalNoteDraft(
                             summary,
                             preferNonEmpty(bundle.decisions(), fallback.decisions()),
                             preferActionsPreserveDates(bundle.actionItems(), fallback.actionItems()),
                             preferNonEmpty(bundle.risks(), fallback.risks()),
-                            preferNonEmpty(bundle.openQuestions(), fallback.openQuestions()),
+                            openQuestions,
                             preferNonEmpty(bundle.commitments(), fallback.commitments()),
                             preferNonEmpty(bundle.topics(), fallback.topics()),
                             preferNonEmpty(bundle.issues(), fallback.issues()),
@@ -710,6 +716,64 @@ public final class MinutesSynthesisAndAudit {
             return primary;
         }
         return fallback == null ? List.of() : fallback;
+    }
+
+    /**
+     * Union primary (synthesis) with fallback (pre-synthesis candidates).
+     * Dedup by normalized text; prefer the higher-confidence / richer-evidence variant.
+     * Prevents open-question recall collapse when the final-minutes model returns a subset.
+     */
+    static List<OpenQuestionCandidate> unionOpenQuestions(
+            List<OpenQuestionCandidate> primary,
+            List<OpenQuestionCandidate> fallback
+    ) {
+        List<OpenQuestionCandidate> a = primary == null ? List.of() : primary;
+        List<OpenQuestionCandidate> b = fallback == null ? List.of() : fallback;
+        if (a.isEmpty()) {
+            return b;
+        }
+        if (b.isEmpty()) {
+            return a;
+        }
+        Map<String, OpenQuestionCandidate> byKey = new LinkedHashMap<>();
+        for (OpenQuestionCandidate q : a) {
+            if (q == null || q.text() == null || q.text().isBlank()) {
+                continue;
+            }
+            byKey.put(normalizeQuestionKey(q.text()), q);
+        }
+        for (OpenQuestionCandidate q : b) {
+            if (q == null || q.text() == null || q.text().isBlank()) {
+                continue;
+            }
+            String key = normalizeQuestionKey(q.text());
+            OpenQuestionCandidate existing = byKey.get(key);
+            if (existing == null) {
+                byKey.put(key, q);
+                continue;
+            }
+            byKey.put(key, preferRicherQuestion(existing, q));
+        }
+        return List.copyOf(byKey.values());
+    }
+
+    private static String normalizeQuestionKey(String text) {
+        return text.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    }
+
+    private static OpenQuestionCandidate preferRicherQuestion(
+            OpenQuestionCandidate left,
+            OpenQuestionCandidate right
+    ) {
+        int leftEvidence = left.evidenceSegmentIds() == null ? 0 : left.evidenceSegmentIds().size();
+        int rightEvidence = right.evidenceSegmentIds() == null ? 0 : right.evidenceSegmentIds().size();
+        if (rightEvidence > leftEvidence) {
+            return right;
+        }
+        if (rightEvidence < leftEvidence) {
+            return left;
+        }
+        return right.confidence() > left.confidence() ? right : left;
     }
 
     /**

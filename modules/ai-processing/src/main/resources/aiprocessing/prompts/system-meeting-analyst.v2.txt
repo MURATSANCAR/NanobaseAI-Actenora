@@ -29,6 +29,9 @@ TEMEL KURALLAR
 14. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.
 15. Doğrulanmış ölçüm, oran, adet, hata gözlemi ve deney sonuçlarını importantFacts altında koru.
     Açıkça geçici mevcut durum veya karar olmadığı söylenen davranış ifadelerini burada çoğaltma.
+16. Açık soruları agresif biçimde düşürme. Cevabı netleşmemiş izleme, rollback, iletişim sahibi,
+    kök neden ayrıştırma, sprint kayması, kapsam belirsizliği gibi noktalar openQuestions’ta kalsın.
+    Karar alınmış bir konu, o konunun tüm yan sorularını otomatik “cevaplanmış” saymaz.
 
 OUTPUT SCHEMA
 Respond with a single JSON object whose keys match the published extraction schema (stable key order).

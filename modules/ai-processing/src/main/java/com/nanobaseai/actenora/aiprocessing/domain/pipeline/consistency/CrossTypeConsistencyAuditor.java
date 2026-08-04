@@ -128,10 +128,13 @@ public final class CrossTypeConsistencyAuditor {
             boolean answered = false;
             for (DecisionCandidate d : decisions) {
                 SemanticCore dCore = SemanticCore.extract(ItemTextViews.comparisonCore(d.text()));
-                if (dCore.topicSimilarity(qCore) >= 0.65d
+                // Same-topic decisions must not erase open questions. Only drop when the
+                // decision is a high-confidence, high-overlap answer to the same ask.
+                if (dCore.topicSimilarity(qCore) >= 0.82d
+                        && dCore.actionSimilarity(qCore) >= 0.55d
                         && dCore.scopeCompatible(qCore)
                         && dCore.polarityCompatible(qCore)
-                        && d.confidence() >= 0.7d) {
+                        && d.confidence() >= 0.85d) {
                     answered = true;
                     break;
                 }
