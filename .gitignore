@@ -88,3 +88,7 @@ docker-data/
 # OS
 Thumbs.db
 Desktop.ini
+
+# Eval env copies must never be committed
+**/actenora.lineage.env
+**/actenora.*.env
