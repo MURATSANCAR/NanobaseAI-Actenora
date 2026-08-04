@@ -94,7 +94,6 @@ public class ApprovalPlatformConfiguration {
                 notifier.onSubmitted(tenantId, noteId, meetingOccurrenceId, approvalId, approverId);
             }
         };
-        var delivery = finalDelivery.getIfAvailable();
         return new MeetingNoteApprovalService(
                 notes,
                 versions,
@@ -103,9 +102,12 @@ public class ApprovalPlatformConfiguration {
                 approvedNoteLedgerPort,
                 noteArtifactStorage,
                 deferred,
-                delivery == null
-                        ? com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteFinalDeliveryPort.noop()
-                        : delivery,
+                () -> {
+                    var delivery = finalDelivery.getIfAvailable();
+                    return delivery == null
+                            ? com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteFinalDeliveryPort.noop()
+                            : delivery;
+                },
                 Clock.systemUTC()
         );
     }

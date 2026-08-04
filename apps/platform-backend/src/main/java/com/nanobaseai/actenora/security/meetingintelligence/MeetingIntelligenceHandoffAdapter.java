@@ -23,6 +23,7 @@ import com.nanobaseai.actenora.meetingintelligence.domain.validation.QualityGate
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.ValidationParticipant;
 import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import org.springframework.beans.factory.ObjectProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +62,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final Optional<PlatformUserNotificationPublisher> notificationPublisher;
     private final Optional<DeliveryApi> deliveryApi;
     private final Optional<DeliveryWorker> deliveryWorker;
-    private final Optional<MeetingNoteApprovalService> noteApprovalService;
+    private final java.util.function.Supplier<MeetingNoteApprovalService> noteApprovalService;
     private final String portalBaseUrl;
 
     private static final DateTimeFormatter WHEN_FMT = DateTimeFormatter
@@ -84,7 +85,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
-                Optional.empty(),
+                () -> null,
                 null
         );
     }
@@ -110,7 +111,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 notificationPublisher,
                 deliveryApi,
                 deliveryWorker,
-                Optional.empty(),
+                () -> null,
                 null
         );
     }
@@ -137,7 +138,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 notificationPublisher,
                 deliveryApi,
                 deliveryWorker,
-                Optional.empty(),
+                () -> null,
                 portalBaseUrl
         );
     }
@@ -152,7 +153,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             Optional<PlatformUserNotificationPublisher> notificationPublisher,
             Optional<DeliveryApi> deliveryApi,
             Optional<DeliveryWorker> deliveryWorker,
-            Optional<MeetingNoteApprovalService> noteApprovalService,
+            java.util.function.Supplier<MeetingNoteApprovalService> noteApprovalService,
             String portalBaseUrl
     ) {
         this.meetingIntelligenceApi = Objects.requireNonNull(meetingIntelligenceApi, "meetingIntelligenceApi");
@@ -164,7 +165,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         this.notificationPublisher = notificationPublisher == null ? Optional.empty() : notificationPublisher;
         this.deliveryApi = deliveryApi == null ? Optional.empty() : deliveryApi;
         this.deliveryWorker = deliveryWorker == null ? Optional.empty() : deliveryWorker;
-        this.noteApprovalService = noteApprovalService == null ? Optional.empty() : noteApprovalService;
+        this.noteApprovalService = noteApprovalService == null ? () -> null : noteApprovalService;
         this.portalBaseUrl = portalBaseUrl == null || portalBaseUrl.isBlank()
                 ? "https://portal.nanobase.ai/easymeeting"
                 : portalBaseUrl.trim();
@@ -228,7 +229,9 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
      * Failure to open approval must not roll back the already-persisted note.
      */
     private void openApprovalIfActive(HandoffCommand command, MeetingNoteDetailResponse note) {
-        if (noteApprovalService.isEmpty()) {
+        MeetingNoteApprovalService approvalService = noteApprovalService.get();
+        if (approvalService == null) {
+            log.warn("MeetingNoteApprovalService not available; skip auto-approval open for note {}", note.id());
             return;
         }
         if (note.reviewStatus() != NoteReviewStatus.ACTIVE) {
@@ -241,7 +244,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         String approverId = resolveApproverId(command);
         Instant expiresAt = Instant.now().plus(APPROVAL_TTL);
         try {
-            ApprovalId approvalId = noteApprovalService.get().submitForApproval(
+            ApprovalId approvalId = approvalService.submitForApproval(
                     command.tenantId(),
                     note.id(),
                     approverId,

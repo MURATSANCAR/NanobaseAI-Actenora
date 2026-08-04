@@ -326,7 +326,7 @@ public class MeetingIntelligencePlatformConfiguration {
                 Optional.ofNullable(notificationPublisher.getIfAvailable()),
                 Optional.ofNullable(deliveryApi.getIfAvailable()),
                 Optional.ofNullable(deliveryWorker.getIfAvailable()),
-                Optional.ofNullable(noteApprovalService.getIfAvailable()),
+                noteApprovalService::getIfAvailable,
                 portalBaseUrl
         );
     }

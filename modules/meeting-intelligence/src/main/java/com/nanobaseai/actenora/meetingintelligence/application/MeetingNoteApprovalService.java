@@ -41,7 +41,7 @@ public final class MeetingNoteApprovalService {
     private final ApprovedNoteLedgerPort approvedNoteLedgerPort;
     private final NoteArtifactStoragePort noteArtifactStorage;
     private final NoteApprovalOpenedNotifier approvalOpenedNotifier;
-    private final ApprovedNoteFinalDeliveryPort finalDeliveryPort;
+    private final java.util.function.Supplier<ApprovedNoteFinalDeliveryPort> finalDeliveryPort;
     private final Clock clock;
 
     public MeetingNoteApprovalService(
@@ -60,7 +60,7 @@ public final class MeetingNoteApprovalService {
                 },
                 NoteArtifactStoragePort.noop(),
                 NoteApprovalOpenedNotifier.noop(),
-                ApprovedNoteFinalDeliveryPort.noop(),
+                ApprovedNoteFinalDeliveryPort::noop,
                 clock
         );
     }
@@ -81,7 +81,7 @@ public final class MeetingNoteApprovalService {
                 approvedNoteLedgerPort,
                 NoteArtifactStoragePort.noop(),
                 NoteApprovalOpenedNotifier.noop(),
-                ApprovedNoteFinalDeliveryPort.noop(),
+                ApprovedNoteFinalDeliveryPort::noop,
                 clock
         );
     }
@@ -103,7 +103,7 @@ public final class MeetingNoteApprovalService {
                 approvedNoteLedgerPort,
                 noteArtifactStorage,
                 NoteApprovalOpenedNotifier.noop(),
-                ApprovedNoteFinalDeliveryPort.noop(),
+                ApprovedNoteFinalDeliveryPort::noop,
                 clock
         );
     }
@@ -126,7 +126,7 @@ public final class MeetingNoteApprovalService {
                 approvedNoteLedgerPort,
                 noteArtifactStorage,
                 approvalOpenedNotifier,
-                ApprovedNoteFinalDeliveryPort.noop(),
+                ApprovedNoteFinalDeliveryPort::noop,
                 clock
         );
     }
@@ -139,7 +139,7 @@ public final class MeetingNoteApprovalService {
             ApprovedNoteLedgerPort approvedNoteLedgerPort,
             NoteArtifactStoragePort noteArtifactStorage,
             NoteApprovalOpenedNotifier approvalOpenedNotifier,
-            ApprovedNoteFinalDeliveryPort finalDeliveryPort,
+            java.util.function.Supplier<ApprovedNoteFinalDeliveryPort> finalDeliveryPort,
             Clock clock
     ) {
         this.noteRepository = Objects.requireNonNull(noteRepository, "noteRepository");
@@ -149,7 +149,7 @@ public final class MeetingNoteApprovalService {
         this.approvedNoteLedgerPort = Objects.requireNonNull(approvedNoteLedgerPort, "approvedNoteLedgerPort");
         this.noteArtifactStorage = Objects.requireNonNull(noteArtifactStorage, "noteArtifactStorage");
         this.approvalOpenedNotifier = Objects.requireNonNull(approvalOpenedNotifier, "approvalOpenedNotifier");
-        this.finalDeliveryPort = Objects.requireNonNull(finalDeliveryPort, "finalDeliveryPort");
+        this.finalDeliveryPort = finalDeliveryPort == null ? ApprovedNoteFinalDeliveryPort::noop : finalDeliveryPort;
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -292,14 +292,17 @@ public final class MeetingNoteApprovalService {
                     current.executiveSummary() == null ? "{}" : current.executiveSummary()
             );
             try {
-                finalDeliveryPort.onApproved(
-                        tid,
-                        note.meetingOccurrenceId(),
-                        note.id(),
-                        current.id(),
-                        approvalId,
-                        current.executiveSummary() == null ? "" : current.executiveSummary()
-                );
+                ApprovedNoteFinalDeliveryPort delivery = finalDeliveryPort.get();
+                if (delivery != null) {
+                    delivery.onApproved(
+                            tid,
+                            note.meetingOccurrenceId(),
+                            note.id(),
+                            current.id(),
+                            approvalId,
+                            current.executiveSummary() == null ? "" : current.executiveSummary()
+                    );
+                }
             } catch (RuntimeException ignored) {
                 // Final delivery must not unwind approval.
             }
