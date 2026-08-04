@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -64,5 +65,20 @@ public final class ItemLineageRecorder {
 
     public int size() {
         return records.size();
+    }
+
+    public static final String ARTIFACT_TYPE = "item-lineage";
+
+    /** JSON array of safe maps — suitable for jsonb processing_artifact.payload_json. */
+    public List<Map<String, Object>> toSafeMaps() {
+        List<Map<String, Object>> out = new ArrayList<>(records.size());
+        for (ItemLineageRecord r : records) {
+            try {
+                out.add(r.toSafeMap());
+            } catch (RuntimeException ignored) {
+                // skip corrupt row
+            }
+        }
+        return out;
     }
 }

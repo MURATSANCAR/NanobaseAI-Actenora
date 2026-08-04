@@ -173,7 +173,7 @@ public final class ActionPostProcessingPipeline {
                             LineageSupport.idOf("action", child.text(), child.evidenceSegmentIds()),
                             "ACTION_ITEM",
                             LineageStage.ACTION_POST_PROCESSING,
-                            LineageOperation.CREATE,
+                            LineageOperation.SPLIT,
                             LineageReasonCode.ACTION_COMPOUND_SPLIT,
                             List.of(parentId),
                             parentId,

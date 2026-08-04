@@ -34,6 +34,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FailureCategory;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingStats;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecorder;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.prompt.InMemoryPromptRegistry;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
@@ -84,6 +85,7 @@ public final class AiJobInferenceExecutor {
     private final int maxAttempts;
     private final int maxTimeoutSeconds;
     private final int parallelChunkLimit;
+    private final boolean lineageRecordingEnabled;
 
     public AiJobInferenceExecutor(
             AiJobService jobService,
@@ -381,6 +383,46 @@ public final class AiJobInferenceExecutor {
             int maxTimeoutSeconds,
             int parallelChunkLimit
     ) {
+        this(
+                jobService,
+                providers,
+                inputResolver,
+                servedModels,
+                extractionPipeline,
+                segmentSource,
+                routingCoordinator,
+                noteHandoff,
+                qualityMetrics,
+                priorMeetingContext,
+                stagedPipelineRunner,
+                meetingClock,
+                artifacts,
+                maxAttempts,
+                maxTimeoutSeconds,
+                parallelChunkLimit,
+                false
+        );
+    }
+
+    public AiJobInferenceExecutor(
+            AiJobService jobService,
+            LocalModelProviderLocator providers,
+            InferenceInputResolverPort inputResolver,
+            ServedModelResolverPort servedModels,
+            ExtractionPipelineService extractionPipeline,
+            TranscriptSegmentSourcePort segmentSource,
+            JobRoutingCoordinatorPort routingCoordinator,
+            MeetingNoteHandoffPort noteHandoff,
+            PipelineQualityMetricsPort qualityMetrics,
+            PriorMeetingContextPort priorMeetingContext,
+            StagedPipelineRunner stagedPipelineRunner,
+            MeetingOccurrenceClockPort meetingClock,
+            ProcessingArtifactRepository artifacts,
+            int maxAttempts,
+            int maxTimeoutSeconds,
+            int parallelChunkLimit,
+            boolean lineageRecordingEnabled
+    ) {
         this.jobService = Objects.requireNonNull(jobService, "jobService");
         this.providers = Objects.requireNonNull(providers, "providers");
         this.inputResolver = Objects.requireNonNull(inputResolver, "inputResolver");
@@ -411,6 +453,7 @@ public final class AiJobInferenceExecutor {
         this.maxAttempts = maxAttempts;
         this.maxTimeoutSeconds = maxTimeoutSeconds;
         this.parallelChunkLimit = parallelChunkLimit;
+        this.lineageRecordingEnabled = lineageRecordingEnabled;
     }
 
     public Optional<ExecutionOutcome> executeNext(Instant now) {

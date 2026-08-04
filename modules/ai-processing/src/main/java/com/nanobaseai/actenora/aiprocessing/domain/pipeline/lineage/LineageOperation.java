@@ -5,9 +5,11 @@ public enum LineageOperation {
     CREATE,
     KEEP,
     UPDATE,
+    SPLIT,
     MERGE,
     DROP,
     REJECT,
     FLAG,
-    MAP
+    MAP,
+    NOT_MAPPED
 }

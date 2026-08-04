@@ -36,7 +36,11 @@ public record ItemLineageRecord(
         relatedCandidateIds = relatedCandidateIds == null ? List.of() : List.copyOf(relatedCandidateIds);
         before = sanitizeSnapshot(before);
         after = sanitizeSnapshot(after);
-        if ((operation == LineageOperation.DROP || operation == LineageOperation.REJECT)
+        if ((operation == LineageOperation.DROP
+                || operation == LineageOperation.REJECT
+                || operation == LineageOperation.NOT_MAPPED
+                || operation == LineageOperation.SPLIT
+                || operation == LineageOperation.MERGE)
                 && reasonCode == null) {
             throw new IllegalArgumentException(operation + " requires reasonCode");
         }
