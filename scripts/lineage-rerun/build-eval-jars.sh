@@ -57,14 +57,14 @@ PY
 prepare_worktree() {
   local name="$1" commit="$2"
   local dir="$WT_ROOT/$name"
-  if [[ -d "$dir" ]]; then
-    git -C "$dir" reset --hard "$commit"
-    git -C "$dir" clean -fd
+  if [[ -d "$dir/.git" || -f "$dir/.git" ]]; then
+    git -C "$dir" reset --hard "$commit" >/dev/null
+    git -C "$dir" clean -fd >/dev/null
   else
-    git worktree add --detach "$dir" "$commit"
+    git worktree add --detach "$dir" "$commit" >/dev/null
   fi
-  apply_L "$dir" "$name"
-  echo "$dir"
+  apply_L "$dir" "$name" >/dev/null
+  printf '%s\n' "$dir"
 }
 
 build_one() {
