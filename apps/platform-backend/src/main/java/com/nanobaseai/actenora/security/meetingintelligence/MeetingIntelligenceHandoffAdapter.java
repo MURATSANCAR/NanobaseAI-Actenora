@@ -8,14 +8,17 @@ import com.nanobaseai.actenora.delivery.application.model.DraftMinutesReadyMailB
 import com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
+import com.nanobaseai.actenora.approval.api.ApprovalId;
 import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.api.RunValidationCommand;
 import com.nanobaseai.actenora.meetingintelligence.api.ValidationExecutionResult;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MapAiCandidatesCommand;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
+import com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingIntelligenceAuditPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.NoteReviewStatus;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.QualityGateOutcome;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.ValidationParticipant;
 import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
@@ -23,6 +26,7 @@ import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -46,6 +50,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
 
     private static final Logger log = LoggerFactory.getLogger(MeetingIntelligenceHandoffAdapter.class);
 
+    private static final Duration APPROVAL_TTL = Duration.ofDays(7);
+
     private final MeetingIntelligenceApi meetingIntelligenceApi;
     private final EvidenceValidationApi evidenceValidationApi;
     private final TranscriptSegmentSourcePort segmentSource;
@@ -55,6 +61,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final Optional<PlatformUserNotificationPublisher> notificationPublisher;
     private final Optional<DeliveryApi> deliveryApi;
     private final Optional<DeliveryWorker> deliveryWorker;
+    private final Optional<MeetingNoteApprovalService> noteApprovalService;
     private final String portalBaseUrl;
 
     private static final DateTimeFormatter WHEN_FMT = DateTimeFormatter
@@ -74,6 +81,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 auditPort,
                 Optional.empty(),
                 NoteArtifactStoragePort.noop(),
+                Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
@@ -102,6 +110,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 notificationPublisher,
                 deliveryApi,
                 deliveryWorker,
+                Optional.empty(),
                 null
         );
     }
@@ -118,6 +127,34 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             Optional<DeliveryWorker> deliveryWorker,
             String portalBaseUrl
     ) {
+        this(
+                meetingIntelligenceApi,
+                evidenceValidationApi,
+                segmentSource,
+                auditPort,
+                meetingApi,
+                noteArtifactStorage,
+                notificationPublisher,
+                deliveryApi,
+                deliveryWorker,
+                Optional.empty(),
+                portalBaseUrl
+        );
+    }
+
+    public MeetingIntelligenceHandoffAdapter(
+            MeetingIntelligenceApi meetingIntelligenceApi,
+            EvidenceValidationApi evidenceValidationApi,
+            TranscriptSegmentSourcePort segmentSource,
+            MeetingIntelligenceAuditPort auditPort,
+            Optional<MeetingApi> meetingApi,
+            NoteArtifactStoragePort noteArtifactStorage,
+            Optional<PlatformUserNotificationPublisher> notificationPublisher,
+            Optional<DeliveryApi> deliveryApi,
+            Optional<DeliveryWorker> deliveryWorker,
+            Optional<MeetingNoteApprovalService> noteApprovalService,
+            String portalBaseUrl
+    ) {
         this.meetingIntelligenceApi = Objects.requireNonNull(meetingIntelligenceApi, "meetingIntelligenceApi");
         this.evidenceValidationApi = Objects.requireNonNull(evidenceValidationApi, "evidenceValidationApi");
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
@@ -127,6 +164,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         this.notificationPublisher = notificationPublisher == null ? Optional.empty() : notificationPublisher;
         this.deliveryApi = deliveryApi == null ? Optional.empty() : deliveryApi;
         this.deliveryWorker = deliveryWorker == null ? Optional.empty() : deliveryWorker;
+        this.noteApprovalService = noteApprovalService == null ? Optional.empty() : noteApprovalService;
         this.portalBaseUrl = portalBaseUrl == null || portalBaseUrl.isBlank()
                 ? "https://portal.nanobase.ai/easymeeting"
                 : portalBaseUrl.trim();
@@ -180,7 +218,73 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         );
         notifyDraftMail(command, note);
         notifyDraftInApp(command, note);
+        openApprovalIfActive(command, note);
         return Optional.of(note.id());
+    }
+
+    /**
+     * ADR-010: ACTIVE notes must enter the human approval workflow so external delivery
+     * stays gated on ApprovalGranted. MANUAL_REVIEW notes are left for human triage first.
+     * Failure to open approval must not roll back the already-persisted note.
+     */
+    private void openApprovalIfActive(HandoffCommand command, MeetingNoteDetailResponse note) {
+        if (noteApprovalService.isEmpty()) {
+            return;
+        }
+        if (note.reviewStatus() != NoteReviewStatus.ACTIVE) {
+            log.info(
+                    "Skip auto-approval open: note {} reviewStatus={}",
+                    note.id(), note.reviewStatus()
+            );
+            return;
+        }
+        String approverId = resolveApproverId(command);
+        Instant expiresAt = Instant.now().plus(APPROVAL_TTL);
+        try {
+            ApprovalId approvalId = noteApprovalService.get().submitForApproval(
+                    command.tenantId(),
+                    note.id(),
+                    approverId,
+                    expiresAt,
+                    note.version()
+            );
+            log.info(
+                    "Opened approval {} for note {} (approver={}, expiresAt={})",
+                    approvalId.value(), note.id(), approverId, expiresAt
+            );
+            auditPort.record(
+                    command.tenantId(),
+                    "system:ai-handoff",
+                    "NOTE_AUTO_SUBMITTED_FOR_APPROVAL",
+                    "MeetingNote",
+                    note.id(),
+                    Map.of(
+                            "approvalId", approvalId.value().toString(),
+                            "approverId", approverId,
+                            "meetingOccurrenceId", command.meetingOccurrenceId().toString()
+                    ),
+                    Instant.now()
+            );
+        } catch (RuntimeException ex) {
+            log.warn(
+                    "Failed to open approval for note {} — note remains ACTIVE without PENDING approval: {}",
+                    note.id(), ex.toString()
+            );
+        }
+    }
+
+    private String resolveApproverId(HandoffCommand command) {
+        if (meetingApi.isPresent()) {
+            try {
+                MeetingResponse meeting = meetingApi.get().getMeeting(command.meetingOccurrenceId());
+                if (meeting != null && meeting.organizerUserId() != null) {
+                    return meeting.organizerUserId().toString();
+                }
+            } catch (RuntimeException ignored) {
+                // Fall through to system actor.
+            }
+        }
+        return "system:organizer";
     }
 
     private void notifyDraftInApp(HandoffCommand command, MeetingNoteDetailResponse note) {
