@@ -186,6 +186,18 @@
         "NOT_OBSERVABLE"
       ],
       "note": "Need raw-extraction/lineage artifacts before attributing to LLM vs post-filter"
+    },
+    {
+      "id": "FIX-A06-UTF8-ACTION-RECALL",
+      "title": "Investigate A-06 UTF-8 header action loss / over-specialization",
+      "evidence": "A-06 missed in 9/10 final notes; Cue 51 split fails whenever A-06 misses while A-07 often PASSes",
+      "reasonCodes": [
+        "ACTION_COMPOUND_NOT_SPLIT",
+        "ACTION_TITLE_CONTEXT_LOSS",
+        "UNCLASSIFIED_MISS",
+        "NOT_OBSERVABLE"
+      ],
+      "note": "Do not change production until raw/lineage prove whether LLM omitted UTF-8 detail or post-processing stripped it"
     }
   ],
   "observabilityNote": "Campaign run packages contain final.note.json (+ meta) only. Therefore stage attribution for misses is NOT_OBSERVABLE; reasonCode UNCLASSIFIED_MISS is used when only final-note absence is proven.",

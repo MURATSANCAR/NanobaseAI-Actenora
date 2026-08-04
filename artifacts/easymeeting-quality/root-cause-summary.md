@@ -97,4 +97,4 @@
 ## Observability
 
 Campaign run packages contain final.note.json (+ meta) only. Therefore stage attribution for misses is NOT_OBSERVABLE; reasonCode UNCLASSIFIED_MISS is used when only final-note absence is proven.
-
+- **FIX-A06-UTF8-ACTION-RECALL**: Investigate A-06 UTF-8 header action loss / over-specialization — A-06 missed in 9/10 final notes; Cue 51 split fails whenever A-06 misses while A-07 often PASSes
