@@ -70,6 +70,30 @@ class CrossTypeConsistencyQualityGateTest {
         assertFalse(audited.requiresManualReview());
     }
 
+    @Test
+    void intentionalSoftDropTelemetryDoesNotForceManualReview() {
+        FinalNoteDraft base = draftWithAction(new ActionItemCandidate(
+                "Oturum yenileme yarış koşulunu düzeltecek.",
+                "Selin",
+                null,
+                List.of("seg-1"),
+                0.95
+        ));
+        FinalNoteDraft withSoftDrop = new FinalNoteDraft(
+                base.executiveSummary(), base.decisions(), base.actionItems(), base.risks(),
+                base.openQuestions(), base.commitments(), base.topics(), base.issues(),
+                base.proposals(), base.importantFacts(),
+                List.of("EVIDENCE_ITEM_SOFT_DROPPED", "EVIDENCE_REF_DROPPED"),
+                base.evidenceSegmentIds(), base.confidence(), false
+        );
+
+        FinalNoteDraft audited = new CrossTypeConsistencyAuditor().audit(withSoftDrop);
+
+        assertTrue(audited.qualityFlags().contains("unsupportedItemCount=0"));
+        assertTrue(audited.qualityFlags().contains(CrossTypeConsistencyAuditor.AUDIT_PASSED));
+        assertFalse(audited.requiresManualReview());
+    }
+
     private static FinalNoteDraft draftWithAction(ActionItemCandidate action) {
         return new FinalNoteDraft(
                 "Özet",

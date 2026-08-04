@@ -181,9 +181,11 @@ public final class CrossTypeConsistencyAuditor {
                 continue;
             }
             String u = f.toUpperCase(Locale.ROOT);
+            // Intentional soft-drops (EVIDENCE_ITEM_SOFT_DROPPED / EVIDENCE_REF_DROPPED)
+            // are telemetry from EvidenceReferenceScrubber. They must not count as
+            // consistency "unsupported" items or force MANUAL_REVIEW.
             if (u.contains("UNSUPPORTED")
-                    || u.contains("MISSING_EVIDENCE")
-                    || u.contains("SOFT_DROP")) {
+                    || u.contains("MISSING_EVIDENCE")) {
                 n++;
             }
         }
