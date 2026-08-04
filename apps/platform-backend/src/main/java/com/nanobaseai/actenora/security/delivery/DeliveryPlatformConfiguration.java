@@ -71,8 +71,12 @@ public class DeliveryPlatformConfiguration {
                 );
     }
 
+    /**
+     * Do not gate with {@code @ConditionalOnBean}: that can evaluate before {@link DeliveryApi}
+     * is registered and permanently skip this bean, leaving approval GRANT on a noop final-delivery port.
+     * Method parameters already require {@link DeliveryApi} and {@link PdfAttachmentPort}.
+     */
     @Bean
-    @ConditionalOnBean({DeliveryApi.class, PdfAttachmentPort.class})
     public ApprovedNoteFinalDeliveryPort approvedNoteFinalDeliveryPort(
             DeliveryApi deliveryApi,
             PdfAttachmentPort pdfAttachmentPort,

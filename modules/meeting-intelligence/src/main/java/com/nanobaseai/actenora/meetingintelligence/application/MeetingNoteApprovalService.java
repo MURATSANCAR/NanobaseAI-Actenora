@@ -22,6 +22,8 @@ import com.nanobaseai.actenora.meetingintelligence.domain.model.ModelPromptSchem
 import com.nanobaseai.actenora.meetingintelligence.domain.model.NoteReviewStatus;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import com.nanobaseai.actenora.sharedkernel.error.ActenoraException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -33,6 +35,8 @@ import java.util.UUID;
  * Orchestrates meeting-note approval/versioning with the Approval BC (FAZ 18).
  */
 public final class MeetingNoteApprovalService {
+
+    private static final Logger log = LoggerFactory.getLogger(MeetingNoteApprovalService.class);
 
     private final MeetingNoteRepository noteRepository;
     private final MeetingNoteVersionRepository versionRepository;
@@ -303,8 +307,15 @@ public final class MeetingNoteApprovalService {
                             current.executiveSummary() == null ? "" : current.executiveSummary()
                     );
                 }
-            } catch (RuntimeException ignored) {
-                // Final delivery must not unwind approval.
+            } catch (RuntimeException ex) {
+                // Final delivery must not unwind approval — but must be visible when wiring fails.
+                log.warn(
+                        "Final delivery after GRANT failed noteId={} versionId={} approvalId={}: {}",
+                        note.id(),
+                        current.id(),
+                        approvalId.value(),
+                        ex.toString()
+                );
             }
         }
 
