@@ -1,5 +1,11 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecord;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageOperation;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageReasonCode;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageStage;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageSupport;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -41,7 +47,26 @@ public final class ExtractionMerger {
                 decisions.putIfAbsent(norm(decision.text()), decision);
             }
             for (ActionItemCandidate item : chunk.actionItems()) {
-                actions.putIfAbsent(norm(item.text()), item);
+                String key = norm(item.text());
+                if (actions.containsKey(key)) {
+                    LineageSupport.record(
+                            LineageSupport.idOf("action", item.text(), item.evidenceSegmentIds()),
+                            "ACTION_ITEM",
+                            LineageStage.MERGE,
+                            LineageOperation.MERGE,
+                            LineageReasonCode.MERGED_AS_DUPLICATE,
+                            List.of(LineageSupport.idOf("action", actions.get(key).text(), actions.get(key).evidenceSegmentIds())),
+                            null,
+                            ItemLineageRecord.snapshot(item.text(), item.owner(), item.relativeDate(), item.evidenceSegmentIds()),
+                            ItemLineageRecord.snapshot(actions.get(key).text(), actions.get(key).owner(),
+                                    actions.get(key).relativeDate(), actions.get(key).evidenceSegmentIds()),
+                            "extraction-merger-v1",
+                            null,
+                            null,
+                            null
+                    );
+                }
+                actions.putIfAbsent(key, item);
             }
             for (RiskCandidate risk : chunk.risks()) {
                 risks.merge(norm(risk.text()), risk, ExtractionMerger::preferRicherRisk);

@@ -8,6 +8,11 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.DomainRegisterNormalizer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.MeetingTerminologyNormalizer;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecord;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageOperation;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageReasonCode;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageStage;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageSupport;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -162,6 +167,26 @@ public final class ActionPostProcessingPipeline {
             }
             if (decomposition.split()) {
                 stats.incrementCompoundActionsSplit(decomposition.actions().size());
+                String parentId = LineageSupport.idOf("action", prefixed.text(), prefixed.evidenceSegmentIds());
+                for (ActionItemCandidate child : decomposition.actions()) {
+                    LineageSupport.record(
+                            LineageSupport.idOf("action", child.text(), child.evidenceSegmentIds()),
+                            "ACTION_ITEM",
+                            LineageStage.ACTION_POST_PROCESSING,
+                            LineageOperation.CREATE,
+                            LineageReasonCode.ACTION_COMPOUND_SPLIT,
+                            List.of(parentId),
+                            parentId,
+                            ItemLineageRecord.snapshot(prefixed.text(), prefixed.owner(), prefixed.relativeDate(),
+                                    prefixed.evidenceSegmentIds()),
+                            ItemLineageRecord.snapshot(child.text(), child.owner(), child.relativeDate(),
+                                    child.evidenceSegmentIds()),
+                            "action-compound-split-v1",
+                            null,
+                            null,
+                            null
+                    );
+                }
             }
             working.addAll(decomposition.actions());
         }

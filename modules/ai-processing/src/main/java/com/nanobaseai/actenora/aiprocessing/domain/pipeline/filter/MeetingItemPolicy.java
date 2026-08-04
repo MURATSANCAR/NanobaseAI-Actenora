@@ -1,8 +1,14 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter;
 
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecord;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageOperation;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageReasonCode;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageStage;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageSupport;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.speechact.MeetingSpeechAct;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.speechact.SpeechActResult;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -15,7 +21,7 @@ public final class MeetingItemPolicy {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(speechAct, "speechAct");
         MeetingSpeechAct act = speechAct.speechAct();
-        return switch (type) {
+        PolicyAction action = switch (type) {
             case IMPORTANT_FACT -> switch (act) {
                 case STATUS_QUO, DISCUSSION_PROMPT, NOTE_INSTRUCTION, CLOSING_META -> PolicyAction.DROP;
                 default -> PolicyAction.KEEP;
@@ -45,6 +51,31 @@ public final class MeetingItemPolicy {
                     : PolicyAction.KEEP;
             case ISSUE, RISK -> PolicyAction.KEEP;
         };
+        observe(type, act, text, action);
+        return action;
+    }
+
+    private static void observe(
+            MeetingItemType type,
+            MeetingSpeechAct act,
+            String text,
+            PolicyAction action
+    ) {
+        LineageSupport.record(
+                LineageSupport.idOf("policy", text, List.of()),
+                type.name(),
+                LineageStage.MEETING_ITEM_POLICY,
+                action == PolicyAction.DROP ? LineageOperation.DROP : LineageOperation.KEEP,
+                action == PolicyAction.DROP ? LineageReasonCode.POLICY_DROP : LineageReasonCode.POLICY_KEEP,
+                List.of(),
+                null,
+                ItemLineageRecord.snapshot(text, null, null, List.of()),
+                ItemLineageRecord.snapshot(text, null, null, List.of()),
+                "meeting-item-policy-v1",
+                null,
+                null,
+                act == null ? null : act.name()
+        );
     }
 
     private static PolicyAction decideDecision(MeetingSpeechAct act) {

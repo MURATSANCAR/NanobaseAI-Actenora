@@ -1,7 +1,13 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.speechact;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingQualityProperties;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecord;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageOperation;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageReasonCode;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageStage;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageSupport;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -33,23 +39,51 @@ public final class HybridSpeechActClassifier {
 
     public SpeechActResult classify(String text) {
         SpeechActResult det = deterministic.classify(text);
+        SpeechActResult result;
         if (det.speechAct() != MeetingSpeechAct.UNKNOWN
                 && det.confidence() >= quality.deterministicApplyMinConfidence()) {
-            return det;
+            result = det;
+        } else {
+            SpeechActResult sem = semantic.classify(text);
+            if (sem.speechAct() == MeetingSpeechAct.UNKNOWN) {
+                result = det.speechAct() == MeetingSpeechAct.UNKNOWN ? SpeechActResult.unknown() : det;
+            } else if (sem.confidence() >= quality.semanticApplyMinConfidence()) {
+                result = new SpeechActResult(
+                        sem.speechAct(),
+                        sem.confidence(),
+                        ClassificationSource.HYBRID,
+                        sem.reasonCode()
+                );
+            } else {
+                result = SpeechActResult.unknown();
+            }
         }
-        SpeechActResult sem = semantic.classify(text);
-        if (sem.speechAct() == MeetingSpeechAct.UNKNOWN) {
-            return det.speechAct() == MeetingSpeechAct.UNKNOWN ? SpeechActResult.unknown() : det;
-        }
-        if (sem.confidence() >= quality.semanticApplyMinConfidence()) {
-            return new SpeechActResult(
-                    sem.speechAct(),
-                    sem.confidence(),
-                    ClassificationSource.HYBRID,
-                    sem.reasonCode()
-            );
-        }
-        return SpeechActResult.unknown();
+        observe(text, result);
+        return result;
+    }
+
+    private static void observe(String text, SpeechActResult result) {
+        LineageReasonCode reason = switch (result.speechAct()) {
+            case STATUS_QUO -> LineageReasonCode.SPEECH_ACT_STATUS_QUO;
+            case EXPLICIT_DECISION -> LineageReasonCode.SPEECH_ACT_EXPLICIT_DECISION;
+            case PROPOSAL_CUE -> LineageReasonCode.SPEECH_ACT_PROPOSAL;
+            default -> LineageReasonCode.SPEECH_ACT_UNKNOWN;
+        };
+        LineageSupport.record(
+                LineageSupport.idOf("speech", text, List.of()),
+                "SPEECH_ACT",
+                LineageStage.SPEECH_ACT_CLASSIFICATION,
+                LineageOperation.FLAG,
+                reason,
+                List.of(),
+                null,
+                ItemLineageRecord.snapshot(text, null, null, List.of()),
+                ItemLineageRecord.snapshot(text, null, null, List.of()),
+                "hybrid-speech-act-v1",
+                null,
+                null,
+                null
+        );
     }
 
     public DeterministicSpeechActMatcher deterministic() {

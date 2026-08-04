@@ -17,6 +17,7 @@ public record ItemLineageRecord(
         LineageOperation operation,
         LineageReasonCode reasonCode,
         List<String> relatedCandidateIds,
+        String parentCandidateId,
         Map<String, Object> before,
         Map<String, Object> after,
         String ruleVersion,
@@ -35,9 +36,44 @@ public record ItemLineageRecord(
         relatedCandidateIds = relatedCandidateIds == null ? List.of() : List.copyOf(relatedCandidateIds);
         before = sanitizeSnapshot(before);
         after = sanitizeSnapshot(after);
-        if (operation == LineageOperation.DROP && reasonCode == null) {
-            throw new IllegalArgumentException("DROP requires reasonCode");
+        if ((operation == LineageOperation.DROP || operation == LineageOperation.REJECT)
+                && reasonCode == null) {
+            throw new IllegalArgumentException(operation + " requires reasonCode");
         }
+    }
+
+    /** Back-compat constructor without parentCandidateId. */
+    public ItemLineageRecord(
+            String candidateId,
+            String candidateType,
+            LineageStage stage,
+            LineageOperation operation,
+            LineageReasonCode reasonCode,
+            List<String> relatedCandidateIds,
+            Map<String, Object> before,
+            Map<String, Object> after,
+            String ruleVersion,
+            Instant timestamp,
+            String meetingId,
+            String jobId,
+            String chunkId
+    ) {
+        this(
+                candidateId,
+                candidateType,
+                stage,
+                operation,
+                reasonCode,
+                relatedCandidateIds,
+                null,
+                before,
+                after,
+                ruleVersion,
+                timestamp,
+                meetingId,
+                jobId,
+                chunkId
+        );
     }
 
     private static Map<String, Object> sanitizeSnapshot(Map<String, Object> raw) {
@@ -60,6 +96,7 @@ public record ItemLineageRecord(
         m.put("operation", operation.name());
         m.put("reasonCode", reasonCode.name());
         m.put("relatedCandidateIds", relatedCandidateIds);
+        m.put("parentCandidateId", parentCandidateId);
         m.put("before", before);
         m.put("after", after);
         m.put("ruleVersion", ruleVersion);

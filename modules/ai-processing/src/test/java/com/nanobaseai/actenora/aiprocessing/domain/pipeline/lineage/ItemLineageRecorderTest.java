@@ -70,6 +70,55 @@ class ItemLineageRecorderTest {
     }
 
     @Test
+    void rejectRequiresReasonCode() {
+        assertThrows(NullPointerException.class, () -> new ItemLineageRecord(
+                "c1",
+                "ACTION_ITEM",
+                LineageStage.SCHEMA_VALIDATION,
+                LineageOperation.REJECT,
+                null,
+                List.of(),
+                null,
+                Map.of(),
+                Map.of(),
+                "v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        ));
+    }
+
+    @Test
+    void lineagePersistenceFailureDoesNotFailPipeline() {
+        ItemLineageRecorder.install(ItemLineageRecorder.enabled());
+        LineageSupport.recordSafely(null); // must not throw
+        assertTrue(true);
+    }
+
+    @Test
+    void parentCandidateIdSerialized() {
+        ItemLineageRecord record = new ItemLineageRecord(
+                "child",
+                "ACTION_ITEM",
+                LineageStage.ACTION_POST_PROCESSING,
+                LineageOperation.CREATE,
+                LineageReasonCode.ACTION_COMPOUND_SPLIT,
+                List.of("parent"),
+                "parent",
+                Map.of(),
+                ItemLineageRecord.snapshot("x", "Selin", null, List.of("27")),
+                "v1",
+                Instant.now(),
+                null,
+                null,
+                null
+        );
+        assertEquals("parent", record.parentCandidateId());
+        assertEquals("parent", record.toSafeMap().get("parentCandidateId"));
+    }
+
+    @Test
     void mergeRecordsSourceCandidateIds() {
         ItemLineageRecorder recorder = ItemLineageRecorder.enabled();
         ItemLineageRecorder.install(recorder);

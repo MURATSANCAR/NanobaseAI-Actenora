@@ -3,6 +3,14 @@ package com.nanobaseai.actenora.aiprocessing.infrastructure.json;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FailureCategory;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.PipelineException;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.PipelineStage;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageOperation;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageReasonCode;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageStage;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageSupport;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Bounded syntactic repair only — never invents semantic fields.
@@ -19,20 +27,44 @@ public final class LimitedJsonRepair {
                     "Empty model output"
             );
         }
-        String candidate = applyRepair(raw.trim());
+        String original = raw.trim();
+        String candidate = applyRepair(original);
         for (int pass = 0; pass < MAX_REPAIR_PASSES; pass++) {
             if (looksLikeJsonObject(candidate) && !hasTrailingComma(candidate)) {
+                observeRepair(original, candidate);
                 return candidate;
             }
             candidate = applyRepair(candidate);
         }
         if (looksLikeJsonObject(candidate) && !hasTrailingComma(candidate)) {
+            observeRepair(original, candidate);
             return candidate;
         }
         throw new PipelineException(
                 FailureCategory.INVALID_JSON,
                 PipelineStage.EXTRACT,
                 "Unable to repair model JSON"
+        );
+    }
+
+    private static void observeRepair(String before, String after) {
+        if (before == null || after == null || before.equals(after)) {
+            return;
+        }
+        LineageSupport.record(
+                "json-repair-" + Integer.toHexString(Objects.hash(before.length(), after.length())),
+                "EXTRACTION_JSON",
+                LineageStage.JSON_REPAIR,
+                LineageOperation.UPDATE,
+                LineageReasonCode.JSON_REPAIRED,
+                List.of(),
+                null,
+                Map.of("bytesBefore", before.length(), "bytesAfter", after.length()),
+                Map.of("bytesBefore", before.length(), "bytesAfter", after.length()),
+                "limited-json-repair-v1",
+                null,
+                null,
+                null
         );
     }
 
