@@ -24,6 +24,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.TranscriptSegmentSo
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingArtifact;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.MeasuredObservationFactSeeder;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeMeetingItemSubsumer;
@@ -752,7 +753,9 @@ public final class DefaultStageExecutors {
                 List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
                 ExtractionBundle merged = new CrossTypeConsistencyAuditor().auditBundle(
                         CrossTypeMeetingItemScrubber.productionDefaults().scrub(
-                                ProposalCuePostProcessor.productionDefaults().process(merger.merge(bundles), normalized)));
+                                ProposalCuePostProcessor.productionDefaults().process(
+                                        new MeasuredObservationFactSeeder().seed(merger.merge(bundles), normalized),
+                                        normalized)));
                 String cleanedJson = MAPPER.writeValueAsString(MAPPER.valueToTree(merged));
                 String deterministicJson = MAPPER.writeValueAsString(Map.of(
                         "mergedDeterministic", true,

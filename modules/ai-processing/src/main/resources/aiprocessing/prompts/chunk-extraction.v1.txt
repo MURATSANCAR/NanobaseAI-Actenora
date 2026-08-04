@@ -46,6 +46,8 @@ alternatifi ayrıca proposal olarak çoğaltma.
 Doğrulanmış ölçüm, oran, adet, hata gözlemi veya deney sonucu karar/aksiyon olmasa bile
 importantFacts altında korunmalı. Açıkça geçici mevcut durum veya “karar değildir” diye
 nitelenen davranış değişikliği ifadelerini importantFacts'a taşıma.
+Örnek zorunlu fact’ler: “Kırk tekrardan üçünde 401 görüldü”, “Beş istemcinin ikisinde konu satırı hatalı”
+— rakam veya yazı ile sayı fark etmez; bu cümleleri importantFacts’a yaz, action/decision’a çevirme.
 Riskte konuşulan mitigation/likelihood varsa mutlaka doldur (ör. "erken smoke", HIGH/MEDIUM/LOW).
 Tüm metin alanlarını yalnızca {{outputLanguage}} dilinde yaz; kullanıcı dilinin dışında ifade üretme.
 ASR/ürün adı: Mayusque/Moyusque → MySQL; konuşma dili “reçete” → gereksinim dokümanı (PRD yazma).
