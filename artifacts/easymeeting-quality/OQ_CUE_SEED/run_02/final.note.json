@@ -1,0 +1,111 @@
+{
+  "meetingOccurrenceId": "4b4fbb1b-54e1-4e2c-92ff-41c27528e946",
+  "jobId": "9b4a0f2f-5f1b-404b-a15f-b0a9999f3554",
+  "noteId": "40517b9c-3704-4fd7-b26b-a83bdb111fab",
+  "decisions": [
+    {
+      "text": "Paralel refresh çağrıları frontend tarafında tek promise üzerinde birleştirilecek."
+    },
+    {
+      "text": "Yeni gönderimlerde UTF-8 başlığı zorunlu olacak."
+    }
+  ],
+  "actionItems": [
+    {
+      "text": "Oturum yenileme hatası (Staging) için düzeltmeyi yapacak.",
+      "owner": "Selin"
+    },
+    {
+      "text": "Correlation ID ekleyecek.",
+      "owner": "Can"
+    },
+    {
+      "text": "Test planına timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını ekleyecek.",
+      "owner": "Burak"
+    },
+    {
+      "text": "Yeni gönderimlerde UTF-8 başlığını düzeltecek.",
+      "owner": "Can"
+    },
+    {
+      "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+      "owner": "Burak"
+    },
+    {
+      "text": "Notlarda owner veya tarih yoksa otomatik görev oluşturulmamasını özellikle kontrol edeceğim.",
+      "owner": "Burak"
+    }
+  ],
+  "risks": [
+    {
+      "text": "Oturum yenileme değişikliği sonrası bekleyen isteklerin kilitlenmesi."
+    },
+    {
+      "text": "E-posta karakter düzeltmesi sonrası eski şablonların geriye dönük etkilenmesi."
+    }
+  ],
+  "proposals": [
+    {
+      "text": "Bu başlığın kabul kriterini kullanıcı diliyle yazmayı öneriyorum: beklenen davranış, hata mesajı ve tamamlanma süresi aynı maddede görünmeli."
+    }
+  ],
+  "openQuestions": [
+    {
+      "text": "Mobil istemcide aynı yarış koşulu (race condition) var mı?"
+    },
+    {
+      "text": "Gmail test matrisi ayrıca koşulmalı mı?"
+    },
+    {
+      "text": "Değişiklik canlıya açıldığında ilk otuz dakikada hangi alarm ve dashboard izlenecek?"
+    },
+    {
+      "text": "Kesinti veya gecikme durumunda ilk mesajı kim gönderecek ve kullanıcı iletişimi nasıl yönetilecek?"
+    },
+    {
+      "text": "Mevcut sprinte alınması durumunda hangi teslimat kaybolur ve bağımlılık gecikmesi durumunda ikinci plan nedir?"
+    },
+    {
+      "text": "Geri dönüş planında hangi config, migration veya kuyruk geri alınacak?"
+    },
+    {
+      "text": "Hangi koşulda başladığını loglardan ayırabiliyor muyuz?"
+    },
+    {
+      "text": "Hangi alarmı ve hangi dashboard'u izleyeceğiz?"
+    },
+    {
+      "text": "Hangi teslimat kayıyor ve bağımlılık gecikirse ikinci planımız ne oluyor?"
+    },
+    {
+      "text": "Hangi config'i, migration'ı veya kuyruğu geri alacağız?"
+    },
+    {
+      "text": "Kim gönderecek?"
+    }
+  ],
+  "importantFacts": [
+    {
+      "text": "Kırk tekrardan üçünde 401."
+    },
+    {
+      "text": "Beş istemcinin ikisinde konu satırı."
+    }
+  ],
+  "commitments": [],
+  "qualityFlags": [
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER"
+  ]
+}

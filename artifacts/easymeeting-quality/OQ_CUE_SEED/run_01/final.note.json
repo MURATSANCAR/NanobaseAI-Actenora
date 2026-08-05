@@ -1,0 +1,103 @@
+{
+  "meetingOccurrenceId": "5deb7840-43d8-4888-8099-5c755918824c",
+  "jobId": "a0c67d8a-d5af-4d7b-9ef2-1b47258d62cb",
+  "noteId": "3eb27aee-93ac-435f-a75f-f5b60af3ad1e",
+  "decisions": [
+    {
+      "text": "Paralel refresh çağrıları tek promise üzerinde birleştirilecek."
+    },
+    {
+      "text": "Yeni gönderimlerde UTF-8 başlığı zorunlu olacak."
+    }
+  ],
+  "actionItems": [
+    {
+      "text": "Paralel refresh çağrıları tek promise üzerinde birleştirilecek düzeltmesini uygulamak.",
+      "owner": "Selin"
+    },
+    {
+      "text": "Correlation ID ekleyecek.",
+      "owner": "Can"
+    },
+    {
+      "text": "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını ekleyecek.",
+      "owner": "Burak"
+    },
+    {
+      "text": "Yeni gönderimlerde UTF-8 başlığını düzeltecek.",
+      "owner": "Can"
+    },
+    {
+      "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+      "owner": "Burak"
+    },
+    {
+      "text": "Notlarda owner veya tarih yoksa otomatik görev oluşturulmamasını özellikle kontrol edeceğim.",
+      "owner": "Burak"
+    }
+  ],
+  "risks": [
+    {
+      "text": "Bekleyen isteklerin kilitlenmesi."
+    },
+    {
+      "text": "Eski şablonların geriye dönük etkilenmesi."
+    }
+  ],
+  "proposals": [
+    {
+      "text": "Bu başlığın kabul kriterini kullanıcı diliyle yazmayı öneriyorum: beklenen davranış, hata mesajı ve tamamlanma süresi aynı maddede görünmeli."
+    }
+  ],
+  "openQuestions": [
+    {
+      "text": "Mobil istemcide aynı yarış koşulu var mı?"
+    },
+    {
+      "text": "Gmail test matrisi ayrıca koşulmalı mı?"
+    },
+    {
+      "text": "Can correlation id ekleyecek."
+    },
+    {
+      "text": "Hangi koşulda başladığını loglardan ayırabiliyor muyuz?"
+    },
+    {
+      "text": "Hangi alarmı ve hangi dashboard'u izleyeceğiz?"
+    },
+    {
+      "text": "Hangi teslimat kayıyor ve bağımlılık gecikirse ikinci planımız ne oluyor?"
+    },
+    {
+      "text": "Hangi config'i, migration'ı veya kuyruğu geri alacağız?"
+    },
+    {
+      "text": "Kim gönderecek?"
+    }
+  ],
+  "importantFacts": [
+    {
+      "text": "Kırk tekrardan üçünde 401."
+    },
+    {
+      "text": "Beş istemcinin ikisinde konu satırı."
+    }
+  ],
+  "commitments": [],
+  "qualityFlags": [
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER",
+    "OTHER"
+  ]
+}
