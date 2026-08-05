@@ -73,8 +73,8 @@ class MeetingEndedMailBodyTest {
         assertEquals(url, decoded.meetingUrl());
         String html = MeetingNoteBrandedTemplates.draftMinutesReadyEmailHtml(decoded);
         assertTrue(html.contains("href=\"" + url + "\""));
-        assertTrue(html.contains("Tutanaga git"));
-        assertTrue(html.contains("Onayınızı bekliyor") || html.contains("onayınızı bekliyor"));
+        assertTrue(html.contains("Tutanağı incele ve onayla"));
+        assertTrue(html.contains("Onay bekliyor") || html.contains("onayınızı bekliyor"));
         assertTrue(html.contains("Q3 Ürün Planlama"));
         assertTrue(html.contains("Roadmap öncelikleri netleşti."));
     }

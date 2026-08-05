@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.api.RunValidationCommand;
 import com.nanobaseai.actenora.meetingintelligence.api.ValidationExecutionResult;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ActionItemResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MapAiCandidatesCommand;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 import com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService;
@@ -68,9 +69,14 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final String portalBaseUrl;
     private final List<String> additionalDraftRecipients;
 
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Istanbul");
+
     private static final DateTimeFormatter WHEN_FMT = DateTimeFormatter
             .ofPattern("d MMMM yyyy · HH:mm", Locale.forLanguageTag("tr"))
-            .withZone(ZoneId.of("Europe/Istanbul"));
+            .withZone(BUSINESS_ZONE);
+
+    private static final DateTimeFormatter DUE_DATE_FMT = DateTimeFormatter
+            .ofPattern("d MMMM yyyy", Locale.forLanguageTag("tr"));
 
     public MeetingIntelligenceHandoffAdapter(
             MeetingIntelligenceApi meetingIntelligenceApi,
@@ -395,7 +401,11 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                     formatWhen(meeting),
                     meetingUrl,
                     command.meetingOccurrenceId(),
-                    summary == null ? "" : summary
+                    summary == null ? "" : summary,
+                    draftDecisions(note),
+                    draftActions(note),
+                    draftOpenQuestions(note),
+                    manualReviewCount(note)
             );
             String subject = "Tutanak hazır · Onayınızı bekliyor — " + title;
             String encoded = body.encode();
@@ -425,6 +435,69 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                     ex.toString()
             );
         }
+    }
+
+    /** Active decisions only — superseded ones must not resurface in the approval mail. */
+    private static List<String> draftDecisions(MeetingNoteDetailResponse note) {
+        if (note.decisions() == null) {
+            return List.of();
+        }
+        return note.decisions().stream()
+                .filter(d -> d.supersededByDecisionId() == null)
+                .map(d -> d.text())
+                .filter(text -> text != null && !text.isBlank())
+                .toList();
+    }
+
+    private static List<DraftMinutesReadyMailBody.ActionLine> draftActions(MeetingNoteDetailResponse note) {
+        if (note.actionItems() == null) {
+            return List.of();
+        }
+        return note.actionItems().stream()
+                .filter(a -> a.text() != null && !a.text().isBlank())
+                .map(a -> new DraftMinutesReadyMailBody.ActionLine(
+                        a.text(),
+                        a.owner(),
+                        actionDueLabel(a)))
+                .toList();
+    }
+
+    private static String actionDueLabel(ActionItemResponse action) {
+        if (action.dueDate() != null) {
+            return DUE_DATE_FMT.format(action.dueDate());
+        }
+        if (action.dueAt() != null) {
+            return DUE_DATE_FMT.format(action.dueAt().atZone(BUSINESS_ZONE).toLocalDate());
+        }
+        return action.relativeDate() == null ? "" : action.relativeDate();
+    }
+
+    private static List<String> draftOpenQuestions(MeetingNoteDetailResponse note) {
+        if (note.openQuestions() == null) {
+            return List.of();
+        }
+        return note.openQuestions().stream()
+                .map(q -> q.text())
+                .filter(text -> text != null && !text.isBlank())
+                .toList();
+    }
+
+    /** Items the pipeline flagged for human verification before approval. */
+    private static int manualReviewCount(MeetingNoteDetailResponse note) {
+        int count = 0;
+        if (note.decisions() != null) {
+            count += note.decisions().stream().filter(d -> d.requiresManualReview()).count();
+        }
+        if (note.actionItems() != null) {
+            count += note.actionItems().stream().filter(a -> a.requiresManualReview()).count();
+        }
+        if (note.risks() != null) {
+            count += note.risks().stream().filter(r -> r.requiresManualReview()).count();
+        }
+        if (note.openQuestions() != null) {
+            count += note.openQuestions().stream().filter(q -> q.requiresManualReview()).count();
+        }
+        return count;
     }
 
     /** Organizer (when known) plus configured extras; case-insensitive de-dupe. */

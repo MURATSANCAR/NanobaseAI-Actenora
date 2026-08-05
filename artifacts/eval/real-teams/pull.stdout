@@ -1,4 +1,4 @@
-pull-watch start 2026-08-05T10:13:30Z
-10:13:32 ==== finish waiter 2026-08-05T10:13:28Z ====
----- wait YZ ----
-  10:13:28 job=fcdb4ab4-ba85-452a-9fda-8d38912b86a8 status=RUNNING
+pull-watch start 2026-08-05T19:27:16Z
+19:27:18 ---- wait YZ ----
+  19:26:31 job=fcdb4ab4-ba85-452a-9fda-8d38912b86a8 status=QUEUED
+  19:27:16 job=fcdb4ab4-ba85-452a-9fda-8d38912b86a8 status=RUNNING
