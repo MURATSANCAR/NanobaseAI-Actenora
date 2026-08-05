@@ -1,31 +1,10 @@
 import { CheckCircle2, UserX, HelpCircle } from "lucide-react";
 import type { Participant } from "@/api/types";
 import { useI18n } from "@/i18n";
+import { classifyAttendance, type AttendanceBucket } from "./classifyAttendance";
 
-const ATTENDED = new Set(["JOINED", "LEFT"]);
-const EXPLICIT_ABSENT = new Set(["ABSENT", "DECLINED"]);
-/** After the occurrence ends, unresolved RSVP statuses are treated as did-not-attend. */
-const MEETING_FINISHED = new Set(["ENDED", "CANCELLED", "PROCESSING", "READY", "FAILED"]);
-
-export type AttendanceBucket = "attended" | "absent" | "pending";
-
-/**
- * Maps backend attendanceStatus. INVITED/ACCEPTED/TENTATIVE stay pending while the
- * meeting is still live; once finished they count as absent (Katılmadı).
- */
-export function classifyAttendance(
-  attendanceStatus: string | null | undefined,
-  meetingStatus?: string,
-  _participantType?: string | null,
-): AttendanceBucket {
-  const status = (attendanceStatus || "UNKNOWN").toUpperCase();
-  if (ATTENDED.has(status)) return "attended";
-  if (EXPLICIT_ABSENT.has(status)) return "absent";
-  if (meetingStatus && MEETING_FINISHED.has(meetingStatus.toUpperCase())) {
-    return "absent";
-  }
-  return "pending";
-}
+export type { AttendanceBucket };
+export { classifyAttendance };
 
 export function ParticipantAttendanceRow({
   participant,
@@ -37,7 +16,8 @@ export function ParticipantAttendanceRow({
   const { t, tb } = useI18n();
   const p = participant;
   const name = p.displayName?.trim() || p.email || "—";
-  const showEmail = Boolean(p.email) && p.email.trim().toLowerCase() !== name.toLowerCase();
+  const email = p.email?.trim() || "";
+  const showEmail = Boolean(email);
   const bucket = classifyAttendance(p.attendanceStatus, meetingStatus, p.participantType);
 
   const attendanceLabel =
@@ -76,7 +56,7 @@ export function ParticipantAttendanceRow({
       </span>
       <div className="min-w-0 flex-1">
         <div className="font-semibold text-slate-900">{name}</div>
-        {showEmail ? <div className="truncate text-xs text-slate-500">{p.email}</div> : null}
+        {showEmail ? <div className="truncate text-xs text-slate-500">{email}</div> : null}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <span
             className={[

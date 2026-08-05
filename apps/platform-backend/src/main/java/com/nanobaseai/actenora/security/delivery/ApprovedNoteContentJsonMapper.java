@@ -20,12 +20,30 @@ public final class ApprovedNoteContentJsonMapper {
     private static final Pattern AGENDA_STAT_LINE = Pattern.compile(
             "(?im)^\\d+\\s+(?:karar\\b|decision\\b|aksiyon\\b|action\\b|risk\\b)"
     );
+    /** Same-line legacy summaries: {@code Budget. 1 karar kaydedildi.} */
+    private static final Pattern AGENDA_INLINE_STAT = Pattern.compile(
+            "(?i)\\.\\s*\\d+\\s+(?:karar\\b|decision\\b|aksiyon\\b|action\\b|risk\\b)"
+    );
     private static final Pattern NUMBERED_ITEM = Pattern.compile("^\\d+\\.\\s+(.+)$");
 
     private ApprovedNoteContentJsonMapper() {
     }
 
+    /**
+     * Lightweight participant projection for note contentJson (avoids meeting-module coupling in callers' tests).
+     */
+    public record ParticipantRow(String name, String email, String role, String attendance) {
+    }
+
     public static String toContentJson(MeetingNoteDetailResponse note, String meetingTitle) {
+        return toContentJson(note, meetingTitle, List.of());
+    }
+
+    public static String toContentJson(
+            MeetingNoteDetailResponse note,
+            String meetingTitle,
+            List<ParticipantRow> participants
+    ) {
         try {
             ObjectNode root = MAPPER.createObjectNode();
             root.put("header", blankToEmpty(meetingTitle));
@@ -141,7 +159,19 @@ public final class ApprovedNoteContentJsonMapper {
                 }
             }
 
-            root.putArray("participant_table");
+            ArrayNode table = root.putArray("participant_table");
+            if (participants != null) {
+                for (ParticipantRow p : participants) {
+                    if (p == null) {
+                        continue;
+                    }
+                    ObjectNode row = table.addObject();
+                    row.put("name", blankToEmpty(p.name()));
+                    row.put("email", blankToEmpty(p.email()));
+                    row.put("role", blankToEmpty(p.role()));
+                    row.put("attendance", blankToEmpty(p.attendance()));
+                }
+            }
             root.put("footer", "Actenora · NanobaseAI");
             return MAPPER.writeValueAsString(root);
         } catch (Exception ex) {
@@ -165,6 +195,10 @@ public final class ApprovedNoteContentJsonMapper {
         String rest = text.substring(prefix.end());
         Matcher stop = AGENDA_STAT_LINE.matcher(rest);
         String payload = stop.find() ? rest.substring(0, stop.start()) : rest;
+        Matcher inline = AGENDA_INLINE_STAT.matcher(payload);
+        if (inline.find()) {
+            payload = payload.substring(0, inline.start());
+        }
         payload = payload.trim();
         if (payload.endsWith(".")) {
             payload = payload.substring(0, payload.length() - 1).trim();

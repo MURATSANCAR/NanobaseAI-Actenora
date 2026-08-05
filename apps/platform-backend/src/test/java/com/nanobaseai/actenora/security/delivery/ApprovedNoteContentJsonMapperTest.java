@@ -73,13 +73,24 @@ class ApprovedNoteContentJsonMapperTest {
                 now
         );
 
-        JsonNode root = MAPPER.readTree(ApprovedNoteContentJsonMapper.toContentJson(note, "Weekly"));
+        JsonNode root = MAPPER.readTree(ApprovedNoteContentJsonMapper.toContentJson(
+                note,
+                "Weekly",
+                List.of(new ApprovedNoteContentJsonMapper.ParticipantRow(
+                        "Alice", "alice@example.com", "REQUIRED", "JOINED"
+                ))
+        ));
         assertEquals(2, root.path("agenda").size());
         assertEquals("Roadmap — Q3", root.path("agenda").get(0).path("item").asText());
         assertEquals("Need velocity", root.path("decisions").get(0).path("rationale").asText());
         assertEquals("PERSON", root.path("actions").get(0).path("ownerType").asText());
         assertEquals("HIGH", root.path("risks").get(0).path("likelihood").asText());
         assertTrue(root.path("agenda").isArray());
+        assertEquals(1, root.path("participant_table").size());
+        assertEquals("Alice", root.path("participant_table").get(0).path("name").asText());
+        assertEquals("alice@example.com", root.path("participant_table").get(0).path("email").asText());
+        assertEquals("REQUIRED", root.path("participant_table").get(0).path("role").asText());
+        assertEquals("JOINED", root.path("participant_table").get(0).path("attendance").asText());
     }
 
     @Test

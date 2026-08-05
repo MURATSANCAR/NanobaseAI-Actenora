@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackSe
 import com.nanobaseai.actenora.microsoftconnection.application.ReconciliationJob;
 import com.nanobaseai.actenora.microsoftconnection.application.SubscriptionLifecycleService;
 import com.nanobaseai.actenora.microsoftconnection.application.model.CalendarEvent;
+import com.nanobaseai.actenora.microsoftconnection.application.model.DirectoryUser;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphChangeNotification;
 import com.nanobaseai.actenora.microsoftconnection.application.model.GraphSubscription;
 import com.nanobaseai.actenora.microsoftconnection.application.model.LifecycleNotification;
@@ -19,6 +20,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.model.Participant
 import com.nanobaseai.actenora.microsoftconnection.application.model.SubscriptionCreateRequest;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptAvailability;
 import com.nanobaseai.actenora.microsoftconnection.application.model.TranscriptContent;
+import com.nanobaseai.actenora.microsoftconnection.application.port.DirectoryGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.OutlookDraftGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
@@ -45,6 +47,32 @@ public final class MicrosoftConnectionApi {
     private final OutlookDraftGateway outlookDraftGateway;
     private final SubscriptionStore subscriptionStore;
     private final OnlineMeetingTranscriptionEnabler transcriptionEnabler;
+    private final DirectoryGateway directoryGateway;
+
+    public MicrosoftConnectionApi(
+            CalendarSyncService calendarSyncService,
+            MeetingTranscriptService meetingTranscriptService,
+            SubscriptionLifecycleService subscriptionLifecycleService,
+            PollingFallbackService pollingFallbackService,
+            ReconciliationJob reconciliationJob,
+            MailGateway mailGateway,
+            OutlookDraftGateway outlookDraftGateway,
+            SubscriptionStore subscriptionStore,
+            OnlineMeetingTranscriptionEnabler transcriptionEnabler,
+            DirectoryGateway directoryGateway
+    ) {
+        this.calendarSyncService = Objects.requireNonNull(calendarSyncService, "calendarSyncService");
+        this.meetingTranscriptService = Objects.requireNonNull(meetingTranscriptService, "meetingTranscriptService");
+        this.subscriptionLifecycleService = Objects.requireNonNull(
+                subscriptionLifecycleService, "subscriptionLifecycleService");
+        this.pollingFallbackService = Objects.requireNonNull(pollingFallbackService, "pollingFallbackService");
+        this.reconciliationJob = Objects.requireNonNull(reconciliationJob, "reconciliationJob");
+        this.mailGateway = Objects.requireNonNull(mailGateway, "mailGateway");
+        this.outlookDraftGateway = Objects.requireNonNull(outlookDraftGateway, "outlookDraftGateway");
+        this.subscriptionStore = Objects.requireNonNull(subscriptionStore, "subscriptionStore");
+        this.transcriptionEnabler = Objects.requireNonNull(transcriptionEnabler, "transcriptionEnabler");
+        this.directoryGateway = Objects.requireNonNull(directoryGateway, "directoryGateway");
+    }
 
     public MicrosoftConnectionApi(
             CalendarSyncService calendarSyncService,
@@ -57,16 +85,18 @@ public final class MicrosoftConnectionApi {
             SubscriptionStore subscriptionStore,
             OnlineMeetingTranscriptionEnabler transcriptionEnabler
     ) {
-        this.calendarSyncService = Objects.requireNonNull(calendarSyncService, "calendarSyncService");
-        this.meetingTranscriptService = Objects.requireNonNull(meetingTranscriptService, "meetingTranscriptService");
-        this.subscriptionLifecycleService = Objects.requireNonNull(
-                subscriptionLifecycleService, "subscriptionLifecycleService");
-        this.pollingFallbackService = Objects.requireNonNull(pollingFallbackService, "pollingFallbackService");
-        this.reconciliationJob = Objects.requireNonNull(reconciliationJob, "reconciliationJob");
-        this.mailGateway = Objects.requireNonNull(mailGateway, "mailGateway");
-        this.outlookDraftGateway = Objects.requireNonNull(outlookDraftGateway, "outlookDraftGateway");
-        this.subscriptionStore = Objects.requireNonNull(subscriptionStore, "subscriptionStore");
-        this.transcriptionEnabler = Objects.requireNonNull(transcriptionEnabler, "transcriptionEnabler");
+        this(
+                calendarSyncService,
+                meetingTranscriptService,
+                subscriptionLifecycleService,
+                pollingFallbackService,
+                reconciliationJob,
+                mailGateway,
+                outlookDraftGateway,
+                subscriptionStore,
+                transcriptionEnabler,
+                (tenantId, objectId) -> Optional.empty()
+        );
     }
 
     public MicrosoftConnectionApi(
@@ -90,7 +120,8 @@ public final class MicrosoftConnectionApi {
                     throw new IllegalStateException("Outlook draft gateway is not configured");
                 },
                 subscriptionStore,
-                transcriptionEnabler
+                transcriptionEnabler,
+                (tenantId, objectId) -> Optional.empty()
         );
     }
 
@@ -130,6 +161,13 @@ public final class MicrosoftConnectionApi {
 
     public List<ParticipantMetadata> listParticipants(UUID tenantId, String userId, String meetingId) {
         return meetingTranscriptService.participants(tenantId, userId, meetingId);
+    }
+
+    /**
+     * Resolve Entra user mail/UPN by object id. Empty when missing or directory permission is absent.
+     */
+    public Optional<DirectoryUser> resolveDirectoryUser(UUID tenantId, String objectId) {
+        return directoryGateway.resolveUser(tenantId, objectId);
     }
 
     public TranscriptAvailability checkTranscript(UUID tenantId, String userId, String meetingId) {

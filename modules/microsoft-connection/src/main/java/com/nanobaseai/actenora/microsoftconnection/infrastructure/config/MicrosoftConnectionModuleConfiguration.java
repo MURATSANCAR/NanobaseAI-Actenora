@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackSe
 import com.nanobaseai.actenora.microsoftconnection.application.ReconciliationJob;
 import com.nanobaseai.actenora.microsoftconnection.application.SubscriptionLifecycleService;
 import com.nanobaseai.actenora.microsoftconnection.application.port.CalendarGateway;
+import com.nanobaseai.actenora.microsoftconnection.application.port.DirectoryGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.GraphTelemetry;
 import com.nanobaseai.actenora.microsoftconnection.application.port.CalendarSyncCursorStore;
 import com.nanobaseai.actenora.microsoftconnection.application.port.MailGateway;
@@ -26,6 +27,7 @@ import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.ClientSec
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.ClientSecretMicrosoftTokenProvider;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.PemCredentialsLoader;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphCalendarGateway;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphDirectoryGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphHttpClient;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphEgressPolicy;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphMailGateway;
@@ -156,6 +158,11 @@ public class MicrosoftConnectionModuleConfiguration {
     }
 
     @Bean
+    DirectoryGateway directoryGateway(GraphHttpClient http, ObjectMapper mapper) {
+        return new GraphDirectoryGateway(http, mapper);
+    }
+
+    @Bean
     TranscriptGateway transcriptGateway(GraphHttpClient http, ObjectMapper mapper) {
         return new GraphTranscriptGateway(http, mapper);
     }
@@ -271,7 +278,8 @@ public class MicrosoftConnectionModuleConfiguration {
             MailGateway mailGateway,
             OutlookDraftGateway outlookDraftGateway,
             SubscriptionStore subscriptionStore,
-            OnlineMeetingTranscriptionEnabler transcriptionEnabler
+            OnlineMeetingTranscriptionEnabler transcriptionEnabler,
+            DirectoryGateway directoryGateway
     ) {
         return new MicrosoftConnectionApi(
                 calendarSyncService,
@@ -282,7 +290,8 @@ public class MicrosoftConnectionModuleConfiguration {
                 mailGateway,
                 outlookDraftGateway,
                 subscriptionStore,
-                transcriptionEnabler
+                transcriptionEnabler,
+                directoryGateway
         );
     }
 }

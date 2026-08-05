@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.approval.api.ApprovalId;
 import com.nanobaseai.actenora.delivery.api.DeliveryApi;
 import com.nanobaseai.actenora.delivery.application.EnqueueDeliveryCommand;
 import com.nanobaseai.actenora.delivery.application.model.MeetingNoteDocument;
+import com.nanobaseai.actenora.delivery.application.model.MeetingNoteParticipant;
 import com.nanobaseai.actenora.delivery.application.port.PdfAttachmentPort;
 import com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker;
 import com.nanobaseai.actenora.delivery.domain.DeliveryIntent;
@@ -13,6 +14,7 @@ import com.nanobaseai.actenora.delivery.infrastructure.pdf.InMemoryPdfAttachment
 import com.nanobaseai.actenora.delivery.infrastructure.pdf.ObjectStoragePdfAttachmentPort;
 import com.nanobaseai.actenora.delivery.infrastructure.render.MeetingNotePdfRenderer;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
+import com.nanobaseai.actenora.meeting.api.dto.ParticipantResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ApprovedNoteFinalDeliveryPort;
@@ -89,7 +91,7 @@ public final class PlatformApprovedNoteFinalDeliveryAdapter implements ApprovedN
             ApprovalId approvalId,
             String executiveSummary
     ) {
-        boolean rendered = tryTemplateRender(tenantId, noteId, noteVersionId, executiveSummary);
+        boolean rendered = tryTemplateRender(tenantId, noteId, noteVersionId, executiveSummary, meetingOccurrenceId);
         if (!rendered) {
             fallbackBrandedPdf(tenantId, meetingOccurrenceId, noteId, noteVersionId, executiveSummary);
         }
@@ -144,39 +146,79 @@ public final class PlatformApprovedNoteFinalDeliveryAdapter implements ApprovedN
     }
 
     private String resolveOrganizerEmail(UUID meetingOccurrenceId) {
+        List<ParticipantResponse> participants = listParticipants(meetingOccurrenceId);
+        if (participants.isEmpty()) {
+            return null;
+        }
+        Optional<String> organizer = participants.stream()
+                .filter(p -> p.participantType() != null && "ORGANIZER".equalsIgnoreCase(p.participantType().name()))
+                .map(ParticipantResponse::email)
+                .filter(email -> email != null && !email.isBlank())
+                .findFirst();
+        if (organizer.isPresent()) {
+            return organizer.get();
+        }
         if (meetingApi.isEmpty()) {
             return null;
         }
         try {
             var meeting = meetingApi.get().getMeeting(meetingOccurrenceId);
-            var participants = meetingApi.get().listParticipants(meetingOccurrenceId);
             return participants.stream()
-                    .filter(p -> p.participantType() != null && "ORGANIZER".equalsIgnoreCase(p.participantType().name()))
-                    .map(p -> p.email())
+                    .filter(p -> meeting.organizerUserId() != null
+                            && p.entraUserId() != null
+                            && meeting.organizerUserId().toString().equalsIgnoreCase(p.entraUserId()))
+                    .map(ParticipantResponse::email)
                     .filter(email -> email != null && !email.isBlank())
                     .findFirst()
                     .orElseGet(() -> participants.stream()
-                            .filter(p -> meeting.organizerUserId() != null
-                                    && p.entraUserId() != null
-                                    && meeting.organizerUserId().toString().equalsIgnoreCase(p.entraUserId()))
-                            .map(p -> p.email())
+                            .map(ParticipantResponse::email)
                             .filter(email -> email != null && !email.isBlank())
                             .findFirst()
-                            .orElseGet(() -> participants.stream()
-                                    .map(p -> p.email())
-                                    .filter(email -> email != null && !email.isBlank())
-                                    .findFirst()
-                                    .orElse(null)));
+                            .orElse(null));
         } catch (RuntimeException ex) {
             return null;
         }
+    }
+
+    private List<ParticipantResponse> listParticipants(UUID meetingOccurrenceId) {
+        if (meetingApi.isEmpty()) {
+            return List.of();
+        }
+        try {
+            return meetingApi.get().listParticipants(meetingOccurrenceId);
+        } catch (RuntimeException ex) {
+            return List.of();
+        }
+    }
+
+    private List<ApprovedNoteContentJsonMapper.ParticipantRow> participantRows(UUID meetingOccurrenceId) {
+        return listParticipants(meetingOccurrenceId).stream()
+                .map(p -> new ApprovedNoteContentJsonMapper.ParticipantRow(
+                        p.displayName() == null ? "" : p.displayName(),
+                        p.email() == null ? "" : p.email(),
+                        p.participantType() == null ? "" : p.participantType().name(),
+                        p.attendanceStatus() == null ? "" : p.attendanceStatus().name()
+                ))
+                .toList();
+    }
+
+    private List<MeetingNoteParticipant> brandedParticipants(UUID meetingOccurrenceId) {
+        return listParticipants(meetingOccurrenceId).stream()
+                .map(p -> new MeetingNoteParticipant(
+                        p.displayName() == null ? "" : p.displayName(),
+                        p.email() == null ? "" : p.email(),
+                        p.participantType() == null ? "" : p.participantType().name(),
+                        p.attendanceStatus() == null ? "" : p.attendanceStatus().name()
+                ))
+                .toList();
     }
 
     private boolean tryTemplateRender(
             TenantId tenantId,
             UUID noteId,
             UUID noteVersionId,
-            String executiveSummary
+            String executiveSummary,
+            UUID meetingOccurrenceId
     ) {
         if (templateApi.isEmpty() || renderWorker.isEmpty() || renderJobs.isEmpty() || renderedDocuments.isEmpty()) {
             return false;
@@ -195,7 +237,11 @@ public final class PlatformApprovedNoteFinalDeliveryAdapter implements ApprovedN
                 .orElse(null);
         String contentJson;
         if (detail != null) {
-            contentJson = ApprovedNoteContentJsonMapper.toContentJson(detail, "Meeting " + noteId);
+            contentJson = ApprovedNoteContentJsonMapper.toContentJson(
+                    detail,
+                    "Meeting " + noteId,
+                    participantRows(meetingOccurrenceId)
+            );
         } else {
             contentJson = "{\"header\":\"\",\"executive_summary\":\""
                     + escapeJson(executiveSummary == null ? "" : executiveSummary)
@@ -233,12 +279,16 @@ public final class PlatformApprovedNoteFinalDeliveryAdapter implements ApprovedN
             UUID noteVersionId,
             String executiveSummary
     ) {
+        String title = meetingApi
+                .map(api -> api.getMeeting(meetingOccurrenceId).title())
+                .filter(t -> t != null && !t.isBlank())
+                .orElse("Meeting " + meetingOccurrenceId);
         MeetingNoteDocument doc = new MeetingNoteDocument(
-                "Meeting " + meetingOccurrenceId,
+                title,
                 "",
                 "",
                 "",
-                List.of(),
+                brandedParticipants(meetingOccurrenceId),
                 executiveSummary == null ? "" : executiveSummary,
                 List.of(),
                 List.of(),

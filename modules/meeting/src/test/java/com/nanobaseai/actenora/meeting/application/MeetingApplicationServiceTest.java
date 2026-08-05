@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.meeting.application;
 
+import com.nanobaseai.actenora.meeting.api.dto.ApplyAttendanceRequest;
 import com.nanobaseai.actenora.meeting.api.dto.CreateBusinessContextRequest;
 import com.nanobaseai.actenora.meeting.api.dto.CreateMeetingRequest;
 import com.nanobaseai.actenora.meeting.api.dto.CursorPageRequest;
@@ -319,6 +320,126 @@ class MeetingApplicationServiceTest {
 
         MeetingResponse advanced = api.advanceMeetingLifecycle(meeting.id(), false);
         assertEquals(MeetingOccurrenceStatus.SCHEDULED, advanced.status());
+    }
+
+    @Test
+    void applyAttendanceMatchesByEmailBackfillsEntraOidAndMarksMissingAbsent() {
+        UUID contextId = createContext().id();
+        Instant start = Instant.parse("2026-08-01T09:00:00Z");
+        String aliceOid = "11111111-1111-1111-1111-111111111111";
+        MeetingResponse meeting = api.createMeeting(new CreateMeetingRequest(
+                contextId, null, null, "g-att", "i-att", start, null, null, null,
+                "Attendance", null, start, start.plusSeconds(3600), null,
+                List.of(
+                        new CreateMeetingRequest.ParticipantInput(
+                                "alice@example.com", "Alice", "alice@example.com", "REQUIRED", false
+                        ),
+                        new CreateMeetingRequest.ParticipantInput(
+                                "bob@example.com", "Bob", "bob@example.com", "OPTIONAL", false
+                        )
+                )
+        ));
+
+        Instant joined = Instant.parse("2026-08-01T09:05:00Z");
+        List<ParticipantResponse> synced = api.applyAttendance(meeting.id(), new ApplyAttendanceRequest(
+                List.of(new ApplyAttendanceRequest.AttendanceRecord(
+                        "alice@example.com",
+                        aliceOid,
+                        "Alice",
+                        "attendee",
+                        joined,
+                        joined.plusSeconds(600)
+                )),
+                true
+        ));
+
+        ParticipantResponse alice = synced.stream()
+                .filter(p -> "alice@example.com".equals(p.email()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(AttendanceStatus.JOINED, alice.attendanceStatus());
+        assertEquals(aliceOid, alice.entraUserId());
+
+        ParticipantResponse bob = synced.stream()
+                .filter(p -> "bob@example.com".equals(p.email()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(AttendanceStatus.ABSENT, bob.attendanceStatus());
+    }
+
+    @Test
+    void applyAttendanceWithoutMarkMissingPreservesRsvp() {
+        UUID contextId = createContext().id();
+        Instant start = Instant.parse("2026-08-02T09:00:00Z");
+        MeetingResponse meeting = api.createMeeting(new CreateMeetingRequest(
+                contextId, null, null, "g-att2", "i-att2", start, null, null, null,
+                "Attendance soft", null, start, start.plusSeconds(3600), null,
+                List.of()
+        ));
+        api.syncInvitees(meeting.id(), new SyncInviteesRequest(List.of(
+                new CreateMeetingRequest.ParticipantInput(
+                        "org@example.com", "Organizer", "org@example.com", "organizer|accepted", false
+                ),
+                new CreateMeetingRequest.ParticipantInput(
+                        "carol@example.com", "Carol", "carol@example.com", "required|accepted", false
+                )
+        )));
+
+        List<ParticipantResponse> synced = api.applyAttendance(meeting.id(), new ApplyAttendanceRequest(
+                List.of(new ApplyAttendanceRequest.AttendanceRecord(
+                        "org@example.com",
+                        "22222222-2222-2222-2222-222222222222",
+                        "Organizer",
+                        "organizer",
+                        start.plusSeconds(60),
+                        start.plusSeconds(600)
+                )),
+                false
+        ));
+
+        ParticipantResponse carol = synced.stream()
+                .filter(p -> "carol@example.com".equals(p.email()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(AttendanceStatus.ACCEPTED, carol.attendanceStatus());
+        ParticipantResponse org = synced.stream()
+                .filter(p -> "org@example.com".equals(p.email()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(AttendanceStatus.JOINED, org.attendanceStatus());
+    }
+
+    @Test
+    void applyAttendanceMatchesOidOnlyRecordToInviteeByDisplayNameThenBackfills() {
+        UUID contextId = createContext().id();
+        Instant start = Instant.parse("2026-08-03T09:00:00Z");
+        String oid = "33333333-3333-3333-3333-333333333333";
+        MeetingResponse meeting = api.createMeeting(new CreateMeetingRequest(
+                contextId, null, null, "g-att3", "i-att3", start, null, null, null,
+                "OID match", null, start, start.plusSeconds(3600), null,
+                List.of(new CreateMeetingRequest.ParticipantInput(
+                        "dana@example.com", "Dana Unique", "dana@example.com", "REQUIRED", false
+                ))
+        ));
+
+        List<ParticipantResponse> synced = api.applyAttendance(meeting.id(), new ApplyAttendanceRequest(
+                List.of(new ApplyAttendanceRequest.AttendanceRecord(
+                        null,
+                        oid,
+                        "Dana Unique",
+                        "attendee",
+                        start.plusSeconds(30),
+                        start.plusSeconds(900)
+                )),
+                true
+        ));
+
+        ParticipantResponse dana = synced.stream()
+                .filter(p -> "dana@example.com".equals(p.email()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(AttendanceStatus.JOINED, dana.attendanceStatus());
+        assertEquals(oid, dana.entraUserId());
     }
 
     @Test

@@ -12,7 +12,7 @@ public final class MeetingParticipant {
     private final UUID id;
     private final TenantId tenantId;
     private final UUID meetingOccurrenceId;
-    private final String entraUserId;
+    private String entraUserId;
     private String displayName;
     private String email;
     private ParticipantType participantType;
@@ -174,6 +174,28 @@ public final class MeetingParticipant {
             return;
         }
         this.participantType = type;
+    }
+
+    /**
+     * Replace a placeholder entra id (often calendar email) with a real Entra object id from Teams attendance.
+     * No-op when the incoming id is blank or the existing value is already that GUID.
+     */
+    public void linkEntraUserId(String objectId) {
+        if (objectId == null || objectId.isBlank()) {
+            return;
+        }
+        String trimmed = objectId.trim();
+        if (!looksLikeGuid(trimmed)) {
+            return;
+        }
+        if (trimmed.equalsIgnoreCase(this.entraUserId)) {
+            return;
+        }
+        this.entraUserId = trimmed;
+    }
+
+    private static boolean looksLikeGuid(String value) {
+        return value.matches("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
     }
 
     public UUID id() { return id; }

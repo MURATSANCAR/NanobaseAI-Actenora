@@ -11,7 +11,7 @@ public record MeetingNoteDocument(
         String meetingDate,
         String duration,
         String organizer,
-        List<String> participants,
+        List<MeetingNoteParticipant> participants,
         String executiveSummary,
         List<String> decisions,
         List<String> actions,
@@ -32,9 +32,9 @@ public record MeetingNoteDocument(
                 "45 dk",
                 "Murat Sancar",
                 List.of(
-                        "Murat Sancar (Nanobase)",
-                        "Ayşe Yılmaz (Nanobase)",
-                        "John Smith (Acme Corp — dış katılımcı)"
+                        new MeetingNoteParticipant("Murat Sancar", "murat@nanobase.ai", "ORGANIZER", "JOINED"),
+                        new MeetingNoteParticipant("Ayşe Yılmaz", "ayse@nanobase.ai", "REQUIRED", "JOINED"),
+                        new MeetingNoteParticipant("John Smith", "john@acme.example", "OPTIONAL", "ABSENT")
                 ),
                 """
                 Ekip, Actenora Graph entegrasyonunun canlı ortamda devreye alındığını doğruladı. \

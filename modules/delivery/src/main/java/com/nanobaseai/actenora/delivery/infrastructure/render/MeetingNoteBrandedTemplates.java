@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.delivery.infrastructure.render;
 import com.nanobaseai.actenora.delivery.application.model.DraftMinutesReadyMailBody;
 import com.nanobaseai.actenora.delivery.application.model.MeetingEndedMailBody;
 import com.nanobaseai.actenora.delivery.application.model.MeetingNoteDocument;
+import com.nanobaseai.actenora.delivery.application.model.MeetingNoteParticipant;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -473,22 +474,30 @@ public final class MeetingNoteBrandedTemplates {
                 """.formatted(escape(title), lis);
     }
 
-    private static String pdfParticipants(List<String> participants) {
+    private static String pdfParticipants(List<MeetingNoteParticipant> participants) {
         if (participants == null || participants.isEmpty()) {
             return "";
         }
         String rows = participants.stream()
-                .map(p -> "<tr><td>" + escape(p) + "</td><td>Katılımcı</td></tr>")
+                .map(p -> "<tr><td>" + escape(p.name())
+                        + (p.email().isBlank() ? "" : "<div style=\"font-size:8pt;color:#64748b;\">" + escape(p.email()) + "</div>")
+                        + "</td><td>" + escape(blankOr(p.role(), "Katılımcı"))
+                        + "</td><td>" + escape(blankOr(p.attendance(), "—"))
+                        + "</td></tr>")
                 .collect(Collectors.joining());
         return """
                 <div class="section">
                   <div class="section-title">Katılımcılar</div>
                   <table class="participants">
-                    <thead><tr><th>Ad</th><th>Rol</th></tr></thead>
+                    <thead><tr><th>Ad</th><th>Rol</th><th>Katılım</th></tr></thead>
                     <tbody>%s</tbody>
                   </table>
                 </div>
                 """.formatted(rows);
+    }
+
+    private static String blankOr(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private static String escape(String value) {

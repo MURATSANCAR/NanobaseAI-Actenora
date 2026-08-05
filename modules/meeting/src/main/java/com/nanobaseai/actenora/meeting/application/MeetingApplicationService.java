@@ -396,6 +396,7 @@ public final class MeetingApplicationService {
             if (match != null) {
                 match.markJoined(record.joinedAt(), record.leftAt());
                 promoteIfOrganizerRole(match, record.role());
+                match.linkEntraUserId(record.entraUserId());
                 participantRepository.save(match);
                 matchedIds.add(match.id());
             } else if (normalizeEmail(record.email()) != null) {
@@ -429,15 +430,24 @@ public final class MeetingApplicationService {
         String email = normalizeEmail(record.email());
         String entra = normalizeId(record.entraUserId());
         String display = normalizeDisplay(record.displayName());
-        for (MeetingParticipant participant : existing) {
-            if (email != null && email.equals(normalizeEmail(participant.email()))) {
-                return participant;
-            }
-            if (entra != null && entra.equalsIgnoreCase(normalizeId(participant.entraUserId()))) {
-                return participant;
+
+        // 1) Prefer email — calendar invitees are keyed by mail.
+        if (email != null) {
+            for (MeetingParticipant participant : existing) {
+                if (email.equals(normalizeEmail(participant.email()))) {
+                    return participant;
+                }
             }
         }
-        // Organizer role often arrives without email; match the single ORGANIZER row by name/role.
+        // 2) Real Entra object id (after prior backfill, or when calendar stored OID).
+        if (entra != null) {
+            for (MeetingParticipant participant : existing) {
+                if (entra.equalsIgnoreCase(normalizeId(participant.entraUserId()))) {
+                    return participant;
+                }
+            }
+        }
+        // 3) Organizer role often arrives without email; match the single ORGANIZER row by role/name.
         if (isOrganizerRole(record.role())) {
             List<MeetingParticipant> organizers = existing.stream()
                     .filter(p -> p.participantType() == ParticipantType.ORGANIZER)
@@ -453,12 +463,13 @@ public final class MeetingApplicationService {
                 }
             }
         }
+        // 4) Unique display name only — ambiguous names return null (do not guess).
         if (display != null) {
             MeetingParticipant byName = null;
             for (MeetingParticipant participant : existing) {
                 if (display.equals(normalizeDisplay(participant.displayName()))) {
                     if (byName != null) {
-                        return null; // ambiguous
+                        return null;
                     }
                     byName = participant;
                 }

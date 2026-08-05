@@ -48,6 +48,7 @@ public final class JdbcMeetingParticipantRepository implements MeetingParticipan
                     participant_type, attendance_status, joined_at, left_at, is_external
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
+                    entra_user_id = EXCLUDED.entra_user_id,
                     display_name = EXCLUDED.display_name,
                     email = EXCLUDED.email,
                     participant_type = EXCLUDED.participant_type,
