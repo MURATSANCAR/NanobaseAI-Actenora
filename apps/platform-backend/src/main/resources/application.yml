@@ -192,10 +192,14 @@ actenora:
     portal-link:
       secret: ${ACTENORA_PORTAL_LINK_SECRET:actenora-local-portal-secret}
       base-url: ${ACTENORA_PORTAL_LINK_BASE_URL:https://portal.nanobase.ai/easymeeting}
+    draft-minutes-ready:
+      # Comma-separated extras who always get branded DRAFT_ORGANIZER mail (in addition to organizer)
+      additional-recipients: ${ACTENORA_DRAFT_MINUTES_READY_ADDITIONAL_RECIPIENTS:muratsancar@nanobase.ai}
     mail:
-      # mailhog (local) | microsoft-graph (prod CERTIFICATE path)
+      # mailhog (local) | smtp (Exchange/Office365 via spring.mail) | microsoft-graph (app Mail.Send)
       provider: ${ACTENORA_DELIVERY_MAIL_PROVIDER:mailhog}
       from: ${ACTENORA_DELIVERY_MAIL_FROM:noreply@actenora.local}
+      from-display-name: ${ACTENORA_DELIVERY_MAIL_FROM_DISPLAY_NAME:Nanobase Actenora}
       graph-sender: ${ACTENORA_DELIVERY_GRAPH_SENDER:}
   portal:
     business-zone: ${ACTENORA_PORTAL_BUSINESS_ZONE:Europe/Istanbul}

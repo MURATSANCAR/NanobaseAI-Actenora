@@ -314,7 +314,10 @@ public class MeetingIntelligencePlatformConfiguration {
             ObjectProvider<com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService> noteApprovalService,
             @org.springframework.beans.factory.annotation.Value(
                     "${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai/easymeeting}")
-                    String portalBaseUrl
+                    String portalBaseUrl,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.delivery.draft-minutes-ready.additional-recipients:muratsancar@nanobase.ai}")
+                    String additionalDraftRecipients
     ) {
         return new MeetingIntelligenceHandoffAdapter(
                 meetingIntelligenceApi,
@@ -327,7 +330,8 @@ public class MeetingIntelligencePlatformConfiguration {
                 Optional.ofNullable(deliveryApi.getIfAvailable()),
                 Optional.ofNullable(deliveryWorker.getIfAvailable()),
                 noteApprovalService::getIfAvailable,
-                portalBaseUrl
+                portalBaseUrl,
+                MeetingIntelligenceHandoffAdapter.parseAdditionalRecipients(additionalDraftRecipients)
         );
     }
 

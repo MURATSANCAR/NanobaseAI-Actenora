@@ -31,7 +31,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -64,6 +66,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final Optional<DeliveryWorker> deliveryWorker;
     private final java.util.function.Supplier<MeetingNoteApprovalService> noteApprovalService;
     private final String portalBaseUrl;
+    private final List<String> additionalDraftRecipients;
 
     private static final DateTimeFormatter WHEN_FMT = DateTimeFormatter
             .ofPattern("d MMMM yyyy · HH:mm", Locale.forLanguageTag("tr"))
@@ -86,7 +89,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 Optional.empty(),
                 Optional.empty(),
                 () -> null,
-                null
+                null,
+                List.of()
         );
     }
 
@@ -112,7 +116,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 deliveryApi,
                 deliveryWorker,
                 () -> null,
-                null
+                null,
+                List.of()
         );
     }
 
@@ -139,7 +144,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 deliveryApi,
                 deliveryWorker,
                 () -> null,
-                portalBaseUrl
+                portalBaseUrl,
+                List.of()
         );
     }
 
@@ -156,6 +162,36 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             java.util.function.Supplier<MeetingNoteApprovalService> noteApprovalService,
             String portalBaseUrl
     ) {
+        this(
+                meetingIntelligenceApi,
+                evidenceValidationApi,
+                segmentSource,
+                auditPort,
+                meetingApi,
+                noteArtifactStorage,
+                notificationPublisher,
+                deliveryApi,
+                deliveryWorker,
+                noteApprovalService,
+                portalBaseUrl,
+                List.of()
+        );
+    }
+
+    public MeetingIntelligenceHandoffAdapter(
+            MeetingIntelligenceApi meetingIntelligenceApi,
+            EvidenceValidationApi evidenceValidationApi,
+            TranscriptSegmentSourcePort segmentSource,
+            MeetingIntelligenceAuditPort auditPort,
+            Optional<MeetingApi> meetingApi,
+            NoteArtifactStoragePort noteArtifactStorage,
+            Optional<PlatformUserNotificationPublisher> notificationPublisher,
+            Optional<DeliveryApi> deliveryApi,
+            Optional<DeliveryWorker> deliveryWorker,
+            java.util.function.Supplier<MeetingNoteApprovalService> noteApprovalService,
+            String portalBaseUrl,
+            List<String> additionalDraftRecipients
+    ) {
         this.meetingIntelligenceApi = Objects.requireNonNull(meetingIntelligenceApi, "meetingIntelligenceApi");
         this.evidenceValidationApi = Objects.requireNonNull(evidenceValidationApi, "evidenceValidationApi");
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
@@ -169,6 +205,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         this.portalBaseUrl = portalBaseUrl == null || portalBaseUrl.isBlank()
                 ? "https://portal.nanobase.ai/easymeeting"
                 : portalBaseUrl.trim();
+        this.additionalDraftRecipients = normalizeEmails(additionalDraftRecipients);
     }
 
     @Override
@@ -342,7 +379,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                                     .filter(email -> email != null && !email.isBlank())
                                     .findFirst()
                                     .orElse(null)));
-            if (organizerEmail == null || organizerEmail.isBlank()) {
+            List<String> recipients = draftMailRecipients(organizerEmail);
+            if (recipients.isEmpty()) {
                 return;
             }
             String summary = note.currentVersion() == null ? "" : note.currentVersion().executiveSummary();
@@ -359,14 +397,18 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                     command.meetingOccurrenceId(),
                     summary == null ? "" : summary
             );
-            deliveryApi.get().enqueueDraftOrganizerNotification(
-                    command.tenantId(),
-                    noteVersionId,
-                    organizerEmail,
-                    organizerEmail,
-                    "Tutanak hazır · Onayınızı bekliyor — " + title,
-                    body.encode()
-            );
+            String subject = "Tutanak hazır · Onayınızı bekliyor — " + title;
+            String encoded = body.encode();
+            for (String recipient : recipients) {
+                deliveryApi.get().enqueueDraftOrganizerNotification(
+                        command.tenantId(),
+                        noteVersionId,
+                        recipient,
+                        recipient,
+                        subject,
+                        encoded
+                );
+            }
             deliveryWorker.ifPresent(worker -> {
                 try {
                     worker.pollOnce();
@@ -383,6 +425,57 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                     ex.toString()
             );
         }
+    }
+
+    /** Organizer (when known) plus configured extras; case-insensitive de-dupe. */
+    List<String> draftMailRecipients(String organizerEmail) {
+        return mergeDraftRecipients(organizerEmail, additionalDraftRecipients);
+    }
+
+    static List<String> mergeDraftRecipients(String organizerEmail, List<String> additional) {
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+        List<String> emails = new ArrayList<>();
+        addUniqueEmail(emails, seen, organizerEmail);
+        if (additional != null) {
+            for (String extra : additional) {
+                addUniqueEmail(emails, seen, extra);
+            }
+        }
+        return List.copyOf(emails);
+    }
+
+    private static void addUniqueEmail(List<String> emails, LinkedHashSet<String> seen, String email) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        String trimmed = email.trim();
+        if (seen.add(trimmed.toLowerCase(Locale.ROOT))) {
+            emails.add(trimmed);
+        }
+    }
+
+    static List<String> normalizeEmails(List<String> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> seen = new LinkedHashSet<>();
+        List<String> emails = new ArrayList<>();
+        for (String entry : raw) {
+            if (entry == null || entry.isBlank()) {
+                continue;
+            }
+            for (String part : entry.split(",")) {
+                addUniqueEmail(emails, seen, part);
+            }
+        }
+        return List.copyOf(emails);
+    }
+
+    static List<String> parseAdditionalRecipients(String csv) {
+        if (csv == null || csv.isBlank()) {
+            return List.of();
+        }
+        return normalizeEmails(List.of(csv));
     }
 
     private static String formatWhen(MeetingResponse meeting) {
