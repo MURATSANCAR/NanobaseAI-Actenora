@@ -1,0 +1,84 @@
+{
+  "meetingOccurrenceId": "72324f9c-6074-4809-80a0-089b1c3817a1",
+  "jobId": "fb466432-4d81-42cc-82be-eb9417ca8435",
+  "noteId": "e1eb58b1-2c92-4a97-ad82-eac93aacdc87",
+  "decisions": [
+    {
+      "text": "Paralel refresh çağrıları tek promise üzerinde birleştirilecek."
+    },
+    {
+      "text": "Yeni gönderimlerde UTF-8 başlığı zorunlu olacak."
+    }
+  ],
+  "actionItems": [
+    {
+      "text": "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek.",
+      "owner": "Burak",
+      "dueAt": null
+    },
+    {
+      "text": "Düzeltmeyi yapmak.",
+      "owner": "Selin",
+      "dueAt": "2026-08-05 13:00:00+00"
+    },
+    {
+      "text": "Correlation ID eklemek.",
+      "owner": "Can",
+      "dueAt": null
+    },
+    {
+      "text": "Yeni gönderimlerde UTF-8 başlığını düzeltecek.",
+      "owner": "Can",
+      "dueAt": null
+    },
+    {
+      "text": "Outlook ve Apple Mail regresyonunu tamamlamak.",
+      "owner": "Burak",
+      "dueAt": "2026-08-06 09:00:00+00"
+    },
+    {
+      "text": "Notlarda owner veya tarih yoksa otomatik görev oluşturulmamasını özellikle kontrol edeceğim.",
+      "owner": "Burak",
+      "dueAt": null
+    }
+  ],
+  "risks": [
+    {
+      "text": "Bekleyen isteklerin kilitlenmesi."
+    },
+    {
+      "text": "Eski şablonların geriye dönük etkilenmesi."
+    }
+  ],
+  "proposals": [
+    {
+      "text": "Bu başlığın kabul kriterini kullanıcı diliyle yazmayı öneriyorum: beklenen davranış, hata mesajı ve tamamlanma süresi aynı maddede görünmeli."
+    }
+  ],
+  "openQuestions": [
+    {
+      "text": "Mobil istemcide aynı yarış koşulu var mı?"
+    },
+    {
+      "text": "Gmail test matrisi ayrıca koşulmalı mı?"
+    },
+    {
+      "text": "Değişiklik açılırsa ilk otuz dakikada hangi alarmı ve hangi dashboard'u izleyeceğiz?"
+    },
+    {
+      "text": "Müşteri operasyonu açısından kesinti veya gecikme olduğunda ilk mesajı kim gönderecek?"
+    },
+    {
+      "text": "Bu işi mevcut sprintte alırsak hangi teslimat kayıyor ve bağımlılık gecikirse ikinci planımız ne oluyor?"
+    }
+  ],
+  "importantFacts": [
+    {
+      "text": "Kırk tekrardan üçünde 401."
+    },
+    {
+      "text": "Beş istemcinin ikisinde konu satırı."
+    }
+  ],
+  "commitments": []
+}
