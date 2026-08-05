@@ -1,9 +1,13 @@
 package com.nanobaseai.actenora.security.delivery;
 
+import com.nanobaseai.actenora.delivery.application.model.DraftMinutesReadyMailBody;
+import com.nanobaseai.actenora.delivery.application.model.MeetingEndedMailBody;
 import com.nanobaseai.actenora.delivery.application.port.DeliveryMailProvider;
+import com.nanobaseai.actenora.delivery.domain.DeliveryIntent;
 import com.nanobaseai.actenora.delivery.domain.DeliveryPolicySnapshot;
 import com.nanobaseai.actenora.delivery.domain.ProviderMessage;
 import com.nanobaseai.actenora.delivery.infrastructure.mail.MicrosoftGraphMailProvider;
+import com.nanobaseai.actenora.delivery.infrastructure.render.MeetingNoteBrandedTemplates;
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.model.MailSendRequest;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphApiException;
@@ -74,6 +78,8 @@ public final class MicrosoftGraphDeliveryBridge implements DeliveryMailProvider 
     ) {
         var request = command.request();
         String bodyHtml = renderHtml(
+                request.intent(),
+                request.subject(),
                 request.bodyText(),
                 command.signedPortalUrl().orElse(null)
         );
@@ -94,25 +100,14 @@ public final class MicrosoftGraphDeliveryBridge implements DeliveryMailProvider 
         );
     }
 
-    private static String renderHtml(String bodyText, String portalUrl) {
-        StringBuilder html = new StringBuilder("<div><p>")
-                .append(escape(bodyText).replace("\n", "<br>"))
-                .append("</p>");
-        if (portalUrl != null && !portalUrl.isBlank()) {
-            String safeUrl = escape(portalUrl);
-            html.append("<p><a href=\"").append(safeUrl).append("\">")
-                    .append(safeUrl)
-                    .append("</a></p>");
+    private static String renderHtml(String intent, String subject, String bodyText, String portalUrl) {
+        if (DeliveryIntent.MEETING_ENDED.equals(intent)) {
+            return MeetingNoteBrandedTemplates.meetingEndedEmailHtml(MeetingEndedMailBody.decode(bodyText));
         }
-        return html.append("</div>").toString();
-    }
-
-    private static String escape(String value) {
-        String text = value == null ? "" : value;
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+        if (DeliveryIntent.DRAFT_ORGANIZER.equals(intent)) {
+            return MeetingNoteBrandedTemplates.draftMinutesReadyEmailHtml(
+                    DraftMinutesReadyMailBody.decode(bodyText));
+        }
+        return MeetingNoteBrandedTemplates.emailHtmlFromPlain(subject, bodyText, portalUrl);
     }
 }
