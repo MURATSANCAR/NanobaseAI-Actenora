@@ -1,0 +1,88 @@
+{
+  "meetingOccurrenceId": "6a625a3b-d71a-4bd6-9390-6c6b72f86e7f",
+  "jobId": "a32a4f8e-fcc1-4ae9-990c-f5bb2ee58d10",
+  "noteId": "2797a8e3-ce3e-4257-8a92-37285b86b109",
+  "decisions": [
+    {
+      "text": "Paralel refresh çağrıları frontend tarafında tek promise üzerinde birleştirilecek."
+    },
+    {
+      "text": "Yeni gönderimlerde UTF-8 başlığı zorunlu olacak."
+    }
+  ],
+  "actionItems": [
+    {
+      "text": "Test planına mutlu yol dışında timeout, retry, yetkisiz erişim ve yarıda kalan işlem senaryolarını eklemek.",
+      "owner": "Burak",
+      "dueAt": null
+    },
+    {
+      "text": "Bekleyen isteklerin kilitlenmesi ihtimalini koruma testi yapmak.",
+      "owner": "Burak",
+      "dueAt": null
+    },
+    {
+      "text": "Paralel refresh çağrıları frontend tarafında tek promise üzerinde birleştirilecek düzeltmesini uygulamak.",
+      "owner": "Selin",
+      "dueAt": "2026-08-05 13:00:00+00"
+    },
+    {
+      "text": "Correlation ID ekleyecek.",
+      "owner": "Can",
+      "dueAt": null
+    },
+    {
+      "text": "Eski şablonların geriye dönük etkilenmesi ihtimalini koruma testi yapmak.",
+      "owner": "Burak",
+      "dueAt": null
+    },
+    {
+      "text": "Yeni gönderimlerde UTF-8 başlığını düzeltecek.",
+      "owner": "Can",
+      "dueAt": null
+    },
+    {
+      "text": "Outlook ve Apple Mail regresyon testlerini tamamlayacak.",
+      "owner": "Burak",
+      "dueAt": "2026-08-06 09:00:00+00"
+    },
+    {
+      "text": "Notlarda owner veya tarih yoksa otomatik görev oluşturulmamasını özellikle kontrol edeceğim.",
+      "owner": "Burak",
+      "dueAt": null
+    }
+  ],
+  "risks": [
+    {
+      "text": "Bekleyen isteklerin kilitlenmesi."
+    },
+    {
+      "text": "Eski şablonların geriye dönük etkilenmesi."
+    }
+  ],
+  "proposals": [
+    {
+      "text": "Bu başlığın kabul kriterini kullanıcı diliyle yazmayı öneriyorum: beklenen davranış, hata mesajı ve tamamlanma süresi aynı maddede görünmeli."
+    }
+  ],
+  "openQuestions": [
+    {
+      "text": "Mobil istemcide aynı yarış koşulu var mı?"
+    },
+    {
+      "text": "Gmail test matrisi ayrıca koşulmalı mı?"
+    }
+  ],
+  "importantFacts": [
+    {
+      "text": "Staging'de access token süresi dolunca aynı anda iki refresh isteği oluşuyor."
+    },
+    {
+      "text": "Kırk tekrardan üçünde 401 görüldü."
+    },
+    {
+      "text": "Beş istemcinin ikisinde konu satırı hatalı."
+    }
+  ],
+  "commitments": []
+}

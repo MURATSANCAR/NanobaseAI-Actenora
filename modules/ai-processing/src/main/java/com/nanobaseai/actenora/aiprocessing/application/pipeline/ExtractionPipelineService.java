@@ -3,6 +3,7 @@ package com.nanobaseai.actenora.aiprocessing.application.pipeline;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.nanobaseai.actenora.aiprocessing.application.port.PipelineQualityMetricsPort;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.MeasuredObservationFactSeeder;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.OpenQuestionCueSeeder;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction.ProposalCuePostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter.CrossTypeMeetingItemScrubber;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostProcessingPipeline;
@@ -314,6 +315,7 @@ public final class ExtractionPipelineService {
 
             ExtractionBundle merged = merger.merge(perChunk);
             merged = new MeasuredObservationFactSeeder().seed(merged, normalized);
+            merged = new OpenQuestionCueSeeder().seed(merged, normalized);
             merged = ProposalCuePostProcessor.productionDefaults().process(merged, normalized);
             merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(merged);
             merged = new CrossTypeConsistencyAuditor().auditBundle(merged);
