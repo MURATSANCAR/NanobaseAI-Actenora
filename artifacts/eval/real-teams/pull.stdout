@@ -1,4 +1,4 @@
-pull-watch start 2026-08-05T19:27:16Z
-19:27:18 ---- wait YZ ----
-  19:26:31 job=fcdb4ab4-ba85-452a-9fda-8d38912b86a8 status=QUEUED
-  19:27:16 job=fcdb4ab4-ba85-452a-9fda-8d38912b86a8 status=RUNNING
+pull-watch start 2026-08-05T23:16:58Z
+23:17:00 SyntaxError: f-string: expecting '=', or '!', or ':', or '}'
+==== YZ-only finish waiter 2026-08-05T23:16:43Z YZ_JOB=a45596be-9e87-4677-b704-99bd94a740ed ====
+  23:16:44 job=a45596be-9e87-4677-b704-99bd94a740ed status=QUEUED

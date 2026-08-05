@@ -1,0 +1,365 @@
+{
+  "meetingOccurrenceId": "ebedbb07-bc59-400c-8b47-f9f6f233ca63",
+  "jobId": "2a7507e4-c183-42d6-8b01-92f5fdf5bfe0",
+  "noteId": "edc787e9-b4a3-4795-954a-2648e24e9031",
+  "noteVersionId": "8353f276-1f1d-498f-b3bf-be342c306dc9",
+  "decisions": [
+    {
+      "text": "Corbanking süreci için Simple çözümünün seçilmesi.",
+      "status": "DECIDED",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "127f7c98-2cb7-48ae-94e8-49a23dc71203",
+        "17bc7245-909f-41af-8f4a-3a13e1aad7a0"
+      ]
+    },
+    {
+      "text": "Yapay zeka entegrasyon çalışmaları eylül ayından sonra başlatılacaktır.",
+      "status": null,
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "d795bdcc-ffa2-4c2d-b55c-cb85b87308c9",
+        "f15e2d52-6526-43fc-8ae2-126057266726"
+      ]
+    }
+  ],
+  "actionItems": [
+    {
+      "text": "GSM operatörü tarafında çalışan stabil uçtan uca akışı göstermek için süreci tamamlamak.",
+      "dueAt": null,
+      "owner": null,
+      "dueDate": null,
+      "confidence": 0.85,
+      "relativeDate": null,
+      "evidenceSegmentIds": [
+        "c7d6727e-015a-4495-bef4-4a19ea64bd66"
+      ]
+    },
+    {
+      "text": "Eylül ayında altyapı, Fırat sistemi ve çözümler hakkında toplantı organize etmek.",
+      "dueAt": null,
+      "owner": null,
+      "dueDate": null,
+      "confidence": 0.9,
+      "relativeDate": null,
+      "evidenceSegmentIds": [
+        "4c62ddc7-45df-4b21-8787-9d5f630519b5",
+        "4522b4e3-41ba-4ae9-9fe5-a14077246f9e"
+      ]
+    },
+    {
+      "text": "Gökay ile bilgi güvenliği konusuna ilişkin toplantı koordine etmek.",
+      "dueAt": null,
+      "owner": null,
+      "dueDate": null,
+      "confidence": 0.9,
+      "relativeDate": null,
+      "evidenceSegmentIds": [
+        "cfc50763-ae90-46f6-beb0-2fae2e69f185"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "text": "Katılımcıların teknik bağlantı sorunları nedeniyle toplantının başında gecikmeli katılması ve ses/görüntü senkronizasyonunda aksaklıklar yaşanması.",
+      "confidence": 0.8,
+      "evidenceSegmentIds": [
+        "1fe0c0eb-13b5-44cd-9c5d-95dc08cedc96",
+        "367a64b7-8882-4ed6-b2e3-6f620a492e77",
+        "f8f1f99b-ab0e-4c27-aa2e-8d9cd5d2e05b"
+      ]
+    },
+    {
+      "text": "Yurt dışı sunuculara veri çıkışı nedeniyle BDDK mevzuatına aykırılık riski (Mevcut PaaS/Chatbot çözümleri için)",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "64706c14-9648-41b0-ba6c-927e21ba2100",
+        "38027b77-ff5d-4b81-a534-a45b964d52b3"
+      ]
+    },
+    {
+      "text": "Yapay zeka modellerinin halisünasyon (yanlış bilgi üretme) riski ve buna bağlı olarak müşteri kredilerinin yanlış durdurulması gibi operasyonel hatalar",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "795e34ad-ca4e-411c-b84b-acc5c9cdbeda",
+        "1006ffa9-36f7-4084-9a32-eff8497ff844",
+        "116c7209-f2ff-4ed3-bdb7-7bd400524362"
+      ]
+    }
+  ],
+  "proposals": [],
+  "openQuestions": [
+    {
+      "text": "Müşteri tarafında Nano beyin kurucusu dahil katılımcı listesi netleşti mi?",
+      "confidence": 0.9,
+      "evidenceSegmentIds": [
+        "aa27bb74-2a59-408c-a9ab-eb0c578bd31f"
+      ]
+    },
+    {
+      "text": "Mehmet bey ve Gökhan bey'in toplantıya tam katılım süresi ve teknik altyapı durumu netleşti mi?",
+      "confidence": 0.85,
+      "evidenceSegmentIds": [
+        "3066d388-cdcc-4208-9900-436bf520edc2",
+        "7cd61883-c9d0-44cc-8388-c29d4ad9155d"
+      ]
+    },
+    {
+      "text": "Katılım bankacılığı sürecinde Arcate ve Boğa ile birlikte değerlendirilen diğer alternatiflerin detaylı karşılaştırması veya neden elendiği.",
+      "confidence": 0.85,
+      "evidenceSegmentIds": [
+        "127f7c98-2cb7-48ae-94e8-49a23dc71203"
+      ]
+    },
+    {
+      "text": "Türkiye'de fail-active (aktif-aktif) olarak çalışan, öğrenen yapay zeka destekli chatbot kullanan bir banka var mı?",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "aee5a963-0a10-446e-8e0d-31632e396e41",
+        "897099ec-f477-4faa-8ef7-51cd1f86b4b0"
+      ]
+    },
+    {
+      "text": "Mevcut durumda müşteri tarafından akış veya tasarım gelmediği için ekip stok durumda bekliyor; bu akışın ne zaman tamamlanacağı ve projenin zamanlaması nedir?",
+      "confidence": 0.9,
+      "evidenceSegmentIds": [
+        "418058e5-c423-48f2-8214-228b6ca739eb",
+        "dfaf48ff-ec6d-456c-9429-22a6ef2dd538"
+      ]
+    },
+    {
+      "text": "Bankacılık tarafındaki 12 konuyla ilgili detaylar ve Gökhan Bey ile Ali Bey'in bu teknik/altyapı tartışmalarına dahil olup olmayacağı netleşmemiştir.",
+      "confidence": 0.9,
+      "evidenceSegmentIds": [
+        "0c85005d-49f2-4cb0-a4f5-5107fa38d28a",
+        "ea18f719-300f-42a1-83bd-284716dacbed"
+      ]
+    },
+    {
+      "text": "Yapay zeka çözümlerinin maliyet ve bütçelendirme detayları henüz netleşmemiştir.",
+      "confidence": 0.9,
+      "evidenceSegmentIds": [
+        "113735fc-7d3c-47b8-9682-c529ab67d46a",
+        "0441e0f5-fd7d-4081-91bb-3f7896a35ce4",
+        "433d7e49-bd8a-482d-b6eb-dfd0ab6e1c50"
+      ]
+    },
+    {
+      "text": "Mevcut ekip kapasitesi ve altyapı (GPU) genişletme ihtiyaçları detaylandırılmamıştır.",
+      "confidence": 0.85,
+      "evidenceSegmentIds": [
+        "3781527b-a081-41cf-a9a1-c1a9da7b0f70",
+        "27577143-42d8-424c-abcf-97f7997a1edc"
+      ]
+    },
+    {
+      "text": "Onu da bir banka istedi diye mi anlatalım?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "e18db921-820f-4ec4-acd2-b946fceef25b"
+      ]
+    },
+    {
+      "text": "Nano beyin kurucusu sizin tarafta katılımcı var mıdır?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "aa27bb74-2a59-408c-a9ab-eb0c578bd31f"
+      ]
+    },
+    {
+      "text": "Murat bey bizim tarafta başka katılımcı var mı biz?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "c6a4b60e-08a1-4dcb-8d2b-4bcb6b18c491"
+      ]
+    },
+    {
+      "text": "Ketomu Nihat diyor şurada yani kapanmış ama önderim acaba biz mi kapakta kendimi kapandı?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "367a64b7-8882-4ed6-b2e3-6f620a492e77"
+      ]
+    },
+    {
+      "text": "Özellikle ben kendimi tanıtmama gerek var mı?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "6b487f6f-b80d-4b08-8730-554500272698"
+      ]
+    },
+    {
+      "text": "Hangi yıllar arasındaydı?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "df55e780-e28f-4372-973b-098738bc162c"
+      ]
+    },
+    {
+      "text": "Siz de dedim, acaba hani bunu çözdünüz ve kurduğunuz bir sistem mi var?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "d8a12b2c-627e-4db4-95f8-513609200843"
+      ]
+    },
+    {
+      "text": "Bi bi şey var mı kafanıza bununla ilgili bir zamanlama var mı?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "c4181e6c-a276-4ded-8fc5-36b052c0f482"
+      ]
+    },
+    {
+      "text": "Hangi örnekler var, neler yapılabilir?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "c7100354-b4fb-4516-b255-da2001d2dbc0"
+      ]
+    },
+    {
+      "text": "Yani o anlamda aslında Mehmet bey'in söylediği hani çalışabilecek keyifler hangileri?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "6ed7e8d4-a47e-4375-8a45-58baf422e4ae"
+      ]
+    },
+    {
+      "text": "Çok mu doğru?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "a623e0ad-9b38-4540-a338-7e5ac0b0aba1"
+      ]
+    },
+    {
+      "text": "Geriden mi gelecek?",
+      "confidence": 0.84,
+      "evidenceSegmentIds": [
+        "9fa1b5b3-bb3d-4bc7-9903-fa6ef81efa1d"
+      ]
+    }
+  ],
+  "importantFacts": [
+    {
+      "text": "Mevcut sektörel chatbot yapılarının çoğu statik kurallarla çalışan ve sınırlı konuşma yeteneğine sahip yapılardır.",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "f4a6f4ab-d321-4ba7-8b69-749081b265ed",
+        "1c1dd0da-a72a-4f70-91dd-1816b19d405f"
+      ]
+    },
+    {
+      "text": "Önerilen yapay zeka sistemi, müşterinin anlık ve saatlik verileriyle dinamik olarak değişen bir yapı üzerine kuruludur.",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "8e2b471c-4522-4824-bcf1-32e95ffcbc3f",
+        "1c1dd0da-a72a-4f70-91dd-1816b19d405f"
+      ]
+    },
+    {
+      "text": "BDDK mevzuatı uyarınca yurt dışına veri çıkartılması yasaktır.",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "64706c14-9648-41b0-ba6c-927e21ba2100",
+        "38027b77-ff5d-4b81-a534-a45b964d52b3"
+      ]
+    },
+    {
+      "text": "Önerilen çözüm, banka sunucuları ve kapalı sistemleri üzerinde çalışarak verinin kendi ekosisteminde kalmasını sağlar.",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "38027b77-ff5d-4b81-a534-a45b964d52b3",
+        "98bb66b6-ffcf-4bf0-929f-ae4bb41bce8a",
+        "600d3f65-6fff-4af2-be33-e70efc8c6990",
+        "18f34267-9549-463f-8586-c848100949dd"
+      ]
+    },
+    {
+      "text": "Pitt Üniversitesi tarafından yayınlanan bir rapora göre, mevcut büyük dil modelleri %93 oranında halisünasyon (yanlış bilgi üretme) görüyor.",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "795e34ad-ca4e-411c-b84b-acc5c9cdbeda",
+        "1006ffa9-36f7-4084-9a32-eff8497ff844"
+      ]
+    },
+    {
+      "text": "Çözüm, ana katman hazır olmakla birlikte her müşteri için sıfırdan özel çalışma yapılarak uygulanmaktadır.",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "64005d37-f8bb-4ab9-9a13-2470b0265e86",
+        "171df656-94c6-4692-96ae-6eebfc82b954",
+        "0b6b81d9-b3be-47fd-90db-aac1780f97b8"
+      ]
+    },
+    {
+      "text": "Bir Telekom grubuyla yapılan çalışmada, kural setlerine göre sunucu/servis durumunu izleyen ve müdahale eden bir yapay zeka modeli kullanılmaktadır.",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "53489af1-ca14-4cf5-b4ae-ad37522639be"
+      ]
+    },
+    {
+      "text": "Bir banka iştiraki, fatura okuma süreçleri için yaklaşık 10.000-15.000 $ aylık maliyetle 2 adet GPU sunucusu ve 20 adet ekran kartı (her biri 50.000 $) kullanmaktadır.",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "6dd09329-b081-4f4f-a7cb-e810b4a53ccb",
+        "232edb61-e5a7-4896-a888-599b59c53c8b",
+        "5570ad2b-b712-4b4d-95d5-c55550809e0e",
+        "ed678757-c105-4692-bcee-88e98abd5947"
+      ]
+    },
+    {
+      "text": "Önerilen çözüm ile 10.000 fatura işlemi yaklaşık 11.2 saniyede tamamlanabilmekte ve GPU sunucusu maliyetlerinden kaçınılabilmektedir.",
+      "confidence": 0.95,
+      "evidenceSegmentIds": [
+        "eff376e2-3810-420e-ab27-4cad97a4aea8",
+        "352ca6d0-c214-4a38-a4f6-db0de6aa6ed6"
+      ]
+    },
+    {
+      "text": "Geçmişte CUDA eğitimi alınmış ve görüntü işleme projeleri geliştirilmiş ancak yatırım verimliliği düşük olduğu için çalışmalar durdurulmuştur.",
+      "confidence": 0.9,
+      "evidenceSegmentIds": [
+        "2f492b2f-0c59-4e44-9145-47ac7799676f",
+        "f79dfee2-9e11-40c4-abec-a6fa197e38a8"
+      ]
+    }
+  ],
+  "commitments": [
+    {
+      "text": "Bankacılık tarafındaki insan gücüyle yapılan süreçlerin yapay zeka ile nasıl yapılabileceği, tasarruf ve organizasyon örnekleri anlatılacak."
+    },
+    {
+      "text": "Kredi kartı verileri üzerinden anlamlandırılan kampanyalar ve ekstre süreçleri anlatılacak."
+    },
+    {
+      "text": "Sigorta tarafındaki hasar süreçleri ve gömülü sigorta örnekleri anlatılacak."
+    },
+    {
+      "text": "Chatbot'un banka sistemlerine entegrasyonu ve anlık kampanya yönlendirme yeteneği anlatılacak."
+    },
+    {
+      "text": "Otomatik not alma ve görev atama sisteminin testleri, Microsoft onayları ve güvenlik detayları anlatılacak."
+    },
+    {
+      "text": "Hazırlanan Bim dönüşümü ve yapay zeka vizyonuna yönelik sunumun PDF formatında tarafına gönderilmesi."
+    }
+  ],
+  "executiveSummary": "Corbanking süreci için Simple çözümünün seçilmesi kararlaştırıldı; yapay zeka entegrasyon çalışmaları eylül ayından sonra başlatılacaktır. Önümüzdeki adımlar olarak GSM operatörü stabil akışının tamamlanması, eylül ayında altyapı ve Fırat sistemi görüşmelerinin organize edilmesi ile Gökay ile bilgi güvenliği toplantısının planlanması belirlenmiştir. İzlenmesi gereken kritik konular; BDDK mevzuatına uygunluk (yurt dışı veri çıkışı riski), yapay zeka halisünasyon riskleri ve mevcut ekip kapasitesi/altyapı ihtiyaçlarının netleştirilmesidir.",
+  "qualityFlags": [
+    "EVIDENCE_REF_DROPPED",
+    "UNSUPPORTED_DECISION",
+    "DECISION_SOFT_DROPPED",
+    "confidence_defaulted",
+    "EVIDENCE_REF_CORRECTED",
+    "OPEN_QUESTION_CUE_SEEDED",
+    "OVERALL_EXTRACTION_AUDIT_PASSED",
+    "CROSS_TYPE_COMMITMENT_SUBSUMED",
+    "unresolvedConflictCount=0",
+    "genericActionCount=0",
+    "unsupportedItemCount=1",
+    "fallbackUsed=false",
+    "CONSISTENCY_AUDIT_NEEDS_REVIEW",
+    "auditStatus=NEEDS_REVIEW",
+    "REQUIRES_MANUAL_REVIEW"
+  ],
+  "confidence": 0.85
+}
