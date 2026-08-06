@@ -64,12 +64,12 @@ export function Layout() {
             <NotificationBell />
             <button
               type="button"
-              className="hidden items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-3 py-2 text-sm text-slate-600 shadow-sm backdrop-blur transition hover:bg-white sm:flex"
+              className="flex items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-2.5 py-2 text-sm text-slate-600 shadow-sm backdrop-blur transition hover:bg-white sm:px-3"
               onClick={() => setSearchOpen(true)}
               aria-label={t("search.open")}
             >
               <Search className="h-4 w-4" />
-              <span>{t("search.shortcut")}</span>
+              <span className="hidden sm:inline">{t("search.shortcut")}</span>
             </button>
           </div>
 

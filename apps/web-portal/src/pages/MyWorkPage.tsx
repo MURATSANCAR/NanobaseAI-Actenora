@@ -19,6 +19,8 @@ import { PageShell } from "@/components/qa/PageShell";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { DueDateBadge } from "@/components/ui/DueDateBadge";
+import { useModalA11y } from "@/components/ui/useModalA11y";
+import { formatOwner } from "@/lib/owner";
 import { useI18n } from "@/i18n";
 
 type RequestDialog =
@@ -204,10 +206,10 @@ export function MyWorkPage() {
                         className="rounded-xl border border-slate-200 bg-white/70 p-3 transition hover:border-teal-300 hover:bg-teal-50/40"
                       >
                         <p className="text-sm font-medium text-slate-900">{commitment.text}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {commitment.owner ?? t("common.unassigned")}
-                          {commitment.dueDate ? ` · ${commitment.dueDate}` : ""}
-                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          <span>{formatOwner(commitment.owner, t("common.unassigned"))}</span>
+                          <DueDateBadge dueAt={commitment.dueDate} />
+                        </div>
                       </Link>
                     ))}
                   </div>
@@ -297,7 +299,7 @@ function ActionSection({
                 <StatusBadge label={tb("artifactStatus", action.status)} status={action.status} />
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span>{action.owner ?? t("common.unassigned")}</span>
+                <span>{formatOwner(action.owner, t("common.unassigned"))}</span>
                 <DueDateBadge dueAt={action.dueAt} />
               </div>
               {canEdit ? (
@@ -360,6 +362,7 @@ function ActionRequestDialog({
   const [requestedDueDate, setRequestedDueDate] = useState(
     dialog.action.dueAt?.slice(0, 10) ?? "",
   );
+  const dialogRef = useModalA11y<HTMLFormElement>(onClose);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -367,8 +370,15 @@ function ActionRequestDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 p-4" role="presentation">
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 p-4"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <form
+        ref={dialogRef}
         className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
         role="dialog"
         aria-modal="true"

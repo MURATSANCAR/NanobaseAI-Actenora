@@ -641,5 +641,8 @@
   "dashboard.overdueCommitments": "Overdue commitments",
   "template.feedbackSaved": "Draft saved",
   "component.moveUp": "Move up",
-  "component.moveDown": "Move down"
+  "component.moveDown": "Move down",
+  "filter.appliesToLoaded": "Filters apply to the results loaded so far. Load more to search the full ledger.",
+  "filter.noMatchesTitle": "No matching results",
+  "filter.noMatchesHint": "No loaded rows match the current filters. Clear a filter or load more results."
 }

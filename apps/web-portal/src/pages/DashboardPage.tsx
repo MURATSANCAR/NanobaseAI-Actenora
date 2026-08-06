@@ -227,7 +227,7 @@ function MetricStrip({ data }: { data: DashboardResponse }) {
       accent: "dashboard-metric--violet",
     },
     {
-      label: t("dashboard.openCommitments"),
+      label: t("dashboard.overdueCommitments"),
       value: data.overdueCommitments,
       icon: Handshake,
       to: "/commitments",
@@ -248,7 +248,7 @@ function MetricStrip({ data }: { data: DashboardResponse }) {
         <Link
           key={item.to}
           to={item.to}
-          className={clsx("dashboard-metric", item.accent)}
+          className={clsx("group dashboard-metric", item.accent)}
           style={{ animationDelay: `${80 + index * 70}ms` }}
         >
           <div className="flex items-start justify-between gap-3">

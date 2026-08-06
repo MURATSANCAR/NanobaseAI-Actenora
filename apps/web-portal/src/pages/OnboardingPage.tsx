@@ -28,7 +28,12 @@ export function OnboardingPage() {
   const auth = useAuth();
   const api = useApi();
   const { t } = useI18n();
-  const [state, setState] = useState(loadOnboardingState);
+  const userKey = auth.user?.id ?? null;
+  const [state, setState] = useState(() => loadOnboardingState(userKey));
+
+  useEffect(() => {
+    setState(loadOnboardingState(userKey));
+  }, [userKey]);
 
   const teamsQ = useQuery({
     queryKey: queryKeys.teams,
@@ -53,12 +58,12 @@ export function OnboardingPage() {
       if ((templatesQ.data?.items.length ?? 0) > 0) next = markOnboardingStep(next, "templates_ready");
       if ((meetingsQ.data?.items.length ?? 0) > 0) next = markOnboardingStep(next, "first_meeting");
       if (JSON.stringify(next) !== JSON.stringify(prev)) {
-        saveOnboardingState(next);
+        saveOnboardingState(next, userKey);
         return next;
       }
       return prev;
     });
-  }, [auth.user, teamsQ.data, templatesQ.data, meetingsQ.data]);
+  }, [auth.user, teamsQ.data, templatesQ.data, meetingsQ.data, userKey]);
 
   const progress = onboardingProgress(state);
   const complete = isOnboardingComplete(state);
@@ -66,7 +71,7 @@ export function OnboardingPage() {
   const toggleManual = (id: OnboardingStepId) => {
     const next = markOnboardingStep(state, id);
     setState(next);
-    saveOnboardingState(next);
+    saveOnboardingState(next, userKey);
   };
 
   return (
@@ -130,7 +135,13 @@ export function OnboardingPage() {
 
 export function OnboardingBanner() {
   const { t } = useI18n();
-  const [state, setState] = useState(loadOnboardingState);
+  const auth = useAuth();
+  const userKey = auth.user?.id ?? null;
+  const [state, setState] = useState(() => loadOnboardingState(userKey));
+
+  useEffect(() => {
+    setState(loadOnboardingState(userKey));
+  }, [userKey]);
 
   if (state.dismissed || isOnboardingComplete(state)) return null;
   const progress = onboardingProgress(state);
@@ -153,7 +164,7 @@ export function OnboardingBanner() {
           onClick={() => {
             const next = { ...state, dismissed: true };
             setState(next);
-            saveOnboardingState(next);
+            saveOnboardingState(next, userKey);
           }}
         >
           {t("onboarding.dismiss")}

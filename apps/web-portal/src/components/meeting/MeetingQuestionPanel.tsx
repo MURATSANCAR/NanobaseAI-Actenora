@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { MessageCircleQuestion, Search, Sparkles } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { MessageCircleQuestion, Search, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useApi } from "@/api/ApiProvider";
 import type { EvidenceRef, MeetingQuestionResponse } from "@/api/types";
 import { useI18n } from "@/i18n";
@@ -9,6 +9,33 @@ type AnswerEntry = {
   question: string;
   response: MeetingQuestionResponse;
 };
+
+const QA_STORAGE_PREFIX = "actenora-meeting-qa-v1:";
+
+function qaStorageKey(meetingId: string): string {
+  return `${QA_STORAGE_PREFIX}${meetingId}`;
+}
+
+function readStoredAnswers(key: string): AnswerEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as AnswerEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredAnswers(key: string, answers: AnswerEntry[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(answers));
+  } catch {
+    /* storage unavailable (private mode / quota) — persistence is best-effort */
+  }
+}
 
 export function MeetingQuestionPanel({
   meetingId,
@@ -21,15 +48,31 @@ export function MeetingQuestionPanel({
 }) {
   const api = useApi();
   const { t } = useI18n();
+  const storageKey = qaStorageKey(meetingId);
   const [question, setQuestion] = useState("");
-  const [answers, setAnswers] = useState<AnswerEntry[]>([]);
+  const [answers, setAnswers] = useState<AnswerEntry[]>(() => readStoredAnswers(storageKey));
+
+  // Reload persisted history when switching between meetings without a remount.
+  useEffect(() => {
+    setAnswers(readStoredAnswers(storageKey));
+  }, [storageKey]);
+
   const mutation = useMutation({
     mutationFn: (input: string) => api.askMeeting(meetingId, input),
     onSuccess: (response, input) => {
-      setAnswers((current) => [{ question: input, response }, ...current]);
+      setAnswers((current) => {
+        const next = [{ question: input, response }, ...current];
+        writeStoredAnswers(storageKey, next);
+        return next;
+      });
       setQuestion("");
     },
   });
+
+  const clearHistory = () => {
+    setAnswers([]);
+    writeStoredAnswers(storageKey, []);
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -78,6 +121,19 @@ export function MeetingQuestionPanel({
         <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
           {mutation.error.message}
         </p>
+      ) : null}
+
+      {answers.length ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-slate-700"
+            onClick={clearHistory}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            {t("meeting.qaClear")}
+          </button>
+        </div>
       ) : null}
 
       {answers.length ? (

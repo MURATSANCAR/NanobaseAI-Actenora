@@ -26,10 +26,19 @@ export function defaultOnboardingState(): OnboardingState {
   };
 }
 
-export function loadOnboardingState(): OnboardingState {
+/**
+ * The onboarding checklist is per-user: namespacing the storage key by user id
+ * prevents a second user on the same browser from inheriting the first user's
+ * completed/dismissed state.
+ */
+function storageKeyFor(userKey?: string | null): string {
+  return userKey ? `${STORAGE_KEY}:${userKey}` : STORAGE_KEY;
+}
+
+export function loadOnboardingState(userKey?: string | null): OnboardingState {
   if (typeof localStorage === "undefined") return defaultOnboardingState();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKeyFor(userKey));
     if (!raw) return defaultOnboardingState();
     const parsed = JSON.parse(raw) as OnboardingState;
     if (!parsed?.steps?.length) return defaultOnboardingState();
@@ -39,9 +48,9 @@ export function loadOnboardingState(): OnboardingState {
   }
 }
 
-export function saveOnboardingState(state: OnboardingState): void {
+export function saveOnboardingState(state: OnboardingState, userKey?: string | null): void {
   if (typeof localStorage === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(storageKeyFor(userKey), JSON.stringify(state));
 }
 
 export function onboardingProgress(state: OnboardingState): { done: number; total: number } {

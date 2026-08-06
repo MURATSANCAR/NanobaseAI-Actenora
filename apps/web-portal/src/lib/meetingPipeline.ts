@@ -66,37 +66,34 @@ export function deriveMeetingPipelineStages(
   const reviewDone = notesDone && drafts.length === 0 && !pendingApprovals;
   const reviewWaiting = notesDone && (drafts.length > 0 || pendingApprovals);
 
-  const processing =
-    detail.partial ||
-    status === "PROCESSING" ||
-    (status === "ENDED" && !notesDone);
-
-  function stage(
-    id: MeetingPipelineStageId,
-    done: boolean,
-    prerequisite: boolean,
-  ): MeetingPipelineStage {
-    if (failed && id === "REVIEW") return { id, state: "failed" };
-    if (done) return { id, state: "done" };
-    if (id === "REVIEW" && reviewWaiting) return { id, state: "active" };
-    if (processing && prerequisite) return { id, state: "active" };
-    return { id, state: "pending" };
-  }
-
   const postMeetingStarted =
     POST_MEETING.includes(status) || status === "IN_PROGRESS" || hasConversation;
 
-  return [
-    stage("CONVERSATION", conversationDone, postMeetingStarted),
-    stage("AI_ANALYSIS", analysisDone, conversationDone),
-    stage("NOTES", notesDone, analysisDone || conversationDone),
-    stage("REVIEW", reviewDone, notesDone),
-  ];
-}
+  // Only spin while the backend is genuinely working. A meeting that has ENDED
+  // but produced nothing is stalled, not in-flight — surfacing it as "pending"
+  // (a plain step, no spinner) avoids a perpetual fake spinner.
+  const processing =
+    detail.partial || status === "PROCESSING" || status === "IN_PROGRESS";
 
-export function pipelineIsActive(stages: MeetingPipelineStage[]): boolean {
-  return (
-    stages.some((s) => s.state === "active" && s.id !== "REVIEW") ||
-    stages.some((s) => s.state === "pending" && s.id !== "REVIEW")
-  );
+  const steps: Array<{ id: MeetingPipelineStageId; done: boolean; prerequisite: boolean }> = [
+    { id: "CONVERSATION", done: conversationDone, prerequisite: postMeetingStarted },
+    { id: "AI_ANALYSIS", done: analysisDone, prerequisite: conversationDone },
+    { id: "NOTES", done: notesDone, prerequisite: analysisDone || conversationDone },
+    { id: "REVIEW", done: reviewDone, prerequisite: notesDone },
+  ];
+
+  // On failure, mark the earliest incomplete stage as failed (that's where the
+  // pipeline actually broke) and leave later stages pending — rather than always
+  // blaming REVIEW.
+  const firstIncomplete = failed
+    ? steps.find((s) => !s.done)?.id ?? "REVIEW"
+    : null;
+
+  return steps.map(({ id, done, prerequisite }): MeetingPipelineStage => {
+    if (done) return { id, state: "done" };
+    if (failed) return { id, state: id === firstIncomplete ? "failed" : "pending" };
+    if (id === "REVIEW" && reviewWaiting) return { id, state: "active" };
+    if (processing && prerequisite) return { id, state: "active" };
+    return { id, state: "pending" };
+  });
 }

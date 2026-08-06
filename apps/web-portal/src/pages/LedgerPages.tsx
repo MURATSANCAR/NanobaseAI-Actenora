@@ -13,15 +13,14 @@ import { useAuth } from "@/auth/AuthProvider";
 import { useI18n } from "@/i18n";
 import { isOverdue } from "@/lib/dueDates";
 import { exportTableCsv } from "@/lib/export";
+import { formatOwner, ownerMatchesUser } from "@/lib/owner";
 
 const DECISION_STATUSES: ArtifactStatus[] = ["PENDING_APPROVAL", "APPROVED", "REJECTED"];
 const ACTION_STATUSES: ArtifactStatus[] = ["OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED", "PENDING_APPROVAL"];
 
-function formatOwner(ownerDisplayName: string, unassignedLabel: string) {
-  if (!ownerDisplayName || ownerDisplayName === "unknown") {
-    return unassignedLabel;
-  }
-  return ownerDisplayName;
+function ClientFilterHint({ active, text }: { active: boolean; text: string }) {
+  if (!active) return null;
+  return <p className="mt-3 w-full text-xs text-slate-500">{text}</p>;
 }
 
 export function DecisionLedgerPage() {
@@ -127,15 +126,13 @@ export function ActionCenterPage() {
     let rows = q.data?.items ?? [];
     if (overdueOnly) rows = rows.filter((a) => isOverdue(a.dueAt));
     if (mineOnly && auth.user) {
-      rows = rows.filter(
-        (a) =>
-          a.ownerDisplayName !== "unknown" &&
-          a.ownerDisplayName === auth.user!.displayName,
-      );
+      rows = rows.filter((a) => ownerMatchesUser(a.ownerDisplayName, auth.user!.displayName));
     }
     return rows;
   }, [q.data?.items, overdueOnly, mineOnly, auth.user]);
 
+  const clientFiltered = overdueOnly || mineOnly;
+  const filteredEmpty = clientFiltered && (q.data?.items.length ?? 0) > 0 && items.length === 0;
   const asyncStatus =
     q.isLoading ? "loading" : q.isError ? "error" : !items.length ? "empty" : "ready";
 
@@ -203,9 +200,15 @@ export function ActionCenterPage() {
             />
             {t("filter.mineOnly")}
           </label>
+          <ClientFilterHint active={clientFiltered} text={t("filter.appliesToLoaded")} />
         </div>
       </FilterCard>
-      <AsyncState status={asyncStatus} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("actions.description")}>
+      <AsyncState
+        status={asyncStatus}
+        error={q.error}
+        emptyTitle={filteredEmpty ? t("filter.noMatchesTitle") : t("async.empty")}
+        emptyDescription={filteredEmpty ? t("filter.noMatchesHint") : t("actions.description")}
+      >
         <DataTable
           headers={[t("table.title"), t("filter.status"), t("table.owner"), t("table.dueDate"), ""]}
           rows={
@@ -249,15 +252,13 @@ export function CommitmentTrackerPage() {
     let rows = q.data?.items ?? [];
     if (overdueOnly) rows = rows.filter((c) => isOverdue(c.dueAt) || c.status === "AT_RISK");
     if (mineOnly && auth.user) {
-      rows = rows.filter(
-        (c) =>
-          c.ownerDisplayName !== "unknown" &&
-          c.ownerDisplayName === auth.user!.displayName,
-      );
+      rows = rows.filter((c) => ownerMatchesUser(c.ownerDisplayName, auth.user!.displayName));
     }
     return rows;
   }, [q.data?.items, overdueOnly, mineOnly, auth.user]);
 
+  const clientFiltered = overdueOnly || mineOnly;
+  const filteredEmpty = clientFiltered && (q.data?.items.length ?? 0) > 0 && items.length === 0;
   const asyncStatus =
     q.isLoading ? "loading" : q.isError ? "error" : !items.length ? "empty" : "ready";
 
@@ -307,9 +308,15 @@ export function CommitmentTrackerPage() {
             />
             {t("filter.mineOnly")}
           </label>
+          <ClientFilterHint active={clientFiltered} text={t("filter.appliesToLoaded")} />
         </div>
       </FilterCard>
-      <AsyncState status={asyncStatus} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("commitments.description")}>
+      <AsyncState
+        status={asyncStatus}
+        error={q.error}
+        emptyTitle={filteredEmpty ? t("filter.noMatchesTitle") : t("async.empty")}
+        emptyDescription={filteredEmpty ? t("filter.noMatchesHint") : t("commitments.description")}
+      >
         <DataTable
           headers={[t("table.statement"), t("filter.status"), t("table.owner"), t("table.dueDate"), ""]}
           rows={

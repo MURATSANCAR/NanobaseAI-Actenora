@@ -641,5 +641,8 @@
   "dashboard.overdueCommitments": "Geciken taahhütler",
   "template.feedbackSaved": "Taslak kaydedildi",
   "component.moveUp": "Yukarı taşı",
-  "component.moveDown": "Aşağı taşı"
+  "component.moveDown": "Aşağı taşı",
+  "filter.appliesToLoaded": "Filtreler şu ana kadar yüklenen sonuçlara uygulanır. Tüm defterde aramak için daha fazlasını yükleyin.",
+  "filter.noMatchesTitle": "Eşleşen sonuç yok",
+  "filter.noMatchesHint": "Yüklenen satırların hiçbiri geçerli filtrelerle eşleşmiyor. Bir filtreyi kaldırın veya daha fazla sonuç yükleyin."
 }

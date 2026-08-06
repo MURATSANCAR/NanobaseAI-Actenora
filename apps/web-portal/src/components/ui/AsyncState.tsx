@@ -118,8 +118,8 @@ export function DataTable({
       <table className="w-full border-collapse text-left">
         <thead className="data-table-head">
           <tr>
-            {headers.map((h) => (
-              <th key={h} className="data-table-cell">
+            {headers.map((h, i) => (
+              <th key={`${h}-${i}`} scope="col" className="data-table-cell">
                 {h}
               </th>
             ))}
