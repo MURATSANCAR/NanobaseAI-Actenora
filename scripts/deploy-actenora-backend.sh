@@ -40,6 +40,8 @@ keys = {
     "ACTENORA_AI_WORKER_STALE_RUNNING_AFTER": "PT24H",
     # Single-instance prodlike: requeue RUNNING jobs orphaned by container restart.
     "ACTENORA_AI_WORKER_RECLAIM_ORPHANS_ON_STARTUP": "true",
+    # COMPOSER: global candidate LLM + grounded union + editorial summary polish.
+    "ACTENORA_AI_FINALIZATION_MODE": "composer",
 }
 lines = p.read_text().splitlines()
 out, seen = [], set()
@@ -117,7 +119,7 @@ ACTENORA_AI_PROVIDER_MAX_ATTEMPTS=5
 ACTENORA_AI_PROVIDER_FAST_EXTRACTION_SERVED_MODEL_ID=nanobase-qwen36-35b-a3b-mtp
 ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID=nanobase-qwen36-35b-a3b-mtp
 ACTENORA_AI_PIPELINE_MODE=legacy
-ACTENORA_AI_FINALIZATION_MODE=editorial
+ACTENORA_AI_FINALIZATION_MODE=composer
 ACTENORA_AI_FINALIZATION_PROMPT_RESOURCE=/aiprocessing/prompts/editorial-summary.v1.txt
 ACTENORA_AI_FINALIZATION_PROMPT_VERSION=pv-meeting-editorial-summary-v1
 ACTENORA_AI_FINALIZATION_SCHEMA=meeting.editorial-summary.v1
