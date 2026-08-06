@@ -234,6 +234,8 @@ services:
       ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS: ${ACTENORA_AI_PROVIDER_SERVED_MODEL_IDS:-nanobaseai-primary,nanobaseai-local}
       ACTENORA_AI_PROVIDER_FAST_EXTRACTION_SERVED_MODEL_ID: ${ACTENORA_AI_PROVIDER_FAST_EXTRACTION_SERVED_MODEL_ID:-nanobase-qwen36-35b-a3b-mtp}
       ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID: ${ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID:-nanobase-qwen36-35b-a3b-mtp}
+      ACTENORA_AI_EVAL_EXPORT_ENABLED: ${ACTENORA_AI_EVAL_EXPORT_ENABLED:-false}
+      ACTENORA_AI_EVAL_EXPORT_ROOT: /app/var/eval-artifacts
       ACTENORA_AI_PIPELINE_MODE: ${ACTENORA_AI_PIPELINE_MODE:-staged}
       ACTENORA_AI_FINALIZATION_MODE: ${ACTENORA_AI_FINALIZATION_MODE:-editorial}
       ACTENORA_AI_FINALIZATION_PROMPT_RESOURCE: ${ACTENORA_AI_FINALIZATION_PROMPT_RESOURCE:-/aiprocessing/prompts/editorial-summary.v1.txt}
@@ -252,6 +254,8 @@ services:
     tmpfs:
       - /tmp:size=64m,mode=1777
       - /app/tmp:size=64m,mode=1777
+    volumes:
+      - ${ACTENORA_AI_EVAL_EXPORT_HOST_ROOT:-../../artifacts/eval/runtime}:/app/var/eval-artifacts
     security_opt:
       - no-new-privileges:true
     networks:
