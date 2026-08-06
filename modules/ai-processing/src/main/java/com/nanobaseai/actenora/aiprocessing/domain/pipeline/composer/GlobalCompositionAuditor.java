@@ -32,6 +32,14 @@ public final class GlobalCompositionAuditor {
             "(?iu)\\b([\\p{L}][\\p{L}\\s.'-]{1,40}?)\\s+(yapaca[gğ][ıi]m|edece[gğ]im|g[oö]nderece[gğ]im|"
                     + "payla[sş]aca[gğ][ıi]m|iletece[gğ]im|organize\\s+edece[gğ]im)\\b"
     );
+    private static final Pattern SUBJECT_DOES = Pattern.compile(
+            "(?iu)\\b([\\p{L}][\\p{L}.'-]{1,40})\\s+(bunu\\s+)?(g[oö]nderir|g[oö]nderecek|yapacak|edecek|"
+                    + "iletir|organize\\s+eder|payla[sş][ıi]r)\\b"
+    );
+    private static final Pattern WITH_PERSON = Pattern.compile(
+            "(?iu)\\b(ben|biz)\\b.{0,60}?([\\p{L}][\\p{L}\\s.'-]{1,40}?)['’]?\\s*(ile|la|le)\\s+"
+                    + "(konu[sş]|g[oö]r[uü][sş]|konu[sş]aca|g[oö]r[uü][sş]ece)"
+    );
     private static final Pattern FIRST_PERSON = Pattern.compile(
             "(?iu)\\b(ben|ben\\s+de)\\b.{0,40}\\b(yapaca[gğ][ıi]m|edece[gğ]im|g[oö]r[uü][sş]ece[gğ]im|"
                     + "konu[sş]aca[gğ][ıi]m)\\b"
@@ -149,7 +157,8 @@ public final class GlobalCompositionAuditor {
     }
 
     /**
-     * Owner priority: grammatical → first-person speaker → candidate if roster-matched → null.
+     * Owner priority: grammatical self → first-person speaker → subject-does →
+     * with-person (speaker owns, mentioned person is collaborator) → candidate if roster → null.
      */
     static String resolveOwner(
             GlobalComposition.GlobalCandidate candidate,
@@ -165,7 +174,7 @@ public final class GlobalCompositionAuditor {
                 return resolved;
             }
         }
-        if (FIRST_PERSON.matcher(evidence).find()) {
+        if (FIRST_PERSON.matcher(evidence).find() || WITH_PERSON.matcher(evidence).find()) {
             String speaker = speakerForEvidence(candidate.evidenceSegmentIds(), segments);
             String resolved = matchRoster(speaker, roster);
             if (resolved != null) {
@@ -175,11 +184,19 @@ public final class GlobalCompositionAuditor {
                 return speaker;
             }
         }
+        var subject = SUBJECT_DOES.matcher(evidence);
+        if (subject.find()) {
+            String name = subject.group(1).strip();
+            String resolved = matchRoster(name, roster);
+            if (resolved != null) {
+                return resolved;
+            }
+        }
         String candidateOwner = candidate.ownerCandidate();
         if (candidateOwner != null && !candidateOwner.isBlank()) {
-            // "Ben Gökay'la konuşurum" style: mentioned name is not necessarily owner.
-            if (evidence.toLowerCase(Locale.ROOT).contains("ile")
-                    && evidence.toLowerCase(Locale.ROOT).contains(candidateOwner.toLowerCase(Locale.ROOT))) {
+            // Collaborator mention must not become owner when first-person/with-person applies.
+            if (evidence.toLowerCase(Locale.ROOT).matches("(?s).*\\b(ben|biz)\\b.*")
+                    && evidence.toLowerCase(Locale.ROOT).contains("ile")) {
                 String speaker = speakerForEvidence(candidate.evidenceSegmentIds(), segments);
                 String resolved = matchRoster(speaker, roster);
                 if (resolved != null) {

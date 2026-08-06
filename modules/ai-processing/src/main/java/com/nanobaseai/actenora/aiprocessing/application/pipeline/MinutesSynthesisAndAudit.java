@@ -369,15 +369,17 @@ public final class MinutesSynthesisAndAudit {
         if (segments.isEmpty()) {
             MinutesFinalizationResult editorial = editorialFinalize(
                     deterministicDraft, allowedEvidenceIds, meetingTitle, language);
-            return MinutesFinalizationResult.of(
-                    addFlag(editorial.draft(), "COMPOSER_FALLBACK"),
-                    requested,
-                    MinutesFinalizationPolicy.Mode.EDITORIAL.name(),
-                    "DIGEST_UNAVAILABLE",
-                    editorial.modelCalls(),
-                    editorial.inputTokens(),
-                    editorial.outputTokens(),
-                    editorial.modelLatencyMs()
+            return withAuditTrace(
+                    MinutesFinalizationResult.of(
+                            addFlag(editorial.draft(), "COMPOSER_FALLBACK"),
+                            requested,
+                            MinutesFinalizationPolicy.Mode.EDITORIAL.name(),
+                            "DIGEST_UNAVAILABLE",
+                            editorial.modelCalls(),
+                            editorial.inputTokens(),
+                            editorial.outputTokens(),
+                            editorial.modelLatencyMs()
+                    )
             );
         }
         try {
@@ -389,15 +391,17 @@ public final class MinutesSynthesisAndAudit {
             if (verified.highRejection()) {
                 MinutesFinalizationResult editorial = editorialFinalize(
                         deterministicDraft, allowedEvidenceIds, meetingTitle, language);
-                return MinutesFinalizationResult.of(
-                        addFlag(editorial.draft(), GlobalCompositionAuditor.FLAG_COMPOSER_HIGH_REJECTION),
-                        requested,
-                        MinutesFinalizationPolicy.Mode.EDITORIAL.name(),
-                        "COMPOSER_HIGH_EVIDENCE_REJECTION",
-                        editorial.modelCalls(),
-                        editorial.inputTokens(),
-                        editorial.outputTokens(),
-                        editorial.modelLatencyMs()
+                return withAuditTrace(
+                        MinutesFinalizationResult.of(
+                                addFlag(editorial.draft(), GlobalCompositionAuditor.FLAG_COMPOSER_HIGH_REJECTION),
+                                requested,
+                                MinutesFinalizationPolicy.Mode.EDITORIAL.name(),
+                                "COMPOSER_HIGH_EVIDENCE_REJECTION",
+                                editorial.modelCalls(),
+                                editorial.inputTokens(),
+                                editorial.outputTokens(),
+                                editorial.modelLatencyMs()
+                        )
                 );
             }
             GlobalLedgerMerger merger = new GlobalLedgerMerger();
@@ -422,69 +426,106 @@ public final class MinutesSynthesisAndAudit {
             accepted = new CrossTypeConsistencyAuditor().audit(accepted, false);
             FinalNoteDraft rendered = new VerifiedMinutesRenderer()
                     .assertProseConsistent(
-                            new VerifiedMinutesRenderer().renderDeterministic(accepted, verified.meetingFrame()));
+                            new VerifiedMinutesRenderer().renderDeterministic(accepted, verified.meetingFrame()),
+                            verified.meetingFrame());
             // Prefer editorial polish when configured prompt is available; prose still from accepted ledger only.
             if (editorialSummaryTemplate != null && !editorialSummaryTemplate.isBlank()) {
                 try {
                     MinutesFinalizationResult polished = editorialFinalize(
                             rendered, allowedEvidenceIds, meetingTitle, language);
                     FinalNoteDraft consistent = new VerifiedMinutesRenderer()
-                            .assertProseConsistent(polished.draft());
+                            .assertProseConsistent(polished.draft(), verified.meetingFrame());
                     List<String> flags = new ArrayList<>(consistent.qualityFlags());
                     flags.addAll(verified.qualityFlags());
                     flags.add("COMPOSER_EFFECTIVE");
                     consistent = withFlags(consistent, flags);
-                    return MinutesFinalizationResult.of(
-                            scrubDraftEvidence(consistent, allowedEvidenceIds),
-                            requested,
-                            requested,
-                            null,
-                            polished.modelCalls() + 1,
-                            polished.inputTokens(),
-                            polished.outputTokens(),
-                            polished.modelLatencyMs()
+                    return withAuditTrace(
+                            MinutesFinalizationResult.of(
+                                    scrubDraftEvidence(consistent, allowedEvidenceIds),
+                                    requested,
+                                    requested,
+                                    null,
+                                    polished.modelCalls() + 1,
+                                    polished.inputTokens(),
+                                    polished.outputTokens(),
+                                    polished.modelLatencyMs()
+                            )
                     );
                 } catch (RuntimeException ex) {
                     FinalNoteDraft fallback = new VerifiedMinutesRenderer()
-                            .assertProseConsistent(rendered);
+                            .assertProseConsistent(rendered, verified.meetingFrame());
                     fallback = addFlag(fallback, "COMPOSER_RENDER_FALLBACK");
-                    return MinutesFinalizationResult.of(
-                            scrubDraftEvidence(fallback, allowedEvidenceIds),
-                            requested,
-                            requested,
-                            "RENDERER_EDITORIAL_FAILED",
-                            1,
-                            0,
-                            0,
-                            0
+                    return withAuditTrace(
+                            MinutesFinalizationResult.of(
+                                    scrubDraftEvidence(fallback, allowedEvidenceIds),
+                                    requested,
+                                    requested,
+                                    "RENDERER_EDITORIAL_FAILED",
+                                    1,
+                                    0,
+                                    0,
+                                    0
+                            )
                     );
                 }
             }
             FinalNoteDraft out = addFlag(rendered, "COMPOSER_EFFECTIVE");
-            return MinutesFinalizationResult.of(
-                    scrubDraftEvidence(out, allowedEvidenceIds),
-                    requested,
-                    requested,
-                    null,
-                    1,
-                    0,
-                    0,
-                    0
+            return withAuditTrace(
+                    MinutesFinalizationResult.of(
+                            scrubDraftEvidence(out, allowedEvidenceIds),
+                            requested,
+                            requested,
+                            null,
+                            1,
+                            0,
+                            0,
+                            0
+                    )
             );
         } catch (RuntimeException ex) {
             LOG.log(Level.SEVERE, "COMPOSER fallback to EDITORIAL", ex);
             MinutesFinalizationResult editorial = editorialFinalize(
                     deterministicDraft, allowedEvidenceIds, meetingTitle, language);
-            return MinutesFinalizationResult.of(
-                    addFlag(editorial.draft(), "COMPOSER_FALLBACK"),
-                    requested,
-                    MinutesFinalizationPolicy.Mode.EDITORIAL.name(),
-                    "COMPOSER_" + ex.getClass().getSimpleName().toUpperCase(Locale.ROOT),
-                    editorial.modelCalls(),
-                    editorial.inputTokens(),
-                    editorial.outputTokens(),
-                    editorial.modelLatencyMs()
+            return withAuditTrace(
+                    MinutesFinalizationResult.of(
+                            addFlag(editorial.draft(), "COMPOSER_FALLBACK"),
+                            requested,
+                            MinutesFinalizationPolicy.Mode.EDITORIAL.name(),
+                            "COMPOSER_" + ex.getClass().getSimpleName().toUpperCase(Locale.ROOT),
+                            editorial.modelCalls(),
+                            editorial.inputTokens(),
+                            editorial.outputTokens(),
+                            editorial.modelLatencyMs()
+                    )
             );
+        }
+    }
+
+    private static MinutesFinalizationResult withAuditTrace(MinutesFinalizationResult result) {
+        List<String> flags = new ArrayList<>(result.draft().qualityFlags());
+        addUnique(flags, "requestedMode=" + result.requestedMode());
+        addUnique(flags, "effectiveMode=" + result.effectiveMode());
+        if (result.fallbackReason() != null && !result.fallbackReason().isBlank()) {
+            addUnique(flags, "fallbackReason=" + result.fallbackReason());
+        }
+        FinalNoteDraft traced = withFlags(result.draft(), flags);
+        return new MinutesFinalizationResult(
+                traced,
+                result.mode(),
+                result.modelCalls(),
+                result.inputTokens(),
+                result.outputTokens(),
+                result.modelLatencyMs(),
+                result.fallbackUsed(),
+                result.requestedMode(),
+                result.effectiveMode(),
+                result.fallbackReason()
+        );
+    }
+
+    private static void addUnique(List<String> flags, String flag) {
+        if (!flags.contains(flag)) {
+            flags.add(flag);
         }
     }
 
