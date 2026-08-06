@@ -33,11 +33,20 @@ class AiPipelinePropertiesTest {
     }
 
     @Test
-    void rejectsIncompleteEditorialConfiguration() {
+    void buildsComposerPolicyFromRuntimeProperties() {
         AiPipelineProperties properties = new AiPipelineProperties();
-        properties.setFinalizationMode("editorial");
+        properties.setFinalizationMode("composer");
+        properties.setFinalizationPromptResource("/aiprocessing/prompts/editorial-summary.v1.txt");
+        properties.setFinalizationPromptVersionId("pv-meeting-editorial-summary-v1");
+        properties.setFinalizationSchemaVersion("meeting.editorial-summary.v1");
+        properties.setFinalizationTaskType("FINAL_NOTE");
+        properties.setFinalizationMaxOutputTokens(768);
+        properties.setFinalizationTimeoutSeconds(90);
         properties.setFinalizationFailureMode("deterministic");
 
-        assertThrows(IllegalArgumentException.class, properties::finalizationPolicy);
+        MinutesFinalizationPolicy policy = properties.finalizationPolicy();
+
+        assertEquals(MinutesFinalizationPolicy.Mode.COMPOSER, policy.mode());
+        assertEquals(MinutesFinalizationPolicy.Mode.EDITORIAL, policy.asEditorial().mode());
     }
 }

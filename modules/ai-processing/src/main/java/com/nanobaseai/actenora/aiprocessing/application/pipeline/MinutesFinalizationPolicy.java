@@ -24,7 +24,12 @@ public record MinutesFinalizationPolicy(
     public enum Mode {
         FULL,
         EDITORIAL,
-        DETERMINISTIC;
+        DETERMINISTIC,
+        /**
+         * Global candidate composer + grounded union + verified renderer.
+         * Falls back to EDITORIAL (or deterministic ledger render) with explicit audit reason.
+         */
+        COMPOSER;
 
         public static Mode parse(String value) {
             return valueOf(requireText(value, "mode").toUpperCase(Locale.ROOT));
@@ -43,7 +48,7 @@ public record MinutesFinalizationPolicy(
     public MinutesFinalizationPolicy {
         Objects.requireNonNull(mode, "mode");
         Objects.requireNonNull(failureMode, "failureMode");
-        if (mode == Mode.EDITORIAL) {
+        if (mode == Mode.EDITORIAL || mode == Mode.COMPOSER) {
             promptResource = requireText(promptResource, "promptResource");
             promptVersionId = requireText(promptVersionId, "promptVersionId");
             schemaVersion = requireText(schemaVersion, "schemaVersion");
@@ -59,10 +64,6 @@ public record MinutesFinalizationPolicy(
         }
     }
 
-    /**
-     * Compatibility policy for direct callers that have not opted into the
-     * deployment-configured finalization path.
-     */
     public static MinutesFinalizationPolicy compatibility() {
         return new MinutesFinalizationPolicy(
                 Mode.FULL,
@@ -73,6 +74,23 @@ public record MinutesFinalizationPolicy(
                 0,
                 0,
                 FailureMode.DETERMINISTIC
+        );
+    }
+
+    /** Editorial/renderer policy derived from a COMPOSER policy (same prompt contract). */
+    public MinutesFinalizationPolicy asEditorial() {
+        if (mode != Mode.COMPOSER && mode != Mode.EDITORIAL) {
+            throw new IllegalStateException("asEditorial requires COMPOSER or EDITORIAL mode");
+        }
+        return new MinutesFinalizationPolicy(
+                Mode.EDITORIAL,
+                promptResource,
+                promptVersionId,
+                schemaVersion,
+                taskType,
+                maxOutputTokens,
+                timeoutSeconds,
+                failureMode
         );
     }
 

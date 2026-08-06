@@ -150,7 +150,7 @@ public final class EvidenceBundleGroundingPolicy implements BundleGroundingPolic
         );
     }
 
-    static boolean isGroundedDecision(String decisionText, String evidence) {
+    public static boolean isGroundedDecision(String decisionText, String evidence) {
         if (evidence == null || evidence.isBlank()) {
             return false;
         }

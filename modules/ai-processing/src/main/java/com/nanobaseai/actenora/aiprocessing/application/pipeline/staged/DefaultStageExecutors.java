@@ -997,7 +997,9 @@ public final class DefaultStageExecutors {
                                     allowed,
                                     job.meetingOccurrenceId().toString(),
                                     job.language(),
-                                    prior
+                                    prior,
+                                    normalized,
+                                    actionCtx.participants()
                             );
                     draft = finalization.draft();
                     inTok = clampTokens(finalization.inputTokens());

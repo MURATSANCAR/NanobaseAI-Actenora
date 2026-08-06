@@ -361,7 +361,9 @@ public final class ExtractionPipelineService {
                             allowed,
                             meetingTitle,
                             language,
-                            request.priorMeetingContext()
+                            request.priorMeetingContext(),
+                            normalized,
+                            roster
                     );
             metrics.recordFinalization(
                     finalization.mode(),
