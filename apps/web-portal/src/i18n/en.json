@@ -631,5 +631,15 @@
   "backend.templateComponentType.SIGNATURE": "Signature",
   "backend.templateComponentType.FOOTER": "Footer",
   "backend.templateComponentType.CONFIDENTIALITY": "Confidentiality notice",
-  "backend.templateComponentType.PAGE_NUMBER": "Page number"
+  "backend.templateComponentType.PAGE_NUMBER": "Page number",
+  "meeting.riskLikelihood": "Likelihood",
+  "meeting.riskMitigation": "Mitigation",
+  "meeting.mutationsDisabledTitle": "This workspace is read-only",
+  "meeting.mutationsDisabledHint": "Editing, review and approval actions are hidden because the portal is running in a read-only sign-in mode. Sign in with an operator identity to make changes.",
+  "meeting.qaCleared": "Cleared saved questions",
+  "meeting.qaClear": "Clear history",
+  "dashboard.overdueCommitments": "Overdue commitments",
+  "template.feedbackSaved": "Draft saved",
+  "component.moveUp": "Move up",
+  "component.moveDown": "Move down"
 }

@@ -631,5 +631,15 @@
   "backend.templateComponentType.SIGNATURE": "İmza",
   "backend.templateComponentType.FOOTER": "Alt bilgi",
   "backend.templateComponentType.CONFIDENTIALITY": "Gizlilik bildirimi",
-  "backend.templateComponentType.PAGE_NUMBER": "Sayfa numarası"
+  "backend.templateComponentType.PAGE_NUMBER": "Sayfa numarası",
+  "meeting.riskLikelihood": "Olasılık",
+  "meeting.riskMitigation": "Azaltma",
+  "meeting.mutationsDisabledTitle": "Bu çalışma alanı salt okunur",
+  "meeting.mutationsDisabledHint": "Portal salt okunur oturum modunda çalıştığı için düzenleme, gözden geçirme ve onay işlemleri gizlendi. Değişiklik yapmak için bir operatör kimliğiyle oturum açın.",
+  "meeting.qaCleared": "Kayıtlı sorular temizlendi",
+  "meeting.qaClear": "Geçmişi temizle",
+  "dashboard.overdueCommitments": "Geciken taahhütler",
+  "template.feedbackSaved": "Taslak kaydedildi",
+  "component.moveUp": "Yukarı taşı",
+  "component.moveDown": "Aşağı taşı"
 }

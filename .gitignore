@@ -12,6 +12,9 @@ dist/
 hs_err_pid*
 replay_pid*
 
+# Claude Code local settings — may contain secrets, never commit
+.claude/settings.local.json
+
 # IDE
 .idea/
 *.iml

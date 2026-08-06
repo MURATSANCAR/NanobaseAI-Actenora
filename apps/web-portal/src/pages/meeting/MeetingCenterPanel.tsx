@@ -199,6 +199,16 @@ export function MeetingCenterPanel({
 
   return (
     <div className="space-y-5">
+      {!mutationsEnabled ? (
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="status"
+        >
+          <p className="font-semibold">{t("meeting.mutationsDisabledTitle")}</p>
+          <p className="mt-0.5 text-amber-800">{t("meeting.mutationsDisabledHint")}</p>
+        </div>
+      ) : null}
+
       <MeetingReviewPanel detail={detail} />
 
       {selectedSegmentId ? (
@@ -218,7 +228,7 @@ export function MeetingCenterPanel({
             ) : null}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/80 bg-gradient-to-r from-violet-50 to-sky-50 px-3 py-1 text-[11px] font-semibold text-violet-800">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-              {auth.can("meetings:edit") ? t("meeting.editEnabled") : t("meeting.readOnly")}
+              {canEditNotes ? t("meeting.editEnabled") : t("meeting.readOnly")}
             </span>
           </div>
         </div>
@@ -406,6 +416,8 @@ function InsightPanel({
             onEvidence={onEvidence}
             severityLabel={tb("riskSeverity", r.severity)}
             jumpLabel={t("meeting.jumpEvidence")}
+            likelihoodLabel={t("meeting.riskLikelihood")}
+            mitigationLabel={t("meeting.riskMitigation")}
           />
         ))}
       </ArtifactList>
@@ -585,6 +597,8 @@ function RiskRow({
   onEvidence,
   severityLabel,
   jumpLabel,
+  likelihoodLabel,
+  mitigationLabel,
 }: {
   item: RiskItem;
   personNames: string[];
@@ -592,6 +606,8 @@ function RiskRow({
   onEvidence: (ref: EvidenceRef) => void;
   severityLabel: string;
   jumpLabel: string;
+  likelihoodLabel: string;
+  mitigationLabel: string;
 }) {
   return (
     <div id={`artifact-risk-${item.id}`} className={artifactRowClass(linked, "risk")}>
@@ -603,12 +619,12 @@ function RiskRow({
         <div className="mt-1 space-y-0.5 text-sm leading-relaxed text-slate-600">
           {item.likelihood ? (
             <p className="break-words [overflow-wrap:anywhere]">
-              Olasılık: <HighlightPersonNames text={item.likelihood} names={personNames} />
+              {likelihoodLabel}: <HighlightPersonNames text={item.likelihood} names={personNames} />
             </p>
           ) : null}
           {item.mitigation ? (
             <p className="break-words [overflow-wrap:anywhere]">
-              Azaltma: <HighlightPersonNames text={item.mitigation} names={personNames} />
+              {mitigationLabel}: <HighlightPersonNames text={item.mitigation} names={personNames} />
             </p>
           ) : null}
         </div>
