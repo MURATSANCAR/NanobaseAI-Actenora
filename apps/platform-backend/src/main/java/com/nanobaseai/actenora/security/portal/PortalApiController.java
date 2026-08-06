@@ -1486,14 +1486,10 @@ public class PortalApiController {
         List<String> discussed = new ArrayList<>();
         if (agenda != null && !agenda.isEmpty()) {
             discussed.addAll(agenda);
-        } else if (note.importantFacts() != null) {
-            for (var f : note.importantFacts()) {
-                if (f != null && f.text() != null && !f.text().isBlank()) {
-                    discussed.add(f.text().trim());
-                }
-            }
         }
-        appendMinutesSection(sb, "2. GÖRÜŞÜLEN KONULAR", discussed, true);
+        // Do not borrow importantFacts as agenda — facts render in their own "ÖNEMLİ BULGULAR"
+        // section. An agenda with no real discussed topics is omitted rather than padded.
+        appendMinutesSection(sb, "2. GÖRÜŞÜLEN KONULAR", discussed, false);
 
         // Deterministic presentation IDs: list order = extraction/persist order (not alphabetical).
         List<String> decisions = new ArrayList<>();
@@ -1608,14 +1604,9 @@ public class PortalApiController {
                 : note.issues().stream().map(i -> i.text()).filter(Objects::nonNull).toList(), false);
         appendMinutesSection(sb, "9. ÖNERİLER — HENÜZ KARAR DEĞİL", note.proposals() == null ? List.of()
                 : note.proposals().stream().map(p -> p.text()).filter(Objects::nonNull).toList(), false);
-        // Facts already rendered under görüşülen konular when agenda was empty.
-        boolean factsUsedAsDiscussed = (agenda == null || agenda.isEmpty())
-                && note.importantFacts() != null
-                && !note.importantFacts().isEmpty();
-        if (!factsUsedAsDiscussed) {
-            appendMinutesSection(sb, "10. ÖNEMLİ BULGULAR", note.importantFacts() == null ? List.of()
-                    : note.importantFacts().stream().map(f -> f.text()).filter(Objects::nonNull).toList(), false);
-        }
+        // Important facts always render in their own section (never hijack the agenda).
+        appendMinutesSection(sb, "10. ÖNEMLİ BULGULAR", note.importantFacts() == null ? List.of()
+                : note.importantFacts().stream().map(f -> f.text()).filter(Objects::nonNull).toList(), false);
         return sb.toString().trim();
     }
 
