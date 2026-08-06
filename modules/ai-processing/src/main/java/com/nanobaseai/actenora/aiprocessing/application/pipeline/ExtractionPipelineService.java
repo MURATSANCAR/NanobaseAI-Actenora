@@ -40,6 +40,8 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtracti
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkSignalFeatureExtractor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkSignalSummary;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.EvidenceBundleGroundingPolicy;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.EvidenceIndex;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.SignalGateConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.StructuralChunkSignalFeatureExtractor;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.ExtractionPromptRules;
@@ -317,6 +319,10 @@ public final class ExtractionPipelineService {
             merged = new MeasuredObservationFactSeeder().seed(merged, normalized);
             merged = new OpenQuestionCueSeeder().seed(merged, normalized);
             merged = ProposalCuePostProcessor.productionDefaults().process(merged, normalized);
+            // Re-run evidence grounding after deterministic seeders and cross-chunk merge. This is
+            // the last fail-closed barrier before synthesis and covers items added after chunk gates.
+            merged = new EvidenceBundleGroundingPolicy().retainGroundedItems(
+                    merged, EvidenceIndex.from(normalized));
             merged = CrossTypeMeetingItemScrubber.productionDefaults().scrub(merged);
             merged = new CrossTypeConsistencyAuditor().auditBundle(merged);
             Set<String> roster = new LinkedHashSet<>(ActionPostProcessingPipeline.participantsFromSegments(normalized));

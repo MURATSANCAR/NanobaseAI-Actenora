@@ -48,6 +48,38 @@ public final class MeetingNoisePatterns {
                     + ")"
     );
 
+    /**
+     * Meeting mechanics and attendance chatter are useful in the transcript, but they are not
+     * business risks, open questions, decisions, or commitments for the minutes document.
+     */
+    private static final Pattern MEETING_LOGISTICS = Pattern.compile(
+            "(?iu)("
+                    + "mikrofon|kamera|ses(?:iniz|im)?\\s+(?:gelmiyor|geldi|kesiliyor)"
+                    + "|g[oö]r[uü]nt[uü](?:n[uü]z|m)?|ba[gğ]lant[ıi](?:\\s+sorun)?"
+                    + "|ekran[ıi]?\\s+payla[sş]|toplant[ıi]ya\\s+(?:ge[cç]\\s+)?kat[ıi]l"
+                    + "|kat[ıi]l[ıi]mc[ıi]\\s+listesi|ba[sş]ka\\s+kat[ıi]l[ıi]mc[ıi]"
+                    + "|kim(?:ler)?\\s+kat[ıi]lacak|kendimi\\s+tan[ıi]t"
+                    + "|tan[ıi][sş]ma\\s+fasl[ıi]|s[ıi]ra\\s+kimde"
+                    + "|audio|video|connection|screen\\s+shar|who\\s+is\\s+joining"
+                    + ")"
+    );
+
+    /** Facilitation/preparation language about what to say, rather than a delivered commitment. */
+    private static final Pattern FACILITATION_OR_PREPARATION = Pattern.compile(
+            "(?iu)("
+                    + "\\b(?:anlatal[ıi]m|bahsedelim|g[oö]sterelim|soral[ıi]m)\\b"
+                    + "|sunum(?:un|da|daki)?[^.]{0,80}(?:[uü]zerinden\\s+ge[cç]elim|anlatal[ıi]m)"
+                    + "|topu[^.]{0,40}at(?:ay[ıi]m|al[ıi]m)|kendimi\\s+tan[ıi]t"
+                    + "|what\\s+we\\s+should\\s+(?:say|present|show)"
+                    + ")"
+    );
+
+    private static final Pattern HEDGED_NUMERIC_CLAIM = Pattern.compile(
+            "(?iu)(yanl[ıi][sş]\\s+hat[ıi]rlam[ıi]yorsam|hat[ıi]rlad[ıi][gğ][ıi]m\\s+kadar[ıi]yla|"
+                    + "san[ıi]r[ıi]m|galiba|emin\\s+de[gğ]ilim|if\\s+i\\s+remember\\s+correctly)"
+                    + "[^.]{0,140}\\d"
+    );
+
     private static final Pattern PUNCT_ONLY = Pattern.compile("[\\s\\p{Punct}]+");
 
     private MeetingNoisePatterns() {
@@ -77,6 +109,22 @@ public final class MeetingNoisePatterns {
             return false;
         }
         return STATUS_QUO_DECISION.matcher(text.strip()).find();
+    }
+
+    public static boolean isMeetingLogistics(String text) {
+        return text != null && !text.isBlank() && MEETING_LOGISTICS.matcher(text.strip()).find();
+    }
+
+    public static boolean isFacilitationOrPreparation(String text) {
+        return text != null
+                && !text.isBlank()
+                && FACILITATION_OR_PREPARATION.matcher(text.strip()).find();
+    }
+
+    public static boolean hasHedgedNumericClaim(String text) {
+        return text != null
+                && !text.isBlank()
+                && HEDGED_NUMERIC_CLAIM.matcher(text.strip()).find();
     }
 
     /**

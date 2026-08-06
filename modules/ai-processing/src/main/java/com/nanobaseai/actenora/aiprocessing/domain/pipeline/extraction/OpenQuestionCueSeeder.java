@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.extraction;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingNoisePatterns;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 
@@ -32,6 +33,13 @@ public final class OpenQuestionCueSeeder {
     private static final Pattern WH_QUESTION = Pattern.compile(
             "(?iu)((?:hangi|kim|ne\\s+zaman|nas[ıi]l|nerede|kaç|ne\\s+olur)[^.!?]{8,180}\\?)"
     );
+    private static final Pattern UNRESOLVED_WORK = Pattern.compile(
+            "(?iu)(a[cç][ıi]k\\s+kalan\\s+soru|netle[sş]medi|cevaps[ıi]z|ne\\s+zaman|"
+                    + "kim\\s+(?:sorumlu|g[oö]nderecek|[uü]stlenecek)|"
+                    + "hangi\\s+(?:alarm|dashboard|metrik|log|kriter|ortam|versiyon|ad[ıi]m)|"
+                    + "rollback|geri\\s+alma|k[oö]k\\s+neden|takvim|teslim\\s+tarihi|"
+                    + "owner|deadline|unresolved|open\\s+question)"
+    );
 
     public ExtractionBundle seed(ExtractionBundle bundle, List<SegmentInput> segments) {
         Objects.requireNonNull(bundle, "bundle");
@@ -51,7 +59,9 @@ public final class OpenQuestionCueSeeder {
             }
             String content = segment.content().strip();
             // Skip pure meta / closing without substance
-            if (isMetaOnly(content)) {
+            if (isMetaOnly(content)
+                    || MeetingNoisePatterns.isMeetingLogistics(content)
+                    || MeetingNoisePatterns.isFacilitationOrPreparation(content)) {
                 continue;
             }
             List<String> candidates = new ArrayList<>();
@@ -119,17 +129,9 @@ public final class OpenQuestionCueSeeder {
         if (t.contains("a[cç]ık kalan soru") || t.contains("açık kalan soru")) {
             return true;
         }
-        if (t.endsWith("?") || t.contains("?")) {
-            return t.contains("hangi") || t.contains("kim") || t.contains("mi ")
-                    || t.contains("mı ") || t.contains("mu ") || t.contains("mü ")
-                    || t.contains("var mı") || t.contains("olacak mı")
-                    || t.contains("koşulmalı mı") || t.contains("çalıştırılmalı mı")
-                    || t.contains("gönderecek") || t.contains("geri al")
-                    || t.contains("izlenecek") || t.contains("kay")
-                    || t.contains("plan") || t.contains("alarm");
-        }
-        // labeled without ?
-        return t.contains("hangi") || t.contains("kim gönderecek") || t.contains("mobil istemci");
+        // A question asked during discussion is not automatically an unresolved meeting outcome.
+        // Seed only questions that carry an explicit follow-up/control/ownership signal.
+        return UNRESOLVED_WORK.matcher(t).find();
     }
 
     private static boolean isMetaOnly(String content) {

@@ -54,6 +54,8 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtracti
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkSignalFeatureExtractor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkSignalSummary;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.EvidenceBundleGroundingPolicy;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.EvidenceIndex;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.SignalGateConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.StructuralChunkSignalFeatureExtractor;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.ExtractionPromptRules;
@@ -754,11 +756,14 @@ public final class DefaultStageExecutors {
                             (System.nanoTime() - t0) / 1_000_000L, now);
                 }
                 List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
+                ExtractionBundle seeded = new OpenQuestionCueSeeder().seed(
+                        new MeasuredObservationFactSeeder().seed(merger.merge(bundles), normalized),
+                        normalized);
+                seeded = ProposalCuePostProcessor.productionDefaults().process(seeded, normalized);
+                ExtractionBundle grounded = new EvidenceBundleGroundingPolicy().retainGroundedItems(
+                        seeded, EvidenceIndex.from(normalized));
                 ExtractionBundle merged = new CrossTypeConsistencyAuditor().auditBundle(
-                        CrossTypeMeetingItemScrubber.productionDefaults().scrub(
-                                ProposalCuePostProcessor.productionDefaults().process(
-                                        new OpenQuestionCueSeeder().seed(new MeasuredObservationFactSeeder().seed(merger.merge(bundles), normalized), normalized),
-                                        normalized)));
+                        CrossTypeMeetingItemScrubber.productionDefaults().scrub(grounded));
                 String cleanedJson = MAPPER.writeValueAsString(MAPPER.valueToTree(merged));
                 String deterministicJson = MAPPER.writeValueAsString(Map.of(
                         "mergedDeterministic", true,
@@ -788,10 +793,12 @@ public final class DefaultStageExecutors {
                 // Prefer LLM output when schema-valid; else keep scrubbed deterministic merge.
                 try {
                     JsonNode llmNode = schema.parseAndValidate(json);
+                    ExtractionBundle llmGrounded = new EvidenceBundleGroundingPolicy().retainGroundedItems(
+                            ProposalCuePostProcessor.productionDefaults().process(
+                                    bundleMapper.fromJson(llmNode), normalized),
+                            EvidenceIndex.from(normalized));
                     ExtractionBundle llmBundle = new CrossTypeConsistencyAuditor().auditBundle(
-                            CrossTypeMeetingItemScrubber.productionDefaults().scrub(
-                                    ProposalCuePostProcessor.productionDefaults().process(
-                                            bundleMapper.fromJson(llmNode), normalized)));
+                            CrossTypeMeetingItemScrubber.productionDefaults().scrub(llmGrounded));
                     json = MAPPER.writeValueAsString(MAPPER.valueToTree(llmBundle));
                 } catch (RuntimeException ex) {
                     json = cleanedJson;
@@ -961,8 +968,10 @@ public final class DefaultStageExecutors {
                     ExtractionBundle bundle = new ExtractionBundleMapper()
                             .fromJson(new ExtractionJsonSchemaValidator().parseAndValidate(source));
                     List<SegmentInput> normalized = normalizer.normalize(loadSegments(segments, job));
-                    bundle = CrossTypeMeetingItemScrubber.productionDefaults().scrub(
-                            ProposalCuePostProcessor.productionDefaults().process(bundle, normalized));
+                    bundle = ProposalCuePostProcessor.productionDefaults().process(bundle, normalized);
+                    bundle = new EvidenceBundleGroundingPolicy().retainGroundedItems(
+                            bundle, EvidenceIndex.from(normalized));
+                    bundle = CrossTypeMeetingItemScrubber.productionDefaults().scrub(bundle);
                     bundle = new CrossTypeConsistencyAuditor().auditBundle(bundle);
                     ActionPostProcessingPipeline.Context actionCtx = actionContext(job, normalized);
                     bundle = ActionPostProcessingPipeline.productionDefaults().applyToBundle(bundle, actionCtx);
