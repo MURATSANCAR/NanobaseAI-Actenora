@@ -32,7 +32,7 @@ export function MyWorkPage() {
   const api = useApi();
   const auth = useAuth();
   const queryClient = useQueryClient();
-  const { t } = useI18n();
+  const { t, tb } = useI18n();
   const [dialog, setDialog] = useState<RequestDialog>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -175,15 +175,18 @@ export function MyWorkPage() {
                 {query.data.pendingApprovals.length ? (
                   <ul className="space-y-2">
                     {query.data.pendingApprovals.map((approval) => (
-                      <li key={approval.id} className="rounded-xl border border-slate-200 bg-white/70 p-3">
-                        <div className="flex items-center justify-between gap-3">
+                      <li key={approval.id}>
+                        <Link
+                          to="/approvals"
+                          className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/70 p-3 transition hover:border-violet-300 hover:bg-violet-50/40"
+                        >
                           <span className="text-sm font-medium text-slate-800">
-                            {approval.subjectType}
+                            {tb("approvalSubject", approval.subjectType)}
                           </span>
                           <span className="text-xs text-slate-500">
                             {new Date(approval.updatedAt).toLocaleString()}
                           </span>
-                        </div>
+                        </Link>
                       </li>
                     ))}
                   </ul>

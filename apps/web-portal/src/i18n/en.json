@@ -644,5 +644,11 @@
   "component.moveDown": "Move down",
   "filter.appliesToLoaded": "Filters apply to the results loaded so far. Load more to search the full ledger.",
   "filter.noMatchesTitle": "No matching results",
-  "filter.noMatchesHint": "No loaded rows match the current filters. Clear a filter or load more results."
+  "filter.noMatchesHint": "No loaded rows match the current filters. Clear a filter or load more results.",
+  "backend.approvalSubject.DECISION": "Decision",
+  "backend.approvalSubject.ACTION": "Action",
+  "backend.approvalSubject.COMMITMENT": "Commitment",
+  "backend.approvalSubject.NOTE": "Meeting note",
+  "backend.approvalSubject.DELIVERY": "Delivery",
+  "backend.approvalSubject.MEETING_NOTE_VERSION": "Meeting note version"
 }

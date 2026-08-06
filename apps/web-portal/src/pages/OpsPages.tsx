@@ -337,7 +337,7 @@ export function ModelManagementPage() {
             {t("intelligence.test")}
           </button>
         </div>
-        {message ? <p className="text-sm text-amber-900">{message}</p> : null}
+        <InlineFeedback message={message} />
         {connection.data?.statusDetail ? (
           <p className="text-xs text-slate-500">{connection.data.statusDetail}</p>
         ) : null}

@@ -644,5 +644,11 @@
   "component.moveDown": "Aşağı taşı",
   "filter.appliesToLoaded": "Filtreler şu ana kadar yüklenen sonuçlara uygulanır. Tüm defterde aramak için daha fazlasını yükleyin.",
   "filter.noMatchesTitle": "Eşleşen sonuç yok",
-  "filter.noMatchesHint": "Yüklenen satırların hiçbiri geçerli filtrelerle eşleşmiyor. Bir filtreyi kaldırın veya daha fazla sonuç yükleyin."
+  "filter.noMatchesHint": "Yüklenen satırların hiçbiri geçerli filtrelerle eşleşmiyor. Bir filtreyi kaldırın veya daha fazla sonuç yükleyin.",
+  "backend.approvalSubject.DECISION": "Karar",
+  "backend.approvalSubject.ACTION": "Aksiyon",
+  "backend.approvalSubject.COMMITMENT": "Taahhüt",
+  "backend.approvalSubject.NOTE": "Toplantı notu",
+  "backend.approvalSubject.DELIVERY": "Teslimat",
+  "backend.approvalSubject.MEETING_NOTE_VERSION": "Toplantı notu sürümü"
 }
