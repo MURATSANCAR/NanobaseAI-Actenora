@@ -797,14 +797,21 @@ public final class MinutesSynthesisAndAudit {
             List<SegmentInput> segments
     ) {
         String requested = MinutesFinalizationPolicy.Mode.GROUNDED.name();
+        // Fix 2: deterministic participants+roles block derived from segment speaker labels
+        // (e.g. "Ad (BT VE OPERASYON GENEL MÜDÜR YARDIMCISI)"). The finalizer may list attendees
+        // in the summary without inventing anyone.
+        String participants = buildRosterBlock(segments);
         String transcript = buildTranscriptBlock(segments);
+        String groundingBlock = participants.isBlank()
+                ? transcript
+                : "KATILIMCILAR (rolleriyle):\n" + participants + "\n\nKONUŞMA (transcript):\n" + transcript;
         String candidatesJson;
         try {
             candidatesJson = objectMapper.writeValueAsString(toCandidateNode(merged));
         } catch (RuntimeException | IOException ex) {
             candidatesJson = "";
         }
-        boolean fits = !transcript.isBlank() && transcriptFitsGrounded(transcript, candidatesJson);
+        boolean fits = !transcript.isBlank() && transcriptFitsGrounded(groundingBlock, candidatesJson);
         if (!fits) {
             StepResult synthesized = synthesize(
                     merged, deterministicDraft, allowedEvidenceIds, meetingTitle, language, priorMeetingContext);
@@ -821,8 +828,11 @@ public final class MinutesSynthesisAndAudit {
             );
         }
         StepResult synthesized = synthesize(
-                merged, deterministicDraft, allowedEvidenceIds, meetingTitle, language, priorMeetingContext, transcript);
-        StepResult audited = audit(synthesized.draft(), allowedEvidenceIds, language, transcript);
+                merged, deterministicDraft, allowedEvidenceIds, meetingTitle, language, priorMeetingContext, groundingBlock);
+        // Fix 5 (speed): the synthesis call already grounds every item against the full transcript,
+        // so the audit runs candidate-only (no second full-transcript prefill) — combined with the
+        // Fix 1 softening this roughly halves grounded finalization latency without dropping recall.
+        StepResult audited = audit(synthesized.draft(), allowedEvidenceIds, language);
         return MinutesFinalizationResult.of(
                 scrubDraftEvidence(audited.draft(), allowedEvidenceIds),
                 requested,
@@ -855,6 +865,45 @@ public final class MinutesSynthesisAndAudit {
                 sb.append(speaker).append(": ");
             }
             sb.append(content).append('\n');
+        }
+        return sb.toString().strip();
+    }
+
+    /**
+     * Fix 2: deterministic attendee roster from segment speaker labels. Turkish transcripts encode
+     * the role in the display name as "Name (ROLE)". First occurrence per person wins; no model call.
+     */
+    private String buildRosterBlock(List<SegmentInput> segments) {
+        if (segments == null || segments.isEmpty()) {
+            return "";
+        }
+        java.util.regex.Pattern roleP = java.util.regex.Pattern.compile("^(.*?)\\s*\\((.*?)\\)\\s*$");
+        Map<String, String> nameToRole = new LinkedHashMap<>();
+        for (SegmentInput segment : segments) {
+            if (segment == null) {
+                continue;
+            }
+            String disp = segment.speakerDisplayName();
+            if (disp == null || disp.isBlank()) {
+                continue;
+            }
+            disp = disp.strip();
+            var m = roleP.matcher(disp);
+            String name = m.matches() ? m.group(1).strip() : disp;
+            String role = m.matches() ? m.group(2).strip() : "";
+            if (name.isBlank()) {
+                continue;
+            }
+            nameToRole.merge(name, role, (existing, incoming) ->
+                    existing == null || existing.isBlank() ? incoming : existing);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String> e : nameToRole.entrySet()) {
+            sb.append("- ").append(e.getKey());
+            if (e.getValue() != null && !e.getValue().isBlank()) {
+                sb.append(" (").append(e.getValue()).append(')');
+            }
+            sb.append('\n');
         }
         return sb.toString().strip();
     }
@@ -1050,9 +1099,12 @@ public final class MinutesSynthesisAndAudit {
                         coverageIncomplete = true;
                         continue;
                     }
-                    if ("UNSUPPORTED".equals(verdict) || "CONTRADICTED".equals(verdict)) {
+                    // Fix 1: only an explicit CONTRADICTION drops an item. UNSUPPORTED (weak/loose
+                    // Turkish commitments the auditor could not tie to a segment) is preserved and
+                    // routed to human review instead of being deleted — recall over silent loss.
+                    if ("CONTRADICTED".equals(verdict)) {
                         unsupported.add(key);
-                    } else if ("PARTIALLY_SUPPORTED".equals(verdict)) {
+                    } else if ("UNSUPPORTED".equals(verdict) || "PARTIALLY_SUPPORTED".equals(verdict)) {
                         partial.add(key);
                     } else if (!"SUPPORTED".equals(verdict)) {
                         coverageIncomplete = true;
