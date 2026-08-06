@@ -8,6 +8,7 @@ import com.nanobaseai.actenora.transcript.api.TranscriptId;
 import com.nanobaseai.actenora.transcript.application.TranscriptIngestionService;
 import com.nanobaseai.actenora.transcript.application.VttUploadValidator;
 import com.nanobaseai.actenora.transcript.application.port.in.AuthorizeTranscriptDownloadQuery;
+import com.nanobaseai.actenora.transcript.application.port.in.IngestGraphVttCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.ReparseTranscriptCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.RenormalizeTranscriptCommand;
 import com.nanobaseai.actenora.transcript.application.port.in.UploadManualVttCommand;
@@ -101,6 +102,31 @@ class TranscriptIngestionServiceTest {
         assertEquals(TranscriptStatus.DUPLICATE, second.status());
         assertEquals(first.transcriptId(), second.transcriptId());
         assertEquals(first.contentHash(), second.contentHash());
+    }
+
+    @Test
+    void graphReingestWithSameExternalIdAcceptsChangedAttributedPayload() {
+        byte[] withoutAttribution = new String(validVtt, StandardCharsets.UTF_8)
+                .replace("<v Alice>", "")
+                .replace("<v Bob>", "")
+                .getBytes(StandardCharsets.UTF_8);
+        UploadManualVttResult unattributed = service.ingestFromGraphVtt(new IngestGraphVttCommand(
+                tenantA, meetingOccurrenceId, "graph-transcript-1", withoutAttribution, "tr"));
+        byte[] attributed = validVtt;
+
+        UploadManualVttResult revised = service.ingestFromGraphVtt(new IngestGraphVttCommand(
+                tenantA, meetingOccurrenceId, "graph-transcript-1", attributed, "tr"));
+        UploadManualVttResult duplicate = service.ingestFromGraphVtt(new IngestGraphVttCommand(
+                tenantA, meetingOccurrenceId, "graph-transcript-1", attributed, "tr"));
+
+        assertFalse(revised.duplicate());
+        assertFalse(unattributed.transcriptId().equals(revised.transcriptId()));
+        assertEquals(ContentHash.ofBytes(attributed), revised.contentHash());
+        assertTrue(duplicate.duplicate());
+        assertEquals(revised.transcriptId(), duplicate.transcriptId());
+        assertEquals(revised.transcriptId(), transcriptRepository
+                .findLatestProcessableByMeetingOccurrenceId(tenantA, meetingOccurrenceId)
+                .orElseThrow().id());
     }
 
     @Test

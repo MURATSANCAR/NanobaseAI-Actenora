@@ -159,6 +159,10 @@ public final class ActionPostProcessingStats {
         return duplicatesRemoved;
     }
 
+    public int ownersCleared() {
+        return ownersCleared;
+    }
+
     public String auditStatus() {
         return auditStatus;
     }

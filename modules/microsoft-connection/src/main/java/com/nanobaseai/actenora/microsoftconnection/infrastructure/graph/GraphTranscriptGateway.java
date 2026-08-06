@@ -8,9 +8,11 @@ import com.nanobaseai.actenora.microsoftconnection.application.port.TranscriptGa
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -32,23 +34,38 @@ public final class GraphTranscriptGateway implements TranscriptGateway {
         Objects.requireNonNull(meetingId, "meetingId");
         String organizer = resolveOrganizerUserId(userId, meetingId);
         String path = "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId + "/transcripts";
-        var response = http.send(token -> http.authorizedGet(path, token), true);
         try {
-            List<TranscriptAvailability.TranscriptRef> refs = new ArrayList<>();
-            for (JsonNode item : objectMapper.readTree(response.body()).path("value")) {
-                String id = text(item, "id");
-                if (id == null) {
-                    continue;
-                }
-                Instant created = parseInstant(text(item, "createdDateTime"));
-                refs.add(new TranscriptAvailability.TranscriptRef(id, created));
-            }
+            List<TranscriptAvailability.TranscriptRef> refs = fetchTranscriptRefs(path);
             return new TranscriptAvailability(meetingId, !refs.isEmpty(), refs);
         } catch (GraphApiException ex) {
             throw ex;
         } catch (Exception ex) {
             throw GraphApiException.transport("Failed to parse transcript list", ex);
         }
+    }
+
+    private List<TranscriptAvailability.TranscriptRef> fetchTranscriptRefs(String initialPath)
+            throws java.io.IOException {
+        List<TranscriptAvailability.TranscriptRef> refs = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        String path = initialPath;
+        while (path != null && visited.add(path)) {
+            String pagePath = path;
+            var response = http.send(token -> http.authorizedGet(pagePath, token), true);
+            JsonNode root = objectMapper.readTree(response.body());
+            for (JsonNode item : root.path("value")) {
+                String id = text(item, "id");
+                if (id != null) {
+                    refs.add(new TranscriptAvailability.TranscriptRef(
+                            id, parseInstant(text(item, "createdDateTime"))));
+                }
+            }
+            path = text(root, "@odata.nextLink");
+        }
+        if (path != null) {
+            throw new IllegalStateException("Graph transcript pagination loop detected");
+        }
+        return List.copyOf(refs);
     }
 
     @Override

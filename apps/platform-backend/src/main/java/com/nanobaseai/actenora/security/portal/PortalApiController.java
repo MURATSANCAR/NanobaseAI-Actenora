@@ -50,7 +50,7 @@ import com.nanobaseai.actenora.notification.api.UserNotificationListView;
 import com.nanobaseai.actenora.notification.api.UserNotificationView;
 import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
-import com.nanobaseai.actenora.sharedkernel.port.storage.AuthorizedUrl;
+import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectMetadata;
 import com.nanobaseai.actenora.sharedkernel.port.storage.ObjectStorage;
 import com.nanobaseai.actenora.template.api.MeetingTemplateId;
 import com.nanobaseai.actenora.template.api.RenderJobView;
@@ -71,7 +71,10 @@ import com.nanobaseai.actenora.transcript.domain.TranscriptDomainException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -84,6 +87,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -557,46 +562,82 @@ public class PortalApiController {
     ) {
         require(Permission.MEETING_READ);
         meetingApi.getMeeting(meetingId);
-        if (templateApi.isEmpty()) {
-            markStub(response);
-            return new NoteRenderStatusView(List.of(), List.of());
-        }
+        requireNoteBelongsToMeeting(meetingId, noteId);
         TenantId tenantId = principalTenantId();
-        List<PortalRenderJobView> jobs = templateApi.get().listRenderJobsForNote(tenantId, noteId).stream()
-                .map(j -> new PortalRenderJobView(
-                        j.id(),
-                        j.format(),
-                        j.status(),
-                        j.renderedDocumentId().orElse(null),
-                        j.createdAt() == null ? null : j.createdAt().toString(),
-                        j.updatedAt() == null ? null : j.updatedAt().toString(),
-                        j.lastError().orElse(null)
-                ))
-                .toList();
+        String portalPdfPath = portalNotePdfPath(meetingId, noteId);
+
+        List<PortalRenderJobView> jobs = List.of();
         List<PortalRenderedDocumentView> documents = new ArrayList<>();
-        for (RenderedDocumentView doc : templateApi.get().listRenderedDocumentsForNote(tenantId, noteId)) {
-            String downloadUrl = null;
-            String expiresAt = null;
-            if (objectStorage.isPresent()) {
-                try {
-                    AuthorizedUrl url = objectStorage.get().generateAuthorizedUrl(
-                            doc.storageKey(), java.time.Duration.ofMinutes(15));
-                    downloadUrl = url.url().toString();
-                    expiresAt = url.expiresAt().toString();
-                } catch (RuntimeException ignored) {
-                    /* storage may not support signed URLs in all envs */
-                }
+        if (templateApi.isPresent()) {
+            jobs = templateApi.get().listRenderJobsForNote(tenantId, noteId).stream()
+                    .map(j -> new PortalRenderJobView(
+                            j.id(),
+                            j.format(),
+                            j.status(),
+                            j.renderedDocumentId().orElse(null),
+                            j.createdAt() == null ? null : j.createdAt().toString(),
+                            j.updatedAt() == null ? null : j.updatedAt().toString(),
+                            j.lastError().orElse(null)
+                    ))
+                    .toList();
+            for (RenderedDocumentView doc : templateApi.get().listRenderedDocumentsForNote(tenantId, noteId)) {
+                // Browser cannot reach internal MinIO; expose same-origin portal PDF proxy.
+                documents.add(new PortalRenderedDocumentView(
+                        doc.id(),
+                        doc.format(),
+                        doc.sizeBytes(),
+                        "PDF".equalsIgnoreCase(doc.format()) ? portalPdfPath : null,
+                        null,
+                        doc.createdAt() == null ? null : doc.createdAt().toString()
+                ));
             }
-            documents.add(new PortalRenderedDocumentView(
-                    doc.id(),
-                    doc.format(),
-                    doc.sizeBytes(),
-                    downloadUrl,
-                    expiresAt,
-                    doc.createdAt() == null ? null : doc.createdAt().toString()
+        } else {
+            markStub(response);
+        }
+
+        boolean hasPdf = documents.stream().anyMatch(d -> "PDF".equalsIgnoreCase(d.format()));
+        if (!hasPdf) {
+            resolveFallbackPdf(tenantId, noteId).ifPresent(fallback -> documents.add(
+                    new PortalRenderedDocumentView(
+                            fallback.documentId(),
+                            "PDF",
+                            fallback.sizeBytes(),
+                            portalPdfPath,
+                            null,
+                            fallback.createdAt() == null ? null : fallback.createdAt().toString()
+                    )
             ));
         }
         return new NoteRenderStatusView(jobs, documents);
+    }
+
+    /**
+     * Streams the approved note PDF through the portal BFF so browsers do not need
+     * direct MinIO access (prod-like MinIO is often not published on the host).
+     */
+    @GetMapping("/meetings/{meetingId}/notes/{noteId}/pdf")
+    @RequiresPermission(Permission.MEETING_READ)
+    public ResponseEntity<InputStreamResource> downloadNotePdf(
+            @PathVariable UUID meetingId,
+            @PathVariable UUID noteId
+    ) {
+        require(Permission.MEETING_READ);
+        meetingApi.getMeeting(meetingId);
+        requireNoteBelongsToMeeting(meetingId, noteId);
+        if (objectStorage.isEmpty()) {
+            throw new ActenoraException("PDF_STORAGE_UNAVAILABLE", "Object storage is not configured");
+        }
+        ResolvedNotePdf pdf = resolveNotePdf(principalTenantId(), noteId)
+                .orElseThrow(() -> new ActenoraException("PDF_NOT_FOUND", "No rendered PDF for this note"));
+        InputStream stream = objectStorage.get().get(pdf.storageKey());
+        InputStreamResource body = new InputStreamResource(stream);
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"meeting-minutes.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF);
+        if (pdf.sizeBytes() > 0) {
+            response = response.contentLength(pdf.sizeBytes());
+        }
+        return response.body(body);
     }
 
     @GetMapping("/meetings/{meetingId}/transcript")
@@ -1872,6 +1913,69 @@ public class PortalApiController {
                 ));
     }
 
+    private void requireNoteBelongsToMeeting(UUID meetingId, UUID noteId) {
+        if (meetingIntelligenceApi.isEmpty()) {
+            return;
+        }
+        MeetingNoteDetailResponse note = meetingIntelligenceApi.get().getNoteDetail(noteId);
+        if (!meetingId.equals(note.meetingOccurrenceId())) {
+            throw new ActenoraException("NOTE_MEETING_MISMATCH", "Note does not belong to this meeting");
+        }
+    }
+
+    private static String portalNotePdfPath(UUID meetingId, UUID noteId) {
+        return "/api/v1/portal/meetings/" + meetingId + "/notes/" + noteId + "/pdf";
+    }
+
+    private Optional<ResolvedNotePdf> resolveNotePdf(TenantId tenantId, UUID noteId) {
+        if (templateApi.isPresent()) {
+            Optional<RenderedDocumentView> templatePdf = templateApi.get()
+                    .listRenderedDocumentsForNote(tenantId, noteId)
+                    .stream()
+                    .filter(doc -> "PDF".equalsIgnoreCase(doc.format()))
+                    .max(Comparator.comparing(
+                            doc -> doc.createdAt() == null ? Instant.EPOCH : doc.createdAt()));
+            if (templatePdf.isPresent()) {
+                RenderedDocumentView doc = templatePdf.get();
+                return Optional.of(new ResolvedNotePdf(
+                        doc.id(),
+                        doc.storageKey(),
+                        doc.sizeBytes(),
+                        doc.createdAt()
+                ));
+            }
+        }
+        return resolveFallbackPdf(tenantId, noteId);
+    }
+
+    private Optional<ResolvedNotePdf> resolveFallbackPdf(TenantId tenantId, UUID noteId) {
+        if (meetingIntelligenceApi.isEmpty() || objectStorage.isEmpty()) {
+            return Optional.empty();
+        }
+        MeetingNoteDetailResponse detail = meetingIntelligenceApi.get().getNoteDetail(noteId);
+        if (detail.currentVersion() == null || detail.currentVersion().id() == null) {
+            return Optional.empty();
+        }
+        UUID versionId = detail.currentVersion().id();
+        String storageKey = "tenants/" + tenantId.value() + "/notes/" + versionId + "/fallback.pdf";
+        if (!objectStorage.get().exists(storageKey)) {
+            return Optional.empty();
+        }
+        Optional<ObjectMetadata> meta = objectStorage.get().metadata(storageKey);
+        long sizeBytes = meta.map(ObjectMetadata::sizeBytes).orElse(0L);
+        Instant createdAt = meta.map(ObjectMetadata::lastModified).orElse(null);
+        UUID documentId = UUID.nameUUIDFromBytes(storageKey.getBytes(StandardCharsets.UTF_8));
+        return Optional.of(new ResolvedNotePdf(documentId, storageKey, sizeBytes, createdAt));
+    }
+
+    private record ResolvedNotePdf(
+            UUID documentId,
+            String storageKey,
+            long sizeBytes,
+            Instant createdAt
+    ) {
+    }
+
     private static NanobaseAiConnectionView toConnectionView(NanobaseAiConnectionService.ConnectionView view) {
         return new NanobaseAiConnectionView(
                 view.productName(),
@@ -2000,7 +2104,8 @@ public class PortalApiController {
             case "ACTION_NOT_FOUND",
                  "INTELLIGENCE_RESOURCE_NOT_FOUND",
                  "MEETING_NOTE_NOT_FOUND",
-                 "MEETING_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+                 "MEETING_NOT_FOUND",
+                 "PDF_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "UNAUTHORIZED_MEETING_ACCESS",
                  "PRIVATE_NOTE_ACCESS_DENIED",
                  "PRIVATE_NOTE_AI_ACCESS_DENIED" -> HttpStatus.FORBIDDEN;

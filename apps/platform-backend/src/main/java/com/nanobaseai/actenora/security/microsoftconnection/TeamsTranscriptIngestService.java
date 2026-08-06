@@ -81,7 +81,7 @@ public final class TeamsTranscriptIngestService {
         if (!availability.available() || availability.transcripts().isEmpty()) {
             return PollResult.NOT_AVAILABLE;
         }
-        TranscriptAvailability.TranscriptRef ref = availability.firstTranscript().orElseThrow();
+        TranscriptAvailability.TranscriptRef ref = availability.latestTranscript().orElseThrow();
         Optional<TranscriptContent> content = microsoftConnectionApi.downloadTranscript(
                 tenantId.value(), graphUserId, teamsMeetingId, ref.transcriptId());
         if (content.isEmpty()) {

@@ -1,5 +1,8 @@
 package com.nanobaseai.actenora.meetingintelligence.domain.validation;
 
+import com.nanobaseai.actenora.sharedkernel.domain.PersonIdentityNormalizer;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -103,42 +106,15 @@ public final class ValidationContext {
     }
 
     public boolean isKnownParticipantName(String displayName) {
-        if (displayName == null || displayName.isBlank()) {
-            return false;
-        }
-        String normalized = normalize(displayName);
-        if (normalized.isBlank()) {
-            return false;
-        }
-        String firstToken = firstToken(normalized);
-        int tokenCount = tokenCount(normalized);
-
-        return participants.stream().anyMatch(p -> {
-            String participantNorm = normalize(p.displayName());
-            if (participantNorm.equals(normalized)) {
-                return true;
-            }
-            String participantFirst = firstToken(participantNorm);
-            int participantTokenCount = tokenCount(participantNorm);
-
-            // Allow short first-name owners to match full multi-token speaker names.
-            if (tokenCount == 1 && participantFirst.equals(firstToken)) {
-                return true;
-            }
-            // Vice-versa: allow full owner names to match single-token participant names.
-            if (participantTokenCount == 1 && participantFirst.equals(firstToken)) {
-                return true;
-            }
-            return false;
-        });
+        return PersonIdentityNormalizer.resolveUnique(displayName, participantAliases()).isPresent();
     }
 
     public boolean ownerMatchesEvidenceSpeaker(ValidationCandidate candidate) {
         if (candidate == null || candidate.ownerDisplayName().isEmpty()) {
             return false;
         }
-        String owner = normalize(candidate.ownerDisplayName().orElseThrow());
-        if (owner.isBlank()) {
+        String owner = candidate.ownerDisplayName().orElseThrow();
+        if (PersonIdentityNormalizer.identityKey(owner).isBlank()) {
             return false;
         }
         for (UUID segmentId : candidate.evidenceSegmentIds()) {
@@ -146,12 +122,21 @@ public final class ValidationContext {
             if (segment == null) {
                 continue;
             }
-            String speaker = normalize(segment.speakerDisplayName());
-            if (!speaker.isBlank() && namesEquivalent(owner, speaker)) {
+            String speaker = segment.speakerDisplayName();
+            if (PersonIdentityNormalizer.resolveUnique(owner, List.of(speaker)).isPresent()) {
                 return true;
             }
         }
         return false;
+    }
+
+    private List<String> participantAliases() {
+        List<String> aliases = new ArrayList<>(participants.size() * 2);
+        for (ValidationParticipant participant : participants) {
+            aliases.add(participant.displayName());
+            participant.emailOptional().ifPresent(aliases::add);
+        }
+        return aliases;
     }
 
     public static String normalize(String value) {
@@ -175,39 +160,6 @@ public final class ValidationContext {
                 .replaceAll("[^\\p{Alnum}]+", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
-    }
-
-    private static boolean namesEquivalent(String left, String right) {
-        if (left.equals(right)) {
-            return true;
-        }
-        String leftFirst = firstToken(left);
-        String rightFirst = firstToken(right);
-        if (leftFirst.isBlank() || rightFirst.isBlank()) {
-            return false;
-        }
-        return leftFirst.equals(rightFirst);
-    }
-
-    private static String firstToken(String normalizedValue) {
-        if (normalizedValue == null || normalizedValue.isBlank()) {
-            return "";
-        }
-        int idx = normalizedValue.indexOf(' ');
-        return idx < 0 ? normalizedValue : normalizedValue.substring(0, idx);
-    }
-
-    private static int tokenCount(String normalizedValue) {
-        if (normalizedValue == null || normalizedValue.isBlank()) {
-            return 0;
-        }
-        int count = 1;
-        for (int i = 0; i < normalizedValue.length(); i++) {
-            if (normalizedValue.charAt(i) == ' ') {
-                count++;
-            }
-        }
-        return count;
     }
 
     public static boolean corpusContains(String corpus, String needle) {

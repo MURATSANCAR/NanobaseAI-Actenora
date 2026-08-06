@@ -45,7 +45,6 @@ public final class DeterministicExtractionValidator {
 
         for (ActionItemCandidate item : bundle.actionItems()) {
             assertRecordEvidence(item.evidenceSegmentIds(), allowedEvidenceIds, "actionItem");
-            assertOwnerGrounded(item.owner(), transcriptCorpus);
             assertDueDateGrounded(item.dueDate(), transcriptCorpus);
         }
         for (RiskCandidate risk : bundle.risks()) {
@@ -56,7 +55,6 @@ public final class DeterministicExtractionValidator {
         }
         for (CommitmentCandidate commitment : bundle.commitments()) {
             assertRecordEvidence(commitment.evidenceSegmentIds(), allowedEvidenceIds, "commitment");
-            assertOwnerGrounded(commitment.owner(), transcriptCorpus);
         }
     }
 
@@ -92,21 +90,6 @@ public final class DeterministicExtractionValidator {
         }
     }
 
-    private void assertOwnerGrounded(String owner, String transcriptCorpus) {
-        if (owner == null || owner.isBlank()) {
-            return;
-        }
-        String corpus = transcriptCorpus.toLowerCase(Locale.ROOT);
-        String needle = owner.toLowerCase(Locale.ROOT).trim();
-        if (!corpus.contains(needle)) {
-            throw new PipelineException(
-                    FailureCategory.HALLUCINATED_OWNER,
-                    PipelineStage.DETERMINISTIC_VALIDATE,
-                    "Owner not present in transcript: " + owner
-            );
-        }
-    }
-
     private void assertDueDateGrounded(String dueDate, String transcriptCorpus) {
         if (dueDate == null || dueDate.isBlank()) {
             return;
@@ -117,7 +100,8 @@ public final class DeterministicExtractionValidator {
             return;
         }
         // Models often normalize "gelecek hafta cuma" to ISO. Do not fail-close the whole
-        // extraction for due-date normalization — owner grounding remains strict.
+        // extraction for due-date normalization; owner claims are roster-normalized and
+        // soft-cleared later in action post-processing.
         if (!DATE_LIKE.matcher(dueDate).find() && !corpus.contains(needle)) {
             throw new PipelineException(
                     FailureCategory.HALLUCINATED_DATE,

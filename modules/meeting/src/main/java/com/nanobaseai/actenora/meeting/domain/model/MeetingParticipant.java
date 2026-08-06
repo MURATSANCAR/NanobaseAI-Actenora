@@ -39,7 +39,7 @@ public final class MeetingParticipant {
         this.meetingOccurrenceId = Objects.requireNonNull(meetingOccurrenceId, "meetingOccurrenceId");
         this.entraUserId = entraUserId;
         this.displayName = requireText(displayName, "displayName");
-        this.email = requireEmail(email);
+        this.email = normalizeOptionalEmail(email);
         this.participantType = Objects.requireNonNull(participantType, "participantType");
         this.attendanceStatus = Objects.requireNonNull(attendanceStatus, "attendanceStatus");
         this.joinedAt = joinedAt;
@@ -92,11 +92,7 @@ public final class MeetingParticipant {
     }
 
     private void validateExternalRules() {
-        if (external) {
-            if (email == null || email.isBlank()) {
-                throw new InvalidParticipantException("External participants require an email");
-            }
-        } else if (entraUserId == null || entraUserId.isBlank()) {
+        if (!external && (entraUserId == null || entraUserId.isBlank())) {
             throw new InvalidParticipantException("Internal participants require an Entra user id");
         }
     }
@@ -108,9 +104,9 @@ public final class MeetingParticipant {
         return value.trim();
     }
 
-    private static String requireEmail(String email) {
+    private static String normalizeOptionalEmail(String email) {
         if (email == null || email.isBlank()) {
-            throw new InvalidParticipantException("Participant email is required");
+            return null;
         }
         String normalized = email.trim().toLowerCase();
         if (!normalized.contains("@")) {
@@ -192,6 +188,14 @@ public final class MeetingParticipant {
             return;
         }
         this.entraUserId = trimmed;
+    }
+
+    /** Backfills a mail address when a name-only guest is later resolved by Graph. */
+    public void linkEmail(String resolvedEmail) {
+        if (resolvedEmail == null || resolvedEmail.isBlank() || this.email != null) {
+            return;
+        }
+        this.email = normalizeOptionalEmail(resolvedEmail);
     }
 
     private static boolean looksLikeGuid(String value) {

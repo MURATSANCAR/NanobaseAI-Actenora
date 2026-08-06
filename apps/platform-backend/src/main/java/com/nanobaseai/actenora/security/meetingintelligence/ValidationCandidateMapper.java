@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.meetingintelligence.domain.validation.CandidateKi
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.ValidationCandidate;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.ValidationParticipant;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.ValidationSegment;
+import com.nanobaseai.actenora.sharedkernel.domain.PersonIdentityNormalizer;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -55,21 +56,32 @@ public final class ValidationCandidateMapper {
 
     public static List<ValidationParticipant> participantsFromSpeakers(List<SegmentInput> segments) {
         Objects.requireNonNull(segments, "segments");
-        Map<String, ValidationParticipant> byName = new LinkedHashMap<>();
+        List<String> names = new ArrayList<>();
         for (SegmentInput segment : segments) {
-            String name = segment.speakerDisplayName();
-            if (name == null || name.isBlank()) {
+            String rawName = segment.speakerDisplayName();
+            if (PersonIdentityNormalizer.isGenericSpeakerLabel(rawName)) {
                 continue;
             }
-            String key = name.trim().toLowerCase();
-            byName.computeIfAbsent(key, ignored -> new ValidationParticipant(
-                    toParticipantUuid(name.trim()),
-                    name.trim(),
+            String name = PersonIdentityNormalizer.displayName(rawName);
+            if (PersonIdentityNormalizer.isGenericSpeakerLabel(name)) {
+                continue;
+            }
+            String key = PersonIdentityNormalizer.identityKey(name);
+            if (key.isBlank()) {
+                continue;
+            }
+            names.add(name);
+        }
+        List<ValidationParticipant> participants = new ArrayList<>();
+        for (String name : PersonIdentityNormalizer.canonicalRoster(names).values()) {
+            participants.add(new ValidationParticipant(
+                    toParticipantUuid(name),
+                    name,
                     null,
                     null
             ));
         }
-        return List.copyOf(byName.values());
+        return List.copyOf(participants);
     }
 
     /**
@@ -79,16 +91,30 @@ public final class ValidationCandidateMapper {
             List<ValidationParticipant> speakers,
             List<ValidationParticipant> invitees
     ) {
-        Map<String, ValidationParticipant> byKey = new LinkedHashMap<>();
+        List<ValidationParticipant> all = new ArrayList<>();
         if (speakers != null) {
-            for (ValidationParticipant p : speakers) {
-                byKey.putIfAbsent(participantMergeKey(p), p);
-            }
+            all.addAll(speakers);
         }
         if (invitees != null) {
-            for (ValidationParticipant p : invitees) {
-                byKey.put(participantMergeKey(p), p);
-            }
+            all.addAll(invitees);
+        }
+        List<String> aliasInputs = new ArrayList<>();
+        for (ValidationParticipant participant : all) {
+            aliasInputs.add(participant.displayName());
+            participant.emailOptional().ifPresent(aliasInputs::add);
+        }
+        List<String> canonicalNames = List.copyOf(
+                PersonIdentityNormalizer.canonicalRoster(aliasInputs).values());
+        Map<String, ValidationParticipant> byKey = new LinkedHashMap<>();
+        for (ValidationParticipant participant : all) {
+            String canonicalName = PersonIdentityNormalizer.resolveUnique(
+                    participant.displayName(), canonicalNames).orElse(participant.displayName());
+            mergeParticipant(byKey, new ValidationParticipant(
+                    participant.participantId(),
+                    canonicalName,
+                    participant.email(),
+                    participant.entraUserId()
+            ));
         }
         return List.copyOf(byKey.values());
     }
@@ -98,9 +124,13 @@ public final class ValidationCandidateMapper {
             String email,
             String entraUserId
     ) {
-        String name = displayName == null || displayName.isBlank()
-                ? (email == null || email.isBlank() ? "participant" : email.trim())
-                : displayName.trim();
+        String name = PersonIdentityNormalizer.displayName(displayName);
+        if (name.isBlank()) {
+            name = PersonIdentityNormalizer.displayName(email);
+        }
+        if (name.isBlank()) {
+            name = "participant";
+        }
         return new ValidationParticipant(
                 toParticipantUuid(name),
                 name,
@@ -110,10 +140,32 @@ public final class ValidationCandidateMapper {
     }
 
     private static String participantMergeKey(ValidationParticipant participant) {
-        if (participant.emailOptional().isPresent()) {
-            return "email:" + participant.emailOptional().orElseThrow().toLowerCase();
+        String key = PersonIdentityNormalizer.identityKey(participant.displayName());
+        if (key.isBlank() && participant.emailOptional().isPresent()) {
+            key = PersonIdentityNormalizer.identityKey(participant.emailOptional().orElseThrow());
         }
-        return "name:" + participant.displayName().trim().toLowerCase();
+        return "person:" + key;
+    }
+
+    private static void mergeParticipant(
+            Map<String, ValidationParticipant> byKey,
+            ValidationParticipant incoming
+    ) {
+        String key = participantMergeKey(incoming);
+        ValidationParticipant existing = byKey.get(key);
+        if (existing == null) {
+            byKey.put(key, incoming);
+            return;
+        }
+        String preferredName = PersonIdentityNormalizer.canonicalRoster(
+                List.of(existing.displayName(), incoming.displayName()))
+                .values().stream().findFirst().orElse(existing.displayName());
+        String email = incoming.emailOptional().orElse(existing.email());
+        String entraUserId = incoming.entraUserIdOptional().orElse(existing.entraUserId());
+        UUID participantId = incoming.emailOptional().isPresent() || incoming.entraUserIdOptional().isPresent()
+                ? incoming.participantId()
+                : existing.participantId();
+        byKey.put(key, new ValidationParticipant(participantId, preferredName, email, entraUserId));
     }
 
     public static List<ValidationCandidate> toCandidates(FinalNoteDraft draft) {
@@ -256,7 +308,8 @@ public final class ValidationCandidateMapper {
 
     public static UUID toParticipantUuid(String displayName) {
         Objects.requireNonNull(displayName, "displayName");
-        return UUID.nameUUIDFromBytes(("participant:" + displayName.trim().toLowerCase())
+        String identity = PersonIdentityNormalizer.identityKey(displayName);
+        return UUID.nameUUIDFromBytes(("participant:" + identity)
                 .getBytes(StandardCharsets.UTF_8));
     }
 

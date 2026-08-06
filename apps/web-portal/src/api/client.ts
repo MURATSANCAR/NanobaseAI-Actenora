@@ -106,6 +106,36 @@ function createHttpApiClient(baseUrl: string): ApiClient {
     getMeetingDelivery: (id) => httpJson(baseUrl, `/api/v1/portal/meetings/${id}/delivery`),
     getNoteRenders: (meetingId, noteId) =>
       httpJson(baseUrl, `/api/v1/portal/meetings/${meetingId}/notes/${noteId}/renders`),
+    downloadNotePdf: async (meetingId, noteId) => {
+      const authHeaders = await resolveAuthHeaders();
+      const res = await fetch(
+        `${baseUrl}/api/v1/portal/meetings/${meetingId}/notes/${noteId}/pdf`,
+        {
+          headers: {
+            Accept: "application/pdf",
+            ...authHeaders,
+          },
+        },
+      );
+      if (!res.ok) {
+        let code = "HTTP_ERROR";
+        let message = res.statusText;
+        try {
+          const body = (await res.json()) as {
+            code?: string;
+            message?: string;
+            title?: string;
+            detail?: string;
+          };
+          code = body.code ?? body.title ?? code;
+          message = body.detail ?? body.message ?? message;
+        } catch {
+          /* ignore */
+        }
+        throw new ApiError(res.status, code, message);
+      }
+      return res.blob();
+    },
     getMeetingTranscript: (id, params) =>
       httpJson(baseUrl, `/api/v1/portal/meetings/${id}/transcript${q(params)}`),
     updateMeetingNote: (meetingId, noteId, body) =>

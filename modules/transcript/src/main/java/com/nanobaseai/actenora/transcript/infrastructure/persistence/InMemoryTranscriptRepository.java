@@ -52,6 +52,21 @@ public final class InMemoryTranscriptRepository implements TranscriptRepository 
                 .max(java.util.Comparator.comparing(Transcript::createdAt));
     }
 
+    @Override
+    public Optional<Transcript> findLatestProcessableByMeetingOccurrenceId(
+            TenantId tenantId,
+            UUID meetingOccurrenceId
+    ) {
+        return byTenantAndId.values().stream()
+                .filter(t -> t.tenantId().equals(tenantId))
+                .filter(t -> t.meetingOccurrenceId().equals(meetingOccurrenceId))
+                .filter(t -> t.status() == com.nanobaseai.actenora.transcript.domain.TranscriptStatus.PARSED
+                        || t.status() == com.nanobaseai.actenora.transcript.domain.TranscriptStatus.PENDING_NORMALIZE
+                        || t.status() == com.nanobaseai.actenora.transcript.domain.TranscriptStatus.NORMALIZED)
+                .max(java.util.Comparator.comparing(Transcript::createdAt)
+                        .thenComparing(t -> t.id().value()));
+    }
+
     private static String idKey(TenantId tenantId, TranscriptId id) {
         return tenantId.value() + "|" + id.value();
     }

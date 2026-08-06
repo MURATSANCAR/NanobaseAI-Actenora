@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.microsoftconnection.application.model;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,7 +22,16 @@ public record TranscriptAvailability(
     }
 
     public Optional<TranscriptRef> firstTranscript() {
-        return transcripts.isEmpty() ? Optional.empty() : Optional.of(transcripts.getFirst());
+        return latestTranscript();
+    }
+
+    /** Deterministic newest revision; Graph collection order is not an API contract. */
+    public Optional<TranscriptRef> latestTranscript() {
+        return transcripts.stream().max(Comparator
+                .comparing(
+                        TranscriptRef::createdDateTime,
+                        Comparator.nullsFirst(Comparator.naturalOrder()))
+                .thenComparing(TranscriptRef::transcriptId));
     }
 
     public record TranscriptRef(String transcriptId, Instant createdDateTime) {

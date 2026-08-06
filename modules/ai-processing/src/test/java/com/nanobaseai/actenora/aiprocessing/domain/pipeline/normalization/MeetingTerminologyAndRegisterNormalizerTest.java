@@ -42,6 +42,21 @@ class MeetingTerminologyAndRegisterNormalizerTest {
     }
 
     @Test
+    void segmentNormalizerAppliesItFinanceLexiconBeforeExtraction() {
+        SegmentNormalizer normalizer = new SegmentNormalizer();
+        List<SegmentInput> out = normalizer.normalize(List.of(
+                new SegmentInput(
+                        "s-domain", 0, "Murat", 0, 1000,
+                        "Kor banking PoC için n vidia g p u, d w h ve si em logları değerlendirilecek.",
+                        true)
+        ));
+
+        assertEquals(
+                "Core Banking PoC için NVIDIA GPU, DWH ve SIEM logları değerlendirilecek.",
+                out.getFirst().content());
+    }
+
+    @Test
     void domainRegisterRewritesRecete() {
         DomainRegisterNormalizer register = new DomainRegisterNormalizer();
         assertEquals(

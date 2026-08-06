@@ -24,6 +24,8 @@ import com.nanobaseai.actenora.identity.api.Permission;
 import com.nanobaseai.actenora.sharedkernel.security.AuthenticatedPrincipal;
 import com.nanobaseai.actenora.sharedkernel.security.TenantSecurityContext;
 import com.nanobaseai.actenora.sharedkernel.coordination.JobProgressCache;
+import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.transcript.api.TranscriptApi;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -62,6 +64,7 @@ public class AiProcessingController {
     private final JobProgressCache jobProgressCache;
     private final ObjectProvider<PipelineGraphFactory> pipelineGraphFactory;
     private final ObjectProvider<AiPipelineProperties> pipelineProperties;
+    private final ObjectProvider<TranscriptApi> transcriptApi;
 
     public AiProcessingController(
             AiProcessingApi aiProcessingApi,
@@ -73,6 +76,31 @@ public class AiProcessingController {
             ObjectProvider<PipelineGraphFactory> pipelineGraphFactory,
             ObjectProvider<AiPipelineProperties> pipelineProperties
     ) {
+        this(
+                aiProcessingApi,
+                multiModelRoutingApi,
+                inferenceExecutor,
+                tenantAiPolicy,
+                identityApi,
+                jobProgressCache,
+                pipelineGraphFactory,
+                pipelineProperties,
+                null
+        );
+    }
+
+    @Autowired
+    public AiProcessingController(
+            AiProcessingApi aiProcessingApi,
+            MultiModelRoutingApi multiModelRoutingApi,
+            AiJobInferenceExecutor inferenceExecutor,
+            TenantAiPolicyPort tenantAiPolicy,
+            IdentityApi identityApi,
+            @Autowired(required = false) JobProgressCache jobProgressCache,
+            ObjectProvider<PipelineGraphFactory> pipelineGraphFactory,
+            ObjectProvider<AiPipelineProperties> pipelineProperties,
+            ObjectProvider<TranscriptApi> transcriptApi
+    ) {
         this.aiProcessingApi = Objects.requireNonNull(aiProcessingApi, "aiProcessingApi");
         this.multiModelRoutingApi = Objects.requireNonNull(multiModelRoutingApi, "multiModelRoutingApi");
         this.inferenceExecutor = Objects.requireNonNull(inferenceExecutor, "inferenceExecutor");
@@ -81,6 +109,7 @@ public class AiProcessingController {
         this.jobProgressCache = jobProgressCache;
         this.pipelineGraphFactory = pipelineGraphFactory;
         this.pipelineProperties = pipelineProperties;
+        this.transcriptApi = transcriptApi;
     }
 
     @PostMapping("/ai-jobs")
@@ -90,6 +119,7 @@ public class AiProcessingController {
         identityApi.requirePermission(principal, Permission.MEETING_WRITE);
         Instant now = Instant.now();
         boolean forceReprocess = Boolean.TRUE.equals(body.forceReprocess());
+        UUID transcriptId = resolveTranscriptBinding(principal, body, forceReprocess);
         AiPipelineProperties props = pipelineProperties == null ? null : pipelineProperties.getIfAvailable();
         PipelineGraphFactory graph = pipelineGraphFactory == null ? null : pipelineGraphFactory.getIfAvailable();
         if (forceReprocess
@@ -99,12 +129,12 @@ public class AiProcessingController {
             JobPriority priority = body.priority() == null ? JobPriority.NORMAL : body.priority();
             Duration deadline = AiJobSla.admissionDeadline(priority, body.contextSize());
             String language = body.language() == null || body.language().isBlank() ? "tr" : body.language();
-            UUID correlation = body.correlationId() == null ? body.transcriptId() : body.correlationId();
+            UUID correlation = body.correlationId() == null ? transcriptId : body.correlationId();
             PipelineGraphFactory.GraphAdmission admission = graph.admitFromTranscriptReady(
                     principal.tenantId().value(),
                     body.meetingOccurrenceId(),
-                    body.transcriptId(),
-                    body.transcriptId().toString(),
+                    transcriptId,
+                    transcriptId.toString(),
                     priority,
                     language,
                     body.contextSize(),
@@ -123,7 +153,7 @@ public class AiProcessingController {
         AdmissionController.SubmitAiJobCommand command = new AdmissionController.SubmitAiJobCommand(
                 principal.tenantId().value(),
                 body.meetingOccurrenceId(),
-                body.transcriptId(),
+                transcriptId,
                 body.taskType(),
                 body.priority() == null ? JobPriority.NORMAL : body.priority(),
                 body.requestedCapability(),
@@ -132,7 +162,7 @@ public class AiProcessingController {
                 body.language(),
                 body.contextSize(),
                 body.fallbackPermittedOverride(),
-                body.correlationId() == null ? body.transcriptId() : body.correlationId(),
+                body.correlationId() == null ? transcriptId : body.correlationId(),
                 now,
                 forceReprocess
         );
@@ -141,6 +171,30 @@ public class AiProcessingController {
             throw AiJobException.admissionRejected(decision.rejectReason());
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(AdmissionResponse.from(decision));
+    }
+
+    private UUID resolveTranscriptBinding(
+            AuthenticatedPrincipal principal,
+            SubmitAiJobRequest body,
+            boolean forceReprocess
+    ) {
+        UUID requested = Objects.requireNonNull(body.transcriptId(), "transcriptId");
+        UUID meetingId = Objects.requireNonNull(body.meetingOccurrenceId(), "meetingOccurrenceId");
+        TranscriptApi transcripts = transcriptApi == null ? null : transcriptApi.getIfAvailable();
+        if (transcripts == null) {
+            return requested;
+        }
+        TenantId tenantId = principal.tenantId();
+        if (!transcripts.transcriptBelongsToMeeting(tenantId, meetingId, requested)) {
+            throw AiJobException.admissionRejected(
+                    "transcript_meeting_mismatch: transcript " + requested + " does not belong to meeting " + meetingId);
+        }
+        if (!forceReprocess) {
+            return requested;
+        }
+        return transcripts.latestProcessableTranscriptIdForMeeting(tenantId, meetingId)
+                .orElseThrow(() -> AiJobException.admissionRejected(
+                        "no_processable_transcript: meeting " + meetingId));
     }
 
     @GetMapping("/ai-jobs/{jobId}")

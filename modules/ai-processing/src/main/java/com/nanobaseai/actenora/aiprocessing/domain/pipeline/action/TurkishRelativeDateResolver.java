@@ -37,6 +37,10 @@ public final class TurkishRelativeDateResolver {
     private static final Pattern DAYPART = Pattern.compile(
             "(?iu)\\b(öğlen(?:e)?|ogle(?:ne)?|akşam(?:a)?|aksam(?:a)?|sabah(?:a)?)\\b"
     );
+    private static final Pattern MONTH_RELATIVE = Pattern.compile(
+            "(?iu)\\b(?:ocak|şubat|subat|mart|nisan|mayıs|mayis|haziran|temmuz|ağustos|agustos|"
+                    + "eylül|eylul|ekim|kasım|kasim|aralık|aralik)(?:\\s+ay[ıi])?['’]?(?:dan|den|tan|ten)\\s+sonra\\b"
+    );
 
     public Result resolve(String relativeDateText, OffsetDateTime meetingStartedAt, ZoneId timezone) {
         Objects.requireNonNull(timezone, "timezone");
@@ -164,6 +168,7 @@ public final class TurkishRelativeDateResolver {
                 || n.contains("hafta sonu")
                 || n.contains("onumuzdeki hafta")
                 || n.contains("gelecek hafta")
+                || MONTH_RELATIVE.matcher(text).find()
                 || weekday(n) != null
                 || TIME.matcher(n).find() && (n.contains("kadar") || n.contains("saat"));
     }
@@ -184,6 +189,8 @@ public final class TurkishRelativeDateResolver {
                         + "|(?:pazartesi|salı|sali|çarşamba|carsamba|perşembe|persembe|cuma|cumartesi|pazar)"
                         + "(?:\\s+gününe\\s+kadar|\\s+gunune\\s+kadar|\\s+kadar)?"
                         + "|(?:hafta\\s*sonu(?:na)?\\s+kadar|önümüzdeki\\s+hafta|onumuzdeki\\s+hafta|gelecek\\s+hafta)"
+                        + "|(?:ocak|şubat|subat|mart|nisan|mayıs|mayis|haziran|temmuz|ağustos|agustos|"
+                        + "eylül|eylul|ekim|kasım|kasim|aralık|aralik)(?:\\s+ay[ıi])?['’]?(?:dan|den|tan|ten)\\s+sonra"
                         + ")\\b"
         );
         Matcher matcher = phrase.matcher(clauseText);

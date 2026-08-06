@@ -9,6 +9,7 @@ import com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
 import com.nanobaseai.actenora.meeting.api.dto.ApplyAttendanceRequest;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
+import com.nanobaseai.actenora.meeting.domain.model.AttendanceStatus;
 import com.nanobaseai.actenora.approval.api.ApprovalId;
 import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
 import com.nanobaseai.actenora.meetingintelligence.api.MeetingIntelligenceApi;
@@ -24,6 +25,7 @@ import com.nanobaseai.actenora.meetingintelligence.domain.model.NoteReviewStatus
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.QualityGateOutcome;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.ValidationParticipant;
 import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
+import com.nanobaseai.actenora.sharedkernel.domain.PersonIdentityNormalizer;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 import org.springframework.beans.factory.ObjectProvider;
 import org.slf4j.Logger;
@@ -499,21 +501,22 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         Map<String, String> names = new java.util.LinkedHashMap<>();
         for (SegmentInput segment : segments) {
             String display = segment == null ? null : segment.speakerDisplayName();
-            if (display == null || display.isBlank() || isGenericSpeakerLabel(display)) {
+            if (PersonIdentityNormalizer.isGenericSpeakerLabel(display)) {
                 continue;
             }
-            String trimmed = display.trim().replaceAll("\\s+", " ");
-            names.putIfAbsent(trimmed.toLowerCase(Locale.ROOT), trimmed);
+            String normalized = PersonIdentityNormalizer.displayName(display);
+            if (PersonIdentityNormalizer.isGenericSpeakerLabel(normalized)) {
+                continue;
+            }
+            String identityKey = PersonIdentityNormalizer.identityKey(normalized);
+            if (!identityKey.isBlank()) {
+                names.putIfAbsent(identityKey, normalized);
+            }
         }
-        return names.values().stream()
+        return PersonIdentityNormalizer.canonicalRoster(names.values()).values().stream()
                 .map(name -> new ApplyAttendanceRequest.AttendanceRecord(
                         null, null, name, null, null, null))
                 .toList();
-    }
-
-    private static boolean isGenericSpeakerLabel(String display) {
-        String normalized = display.trim().toLowerCase(Locale.ROOT);
-        return normalized.matches("(?:speaker|konu[sş]mac[ıi]|unknown|bilinmeyen)(?:\\s+\\d+)?");
     }
 
     /** Active decisions only — superseded ones must not resurface in the approval mail. */
@@ -651,6 +654,8 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         List<ValidationParticipant> invitees = List.of();
         if (meetingApi.isPresent()) {
             invitees = meetingApi.get().listParticipants(command.meetingOccurrenceId()).stream()
+                    .filter(p -> p.attendanceStatus() == AttendanceStatus.JOINED
+                            || p.attendanceStatus() == AttendanceStatus.LEFT)
                     .map(p -> ValidationCandidateMapper.fromInvitee(
                             p.displayName(), p.email(), p.entraUserId()))
                     .toList();

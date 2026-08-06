@@ -76,16 +76,21 @@ export function MeetingMinutesPdfPreview({
   approved,
   downloadUrl,
   pdfPending,
+  loadPdf,
 }: {
   meetingTitle: string;
   body: string;
   approved: boolean;
   downloadUrl: string | null;
   pdfPending: boolean;
+  /** Auth-aware loader for portal-proxied PDFs (MinIO is not browser-reachable). */
+  loadPdf?: () => Promise<Blob>;
 }) {
   const { t } = useI18n();
   const stageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.72);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const previewDoc = useMemo(
     () => resolvePreviewDocument(body, meetingTitle),
     [body, meetingTitle],
@@ -111,11 +116,55 @@ export function MeetingMinutesPdfPreview({
     };
   }, [previewDoc?.sections.length]);
 
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    if (!downloadUrl) {
+      setResolvedUrl(null);
+      setPdfLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const isPortalProxy =
+      downloadUrl.startsWith("/api/v1/portal/") ||
+      downloadUrl.includes("/api/v1/portal/meetings/");
+
+    if (!isPortalProxy || !loadPdf) {
+      setResolvedUrl(downloadUrl);
+      setPdfLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setPdfLoading(true);
+    void loadPdf()
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setResolvedUrl(objectUrl);
+        setPdfLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setResolvedUrl(null);
+        setPdfLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [downloadUrl, loadPdf]);
+
   const scaledW = A4_PAGE_WIDTH_PX * scale;
   const scaledH = A4_PAGE_HEIGHT_PX * scale;
   const showDraftOverlay = !approved;
   const title = previewDoc?.title.trim() || t("meeting.minutesUntitled");
-
+  const downloadBusy = pdfPending || pdfLoading;
   return (
     <section
       className="overflow-hidden rounded-2xl border border-slate-300/80 bg-slate-500/25 shadow-inner"
@@ -133,18 +182,18 @@ export function MeetingMinutesPdfPreview({
           <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80 ring-1 ring-white/20">
             A4 · {Math.round(scale * 100)}%
           </span>
-          {downloadUrl ? (
+          {resolvedUrl ? (
             <a
-              href={downloadUrl}
+              href={resolvedUrl}
               target="_blank"
               rel="noreferrer"
-              download
+              download="meeting-minutes.pdf"
               className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-3.5 py-1.5 text-[11px] font-bold text-white shadow-md shadow-emerald-900/30 transition hover:bg-emerald-400"
             >
               <Download className="h-3.5 w-3.5" aria-hidden />
               {t("meeting.pdfDownload")}
             </a>
-          ) : pdfPending ? (
+          ) : downloadBusy ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1.5 text-[11px] font-semibold text-amber-100 ring-1 ring-amber-300/40">
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
               {t("meeting.pdfPending")}
@@ -195,9 +244,9 @@ export function MeetingMinutesPdfPreview({
               </>
             ) : null}
 
-            {downloadUrl ? (
+            {resolvedUrl ? (
               <object
-                data={`${downloadUrl}#toolbar=0&navpanes=0`}
+                data={`${resolvedUrl}#toolbar=0&navpanes=0`}
                 type="application/pdf"
                 className={[
                   "relative z-10 h-full w-full bg-slate-100",
@@ -239,12 +288,15 @@ function MinutesHtmlPreviewPage({
   return (
     <div
       className={[
-        "relative z-10 flex h-full flex-col gap-3 overflow-y-auto p-8 text-slate-700",
+        // Keep footer pinned to the A4 page bottom; only the body scrolls.
+        "relative z-10 flex h-full flex-col gap-3 overflow-hidden p-8 text-slate-700",
         showDraftPad ? "pt-14" : "",
       ].join(" ")}
     >
-      <TemplateBrandHeader />
-      <div className="border-b border-slate-200 pb-3">
+      <div className="shrink-0">
+        <TemplateBrandHeader />
+      </div>
+      <div className="shrink-0 border-b border-slate-200 pb-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
           {t("meeting.minutesDocumentTitle")}
         </p>
@@ -253,7 +305,7 @@ function MinutesHtmlPreviewPage({
         </h4>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
         {!previewDoc || previewDoc.sections.length === 0 ? (
           <p className="my-auto text-center text-sm text-slate-400">
             {t("meeting.pdfPreview.empty")}
@@ -269,7 +321,9 @@ function MinutesHtmlPreviewPage({
         )}
       </div>
 
-      <TemplateBrandFooter pageLabel={t("templates.preview.placeholder.page")} />
+      <div className="shrink-0 pt-1">
+        <TemplateBrandFooter pageLabel={t("templates.preview.placeholder.page")} />
+      </div>
     </div>
   );
 }

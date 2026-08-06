@@ -77,10 +77,12 @@ class DraftMinutesReadyRecipientsTest {
                 new SegmentInput("s1", 1, "Murat Sancar", 0, 1000, "Merhaba", false),
                 new SegmentInput("s2", 2, " murat   sancar ", 1000, 2000, "Devam", false),
                 new SegmentInput("s3", 3, "Speaker 1", 2000, 3000, "Ses", false),
-                new SegmentInput("s4", 4, "Gökay Yılmaz", 3000, 4000, "Katılıyorum", false)
+                new SegmentInput("s4", 4, "Gökay Yılmaz", 3000, 4000, "Katılıyorum", false),
+                new SegmentInput("s5", 5, "Ali BAĞATIR (GMY)", 4000, 5000, "Katılıyorum", false),
+                new SegmentInput("s6", 6, "Murat", 5000, 6000, "Devam", false)
         ));
 
-        assertEquals(List.of("Murat Sancar", "Gökay Yılmaz"),
+        assertEquals(List.of("Murat Sancar", "Gökay Yılmaz", "Ali BAĞATIR"),
                 records.stream().map(r -> r.displayName()).toList());
         assertTrue(records.stream().allMatch(r -> r.email() == null && r.entraUserId() == null));
     }

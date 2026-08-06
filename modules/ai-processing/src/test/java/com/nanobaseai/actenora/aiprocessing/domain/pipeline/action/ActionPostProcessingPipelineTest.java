@@ -3,6 +3,8 @@ package com.nanobaseai.actenora.aiprocessing.domain.pipeline.action;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecorder;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageReasonCode;
 import org.junit.jupiter.api.Test;
 
 import java.time.OffsetDateTime;
@@ -622,6 +624,65 @@ class ActionPostProcessingPipelineTest {
         );
         var result = pipeline.postProcess(List.of(), List.of(c), ctx(segments()));
         assertNull(result.commitments().getFirst().owner());
+    }
+
+    @Test
+    void hallucinatedActionAndCommitmentOwnersAreSoftClearedAndTraced() {
+        ActionItemCandidate action = action(
+                "Rapor hazırlanacak.", "Zelda", List.of("s3"));
+        CommitmentCandidate commitment = new CommitmentCandidate(
+                "Raporu hazırlayacağım.", "Ganondorf", List.of("s3"), 0.9);
+        ItemLineageRecorder recorder = ItemLineageRecorder.enabled();
+        ItemLineageRecorder.install(recorder);
+        try {
+            var result = pipeline.postProcess(List.of(action), List.of(commitment), ctx(segments()));
+
+            assertNull(result.actions().getFirst().owner());
+            assertNull(result.commitments().getFirst().owner());
+            assertTrue(result.qualityFlags().contains(ActionPostProcessingPipeline.HALLUCINATED_OWNER));
+            assertFalse(result.requiresManualReview());
+            assertEquals(2, recorder.snapshot().stream()
+                    .filter(row -> row.reasonCode() == LineageReasonCode.OWNER_HALLUCINATION)
+                    .count());
+        } finally {
+            ItemLineageRecorder.clear();
+        }
+    }
+
+    @Test
+    void ownerAliasesResolveToCanonicalRosterIdentity() {
+        ActionItemCandidate titled = action(
+                "PoC sonucu paylaşılacak.",
+                "Ali BAĞATIR (MÜŞTERİ ÇÖZÜMLERİ GMY)", List.of("alias-1"));
+        ActionItemCandidate email = action(
+                "DWH planı paylaşılacak.",
+                "ali.bagatir@example.com", List.of("alias-2"));
+        var result = pipeline.postProcess(
+                List.of(titled, email),
+                List.of(),
+                new ActionPostProcessingPipeline.Context(
+                        List.of(), Set.of("Ali BAĞATIR"), MEETING_START, IST, "meeting-alias"));
+
+        assertTrue(result.actions().stream().allMatch(a -> "Ali BAĞATIR".equals(a.owner())));
+        assertFalse(result.qualityFlags().contains(ActionPostProcessingPipeline.HALLUCINATED_OWNER));
+    }
+
+    @Test
+    void ambiguousMonthBoundaryIsPreservedForReviewInsteadOfDroppedOrInvented() {
+        ActionItemCandidate action = action(
+                "Murat, PoC planını Eylül'den sonra paylaşacak.",
+                "Murat Sancar", List.of("month-1"));
+        var result = pipeline.postProcess(
+                List.of(action), List.of(),
+                new ActionPostProcessingPipeline.Context(
+                        List.of(), Set.of("Murat Sancar"), MEETING_START, IST, "meeting-month"));
+
+        ActionItemCandidate processed = result.actions().getFirst();
+        assertEquals("Eylül'den sonra", processed.relativeDate());
+        assertNull(processed.dueAt());
+        assertNull(processed.dueDate());
+        assertTrue(result.requiresManualReview());
+        assertTrue(result.qualityFlags().contains(ActionExtractionAuditor.UNRESOLVED_RELATIVE_DATE));
     }
 
     @Test

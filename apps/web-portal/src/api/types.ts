@@ -547,6 +547,7 @@ export interface ApiClient {
   getMyWork(): Promise<MyWorkResponse>;
   getMeetingDelivery(meetingId: string): Promise<MeetingDeliveryRequest[]>;
   getNoteRenders(meetingId: string, noteId: string): Promise<NoteRenderStatus>;
+  downloadNotePdf(meetingId: string, noteId: string): Promise<Blob>;
   getMeetingTranscript(
     meetingId: string,
     params?: { speaker?: string; q?: string },

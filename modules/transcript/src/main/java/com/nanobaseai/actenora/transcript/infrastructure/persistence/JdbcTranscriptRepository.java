@@ -103,6 +103,8 @@ public final class JdbcTranscriptRepository implements TranscriptRepository {
         String sql = "SELECT " + COLUMNS + """
                  FROM transcript.transcripts
                  WHERE tenant_id = ? AND external_transcript_id = ?
+                 ORDER BY created_at DESC, id DESC
+                 LIMIT 1
                 """;
         return jdbc.query(sql, ROW_MAPPER, tenantId.value(), externalTranscriptId).stream().findFirst();
     }
@@ -113,6 +115,21 @@ public final class JdbcTranscriptRepository implements TranscriptRepository {
                  FROM transcript.transcripts
                  WHERE tenant_id = ? AND meeting_occurrence_id = ?
                  ORDER BY created_at DESC
+                 LIMIT 1
+                """;
+        return jdbc.query(sql, ROW_MAPPER, tenantId.value(), meetingOccurrenceId).stream().findFirst();
+    }
+
+    @Override
+    public Optional<Transcript> findLatestProcessableByMeetingOccurrenceId(
+            TenantId tenantId,
+            UUID meetingOccurrenceId
+    ) {
+        String sql = "SELECT " + COLUMNS + """
+                 FROM transcript.transcripts
+                 WHERE tenant_id = ? AND meeting_occurrence_id = ?
+                   AND status IN ('PARSED', 'PENDING_NORMALIZE', 'NORMALIZED')
+                 ORDER BY created_at DESC, id DESC
                  LIMIT 1
                 """;
         return jdbc.query(sql, ROW_MAPPER, tenantId.value(), meetingOccurrenceId).stream().findFirst();

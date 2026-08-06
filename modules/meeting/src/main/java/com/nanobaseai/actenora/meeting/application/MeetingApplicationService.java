@@ -23,16 +23,17 @@ import com.nanobaseai.actenora.meeting.domain.exception.BusinessContextNotFoundE
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateGraphIdentityException;
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateOccurrenceIdentityException;
 import com.nanobaseai.actenora.meeting.domain.exception.MeetingNotFoundException;
+import com.nanobaseai.actenora.meeting.domain.model.AttendanceStatus;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrence;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingOccurrenceStatus;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingParticipant;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingSeries;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingType;
-import com.nanobaseai.actenora.meeting.domain.model.AttendanceStatus;
 import com.nanobaseai.actenora.meeting.domain.model.ParticipantType;
 import com.nanobaseai.actenora.meeting.domain.model.ProcessingPriority;
 import com.nanobaseai.actenora.meeting.domain.service.MeetingOccurrenceLifecyclePolicy;
 import com.nanobaseai.actenora.sharedkernel.domain.DomainEvent;
+import com.nanobaseai.actenora.sharedkernel.domain.PersonIdentityNormalizer;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.Instant;
@@ -151,7 +152,7 @@ public final class MeetingApplicationService {
                         tenantId,
                         saved.id(),
                         input.entraUserId(),
-                        input.displayName(),
+                        normalizedDisplayName(input.displayName(), input.email()),
                         input.email(),
                         type,
                         input.external()
@@ -332,11 +333,15 @@ public final class MeetingApplicationService {
             }
             ParticipantType type = parseParticipantType(input.participantType());
             MeetingParticipant match = findInviteeByEmail(existing, email);
+            if (match == null) {
+                match = findInviteeByDisplayName(existing, input.displayName(), email);
+            }
             if (match != null) {
                 if (input.displayName() != null && !input.displayName().isBlank()) {
-                    match.rename(input.displayName());
+                    match.rename(normalizedDisplayName(input.displayName(), email));
                 }
                 match.assignParticipantType(type);
+                match.linkEmail(email);
                 applyInviteResponse(match, input.participantType());
                 participantRepository.save(match);
                 updated++;
@@ -351,7 +356,7 @@ public final class MeetingApplicationService {
                         tenantId,
                         meetingId,
                         entra,
-                        input.displayName() != null && !input.displayName().isBlank() ? input.displayName() : email,
+                        normalizedDisplayName(input.displayName(), email),
                         email,
                         type,
                         external
@@ -397,9 +402,11 @@ public final class MeetingApplicationService {
                 match.markJoined(record.joinedAt(), record.leftAt());
                 promoteIfOrganizerRole(match, record.role());
                 match.linkEntraUserId(record.entraUserId());
+                match.linkEmail(record.email());
                 participantRepository.save(match);
                 matchedIds.add(match.id());
-            } else if (normalizeEmail(record.email()) != null) {
+            } else if (normalizeEmail(record.email()) != null
+                    || normalizeDisplay(record.displayName()) != null) {
                 MeetingParticipant created = createFromAttendance(tenantId, meetingId, record);
                 participantRepository.save(created);
                 existing.add(created);
@@ -429,7 +436,7 @@ public final class MeetingApplicationService {
     ) {
         String email = normalizeEmail(record.email());
         String entra = normalizeId(record.entraUserId());
-        String display = normalizeDisplay(record.displayName());
+        String display = resolvedDisplayKey(existing, record.displayName());
 
         // 1) Prefer email — calendar invitees are keyed by mail.
         if (email != null) {
@@ -480,10 +487,49 @@ public final class MeetingApplicationService {
     }
 
     private static String normalizeDisplay(String name) {
-        if (name == null || name.isBlank()) {
+        String key = PersonIdentityNormalizer.identityKey(name);
+        return key.isBlank() ? null : key;
+    }
+
+    private static MeetingParticipant findInviteeByDisplayName(
+            List<MeetingParticipant> existing,
+            String displayName,
+            String email
+    ) {
+        String key = resolvedDisplayKey(existing, displayName);
+        if (key == null) {
+            key = resolvedDisplayKey(existing, email);
+        }
+        if (key == null) {
             return null;
         }
-        return name.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        MeetingParticipant found = null;
+        for (MeetingParticipant participant : existing) {
+            if (!key.equals(normalizeDisplay(participant.displayName()))) {
+                continue;
+            }
+            if (found != null) {
+                return null;
+            }
+            found = participant;
+        }
+        return found;
+    }
+
+    private static String resolvedDisplayKey(
+            List<MeetingParticipant> existing,
+            String candidate
+    ) {
+        if (candidate == null || candidate.isBlank()) {
+            return null;
+        }
+        List<String> roster = existing.stream()
+                .map(MeetingParticipant::displayName)
+                .toList();
+        return PersonIdentityNormalizer.resolveUnique(candidate, roster)
+                .map(PersonIdentityNormalizer::identityKey)
+                .filter(key -> !key.isBlank())
+                .orElseGet(() -> normalizeDisplay(candidate));
     }
 
     private static MeetingParticipant createFromAttendance(
@@ -494,12 +540,7 @@ public final class MeetingApplicationService {
         String email = normalizeEmail(record.email());
         String entra = normalizeId(record.entraUserId());
         boolean external = entra == null || entra.isBlank();
-        if (email == null) {
-            throw new IllegalArgumentException("attendance record requires email when creating a participant");
-        }
-        String display = record.displayName() == null || record.displayName().isBlank()
-                ? email
-                : record.displayName().trim();
+        String display = normalizedDisplayName(record.displayName(), email);
         ParticipantType type = isOrganizerRole(record.role())
                 ? ParticipantType.ORGANIZER
                 : ParticipantType.REQUIRED;
@@ -514,6 +555,17 @@ public final class MeetingApplicationService {
         );
         created.markJoined(record.joinedAt(), record.leftAt());
         return created;
+    }
+
+    private static String normalizedDisplayName(String displayName, String email) {
+        String display = PersonIdentityNormalizer.displayName(displayName);
+        if (display.isBlank()) {
+            display = PersonIdentityNormalizer.displayName(email);
+        }
+        if (display.isBlank()) {
+            throw new IllegalArgumentException("participant displayName or email is required");
+        }
+        return display;
     }
 
     private static void promoteIfOrganizerRole(MeetingParticipant participant, String role) {

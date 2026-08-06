@@ -67,6 +67,41 @@ class ValidationCandidateMapperTest {
     }
 
     @Test
+    void mergesTitledSpeakerAndEmailDisplayNameIntoOneIdentity() {
+        List<ValidationParticipant> speakers = ValidationCandidateMapper.participantsFromSpeakers(List.of(
+                new SegmentInput(
+                        "seg-ali", 0, "Ali  BAĞATIR (MÜŞTERİ ÇÖZÜMLERİ GMY)",
+                        0, 1000, "PoC planını paylaşacağım.", false)
+        ));
+        ValidationParticipant attendee = ValidationCandidateMapper.fromInvitee(
+                "ali.bagatir@example.com", "ali.bagatir@example.com", "oid-ali");
+
+        List<ValidationParticipant> merged = ValidationCandidateMapper.mergeParticipants(
+                speakers, List.of(attendee));
+
+        assertEquals(1, merged.size());
+        assertEquals("Ali BAĞATIR", merged.getFirst().displayName());
+        assertEquals("ali.bagatir@example.com", merged.getFirst().email());
+        assertEquals("oid-ali", merged.getFirst().entraUserId());
+    }
+
+    @Test
+    void mergesUniqueAsrSpeakerDriftIntoFullParticipantIdentity() {
+        List<ValidationParticipant> speakers = ValidationCandidateMapper.participantsFromSpeakers(List.of(
+                new SegmentInput("seg-burag", 0, "BURAG", 0, 1000, "Planı paylaşacağım.", false)
+        ));
+
+        List<ValidationParticipant> merged = ValidationCandidateMapper.mergeParticipants(
+                speakers,
+                List.of(ValidationCandidateMapper.fromInvitee(
+                        "Burak Ayık Kesisoğlu", "burak@example.com", "oid-burak"))
+        );
+
+        assertEquals(1, merged.size());
+        assertEquals("Burak Ayık Kesisoğlu", merged.getFirst().displayName());
+    }
+
+    @Test
     void mapsRelativeDateFromActionItem() {
         FinalNoteDraft draft = new FinalNoteDraft(
                 "Summary",

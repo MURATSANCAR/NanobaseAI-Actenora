@@ -23,6 +23,7 @@ import com.nanobaseai.actenora.transcript.domain.TranscriptDomainException;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -99,7 +100,8 @@ public class TranscriptApi {
 
     public List<TranscriptSegmentView> listSegmentsForMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
         requireRepositories();
-        Transcript transcript = transcriptRepository.findLatestByMeetingOccurrenceId(tenantId, meetingOccurrenceId)
+        Transcript transcript = transcriptRepository.findLatestProcessableByMeetingOccurrenceId(
+                        tenantId, meetingOccurrenceId)
                 .orElseThrow(() -> new TranscriptDomainException(
                         "TRANSCRIPT_NOT_FOUND",
                         "No transcript found for meeting occurrence"));
@@ -122,7 +124,8 @@ public class TranscriptApi {
         if (limit < 1 || limit > 100) {
             throw new IllegalArgumentException("limit must be between 1 and 100");
         }
-        Transcript transcript = transcriptRepository.findLatestByMeetingOccurrenceId(tenantId, meetingOccurrenceId)
+        Transcript transcript = transcriptRepository.findLatestProcessableByMeetingOccurrenceId(
+                        tenantId, meetingOccurrenceId)
                 .orElseThrow(() -> new TranscriptDomainException(
                         "TRANSCRIPT_NOT_FOUND",
                         "No transcript found for meeting occurrence"));
@@ -133,7 +136,32 @@ public class TranscriptApi {
 
     public boolean hasTranscriptForMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
         requireRepositories();
-        return transcriptRepository.findLatestByMeetingOccurrenceId(tenantId, meetingOccurrenceId).isPresent();
+        return transcriptRepository.findLatestProcessableByMeetingOccurrenceId(
+                tenantId, meetingOccurrenceId).isPresent();
+    }
+
+    public boolean transcriptBelongsToMeeting(
+            TenantId tenantId,
+            UUID meetingOccurrenceId,
+            UUID transcriptId
+    ) {
+        requireRepositories();
+        if (tenantId == null || meetingOccurrenceId == null || transcriptId == null) {
+            return false;
+        }
+        return transcriptRepository.findById(tenantId, TranscriptId.of(transcriptId))
+                .map(Transcript::meetingOccurrenceId)
+                .filter(meetingOccurrenceId::equals)
+                .isPresent();
+    }
+
+    public Optional<UUID> latestProcessableTranscriptIdForMeeting(
+            TenantId tenantId,
+            UUID meetingOccurrenceId
+    ) {
+        requireRepositories();
+        return transcriptRepository.findLatestProcessableByMeetingOccurrenceId(tenantId, meetingOccurrenceId)
+                .map(transcript -> transcript.id().value());
     }
 
     public List<String> listSpeakersForMeeting(TenantId tenantId, UUID meetingOccurrenceId) {

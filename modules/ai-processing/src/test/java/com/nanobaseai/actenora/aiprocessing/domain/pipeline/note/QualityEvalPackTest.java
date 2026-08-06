@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.note;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ImportantFactCandidate;
@@ -24,7 +25,7 @@ class QualityEvalPackTest {
                 List.of(new ActionItemCandidate("İş B", "Can", null, List.of("s2"), 0.9)),
                 List.of(),
                 List.of(),
-                List.of(),
+                List.of(new CommitmentCandidate("Planı paylaşacağım.", "Can", List.of("s2"), 0.88)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -45,6 +46,9 @@ class QualityEvalPackTest {
         assertEquals(1, counts.get("decisions"));
         assertEquals(1, counts.get("actionItems"));
         assertEquals(1, counts.get("importantFacts"));
+        assertEquals(1, counts.get("commitments"));
+        assertEquals(1, ((List<?>) pack.get("commitments")).size());
+        assertEquals("Can", ((Map<?, ?>) ((List<?>) pack.get("commitments")).getFirst()).get("owner"));
         assertTrue(pack.get("qualityFlags").toString().contains("CONSISTENCY_AUDIT_PASSED"));
         assertEquals(noteId.toString(), ((Map<?, ?>) pack.get("ids")).get("noteId"));
     }

@@ -16,7 +16,6 @@ import com.nanobaseai.actenora.meeting.domain.exception.DuplicateGraphIdentityEx
 import com.nanobaseai.actenora.meeting.domain.exception.DuplicateOccurrenceIdentityException;
 import com.nanobaseai.actenora.meeting.domain.exception.InvalidDateRangeException;
 import com.nanobaseai.actenora.meeting.domain.exception.InvalidMeetingTransitionException;
-import com.nanobaseai.actenora.meeting.domain.exception.InvalidParticipantException;
 import com.nanobaseai.actenora.meeting.domain.collaboration.UnauthorizedMeetingAccessException;
 import com.nanobaseai.actenora.meeting.domain.exception.MeetingNotFoundException;
 import com.nanobaseai.actenora.meeting.domain.exception.OptimisticLockConflictException;
@@ -228,17 +227,21 @@ class MeetingApplicationServiceTest {
     }
 
     @Test
-    void externalParticipantWithoutEmailFails() {
+    void nameOnlyExternalParticipantIsAllowed() {
         UUID contextId = createContext().id();
         Instant start = Instant.parse("2026-07-25T10:00:00Z");
-        assertThrows(InvalidParticipantException.class, () ->
-                api.createMeeting(new CreateMeetingRequest(
-                        contextId, null, null, "g-ext2", "i-ext2", start, null, null, null,
-                        "Bad guest", null, start, start.plusSeconds(3600), null,
-                        List.of(new CreateMeetingRequest.ParticipantInput(
-                                null, "Guest", " ", "OPTIONAL", true
-                        ))
-                )));
+        MeetingResponse meeting = api.createMeeting(new CreateMeetingRequest(
+                contextId, null, null, "g-ext2", "i-ext2", start, null, null, null,
+                "Link guest", null, start, start.plusSeconds(3600), null,
+                List.of(new CreateMeetingRequest.ParticipantInput(
+                        null, "Guest", " ", "OPTIONAL", true
+                ))
+        ));
+
+        ParticipantResponse guest = api.listParticipants(meeting.id()).getFirst();
+        assertEquals("Guest", guest.displayName());
+        assertEquals(null, guest.email());
+        assertTrue(guest.external());
     }
 
     @Test
@@ -440,6 +443,58 @@ class MeetingApplicationServiceTest {
                 .orElseThrow();
         assertEquals(AttendanceStatus.JOINED, dana.attendanceStatus());
         assertEquals(oid, dana.entraUserId());
+    }
+
+    @Test
+    void applyAttendanceCreatesNameOnlyExternalJoinerAndIsIdempotent() {
+        UUID contextId = createContext().id();
+        Instant start = Instant.parse("2026-08-03T09:00:00Z");
+        MeetingResponse meeting = api.createMeeting(new CreateMeetingRequest(
+                contextId, null, null, "g-guest", "i-guest", start, null, null, null,
+                "Guest join", null, start, start.plusSeconds(3600), null, List.of()
+        ));
+        ApplyAttendanceRequest request = new ApplyAttendanceRequest(
+                List.of(new ApplyAttendanceRequest.AttendanceRecord(
+                        null, null, "  Ali  BAĞATIR (MÜŞTERİ ÇÖZÜMLERİ GMY) ",
+                        "attendee", start.plusSeconds(30), start.plusSeconds(900)
+                )),
+                false
+        );
+
+        api.applyAttendance(meeting.id(), request);
+        api.applyAttendance(meeting.id(), request);
+        List<ParticipantResponse> second = api.applyAttendance(meeting.id(), new ApplyAttendanceRequest(
+                List.of(new ApplyAttendanceRequest.AttendanceRecord(
+                        "ali.bagatir@example.com", null, "Ali Bagatir",
+                        "attendee", start.plusSeconds(30), start.plusSeconds(900))),
+                false));
+
+        assertEquals(1, second.size());
+        ParticipantResponse guest = second.getFirst();
+        assertEquals("Ali BAĞATIR", guest.displayName());
+        assertEquals(AttendanceStatus.JOINED, guest.attendanceStatus());
+        assertTrue(guest.external());
+        assertEquals("ali.bagatir@example.com", guest.email());
+    }
+
+    @Test
+    void attendanceReconcilesUniqueAsrSpeakerDriftWithoutDuplicateParticipant() {
+        Instant start = Instant.parse("2026-08-03T09:00:00Z");
+        MeetingResponse meeting = api.createMeeting(new CreateMeetingRequest(
+                createContext().id(), null, null, "g-asr", "i-asr", start, null, null, null,
+                "ASR identity", null, start, start.plusSeconds(3600), null,
+                List.of(new CreateMeetingRequest.ParticipantInput(
+                        "oid-burak", "Burak Ayık Kesisoğlu", "burak@example.com", "required", false))
+        ));
+
+        List<ParticipantResponse> synced = api.applyAttendance(meeting.id(), new ApplyAttendanceRequest(
+                List.of(new ApplyAttendanceRequest.AttendanceRecord(
+                        null, null, "BURAG", "attendee", start, start.plusSeconds(60))),
+                false));
+
+        assertEquals(1, synced.size());
+        assertEquals("Burak Ayık Kesisoğlu", synced.getFirst().displayName());
+        assertEquals(AttendanceStatus.JOINED, synced.getFirst().attendanceStatus());
     }
 
     @Test

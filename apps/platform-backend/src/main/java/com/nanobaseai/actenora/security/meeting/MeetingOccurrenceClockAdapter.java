@@ -3,12 +3,13 @@ package com.nanobaseai.actenora.security.meeting;
 import com.nanobaseai.actenora.aiprocessing.application.port.MeetingOccurrenceClockPort;
 import com.nanobaseai.actenora.meeting.application.port.MeetingOccurrenceRepository;
 import com.nanobaseai.actenora.meeting.application.port.MeetingParticipantRepository;
+import com.nanobaseai.actenora.meeting.domain.model.AttendanceStatus;
 import com.nanobaseai.actenora.meeting.domain.model.MeetingParticipant;
+import com.nanobaseai.actenora.sharedkernel.domain.PersonIdentityNormalizer;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -56,18 +57,17 @@ public final class MeetingOccurrenceClockAdapter implements MeetingOccurrenceClo
         Set<String> names = new LinkedHashSet<>();
         for (MeetingParticipant p : participantRepository.findByMeetingOccurrenceIdAndTenantId(
                 meetingOccurrenceId, tenantId)) {
+            if (p.attendanceStatus() != AttendanceStatus.JOINED
+                    && p.attendanceStatus() != AttendanceStatus.LEFT) {
+                continue;
+            }
             if (p.displayName() != null && !p.displayName().isBlank()) {
-                names.add(p.displayName().strip());
+                names.add(PersonIdentityNormalizer.displayName(p.displayName()));
             }
             if (p.email() != null && !p.email().isBlank()) {
-                String email = p.email().strip();
-                names.add(email);
-                int at = email.indexOf('@');
-                if (at > 0) {
-                    names.add(email.substring(0, at));
-                }
+                names.add(PersonIdentityNormalizer.displayName(p.email()));
             }
         }
-        return List.copyOf(new ArrayList<>(names));
+        return List.copyOf(PersonIdentityNormalizer.canonicalRoster(names).values());
     }
 }

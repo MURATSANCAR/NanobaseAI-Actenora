@@ -1,11 +1,15 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.note;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ImportantFactCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.IssueCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ProposalCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -66,6 +70,8 @@ public final class QualityEvalPack {
         counts.put("openQuestions", size(draft.openQuestions()));
         counts.put("importantFacts", size(draft.importantFacts()));
         counts.put("commitments", size(draft.commitments()));
+        counts.put("topics", size(draft.topics()));
+        counts.put("issues", size(draft.issues()));
         counts.put("proposals", size(draft.proposals()));
         root.put("counts", counts);
 
@@ -78,6 +84,10 @@ public final class QualityEvalPack {
         root.put("actionItems", mapActions(draft.actionItems()));
         root.put("risks", mapRisks(draft.risks()));
         root.put("openQuestions", mapQuestions(draft.openQuestions()));
+        root.put("commitments", mapCommitments(draft.commitments()));
+        root.put("topics", mapTopics(draft.topics()));
+        root.put("issues", mapIssues(draft.issues()));
+        root.put("proposals", mapProposals(draft.proposals()));
         root.put("importantFacts", mapFacts(draft.importantFacts()));
 
         return root;
@@ -161,6 +171,62 @@ public final class QualityEvalPack {
             out.add(m);
         }
         return out;
+    }
+
+    private static List<Map<String, Object>> mapCommitments(List<CommitmentCandidate> items) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (items == null) {
+            return out;
+        }
+        for (CommitmentCandidate item : items) {
+            Map<String, Object> mapped = baseItem(
+                    item.text(), item.confidence(), item.evidenceSegmentIds());
+            mapped.put("owner", item.owner());
+            out.add(mapped);
+        }
+        return out;
+    }
+
+    private static List<Map<String, Object>> mapTopics(List<TopicCandidate> items) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (items != null) {
+            for (TopicCandidate item : items) {
+                out.add(baseItem(item.text(), item.confidence(), item.evidenceSegmentIds()));
+            }
+        }
+        return out;
+    }
+
+    private static List<Map<String, Object>> mapIssues(List<IssueCandidate> items) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (items != null) {
+            for (IssueCandidate item : items) {
+                out.add(baseItem(item.text(), item.confidence(), item.evidenceSegmentIds()));
+            }
+        }
+        return out;
+    }
+
+    private static List<Map<String, Object>> mapProposals(List<ProposalCandidate> items) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (items != null) {
+            for (ProposalCandidate item : items) {
+                out.add(baseItem(item.text(), item.confidence(), item.evidenceSegmentIds()));
+            }
+        }
+        return out;
+    }
+
+    private static Map<String, Object> baseItem(
+            String text,
+            double confidence,
+            List<String> evidenceSegmentIds
+    ) {
+        Map<String, Object> mapped = new LinkedHashMap<>();
+        mapped.put("text", text);
+        mapped.put("confidence", confidence);
+        mapped.put("evidenceSegmentIds", evidenceSegmentIds);
+        return mapped;
     }
 
     private static int size(List<?> list) {

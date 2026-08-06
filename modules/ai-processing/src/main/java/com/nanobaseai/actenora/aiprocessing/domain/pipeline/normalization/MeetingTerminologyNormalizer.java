@@ -38,7 +38,25 @@ public final class MeetingTerminologyNormalizer {
                 new Alias("poscree", "PostgreSQL"),
                 new Alias("Poscree", "PostgreSQL"),
                 new Alias("poscre", "PostgreSQL"),
-                new Alias("Postgre", "PostgreSQL")
+                new Alias("Postgre", "PostgreSQL"),
+                new Alias("g p u", "GPU"),
+                new Alias("gpu", "GPU"),
+                new Alias("n vidia", "NVIDIA"),
+                new Alias("envidia", "NVIDIA"),
+                new Alias("nivida", "NVIDIA"),
+                new Alias("nvidia", "NVIDIA"),
+                new Alias("d w h", "DWH"),
+                new Alias("dwh", "DWH"),
+                new Alias("p o c", "PoC"),
+                new Alias("proof of concept", "PoC"),
+                new Alias("poc", "PoC"),
+                new Alias("s i e m", "SIEM"),
+                new Alias("si em", "SIEM"),
+                new Alias("siem", "SIEM"),
+                new Alias("kor banking", "Core Banking"),
+                new Alias("core bankin", "Core Banking"),
+                new Alias("core bankacılık", "Core Banking"),
+                new Alias("core banking", "Core Banking")
         ));
     }
 

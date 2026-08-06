@@ -312,6 +312,38 @@ class EvidenceValidationQualityGateTest {
     }
 
     @Test
+    void ambiguousFirstNameDoesNotMatchParticipantRoster() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .owner("unknown-user", "Ali")
+                .build();
+        ValidationSegment evidence = new ValidationSegment(
+                segmentId, 0, "speaker-1", "Speaker 1", 0, 10_000,
+                "Release notes will be prepared.", true);
+        List<ValidationParticipant> participants = List.of(
+                new ValidationParticipant(UUID.randomUUID(), "Ali BAĞATIR", "ali.b@example.com", "oid-1"),
+                new ValidationParticipant(UUID.randomUUID(), "Ali Yılmaz", "ali.y@example.com", "oid-2")
+        );
+
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(evidence), participants);
+
+        assertTrue(hasFail(result, ValidationRuleCodes.OWNER_IS_PARTICIPANT));
+    }
+
+    @Test
+    void titledParticipantMatchesCanonicalOwnerAndEmailAlias() {
+        ValidationCandidate candidate = baseCandidate(segmentId)
+                .owner("unknown-user", "ali.bagatir@example.com")
+                .build();
+        ValidationParticipant titled = new ValidationParticipant(
+                UUID.randomUUID(), "Ali BAĞATIR (MÜŞTERİ ÇÖZÜMLERİ GMY)",
+                "ali.bagatir@example.com", "oid-ali");
+
+        ValidationExecutionResult result = validate(List.of(candidate), List.of(segment()), List.of(titled));
+
+        assertTrue(!hasFail(result, ValidationRuleCodes.OWNER_IS_PARTICIPANT));
+    }
+
+    @Test
     void canonicalParticipantOwnerPasses() {
         ValidationCandidate candidate = baseCandidate(segmentId)
                 .owner("unknown-user", "ADA")

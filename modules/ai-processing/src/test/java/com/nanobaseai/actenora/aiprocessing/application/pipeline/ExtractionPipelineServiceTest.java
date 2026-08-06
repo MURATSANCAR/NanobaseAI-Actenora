@@ -75,7 +75,7 @@ class ExtractionPipelineServiceTest {
     }
 
     @Test
-    void hallucinatedOwnerFails() {
+    void hallucinatedOwnerIsClearedWithoutKillingTheJob() {
         Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> validJson("seg-1", "Zelda", null));
         ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), adapter);
 
@@ -83,9 +83,9 @@ class ExtractionPipelineServiceTest {
                 segment("seg-1", 0, "Alice", "Alice will prepare the report.")
         )));
 
-        assertFalse(result.success());
-        assertEquals(FailureCategory.HALLUCINATED_OWNER, result.failureCategory());
-        assertTrue(result.permanentFailure());
+        assertTrue(result.success());
+        assertTrue(result.finalNote().actionItems().stream().allMatch(item -> item.owner() == null));
+        assertTrue(result.finalNote().qualityFlags().contains("HALLUCINATED_OWNER"));
     }
 
     @Test

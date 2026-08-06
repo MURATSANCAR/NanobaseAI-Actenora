@@ -178,9 +178,11 @@ public class TranscriptIngestionService {
                     "Meeting occurrence is not known for this tenant");
         }
 
+        ContentHash hash = ContentHash.ofBytes(command.content());
         Optional<Transcript> existingByExternal = transcriptRepository.findByTenantAndExternalTranscriptId(
                 command.tenantId(), command.externalTranscriptId());
-        if (existingByExternal.isPresent()) {
+        if (existingByExternal.isPresent()
+                && existingByExternal.get().contentHash().equals(hash)) {
             Transcript duplicate = existingByExternal.get();
             return new UploadManualVttResult(
                     duplicate.id(),
@@ -190,7 +192,8 @@ public class TranscriptIngestionService {
                     true);
         }
 
-        ContentHash hash = ContentHash.ofBytes(command.content());
+        // Graph may republish the same external transcript id after speaker attribution is
+        // enabled. A changed immutable payload is a new revision, not an idempotent duplicate.
         Optional<Transcript> existingByHash = transcriptRepository.findByTenantAndContentHash(
                 command.tenantId(), hash);
         if (existingByHash.isPresent()) {
@@ -204,6 +207,10 @@ public class TranscriptIngestionService {
         }
 
         Instant now = clock.now();
+        if (existingByExternal.isPresent()
+                && !now.isAfter(existingByExternal.get().createdAt())) {
+            now = existingByExternal.get().createdAt().plusNanos(1);
+        }
         Transcript transcript = Transcript.createGraphIngest(
                 command.tenantId(),
                 command.meetingOccurrenceId(),

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { FileText, ListChecks, ShieldAlert, Target, Zap } from "lucide-react";
 import { HighlightPersonNames } from "@/components/meeting/HighlightPersonNames";
 import { MeetingMinutesPdfPreview } from "@/components/meeting/MeetingMinutesPdfPreview";
@@ -173,6 +173,12 @@ export function MeetingCenterPanel({
       (rendersQuery.data?.jobs.some((j) => j.format === "PDF" && (j.status === "PENDING" || j.status === "RUNNING")) ??
         false),
   );
+  const loadPdf = useCallback(() => {
+    if (!primaryNoteId) {
+      return Promise.reject(new Error("note not selected"));
+    }
+    return api.downloadNotePdf(meetingId, primaryNoteId);
+  }, [api, meetingId, primaryNoteId]);
 
   const canEditNotes = auth.can("meetings:edit") && mutationsEnabled;
   const templatesQuery = useQuery({
@@ -259,6 +265,7 @@ export function MeetingCenterPanel({
                 )}
                 downloadUrl={pdfDocument?.downloadUrl ?? null}
                 pdfPending={pdfPending}
+                loadPdf={loadPdf}
               />
             ) : null}
           </div>

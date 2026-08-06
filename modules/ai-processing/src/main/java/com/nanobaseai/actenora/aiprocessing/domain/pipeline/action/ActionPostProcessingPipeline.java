@@ -13,6 +13,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageOpera
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageReasonCode;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageStage;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageSupport;
+import com.nanobaseai.actenora.sharedkernel.domain.PersonIdentityNormalizer;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -34,6 +35,8 @@ import java.util.Set;
  * </pre>
  */
 public final class ActionPostProcessingPipeline {
+
+    public static final String HALLUCINATED_OWNER = "HALLUCINATED_OWNER";
 
     public static final ZoneId DEFAULT_ZONE = ZoneId.of("Europe/Istanbul");
 
@@ -153,10 +156,12 @@ public final class ActionPostProcessingPipeline {
                 : context;
         ActionPostProcessingStats stats = new ActionPostProcessingStats();
         stats.setInputActionCount(actions.size());
-        Set<String> participants = new LinkedHashSet<>(ctx.participants());
+        Set<String> rawParticipants = new LinkedHashSet<>(ctx.participants());
         for (SegmentInput s : ctx.transcriptSegments()) {
-            s.speakerDisplayNameOptional().ifPresent(participants::add);
+            s.speakerDisplayNameOptional().ifPresent(rawParticipants::add);
         }
+        Set<String> participants = new LinkedHashSet<>(
+                PersonIdentityNormalizer.canonicalRoster(rawParticipants).values());
 
         List<ActionItemCandidate> working = new ArrayList<>();
         List<String> flags = new ArrayList<>();
@@ -207,6 +212,10 @@ public final class ActionPostProcessingPipeline {
 
         List<ActionItemCandidate> ownerSanitized =
                 sanitizeUnknownOwners(dated, participants, ctx.transcriptSegments(), stats);
+        if (stats.ownersCleared() > 0) {
+            flags.add(HALLUCINATED_OWNER);
+            stats.warn(HALLUCINATED_OWNER);
+        }
 
         List<ActionItemCandidate> titlesFilled =
                 titleBackfiller.backfill(
@@ -231,8 +240,10 @@ public final class ActionPostProcessingPipeline {
 
         CommitmentOwnerBinder.Result commitmentsBound =
                 commitmentOwnerBinder.bind(commitments, ctx.transcriptSegments());
+        List<CommitmentCandidate> sanitizedCommitments = sanitizeCommitmentOwners(
+                commitmentsBound.commitments(), participants, stats, flags);
         List<CommitmentCandidate> normalizedCommitments = new ArrayList<>();
-        for (CommitmentCandidate c : commitmentsBound.commitments()) {
+        for (CommitmentCandidate c : sanitizedCommitments) {
             String rewritten = normalizeItemText(c.text());
             if (rewritten.equals(c.text())) {
                 normalizedCommitments.add(c);
@@ -535,14 +546,14 @@ public final class ActionPostProcessingPipeline {
     }
 
     public static Set<String> participantsFromSegments(List<SegmentInput> segments) {
-        Set<String> set = new LinkedHashSet<>();
+        Set<String> raw = new LinkedHashSet<>();
         if (segments == null) {
-            return set;
+            return raw;
         }
         for (SegmentInput s : segments) {
-            s.speakerDisplayNameOptional().ifPresent(name -> set.add(name.strip()));
+            s.speakerDisplayNameOptional().ifPresent(raw::add);
         }
-        return set;
+        return new LinkedHashSet<>(PersonIdentityNormalizer.canonicalRoster(raw).values());
     }
 
     /**
@@ -571,6 +582,8 @@ public final class ActionPostProcessingPipeline {
             if (participants.isEmpty()) {
                 if (owner != null && !owner.isBlank()) {
                     stats.incrementOwnersCleared();
+                    recordOwnerHallucination("ACTION_ITEM", action.text(), owner,
+                            action.evidenceSegmentIds());
                     out.add(action.withOwner(null));
                 } else {
                     out.add(action);
@@ -585,14 +598,14 @@ public final class ActionPostProcessingPipeline {
                 out.add(action.withOwner(resolved));
                 continue;
             }
-            String evidenceSpeaker = firstEvidenceSpeakerName(action, segments);
-            String fromEvidence = resolveOwnerToParticipant(evidenceSpeaker, participants);
-            if (fromEvidence != null) {
-                stats.incrementOwnersBound();
-                out.add(action.withOwner(fromEvidence));
-                continue;
-            }
             if (owner == null || owner.isBlank()) {
+                String evidenceSpeaker = firstEvidenceSpeakerName(action, segments);
+                String fromEvidence = resolveOwnerToParticipant(evidenceSpeaker, participants);
+                if (fromEvidence != null) {
+                    stats.incrementOwnersBound();
+                    out.add(action.withOwner(fromEvidence));
+                    continue;
+                }
                 String fromText = ownerHintFromActionText(action.text());
                 String boundFromText = resolveOwnerToParticipant(fromText, participants);
                 if (boundFromText != null) {
@@ -604,9 +617,71 @@ public final class ActionPostProcessingPipeline {
                 continue;
             }
             stats.incrementOwnersCleared();
+            recordOwnerHallucination("ACTION_ITEM", action.text(), owner,
+                    action.evidenceSegmentIds());
             out.add(action.withOwner(null));
         }
         return out;
+    }
+
+    private static List<CommitmentCandidate> sanitizeCommitmentOwners(
+            List<CommitmentCandidate> commitments,
+            Set<String> participants,
+            ActionPostProcessingStats stats,
+            List<String> flags
+    ) {
+        List<CommitmentCandidate> out = new ArrayList<>(commitments.size());
+        for (CommitmentCandidate commitment : commitments) {
+            String owner = commitment.owner();
+            if (owner == null || owner.isBlank()) {
+                out.add(commitment);
+                continue;
+            }
+            String resolved = resolveOwnerToParticipant(owner, participants);
+            if (resolved == null) {
+                stats.incrementOwnersCleared();
+                stats.warn(HALLUCINATED_OWNER);
+                if (!flags.contains(HALLUCINATED_OWNER)) {
+                    flags.add(HALLUCINATED_OWNER);
+                }
+                recordOwnerHallucination("COMMITMENT", commitment.text(), owner,
+                        commitment.evidenceSegmentIds());
+                out.add(new CommitmentCandidate(
+                        commitment.text(), null, commitment.evidenceSegmentIds(), commitment.confidence()));
+                continue;
+            }
+            if (!resolved.equals(owner)) {
+                stats.incrementOwnersBound();
+                out.add(new CommitmentCandidate(
+                        commitment.text(), resolved, commitment.evidenceSegmentIds(), commitment.confidence()));
+            } else {
+                out.add(commitment);
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    private static void recordOwnerHallucination(
+            String candidateType,
+            String text,
+            String owner,
+            List<String> evidence
+    ) {
+        LineageSupport.record(
+                LineageSupport.idOf(candidateType.toLowerCase(Locale.ROOT), text, evidence),
+                candidateType,
+                LineageStage.ACTION_POST_PROCESSING,
+                LineageOperation.UPDATE,
+                LineageReasonCode.OWNER_HALLUCINATION,
+                List.of(),
+                null,
+                ItemLineageRecord.snapshot(text, owner, null, evidence),
+                ItemLineageRecord.snapshot(text, null, null, evidence),
+                "owner-roster-normalization-v2",
+                null,
+                null,
+                null
+        );
     }
 
     /**
@@ -636,27 +711,7 @@ public final class ActionPostProcessingPipeline {
      * otherwise {@code null}.
      */
     static String resolveOwnerToParticipant(String owner, Set<String> participants) {
-        if (owner == null || owner.isBlank() || participants == null || participants.isEmpty()) {
-            return null;
-        }
-        String ownerNorm = stripHonorific(normalizePersonToken(owner));
-        if (ownerNorm.isBlank()) {
-            return null;
-        }
-        String ownerFirst = firstToken(ownerNorm);
-        String best = null;
-        for (String participant : participants) {
-            String pNorm = stripHonorific(normalizePersonToken(participant));
-            if (pNorm.isBlank()) {
-                continue;
-            }
-            if (pNorm.equals(ownerNorm) || firstToken(pNorm).equals(ownerFirst) || pNorm.startsWith(ownerFirst + " ")) {
-                if (best == null || participant.length() > best.length()) {
-                    best = participant;
-                }
-            }
-        }
-        return best;
+        return PersonIdentityNormalizer.resolveUnique(owner, participants).orElse(null);
     }
 
     static boolean ownerMatchesParticipant(String owner, Set<String> participants) {
@@ -676,45 +731,6 @@ public final class ActionPostProcessingPipeline {
             }
         }
         return null;
-    }
-
-    private static String normalizePersonToken(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.trim()
-                .toLowerCase(Locale.ROOT)
-                .replace('ı', 'i')
-                .replace('İ', 'i')
-                .replace('ş', 's')
-                .replace('Ş', 's')
-                .replace('ğ', 'g')
-                .replace('Ğ', 'g')
-                .replace('ç', 'c')
-                .replace('Ç', 'c')
-                .replace('ö', 'o')
-                .replace('Ö', 'o')
-                .replace('ü', 'u')
-                .replace('Ü', 'u')
-                .replaceAll("[^\\p{Alnum}]+", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-    }
-
-    /** Drops Turkish honorifics so "Ahmet bey" matches "Ahmet Faruk". */
-    private static String stripHonorific(String normalized) {
-        if (normalized.isBlank()) {
-            return normalized;
-        }
-        return normalized
-                .replaceAll("\\b(bey|hanim|hanım|bay|bayan|mr|mrs|ms)\\b", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-    }
-
-    private static String firstToken(String normalized) {
-        int space = normalized.indexOf(' ');
-        return space < 0 ? normalized : normalized.substring(0, space);
     }
 
     public static OffsetDateTime parseMeetingStart(String isoOrEmpty, ZoneId zone) {
