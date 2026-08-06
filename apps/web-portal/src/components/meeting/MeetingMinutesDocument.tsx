@@ -23,22 +23,9 @@ import {
   type MinutesSectionType,
 } from "@/lib/minutesDocument";
 import { minutesSectionTheme } from "@/lib/minutesSectionTheme";
+import { MINUTES_SECTION_TITLE_KEYS } from "@/lib/minutesSectionTitle";
 import { collectPersonNames } from "@/lib/personNames";
 import type { TemplateComponentType } from "@/types/template";
-
-const SECTION_TITLE_KEYS: Partial<Record<MinutesSectionType, MessageKey>> = {
-  MEETING_KUNYE: "meeting.minutesSection.MEETING_KUNYE",
-  EXECUTIVE_SUMMARY: "backend.templateComponentType.EXECUTIVE_SUMMARY",
-  AGENDA: "meeting.minutesSection.AGENDA",
-  DECISIONS: "backend.templateComponentType.DECISIONS",
-  ACTIONS: "meeting.minutesSection.ACTIONS",
-  RISKS: "meeting.minutesSection.RISKS",
-  COMMITMENTS: "backend.templateComponentType.COMMITMENTS",
-  OPEN_QUESTIONS: "backend.templateComponentType.OPEN_QUESTIONS",
-  ISSUES: "meeting.minutesSection.ISSUES",
-  PROPOSALS: "meeting.minutesSection.PROPOSALS",
-  NEXT_CHECKPOINT: "meeting.minutesSection.NEXT_CHECKPOINT",
-};
 
 export function MeetingMinutesDocument({
   document,
@@ -267,7 +254,7 @@ function MinutesSectionCard({
   const remoteValue = editableValue(section);
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState(remoteValue);
-  const titleKey = SECTION_TITLE_KEYS[section.type];
+  const titleKey = MINUTES_SECTION_TITLE_KEYS[section.type];
 
   useEffect(() => {
     if (!focused) setDraft(remoteValue);

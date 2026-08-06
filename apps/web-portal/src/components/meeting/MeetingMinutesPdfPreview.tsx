@@ -14,6 +14,7 @@ import {
   type MinutesSection,
   type MinutesSectionKind,
 } from "@/lib/minutesDocument";
+import { minutesSectionTitle } from "@/lib/minutesSectionTitle";
 import { parseTemplateNoteBody } from "@/lib/templateNoteBody";
 import type { TemplateComponentType } from "@/types/template";
 
@@ -284,7 +285,7 @@ function MinutesHtmlPreviewPage({
   previewDoc: { title: string; sections: MinutesSection[] } | null;
   showDraftPad: boolean;
 }) {
-  const { t, tb } = useI18n();
+  const { t } = useI18n();
 
   return (
     <div
@@ -316,7 +317,7 @@ function MinutesHtmlPreviewPage({
             <PreviewSection
               key={section.type}
               section={section}
-              label={tb("templateComponentType", section.type)}
+              label={minutesSectionTitle(t, section.type)}
             />
           ))
         )}
