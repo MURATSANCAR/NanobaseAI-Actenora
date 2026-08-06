@@ -42,11 +42,11 @@ class OpenQuestionHygieneFilterTest {
     void dropsQuestionsAnsweredByHighConfidenceDecision() {
         List<OpenQuestionCandidate> kept = filter.filter(
                 List.of(new OpenQuestionCandidate(
-                        "Core banking için hangi çözümle devam edilecek?",
+                        "Core banking çözümü Simple ile devam edilecek mi?",
                         List.of("s1"),
                         0.9)),
                 List.of(new DecisionCandidate(
-                        "Core banking için Simple çözümü ile devam edilecek.",
+                        "Core banking çözümü Simple ile devam edilecek.",
                         List.of("s1"),
                         0.95)),
                 List.of(),

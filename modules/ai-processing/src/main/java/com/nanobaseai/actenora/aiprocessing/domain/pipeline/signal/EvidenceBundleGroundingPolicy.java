@@ -157,11 +157,14 @@ public final class EvidenceBundleGroundingPolicy implements BundleGroundingPolic
         String ev = evidence.toLowerCase(Locale.ROOT);
         String dt = decisionText == null ? "" : decisionText.toLowerCase(Locale.ROOT);
 
-        boolean selectionConfirmed = SELECTION_CONFIRMATION.matcher(ev).find()
+        boolean selectionConfirmedInEvidence = SELECTION_CONFIRMATION.matcher(ev).find();
+        boolean selectionConfirmed = selectionConfirmedInEvidence
                 || SELECTION_CONFIRMATION.matcher(dt).find();
+        // History narration alone is not an in-meeting decision; only evidence-side selection
+        // confirmation (e.g. "Simple ile devam edeceğiz") can keep it.
         if (HISTORICAL_DECISION_CONTEXT.matcher(ev).find()
                 && !CURRENT_DECISION_CONTEXT.matcher(ev).find()
-                && !selectionConfirmed) {
+                && !selectionConfirmedInEvidence) {
             return false;
         }
 
