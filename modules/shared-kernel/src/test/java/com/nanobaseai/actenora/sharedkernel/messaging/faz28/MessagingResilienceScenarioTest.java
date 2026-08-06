@@ -128,8 +128,20 @@ class MessagingResilienceScenarioTest {
         EventEnvelope envelope = sample(TenantId.random(), "{\"dlq\":1}");
         backbone.outboxPublisher().enqueue(envelope);
         backbone.recordingTransport().failWhen(e -> true);
-        backbone.relay().publishDueBatch();
-        backbone.relay().publishDueBatch();
+        // Failures do not increment publishDueBatch success count; drain until DLQ.
+        for (int i = 0; i < 20; i++) {
+            backbone.relay().publishDueBatch();
+            OutboxStatus status = backbone.outboxStore().findById(envelope.eventId()).orElseThrow().status();
+            if (status == OutboxStatus.DEAD_LETTER) {
+                break;
+            }
+            try {
+                Thread.sleep(5L);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(ex);
+            }
+        }
         assertEquals(OutboxStatus.DEAD_LETTER, backbone.outboxStore().findById(envelope.eventId()).orElseThrow().status());
         assertEquals(1, backbone.deadLetterStore().listOpen(10).size());
 

@@ -89,6 +89,7 @@ public final class InMemoryAiJobRepository implements AiJobRepository {
                 .filter(job -> job.meetingOccurrenceId().equals(meetingOccurrenceId))
                 .filter(job -> job.requestedCapability() == capability)
                 .filter(job -> job.status().isActive())
+                .filter(job -> job.parentJobId().isEmpty())
                 .min(Comparator.comparing(AiJob::queuedAt));
     }
 

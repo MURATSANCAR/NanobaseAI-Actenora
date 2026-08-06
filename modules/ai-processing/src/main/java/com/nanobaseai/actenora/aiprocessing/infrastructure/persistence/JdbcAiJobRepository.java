@@ -199,6 +199,7 @@ public class JdbcAiJobRepository implements AiJobRepository {
                  FROM aiprocessing.ai_jobs
                  WHERE tenant_id = ? AND meeting_occurrence_id = ? AND requested_capability = ?
                    AND status IN ('QUEUED', 'RUNNING')
+                   AND parent_job_id IS NULL
                  ORDER BY queued_at ASC
                  LIMIT 1
                 """;

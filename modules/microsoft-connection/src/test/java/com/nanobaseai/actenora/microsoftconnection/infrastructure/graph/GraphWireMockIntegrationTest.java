@@ -450,7 +450,7 @@ class GraphWireMockIntegrationTest {
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"value\":[{\"id\":\"t-late\",\"createdDateTime\":\"2026-07-25T12:00:00Z\"}]}")));
         wm.stubFor(get(urlPathEqualTo("/v1.0/users/user-1/onlineMeetings/m1/transcripts/t-late/content"))
-                .withQueryParam("$format", equalTo("text/vtt"))
+                .withHeader("Accept", equalTo("text/vtt"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "text/vtt")
