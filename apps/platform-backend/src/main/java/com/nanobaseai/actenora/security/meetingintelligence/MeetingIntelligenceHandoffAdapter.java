@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.delivery.api.DeliveryApi;
 import com.nanobaseai.actenora.delivery.application.model.DraftMinutesReadyMailBody;
 import com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker;
 import com.nanobaseai.actenora.meeting.api.MeetingApi;
+import com.nanobaseai.actenora.meeting.api.dto.ApplyAttendanceRequest;
 import com.nanobaseai.actenora.meeting.api.dto.MeetingResponse;
 import com.nanobaseai.actenora.approval.api.ApprovalId;
 import com.nanobaseai.actenora.meetingintelligence.api.EvidenceValidationApi;
@@ -218,6 +219,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     public Optional<UUID> handoff(HandoffCommand command) {
         Objects.requireNonNull(command, "command");
 
+        reconcileTranscriptAttendance(command);
         ValidationExecutionResult validation = runValidation(command);
         QualityGateOutcome outcome = validation.decision().outcome();
         auditGate(command, validation);
@@ -462,6 +464,56 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         }
         return outcome == QualityGateOutcome.PASSED
                 || outcome == QualityGateOutcome.PASSED_WITH_WARNINGS;
+    }
+
+    private void reconcileTranscriptAttendance(HandoffCommand command) {
+        if (meetingApi.isEmpty()) {
+            return;
+        }
+        try {
+            List<SegmentInput> segments = segmentSource.segmentsFor(
+                    TenantId.of(command.tenantId()), command.transcriptId());
+            List<ApplyAttendanceRequest.AttendanceRecord> attended = transcriptAttendanceRecords(segments);
+            if (!attended.isEmpty()) {
+                // Transcript speakers are positive evidence only. Never infer absences from them.
+                meetingApi.get().applyAttendance(
+                        command.meetingOccurrenceId(),
+                        new ApplyAttendanceRequest(attended, false)
+                );
+            }
+        } catch (RuntimeException ex) {
+            log.warn(
+                    "Transcript attendance reconciliation failed meetingId={}: {}",
+                    command.meetingOccurrenceId(),
+                    ex.toString()
+            );
+        }
+    }
+
+    static List<ApplyAttendanceRequest.AttendanceRecord> transcriptAttendanceRecords(
+            List<SegmentInput> segments
+    ) {
+        if (segments == null || segments.isEmpty()) {
+            return List.of();
+        }
+        Map<String, String> names = new java.util.LinkedHashMap<>();
+        for (SegmentInput segment : segments) {
+            String display = segment == null ? null : segment.speakerDisplayName();
+            if (display == null || display.isBlank() || isGenericSpeakerLabel(display)) {
+                continue;
+            }
+            String trimmed = display.trim().replaceAll("\\s+", " ");
+            names.putIfAbsent(trimmed.toLowerCase(Locale.ROOT), trimmed);
+        }
+        return names.values().stream()
+                .map(name -> new ApplyAttendanceRequest.AttendanceRecord(
+                        null, null, name, null, null, null))
+                .toList();
+    }
+
+    private static boolean isGenericSpeakerLabel(String display) {
+        String normalized = display.trim().toLowerCase(Locale.ROOT);
+        return normalized.matches("(?:speaker|konu[sş]mac[ıi]|unknown|bilinmeyen)(?:\\s+\\d+)?");
     }
 
     /** Active decisions only — superseded ones must not resurface in the approval mail. */

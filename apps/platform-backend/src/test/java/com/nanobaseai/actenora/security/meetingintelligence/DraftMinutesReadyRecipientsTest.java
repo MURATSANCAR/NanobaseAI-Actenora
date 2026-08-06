@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.security.meetingintelligence;
 
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.NoteReviewStatus;
 import com.nanobaseai.actenora.meetingintelligence.domain.validation.QualityGateOutcome;
 import org.junit.jupiter.api.Test;
@@ -68,5 +69,19 @@ class DraftMinutesReadyRecipientsTest {
                 NoteReviewStatus.ACTIVE,
                 false
         ));
+    }
+
+    @Test
+    void transcriptSpeakersProvidePositiveAttendanceWithoutGenericLabelsOrDuplicates() {
+        var records = MeetingIntelligenceHandoffAdapter.transcriptAttendanceRecords(List.of(
+                new SegmentInput("s1", 1, "Murat Sancar", 0, 1000, "Merhaba", false),
+                new SegmentInput("s2", 2, " murat   sancar ", 1000, 2000, "Devam", false),
+                new SegmentInput("s3", 3, "Speaker 1", 2000, 3000, "Ses", false),
+                new SegmentInput("s4", 4, "Gökay Yılmaz", 3000, 4000, "Katılıyorum", false)
+        ));
+
+        assertEquals(List.of("Murat Sancar", "Gökay Yılmaz"),
+                records.stream().map(r -> r.displayName()).toList());
+        assertTrue(records.stream().allMatch(r -> r.email() == null && r.entraUserId() == null));
     }
 }

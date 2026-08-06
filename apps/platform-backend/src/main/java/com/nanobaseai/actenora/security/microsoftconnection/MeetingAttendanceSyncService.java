@@ -61,7 +61,7 @@ public final class MeetingAttendanceSyncService {
 
         Map<String, Optional<DirectoryUser>> directoryCache = new HashMap<>();
         List<ApplyAttendanceRequest.AttendanceRecord> attended = new ArrayList<>();
-        int reliableIdentities = 0;
+        boolean everyJoinedRowMatchesCalendarIdentity = true;
 
         for (ParticipantMetadata record : records) {
             if (!record.attended()) {
@@ -72,8 +72,10 @@ public final class MeetingAttendanceSyncService {
             if (!StringUtils.hasText(email) && oid != null) {
                 email = resolveEmail(tenantId, oid, directoryCache);
             }
-            if (StringUtils.hasText(email) || oid != null) {
-                reliableIdentities++;
+            if (!StringUtils.hasText(email)) {
+                // OID/name-only rows can identify a positive attendee, but are not strong enough
+                // to infer that every unmatched calendar invitee was absent.
+                everyJoinedRowMatchesCalendarIdentity = false;
             }
             attended.add(new ApplyAttendanceRequest.AttendanceRecord(
                     email,
@@ -90,9 +92,10 @@ public final class MeetingAttendanceSyncService {
             return 0;
         }
 
-        // Only mark unmatched invitees ABSENT when at least one row carries email/OID
-        // (name-only rows are too weak to trust a mass-absent sweep).
-        boolean markMissingAsAbsent = reliableIdentities > 0;
+        // Negative attendance is fail-closed. A single reliable row is not proof that an
+        // incomplete/guest-heavy report contains every attendee. Only a fully email-keyed report
+        // may mark unmatched calendar invitees absent; name/OID-only reports update positives only.
+        boolean markMissingAsAbsent = everyJoinedRowMatchesCalendarIdentity;
         meetingApi.applyAttendance(meeting.id(), new ApplyAttendanceRequest(attended, markMissingAsAbsent));
         log.info(
                 "Attendance synced meetingId={} attendedCount={} markMissingAsAbsent={}",

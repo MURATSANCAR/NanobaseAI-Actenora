@@ -55,13 +55,14 @@ public final class EvidenceBundleGroundingPolicy implements BundleGroundingPolic
                     + "de[gğ]erlendirebiliriz|could|might|if)\\b"
     );
     private static final Pattern ACCEPTED_ACTION = Pattern.compile(
-            "(?iu)(tamam(?:d[ıi]r)?|anla[sş]t[ıi]k|kabul\\s+edildi|onayland[ıi]|"
+            "(?iu)(tamam(?:d[ıi]r)?\\b|anla[sş]t[ıi]k|kabul\\s+edildi|onayland[ıi]|"
                     + "not\\s+al[ıi]yorum|[uü]stleniyorum|sorumlulu[gğ]u\\s+al[ıi]yorum|"
                     + "ben[^.]{0,60}(?:aca[gğ][ıi]m|ece[gğ]im)|"
                     + "biz[^.]{0,60}(?:aca[gğ][ıi]z|ece[gğ]iz)|agreed|accepted|i\\s+will)"
     );
     private static final Pattern COMMITMENT_SIGNAL = Pattern.compile(
-            "(?iu)(g[oö]nderece[gğ]im|payla[sş]aca[gğ][ıi]m|haz[ıi]rlayaca[gğ][ıi]m|"
+            "(?iu)(\\b[\\p{L}]+(?:y?aca[gğ][ıi](?:m|z)|y?ece[gğ][ıi](?:m|z))\\b|"
+                    + "g[oö]nderece[gğ]im|payla[sş]aca[gğ][ıi]m|haz[ıi]rlayaca[gğ][ıi]m|"
                     + "yapaca[gğ][ıi]m|iletece[gğ]im|organize\\s+edece[gğ]im|"
                     + "g[oö]nderece[gğ]iz|payla[sş]aca[gğ][ıi]z|haz[ıi]rlayaca[gğ][ıi]z|"
                     + "yapaca[gğ][ıi]z|g[oö]nderilecek|payla[sş][ıi]lacak|haz[ıi]rlanacak|"

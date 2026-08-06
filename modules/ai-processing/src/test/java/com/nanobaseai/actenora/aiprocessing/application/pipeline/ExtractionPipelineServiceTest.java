@@ -26,7 +26,8 @@ class ExtractionPipelineServiceTest {
 
     @Test
     void happyPathStoresPromptAndModelVersionsAndMetrics() {
-        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req -> validJson("seg-1", "Alice", null));
+        Qwen27BModelAdapter adapter = new Qwen27BModelAdapter(req ->
+                "VALIDATION".equals(req.taskType()) ? supportedAuditJson() : validJson("seg-1", "Alice", null));
         ExtractionPipelineService service = ExtractionPipelineService.create(new InMemoryPromptRegistry(), adapter);
 
         PipelineRunResult result = service.run(request(List.of(segment("seg-1", 0, "Alice", "We decided to ship Friday."))));
@@ -545,5 +546,18 @@ class ExtractionPipelineServiceTest {
                   "confidence": 0.9
                 }
                 """.formatted(evidenceId, evidenceId, ownerJson, dueJson, evidenceId, evidenceId);
+    }
+
+    private static String supportedAuditJson() {
+        return """
+                {
+                  "audits": [
+                    {"type":"TOPIC","text":"Delivery","verdict":"SUPPORTED","reason":"Grounded"},
+                    {"type":"DECISION","text":"Ship the release","verdict":"SUPPORTED","reason":"Grounded"},
+                    {"type":"ACTION_ITEM","text":"Prepare the report","verdict":"SUPPORTED","reason":"Grounded"}
+                  ],
+                  "qualityFlags": []
+                }
+                """;
     }
 }

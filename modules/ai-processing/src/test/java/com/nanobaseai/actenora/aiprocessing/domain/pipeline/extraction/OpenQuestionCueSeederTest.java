@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class OpenQuestionCueSeederTest {
 
@@ -31,5 +32,24 @@ class OpenQuestionCueSeederTest {
         assertTrue(all.contains("mobil") || all.contains("yarış"));
         assertTrue(all.contains("gmail") || all.contains("matrisi"));
         assertTrue(all.contains("kim") || all.contains("gönder"));
+    }
+
+    @Test
+    void doesNotSeedLogisticsRhetoricalOrAnsweredDiscussionQuestions() {
+        List<SegmentInput> segments = List.of(
+                new SegmentInput("s1", 1, "Burak", 0, 1000,
+                        "Bizim tarafta başka katılımcı var mı?", true),
+                new SegmentInput("s2", 2, "Ece", 0, 1000,
+                        "Özellikle ben kendimi tanıtmama gerek var mı?", true),
+                new SegmentInput("s3", 3, "Derya", 0, 1000,
+                        "Hangi yıllar arasındaydı?", true),
+                new SegmentInput("s4", 4, "Can", 0, 1000,
+                        "Çok mu doğru?", true)
+        );
+
+        ExtractionBundle seeded = seeder.seed(ExtractionBundle.empty(), segments);
+
+        assertTrue(seeded.openQuestions().isEmpty());
+        assertFalse(seeded.qualityFlags().contains("OPEN_QUESTION_CUE_SEEDED"));
     }
 }

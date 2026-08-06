@@ -143,6 +143,48 @@ class MeetingAttendanceSyncServiceTest {
     }
 
     @Test
+    void mixedIdentityReportUpdatesAttendeesWithoutMassAbsentInference() {
+        AtomicReference<ApplyAttendanceRequest> captured = new AtomicReference<>();
+        Instant joined = Instant.parse("2026-08-05T10:00:00Z");
+        List<ParticipantMetadata> report = List.of(
+                new ParticipantMetadata(
+                        "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                        "Alice",
+                        "alice@example.com",
+                        "attendee",
+                        "alice@example.com",
+                        joined,
+                        joined.plusSeconds(60),
+                        60
+                ),
+                new ParticipantMetadata(
+                        "guest-display-only",
+                        "Guest Person",
+                        null,
+                        "attendee",
+                        null,
+                        joined,
+                        joined.plusSeconds(30),
+                        30
+                )
+        );
+        MeetingAttendanceSyncService service = new MeetingAttendanceSyncService(
+                microsoftApi(report, Optional.empty()),
+                recordingMeetingApi(captured)
+        );
+
+        assertEquals(2, service.syncAttendance(
+                TenantId.random(),
+                sampleMeeting(),
+                "11111111-1111-1111-1111-111111111111",
+                "teams-meeting-1"
+        ));
+
+        assertFalse(captured.get().markMissingAsAbsent());
+        assertEquals(2, captured.get().attended().size());
+    }
+
+    @Test
     void zeroAttendanceSecondsSkipped() {
         AtomicReference<ApplyAttendanceRequest> captured = new AtomicReference<>();
         List<ParticipantMetadata> report = List.of(new ParticipantMetadata(

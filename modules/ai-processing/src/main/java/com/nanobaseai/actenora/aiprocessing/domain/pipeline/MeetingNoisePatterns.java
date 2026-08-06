@@ -54,13 +54,17 @@ public final class MeetingNoisePatterns {
      */
     private static final Pattern MEETING_LOGISTICS = Pattern.compile(
             "(?iu)("
-                    + "mikrofon|kamera|ses(?:iniz|im)?\\s+(?:gelmiyor|geldi|kesiliyor)"
-                    + "|g[oö]r[uü]nt[uü](?:n[uü]z|m)?|ba[gğ]lant[ıi](?:\\s+sorun)?"
+                    + "mikrofon[\\p{L}]*\\s+(?:a[cç]|kapa|[cç]al[ıi][sş]|gelm|kesil)"
+                    + "|kamera[\\p{L}]*\\s+(?:a[cç]|kapa|[cç]al[ıi][sş]|gelm|don|kesil)"
+                    + "|ses(?:iniz|im)?\\s+(?:gelmiyor|geldi|kesiliyor)"
+                    + "|g[oö]r[uü]nt[uü](?:n[uü]z|m)?\\s+(?:gelmiyor|geldi|dondu|kesiliyor)"
+                    + "|(?:toplant[ıi]|ses)\\s+ba[gğ]lant[ıi](?:s[ıi]|\\s+sorun)[^.]{0,30}"
                     + "|ekran[ıi]?\\s+payla[sş]|toplant[ıi]ya\\s+(?:ge[cç]\\s+)?kat[ıi]l"
                     + "|kat[ıi]l[ıi]mc[ıi]\\s+listesi|ba[sş]ka\\s+kat[ıi]l[ıi]mc[ıi]"
                     + "|kim(?:ler)?\\s+kat[ıi]lacak|kendimi\\s+tan[ıi]t"
                     + "|tan[ıi][sş]ma\\s+fasl[ıi]|s[ıi]ra\\s+kimde"
-                    + "|audio|video|connection|screen\\s+shar|who\\s+is\\s+joining"
+                    + "|(?:audio|video)\\s+(?:is\\s+)?(?:not\\s+)?(?:working|cutting|frozen|off|on)"
+                    + "|connection\\s+(?:issue|problem|dropped)|screen\\s+shar|who\\s+is\\s+joining"
                     + ")"
     );
 
@@ -75,9 +79,11 @@ public final class MeetingNoisePatterns {
     );
 
     private static final Pattern HEDGED_NUMERIC_CLAIM = Pattern.compile(
-            "(?iu)(yanl[ıi][sş]\\s+hat[ıi]rlam[ıi]yorsam|hat[ıi]rlad[ıi][gğ][ıi]m\\s+kadar[ıi]yla|"
+            "(?iu)((?:yanl[ıi][sş]\\s+hat[ıi]rlam[ıi]yorsam|hat[ıi]rlad[ıi][gğ][ıi]m\\s+kadar[ıi]yla|"
                     + "san[ıi]r[ıi]m|galiba|emin\\s+de[gğ]ilim|if\\s+i\\s+remember\\s+correctly)"
-                    + "[^.]{0,140}\\d"
+                    + "[^.]{0,140}\\d|\\d[^.]{0,140}(?:yanl[ıi][sş]\\s+hat[ıi]rlam[ıi]yorsam|"
+                    + "hat[ıi]rlad[ıi][gğ][ıi]m\\s+kadar[ıi]yla|san[ıi]r[ıi]m|galiba|"
+                    + "emin\\s+de[gğ]ilim|if\\s+i\\s+remember\\s+correctly))"
     );
 
     private static final Pattern PUNCT_ONLY = Pattern.compile("[\\s\\p{Punct}]+");

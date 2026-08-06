@@ -8,12 +8,15 @@ import com.nanobaseai.actenora.microsoftconnection.application.port.OnlineMeetin
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -82,55 +85,28 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
         Objects.requireNonNull(meetingId, "meetingId");
         String organizer = organizerFromMeetingId(meetingId).orElse(userId);
         String path = "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId + "/attendanceReports";
-        var response = http.send(token -> http.authorizedGet(path, token));
         try {
             List<ParticipantMetadata> participants = new ArrayList<>();
-            JsonNode reports = objectMapper.readTree(response.body()).path("value");
-            if (!reports.isArray() || reports.isEmpty()) {
+            List<JsonNode> reports = fetchCollection(path);
+            if (reports.isEmpty()) {
                 return List.of();
             }
-            String reportId = text(reports.get(0), "id");
-            if (reportId == null) {
-                return List.of();
-            }
-            String recordsPath = "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId
-                    + "/attendanceReports/" + reportId + "/attendanceRecords";
-            var records = http.send(token -> http.authorizedGet(recordsPath, token));
-            for (JsonNode record : objectMapper.readTree(records.body()).path("value")) {
-                String email = text(record, "emailAddress");
-                JsonNode identity = record.path("identity");
-                String identityId = text(identity, "id");
-                String displayName = text(identity, "displayName");
-                if (displayName == null) {
-                    displayName = email;
-                }
-                String id = identityId != null ? identityId : (email != null ? email : text(record, "id"));
-                if (id == null) {
+            for (JsonNode report : latestOccurrenceReports(reports)) {
+                String reportId = text(report, "id");
+                if (reportId == null) {
                     continue;
                 }
-                Instant joinedAt = null;
-                Instant leftAt = null;
-                JsonNode intervals = record.path("attendanceIntervals");
-                if (intervals.isArray() && !intervals.isEmpty()) {
-                    joinedAt = parseInstant(text(intervals.get(0), "joinDateTime"));
-                    JsonNode last = intervals.get(intervals.size() - 1);
-                    leftAt = parseInstant(text(last, "leaveDateTime"));
+                // Graph creates one attendance report per ended meeting session. Read every
+                // session in the latest occurrence so a participant from an earlier reconnect is
+                // not marked absent, without mixing in an older recurring-meeting occurrence.
+                String recordsPath = "v1.0/users/" + organizer + "/onlineMeetings/" + meetingId
+                        + "/attendanceReports/" + reportId + "/attendanceRecords";
+                for (JsonNode record : fetchCollection(recordsPath)) {
+                    ParticipantMetadata participant = parseAttendanceRecord(record);
+                    if (participant != null) {
+                        participants.add(participant);
+                    }
                 }
-                int seconds = record.path("totalAttendanceInSeconds").asInt(0);
-                String role = text(record, "role");
-                if (role == null) {
-                    role = "attendee";
-                }
-                participants.add(new ParticipantMetadata(
-                        id,
-                        displayName,
-                        email,
-                        role,
-                        email,
-                        joinedAt,
-                        leftAt,
-                        seconds > 0 ? seconds : null
-                ));
             }
             return List.copyOf(participants);
         } catch (GraphApiException ex) {
@@ -138,6 +114,101 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
         } catch (Exception ex) {
             throw GraphApiException.transport("Failed to parse participants", ex);
         }
+    }
+
+    private static ParticipantMetadata parseAttendanceRecord(JsonNode record) {
+        String email = text(record, "emailAddress");
+        JsonNode identity = record.path("identity");
+        String identityId = text(identity, "id");
+        String displayName = text(identity, "displayName");
+        if (displayName == null) {
+            displayName = email;
+        }
+        String id = identityId != null ? identityId : (email != null ? email : text(record, "id"));
+        if (id == null) {
+            return null;
+        }
+        Instant joinedAt = null;
+        Instant leftAt = null;
+        int intervalSeconds = 0;
+        JsonNode intervals = record.path("attendanceIntervals");
+        if (intervals.isArray()) {
+            for (JsonNode interval : intervals) {
+                Instant joined = parseInstant(text(interval, "joinDateTime"));
+                Instant left = parseInstant(text(interval, "leaveDateTime"));
+                if (joined != null && (joinedAt == null || joined.isBefore(joinedAt))) {
+                    joinedAt = joined;
+                }
+                if (left != null && (leftAt == null || left.isAfter(leftAt))) {
+                    leftAt = left;
+                }
+                intervalSeconds += Math.max(0, interval.path("durationInSeconds").asInt(0));
+            }
+        }
+        int seconds = record.path("totalAttendanceInSeconds").asInt(0);
+        String role = text(record, "role");
+        if (role == null) {
+            role = "attendee";
+        }
+        return new ParticipantMetadata(
+                id,
+                displayName,
+                email,
+                role,
+                email,
+                joinedAt,
+                leftAt,
+                seconds > 0 ? seconds : (intervalSeconds > 0 ? intervalSeconds : null)
+        );
+    }
+
+    static List<JsonNode> latestOccurrenceReports(List<JsonNode> reports) {
+        Instant latest = null;
+        for (JsonNode report : reports) {
+            Instant at = reportTime(report);
+            if (at != null && (latest == null || at.isAfter(latest))) {
+                latest = at;
+            }
+        }
+        if (latest == null) {
+            // The Graph contract normally supplies session times. If it does not, retaining all
+            // reports is safer than inventing absences from an arbitrarily selected page item.
+            return List.copyOf(reports);
+        }
+        Instant cutoff = latest.minus(Duration.ofHours(24));
+        List<JsonNode> selected = new ArrayList<>();
+        for (JsonNode report : reports) {
+            Instant at = reportTime(report);
+            if (at != null && !at.isBefore(cutoff)) {
+                selected.add(report);
+            }
+        }
+        return List.copyOf(selected);
+    }
+
+    private static Instant reportTime(JsonNode report) {
+        Instant ended = parseInstant(text(report, "meetingEndDateTime"));
+        return ended != null ? ended : parseInstant(text(report, "meetingStartDateTime"));
+    }
+
+    private List<JsonNode> fetchCollection(String initialPath) throws java.io.IOException {
+        List<JsonNode> values = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        String path = initialPath;
+        while (path != null && visited.add(path)) {
+            String pagePath = path;
+            var response = http.send(token -> http.authorizedGet(pagePath, token));
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode page = root.path("value");
+            if (page.isArray()) {
+                page.forEach(values::add);
+            }
+            path = text(root, "@odata.nextLink");
+        }
+        if (path != null) {
+            throw new IllegalStateException("Graph collection pagination loop detected");
+        }
+        return values;
     }
 
     @Override
@@ -222,15 +293,17 @@ public final class GraphOnlineMeetingGateway implements OnlineMeetingGateway {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
         }
+        // OData metadata fields contain a literal dot (for example @odata.nextLink).
+        // Prefer an exact property lookup before treating dots as nested paths.
+        JsonNode exact = node.get(field);
+        if (exact != null && !exact.isNull()) {
+            String value = exact.asText();
+            return value == null || value.isBlank() ? null : value;
+        }
         if (field.contains(".")) {
             String[] parts = field.split("\\.", 2);
             return text(node.path(parts[0]), parts[1]);
         }
-        JsonNode value = node.get(field);
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        String text = value.asText();
-        return text == null || text.isBlank() ? null : text;
+        return null;
     }
 }

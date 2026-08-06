@@ -1,7 +1,12 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ImportantFactCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunk;
 import org.junit.jupiter.api.BeforeEach;
@@ -124,6 +129,61 @@ class ChunkSignalGateScenariosTest {
         assertEquals(1, grounded.decisions().size());
         assertEquals("API cuma dondurulacak", grounded.decisions().getFirst().text());
         assertTrue(grounded.qualityFlags().contains("UNSUPPORTED_DECISION"));
+    }
+
+    @Test
+    void i_groundingDoesNotPromoteHistoricalDecisionOrFollowUpDiscussion() {
+        EvidenceBundleGroundingPolicy policy = new EvidenceBundleGroundingPolicy();
+        EvidenceIndex index = EvidenceIndex.from(List.of(
+                seg("s1", "On yedi aylık sürecin sonucunda başlangıç toplantısında Simple ile devam etme kararı verdik."),
+                seg("s2", "Biz sizinle eylülden sonra tekrar konuşalım; o zaman bir güncelleme toplantısı yaparız.")
+        ));
+        ExtractionBundle raw = new ExtractionBundle(
+                List.of(),
+                List.of(
+                        new DecisionCandidate("Simple çözümü seçildi", List.of("s1"), 0.95),
+                        new DecisionCandidate("Entegrasyon eylülden sonra başlatılacak", List.of("s2"), 0.95)
+                ),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of("s1", "s2"), 0.9
+        );
+
+        ExtractionBundle grounded = policy.retainGroundedItems(raw, index);
+
+        assertTrue(grounded.decisions().isEmpty());
+        assertTrue(grounded.qualityFlags().contains("UNSUPPORTED_DECISION"));
+    }
+
+    @Test
+    void j_groundingDropsMeetingChatterAndCalibratesHedgedNumbers() {
+        EvidenceBundleGroundingPolicy policy = new EvidenceBundleGroundingPolicy();
+        EvidenceIndex index = EvidenceIndex.from(List.of(
+                seg("s1", "Murat Bey bizim tarafta başka katılımcı var mı?"),
+                seg("s2", "Toplantının başında sesiniz gelmiyor, bağlantıda gecikme oldu."),
+                seg("s3", "Sunumda kredi kartı örneklerini anlatalım ve sigortadan bahsedelim."),
+                seg("s4", "Yaklaşık on bin faturayı 11.2 saniyeydi yanlış hatırlamıyorsam tamamladık."),
+                seg("s5", "Eğer sizin için uygunsa süreci tamamlayıp bir akış gösterebilirim.")
+        ));
+        ExtractionBundle raw = new ExtractionBundle(
+                List.of(), List.of(),
+                List.of(new ActionItemCandidate("Akış tamamlanacak", null, null, List.of("s5"), 0.9)),
+                List.of(new RiskCandidate("Toplantı bağlantısında gecikme yaşanması", List.of("s2"), 0.9)),
+                List.of(new OpenQuestionCandidate("Başka katılımcı var mı?", List.of("s1"), 0.84)),
+                List.of(new CommitmentCandidate(
+                        "Kredi kartı ve sigorta örnekleri anlatılacak", null, List.of("s3"), 0.9)),
+                List.of(), List.of(),
+                List.of(new ImportantFactCandidate("10.000 fatura 11,2 saniyede tamamlandı", List.of("s4"), 0.95)),
+                List.of(), List.of("s1", "s2", "s3", "s4", "s5"), 0.9
+        );
+
+        ExtractionBundle grounded = policy.retainGroundedItems(raw, index);
+
+        assertTrue(grounded.actionItems().isEmpty());
+        assertTrue(grounded.risks().isEmpty());
+        assertTrue(grounded.openQuestions().isEmpty());
+        assertTrue(grounded.commitments().isEmpty());
+        assertEquals(0.65d, grounded.importantFacts().getFirst().confidence());
+        assertTrue(grounded.qualityFlags().contains("HEDGED_FACT_NEEDS_REVIEW"));
     }
 
     private static TranscriptChunk chunk(int tokens, SegmentInput... segments) {

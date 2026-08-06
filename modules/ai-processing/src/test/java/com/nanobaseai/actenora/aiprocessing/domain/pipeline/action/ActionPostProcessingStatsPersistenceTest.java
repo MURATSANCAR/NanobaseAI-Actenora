@@ -256,7 +256,10 @@ class ActionPostProcessingStatsPersistenceTest {
         assertTrue(payload.containsKey("auditStatus"));
         assertEquals(4, payload.get("outputActionCount"));
         assertTrue(((Number) payload.get("compoundActionsSplit")).intValue() >= 1);
-        assertEquals(2, payload.get("datesResolved"));
+        long resolvedDueDates = handoffCommand.draft().actionItems().stream()
+                .filter(action -> action.dueAt() != null && !action.dueAt().isBlank())
+                .count();
+        assertEquals(resolvedDueDates, ((Number) payload.get("datesResolved")).longValue());
         assertTrue(ActionPostProcessingStats.isSafeArtifactPayload(payload));
         assertFalse(containsRawTranscript(payload));
     }

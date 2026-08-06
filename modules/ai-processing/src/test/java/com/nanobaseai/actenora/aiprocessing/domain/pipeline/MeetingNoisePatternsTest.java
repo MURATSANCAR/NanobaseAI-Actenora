@@ -59,4 +59,17 @@ class MeetingNoisePatternsTest {
         assertEquals(1, cleaned.decisions().size());
         assertEquals("API sözleşmesi cuma dondurulacak", cleaned.decisions().getFirst().text());
     }
+
+    @Test
+    void meetingLogisticsDoesNotHideBusinessConnectionOrMediaRisks() {
+        assertTrue(MeetingNoisePatterns.isMeetingLogistics(
+                "Toplantının başında sesiniz gelmiyor, ses bağlantısı sorunluydu."));
+        assertTrue(MeetingNoisePatterns.isMeetingLogistics("Audio is not working."));
+        assertFalse(MeetingNoisePatterns.isMeetingLogistics(
+                "Veritabanı bağlantısı yoğun yükte kopuyor."));
+        assertFalse(MeetingNoisePatterns.isMeetingLogistics(
+                "Video işleme maliyeti bütçeyi aşabilir."));
+        assertFalse(MeetingNoisePatterns.isMeetingLogistics(
+                "Kamera modülünün tedarik riski var."));
+    }
 }

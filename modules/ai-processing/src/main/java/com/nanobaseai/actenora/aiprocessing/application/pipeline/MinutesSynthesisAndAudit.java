@@ -634,6 +634,12 @@ public final class MinutesSynthesisAndAudit {
             LOG.log(Level.SEVERE, "AUDIT fallback detail", ex);
             List<String> flags = new ArrayList<>(draft.qualityFlags());
             flags.add("AUDIT_FALLBACK");
+            if (!flags.contains("AUDIT_COVERAGE_INCOMPLETE")) {
+                flags.add("AUDIT_COVERAGE_INCOMPLETE");
+            }
+            if (!flags.contains("REQUIRES_MANUAL_REVIEW")) {
+                flags.add("REQUIRES_MANUAL_REVIEW");
+            }
             return fallbackStep(
                     new FinalNoteDraft(
                             draft.executiveSummary(),
@@ -649,7 +655,7 @@ public final class MinutesSynthesisAndAudit {
                             flags,
                             draft.evidenceSegmentIds(),
                             draft.confidence(),
-                            draft.requiresManualReview()
+                            true
                     ),
                     response,
                     inferenceAttempted
@@ -1029,6 +1035,16 @@ public final class MinutesSynthesisAndAudit {
             item.evidenceSegmentIds().forEach(ev::add);
             n.put("confidence", item.confidence());
         }
+        root.set("issues", texts(bundle.issues().stream().map(IssueCandidate::text).toList(),
+                bundle.issues().stream().map(IssueCandidate::evidenceSegmentIds).toList(),
+                bundle.issues().stream().map(IssueCandidate::confidence).toList()));
+        root.set("proposals", texts(bundle.proposals().stream().map(ProposalCandidate::text).toList(),
+                bundle.proposals().stream().map(ProposalCandidate::evidenceSegmentIds).toList(),
+                bundle.proposals().stream().map(ProposalCandidate::confidence).toList()));
+        root.set("importantFacts", texts(
+                bundle.importantFacts().stream().map(ImportantFactCandidate::text).toList(),
+                bundle.importantFacts().stream().map(ImportantFactCandidate::evidenceSegmentIds).toList(),
+                bundle.importantFacts().stream().map(ImportantFactCandidate::confidence).toList()));
         ArrayNode flags = root.putArray("qualityFlags");
         bundle.qualityFlags().forEach(flags::add);
         ArrayNode evidence = root.putArray("evidenceSegmentIds");
@@ -1078,6 +1094,20 @@ public final class MinutesSynthesisAndAudit {
             ArrayNode ev = n.putArray("evidenceSegmentIds");
             item.evidenceSegmentIds().forEach(ev::add);
         }
+        ArrayNode topics = root.putArray("topics");
+        for (TopicCandidate item : draft.topics()) {
+            ObjectNode n = topics.addObject();
+            n.put("text", item.text());
+            ArrayNode ev = n.putArray("evidenceSegmentIds");
+            item.evidenceSegmentIds().forEach(ev::add);
+        }
+        root.set("proposals", texts(draft.proposals().stream().map(ProposalCandidate::text).toList(),
+                draft.proposals().stream().map(ProposalCandidate::evidenceSegmentIds).toList(),
+                draft.proposals().stream().map(ProposalCandidate::confidence).toList()));
+        root.set("importantFacts", texts(
+                draft.importantFacts().stream().map(ImportantFactCandidate::text).toList(),
+                draft.importantFacts().stream().map(ImportantFactCandidate::evidenceSegmentIds).toList(),
+                draft.importantFacts().stream().map(ImportantFactCandidate::confidence).toList()));
         return root;
     }
 

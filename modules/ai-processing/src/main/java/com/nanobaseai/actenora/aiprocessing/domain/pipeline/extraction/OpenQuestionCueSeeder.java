@@ -65,9 +65,12 @@ public final class OpenQuestionCueSeeder {
                 continue;
             }
             List<String> candidates = new ArrayList<>();
+            java.util.Set<String> explicitlyLabeled = new java.util.HashSet<>();
             Matcher labeled = EXPLICIT_LABEL.matcher(content);
             if (labeled.find()) {
-                candidates.add(labeled.group(1).strip());
+                String explicit = labeled.group(1).strip();
+                candidates.add(explicit);
+                explicitlyLabeled.add(norm(explicit));
             }
             Matcher wh = WH_QUESTION.matcher(content);
             while (wh.find()) {
@@ -84,7 +87,8 @@ public final class OpenQuestionCueSeeder {
             }
             for (String raw : candidates) {
                 String cleaned = clean(raw);
-                if (cleaned.length() < 12 || !looksLikeOpenQuestion(cleaned)) {
+                boolean explicit = explicitlyLabeled.contains(norm(raw));
+                if (cleaned.length() < 12 || (!explicit && !looksLikeOpenQuestion(cleaned))) {
                     continue;
                 }
                 String key = norm(cleaned);

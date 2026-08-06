@@ -171,6 +171,67 @@ class GraphWireMockIntegrationTest {
     }
 
     @Test
+    void attendanceCombinesEverySessionAndReadsEveryRecordPage() {
+        wm.stubFor(get(urlEqualTo("/v1.0/users/user-1/onlineMeetings/m-att/attendanceReports"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"value":[
+                                  {"id":"previous-occurrence","meetingEndDateTime":"2026-08-01T09:00:00Z"},
+                                  {"id":"old","meetingEndDateTime":"2026-08-05T08:30:00Z"},
+                                  {"id":"latest","meetingEndDateTime":"2026-08-05T10:00:00Z"}
+                                ]}
+                                """)));
+        wm.stubFor(get(urlEqualTo(
+                "/v1.0/users/user-1/onlineMeetings/m-att/attendanceReports/old/attendanceRecords"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"value":[{
+                                  "id":"r0","emailAddress":"carol@example.com",
+                                  "identity":{"id":"cccccccc-dddd-eeee-ffff-000000000000","displayName":"Carol"},
+                                  "attendanceIntervals":[{"joinDateTime":"2026-08-05T08:00:00Z","leaveDateTime":"2026-08-05T08:30:00Z","durationInSeconds":1800}]
+                                }]}
+                                """)));
+        String secondPage = wm.baseUrl()
+                + "/v1.0/users/user-1/onlineMeetings/m-att/attendanceReports/latest/attendanceRecords?$skip=1";
+        wm.stubFor(get(urlEqualTo(
+                "/v1.0/users/user-1/onlineMeetings/m-att/attendanceReports/latest/attendanceRecords"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"value":[{
+                                  "id":"r1","emailAddress":"alice@example.com",
+                                  "identity":{"id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","displayName":"Alice"},
+                                  "attendanceIntervals":[{"joinDateTime":"2026-08-05T09:00:00Z","leaveDateTime":"2026-08-05T09:10:00Z","durationInSeconds":600}]
+                                }],"@odata.nextLink":"%s"}
+                                """.formatted(secondPage))));
+        wm.stubFor(get(urlEqualTo(
+                "/v1.0/users/user-1/onlineMeetings/m-att/attendanceReports/latest/attendanceRecords?$skip=1"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"value":[{
+                                  "id":"r2","emailAddress":"bob@example.com",
+                                  "identity":{"id":"bbbbbbbb-cccc-dddd-eeee-ffffffffffff","displayName":"Bob"},
+                                  "attendanceIntervals":[{"joinDateTime":"2026-08-05T09:05:00Z","leaveDateTime":"2026-08-05T09:20:00Z","durationInSeconds":900}]
+                                }]}
+                                """)));
+
+        GraphOnlineMeetingGateway gateway = new GraphOnlineMeetingGateway(http, mapper);
+        var participants = gateway.listParticipants(tenantId, userId, "m-att");
+
+        assertEquals(3, participants.size());
+        assertTrue(participants.stream().anyMatch(p -> "alice@example.com".equals(p.email())));
+        assertTrue(participants.stream().anyMatch(p -> "bob@example.com".equals(p.email())));
+        assertTrue(participants.stream().anyMatch(p -> "carol@example.com".equals(p.email())));
+    }
+
+    @Test
     void createsReviewableOutlookDraftWithoutSending() {
         wm.stubFor(post(urlEqualTo("/v1.0/users/user-1/messages"))
                 .willReturn(aResponse()

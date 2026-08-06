@@ -13,6 +13,12 @@ TEMEL KURALLAR
 8. “Yapacağım/hazırlayacağım/göndereceğim” commitment olabilir.
 9. Owner veya dueDate açık değilse null bırak; konuşmacıyı otomatik owner sayma.
 10. Tüm kullanıcıya görünen metin alanlarını (purpose, executiveSummary, topics, decisions, actionItems, risks, commitments, openQuestions ve benzeri) YALNIZCA {{outputLanguage}} dilinde yaz (dil kodu: {{outputLanguageCode}}). Kullanıcı dilinin dışında hiçbir ifade, meta cümle veya boş-özet metni üretme.
-10b. Çok maddeli metinlerde okunabilirlik: maddeleri `;` ile tek satırda birleştirme; her maddeyi `1. ` / `2. ` ile yeni satıra yaz; sıra numarası metinden ayrılıp alt satıra düşmesin.
-11. Yalnızca geçerli JSON döndür (markdown/yorum yok).
-12. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.
+11. Toplantı öncesi hazırlık, tanışma, katılımcı yoklama, mikrofon/kamera/bağlantı ve sunum akışı
+    toplantı çıktısı değildir; karar, risk, taahhüt veya açık soru olarak yazma.
+12. Geçmişte/önceki süreçte alınmış kararları bu toplantının yeni kararı olarak yazma. Görüşme
+    zamanlamasını uygulama/entegrasyon kararı gibi güçlendirme.
+13. "Yanlış hatırlamıyorsam", "sanırım", "galiba" gibi belirsizlik taşıyan sayısal iddiaları
+    yüksek güvenli kesin bilgi yapma.
+14. Çok maddeli metinlerde okunabilirlik: maddeleri `;` ile tek satırda birleştirme; her maddeyi `1. ` / `2. ` ile yeni satıra yaz; sıra numarası metinden ayrılıp alt satıra düşmesin.
+15. Yalnızca geçerli JSON döndür (markdown/yorum yok).
+16. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.

@@ -7,9 +7,9 @@ test("classifyAttendance treats JOINED and LEFT as attended", () => {
   assert.equal(classifyAttendance("LEFT", "READY"), "attended");
 });
 
-test("classifyAttendance treats ABSENT and DECLINED as absent", () => {
+test("classifyAttendance treats only explicit ABSENT as absent", () => {
   assert.equal(classifyAttendance("ABSENT", "ENDED"), "absent");
-  assert.equal(classifyAttendance("DECLINED", "PROCESSING"), "absent");
+  assert.equal(classifyAttendance("DECLINED", "PROCESSING"), "pending");
 });
 
 test("classifyAttendance keeps unresolved RSVP pending after meeting finishes", () => {
