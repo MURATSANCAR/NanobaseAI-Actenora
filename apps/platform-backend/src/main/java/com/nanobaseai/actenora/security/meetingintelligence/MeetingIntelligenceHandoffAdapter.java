@@ -260,7 +260,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 ),
                 Instant.now()
         );
-        notifyDraftMail(command, note);
+        notifyDraftMail(command, note, outcome);
         notifyDraftInApp(command, note);
         openApprovalIfActive(command, note);
         return Optional.of(note.id());
@@ -353,7 +353,22 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         }
     }
 
-    private void notifyDraftMail(HandoffCommand command, MeetingNoteDetailResponse note) {
+    private void notifyDraftMail(
+            HandoffCommand command,
+            MeetingNoteDetailResponse note,
+            QualityGateOutcome outcome
+    ) {
+        if (!mayShareDraftByMail(outcome, note.reviewStatus(), command.draft().requiresManualReview())) {
+            log.info(
+                    "Draft organizer mail gated: meetingId={} noteId={} outcome={} reviewStatus={} draftManualReview={}",
+                    command.meetingOccurrenceId(),
+                    note.id(),
+                    outcome,
+                    note.reviewStatus(),
+                    command.draft().requiresManualReview()
+            );
+            return;
+        }
         if (meetingApi.isEmpty()) {
             return;
         }
@@ -435,6 +450,18 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                     ex.toString()
             );
         }
+    }
+
+    static boolean mayShareDraftByMail(
+            QualityGateOutcome outcome,
+            NoteReviewStatus reviewStatus,
+            boolean draftRequiresManualReview
+    ) {
+        if (draftRequiresManualReview || reviewStatus != NoteReviewStatus.ACTIVE) {
+            return false;
+        }
+        return outcome == QualityGateOutcome.PASSED
+                || outcome == QualityGateOutcome.PASSED_WITH_WARNINGS;
     }
 
     /** Active decisions only — superseded ones must not resurface in the approval mail. */

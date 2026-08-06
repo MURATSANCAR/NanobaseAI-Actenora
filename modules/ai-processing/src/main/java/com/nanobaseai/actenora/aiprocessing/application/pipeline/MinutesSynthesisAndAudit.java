@@ -538,60 +538,74 @@ public final class MinutesSynthesisAndAudit {
                     timeoutSeconds
             ));
             JsonNode root = parseAuditJson(response.rawText());
-            Set<String> unsupported = new HashSet<>();
-            Set<String> partial = new HashSet<>();
+            Set<AuditItemKey> expected = expectedAuditItems(draft);
+            Set<AuditItemKey> seen = new HashSet<>();
+            Set<AuditItemKey> unsupported = new HashSet<>();
+            Set<AuditItemKey> partial = new HashSet<>();
+            boolean coverageIncomplete = false;
             JsonNode audits = root.path("audits");
             if (audits.isArray()) {
                 for (JsonNode audit : audits) {
-                    String text = audit.path("text").asText("").trim().toLowerCase(Locale.ROOT);
+                    String type = audit.path("type").asText("").trim().toUpperCase(Locale.ROOT);
+                    String text = audit.path("text").asText("");
                     String verdict = audit.path("verdict").asText("").trim().toUpperCase(Locale.ROOT);
-                    if (text.isEmpty()) {
+                    AuditItemKey key = new AuditItemKey(type, text);
+                    if (type.isEmpty() || text.isEmpty() || !expected.contains(key) || !seen.add(key)) {
+                        coverageIncomplete = true;
                         continue;
                     }
                     if ("UNSUPPORTED".equals(verdict) || "CONTRADICTED".equals(verdict)) {
-                        unsupported.add(text);
+                        unsupported.add(key);
                     } else if ("PARTIALLY_SUPPORTED".equals(verdict)) {
-                        partial.add(text);
+                        partial.add(key);
+                    } else if (!"SUPPORTED".equals(verdict)) {
+                        coverageIncomplete = true;
                     }
                 }
+            } else {
+                coverageIncomplete = true;
             }
+            coverageIncomplete = coverageIncomplete || !seen.containsAll(expected);
+
             List<DecisionCandidate> decisions = draft.decisions().stream()
-                    .filter(d -> !unsupported.contains(d.text().trim().toLowerCase(Locale.ROOT)))
-                    .toList();
-            if (decisions.size() < draft.decisions().size()) {
-                // Audit may drop unsupported claims; flag architectural leakage if any remain status-quo-only.
-            }
-            List<String> leaked = draft.decisions().stream()
-                    .map(DecisionCandidate::text)
-                    .filter(t -> t != null && t.toLowerCase(Locale.ROOT).contains("yeni karar yok"))
+                    .filter(d -> !unsupported.contains(key("DECISION", d.text())))
                     .toList();
             List<ActionItemCandidate> actions = draft.actionItems().stream()
-                    .filter(a -> !unsupported.contains(a.text().trim().toLowerCase(Locale.ROOT)))
+                    .filter(a -> !unsupported.contains(key("ACTION_ITEM", a.text())))
                     .toList();
             List<RiskCandidate> risks = draft.risks().stream()
-                    .filter(r -> !unsupported.contains(r.text().trim().toLowerCase(Locale.ROOT)))
+                    .filter(r -> !unsupported.contains(key("RISK", r.text())))
                     .toList();
             List<CommitmentCandidate> commitments = draft.commitments().stream()
-                    .filter(c -> !unsupported.contains(c.text().trim().toLowerCase(Locale.ROOT)))
+                    .filter(c -> !unsupported.contains(key("COMMITMENT", c.text())))
                     .toList();
             List<OpenQuestionCandidate> questions = draft.openQuestions().stream()
-                    .filter(q -> !unsupported.contains(q.text().trim().toLowerCase(Locale.ROOT)))
+                    .filter(q -> !unsupported.contains(key("OPEN_QUESTION", q.text())))
                     .toList();
             List<ImportantFactCandidate> facts = draft.importantFacts().stream()
-                    .filter(f -> !unsupported.contains(f.text().trim().toLowerCase(Locale.ROOT)))
+                    .filter(f -> !unsupported.contains(key("IMPORTANT_FACT", f.text())))
                     .toList();
             List<TopicCandidate> topics = draft.topics().stream()
-                    .filter(t -> !unsupported.contains(t.text().trim().toLowerCase(Locale.ROOT)))
+                    .filter(t -> !unsupported.contains(key("TOPIC", t.text())))
+                    .toList();
+            List<ProposalCandidate> proposals = draft.proposals().stream()
+                    .filter(p -> !unsupported.contains(key("PROPOSAL", p.text())))
                     .toList();
             List<String> flags = new ArrayList<>(draft.qualityFlags());
             flags.add("LLM_AUDITED");
-            if (!leaked.isEmpty()) {
-                flags.add("UNSUPPORTED_DECISION_REACHED_FINAL_ASSEMBLY");
+            if (!unsupported.isEmpty()) {
+                flags.add("UNSUPPORTED_ITEMS_DROPPED");
             }
             if (!partial.isEmpty()) {
                 flags.add("PARTIAL_EVIDENCE_NEEDS_REVIEW");
             }
-            boolean manual = draft.requiresManualReview() || !partial.isEmpty();
+            if (coverageIncomplete) {
+                flags.add("AUDIT_COVERAGE_INCOMPLETE");
+            }
+            boolean manual = draft.requiresManualReview() || !partial.isEmpty() || coverageIncomplete;
+            if (manual && !flags.contains("REQUIRES_MANUAL_REVIEW")) {
+                flags.add("REQUIRES_MANUAL_REVIEW");
+            }
             return successfulStep(
                     new FinalNoteDraft(
                             draft.executiveSummary(),
@@ -602,7 +616,7 @@ public final class MinutesSynthesisAndAudit {
                             commitments,
                             topics,
                             draft.issues(),
-                            draft.proposals(),
+                            proposals,
                             facts,
                             flags,
                             draft.evidenceSegmentIds(),
@@ -643,6 +657,23 @@ public final class MinutesSynthesisAndAudit {
         }
     }
 
+    private static Set<AuditItemKey> expectedAuditItems(FinalNoteDraft draft) {
+        Set<AuditItemKey> expected = new HashSet<>();
+        draft.decisions().forEach(item -> expected.add(key("DECISION", item.text())));
+        draft.actionItems().forEach(item -> expected.add(key("ACTION_ITEM", item.text())));
+        draft.risks().forEach(item -> expected.add(key("RISK", item.text())));
+        draft.commitments().forEach(item -> expected.add(key("COMMITMENT", item.text())));
+        draft.openQuestions().forEach(item -> expected.add(key("OPEN_QUESTION", item.text())));
+        draft.topics().forEach(item -> expected.add(key("TOPIC", item.text())));
+        draft.proposals().forEach(item -> expected.add(key("PROPOSAL", item.text())));
+        draft.importantFacts().forEach(item -> expected.add(key("IMPORTANT_FACT", item.text())));
+        return expected;
+    }
+
+    private static AuditItemKey key(String type, String text) {
+        return new AuditItemKey(type.toUpperCase(Locale.ROOT), text == null ? "" : text);
+    }
+
     private static StepResult successfulStep(FinalNoteDraft draft, InferenceResponse response) {
         return new StepResult(
                 draft,
@@ -677,6 +708,9 @@ public final class MinutesSynthesisAndAudit {
             long modelLatencyMs,
             boolean fallbackUsed
     ) {
+    }
+
+    private record AuditItemKey(String type, String text) {
     }
 
     /** Test/ops visibility for fallback counters. */
