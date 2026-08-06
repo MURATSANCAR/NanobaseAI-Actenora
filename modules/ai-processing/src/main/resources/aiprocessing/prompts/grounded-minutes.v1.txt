@@ -1,0 +1,59 @@
+Aşağıda toplantının TAM konuşma metni (transcript) ve önceki aşamalardan gelen aday bilgiler var.
+Görevin: adayları TAM TRANSCRIPT'e dayanarak doğrulamak, düzeltmek ve profesyonel bir toplantı
+tutanağı veri modeli üretmek. Aday listesi bir başlangıç noktasıdır; nihai gerçek TRANSCRIPT'tir.
+
+MEETING_TITLE: {{meetingTitle}}
+OUTPUT_LANGUAGE: {{outputLanguage}} ({{outputLanguageCode}})
+PRIOR_MEETING_CONTEXT:
+{{priorMeetingContext}}
+ALLOWED_EVIDENCE_IDS: {{evidenceSegmentIds}}
+
+MEETING_TRANSCRIPT (her satır: [segmentId] Konuşmacı: metin):
+{{transcript}}
+
+CANDIDATE_JSON (önceki aşama adayları — doğrulanacak taslak):
+{{candidatesJson}}
+
+GROUNDING KURALLARI
+1. Her karar/aksiyon/risk/taahhüt/açık soru/önemli bilgi maddesini TRANSCRIPT'in gerçek sözleriyle
+   karşılaştır. Transcript'te açık dayanağı olmayan adayı SİL. Transcript destekliyorsa koru.
+2. Transcript'te olup adaylarda eksik kalan gerçek karar/aksiyon/taahhüt/riski EKLE (yalnızca
+   TRANSCRIPT'e ve ALLOWED_EVIDENCE_IDS'e dayanarak; kanıt segmenti olmayan madde üretme).
+3. Her maddenin owner/tarih/rakam/karar durumunu transcript'teki ifadeye göre DÜZELT; adaydaki hata
+   varsa transcript esas alınır. Tarih ifadesini konuşmadaki haliyle koru; ISO/yıl uydurma.
+4. evidenceSegmentIds değerlerini gerçek dayanak segment kimlikleriyle doldur (ALLOWED_EVIDENCE_IDS içinden).
+5. Öneri ≠ karar. "Henüz karar değil / bakalım / değerlendirelim" → proposals. Kesin olarak seçilen → decisions.
+6. Status-quo/dolgu ("mevcut kararı değiştirmiyoruz", "yeni karar yok", "sadece bağlam"), toplantı
+   lojistiği (mikrofon/kamera/ekran/tanışma/yoklama), retorik/cevaplanmış sohbet soruları hiçbir
+   çıktı kategorisine girmez — tamamen at.
+7. openQuestions yalnızca toplantı sonunda hâlâ cevapsız, takip gerektiren maddelerdir.
+8. Geçmişte alınmış kararı bu toplantının kararı yapma. "Yanlış hatırlamıyorsam/sanırım/galiba" ile
+   verilen sayıyı kesin bilgi yapma; confidence düşür.
+9. executiveSummary: 3–5 kısa paragraf, TRANSCRIPT'e sadık, doğal ve yönetici seviyesinde; madde
+   numarası/bullet dump yok. En fazla ~180 kelime.
+10. Türkçe dil: "taahhüt etti/etmiştir/eder" yazma; "…yapacağını belirtti / …yapacak" kullan.
+11. Tüm kullanıcıya görünen metinleri YALNIZCA {{outputLanguage}} dilinde yaz.
+12. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.
+13. Yalnızca geçerli JSON döndür (markdown/yorum yok).
+
+Yalnızca şu JSON'u döndür:
+{
+  "meetingTitle": "",
+  "purpose": "",
+  "executiveSummary": "",
+  "agendaTopics": [],
+  "topics": [{"candidateId":null,"text":"","summary":null,"evidenceSegmentIds":[],"confidence":0.0}],
+  "decisions": [{"candidateId":null,"text":"","rationale":null,"status":"DECIDED","evidenceSegmentIds":[],"confidence":0.0}],
+  "actionItems": [{"candidateId":null,"text":"","owner":null,"ownerType":null,"dueDate":null,"relativeDate":null,"dueAt":null,"priority":null,"evidenceSegmentIds":[],"confidence":0.0}],
+  "risks": [{"candidateId":null,"text":"","likelihood":null,"mitigation":null,"evidenceSegmentIds":[],"confidence":0.0}],
+  "openQuestions": [{"candidateId":null,"text":"","evidenceSegmentIds":[],"confidence":0.0}],
+  "commitments": [{"candidateId":null,"text":"","owner":null,"evidenceSegmentIds":[],"confidence":0.0}],
+  "issues": [],
+  "proposals": [],
+  "importantFacts": [],
+  "nextSteps": [],
+  "reviewRequired": false,
+  "qualityFlags": [],
+  "evidenceSegmentIds": [],
+  "confidence": 0.0
+}

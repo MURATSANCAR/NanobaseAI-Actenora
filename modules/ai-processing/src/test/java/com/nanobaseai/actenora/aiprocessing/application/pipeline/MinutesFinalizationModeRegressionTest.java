@@ -133,6 +133,7 @@ class MinutesFinalizationModeRegressionTest {
                     MinutesFinalizationPolicy.FailureMode.DETERMINISTIC
             );
             case COMPOSER -> throw new IllegalArgumentException("COMPOSER covered by characterization suite");
+            case GROUNDED -> throw new IllegalArgumentException("GROUNDED covered by grounded finalization tests");
         };
         return new MinutesSynthesisAndAudit(
                 runtime, 90, PipelineQualityMetricsPort.noop(), policy

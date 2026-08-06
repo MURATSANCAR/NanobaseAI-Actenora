@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ApproximateTokenEstimator;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TokenEstimator;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceNearMissConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceReferenceScrubber;
@@ -72,6 +74,8 @@ public final class MinutesSynthesisAndAudit {
     private final String finalMinutesTemplate;
     private final String evidenceAuditTemplate;
     private final String editorialSummaryTemplate;
+    private final String groundedMinutesTemplate;
+    private final String groundedAuditTemplate;
     private final int timeoutSeconds;
     private final PipelineQualityMetricsPort qualityMetrics;
     private final MinutesFinalizationPolicy finalizationPolicy;
@@ -208,6 +212,8 @@ public final class MinutesSynthesisAndAudit {
                 || finalizationPolicy.mode() == MinutesFinalizationPolicy.Mode.COMPOSER
                 ? loadTemplate(finalizationPolicy.promptResource())
                 : "";
+        this.groundedMinutesTemplate = loadTemplate("/aiprocessing/prompts/grounded-minutes.v1.txt");
+        this.groundedAuditTemplate = loadTemplate("/aiprocessing/prompts/grounded-audit.v1.txt");
         if (timeoutSeconds < 0) {
             throw new IllegalArgumentException("timeoutSeconds must be >= 0");
         }
@@ -340,6 +346,15 @@ public final class MinutesSynthesisAndAudit {
                     language,
                     segs,
                     people
+            );
+            case GROUNDED -> groundedFinalize(
+                    merged,
+                    deterministicDraft,
+                    allowedEvidenceIds,
+                    meetingTitle,
+                    language,
+                    prior,
+                    segs
             );
         };
         return withSoftenedCommitmentPhrasing(withAuditTrace(result));
@@ -766,6 +781,99 @@ public final class MinutesSynthesisAndAudit {
         );
     }
 
+    /**
+     * Transcript-grounded finalization: feed the raw meeting transcript to the synthesis and
+     * audit model calls so every structured item is verified/rewritten against the real words.
+     * Falls back to candidate-grounded FULL synthesis when the transcript is unavailable or too
+     * large for a single context window.
+     */
+    private MinutesFinalizationResult groundedFinalize(
+            ExtractionBundle merged,
+            FinalNoteDraft deterministicDraft,
+            Set<String> allowedEvidenceIds,
+            String meetingTitle,
+            String language,
+            PriorMeetingContext priorMeetingContext,
+            List<SegmentInput> segments
+    ) {
+        String requested = MinutesFinalizationPolicy.Mode.GROUNDED.name();
+        String transcript = buildTranscriptBlock(segments);
+        String candidatesJson;
+        try {
+            candidatesJson = objectMapper.writeValueAsString(toCandidateNode(merged));
+        } catch (RuntimeException | IOException ex) {
+            candidatesJson = "";
+        }
+        boolean fits = !transcript.isBlank() && transcriptFitsGrounded(transcript, candidatesJson);
+        if (!fits) {
+            StepResult synthesized = synthesize(
+                    merged, deterministicDraft, allowedEvidenceIds, meetingTitle, language, priorMeetingContext);
+            StepResult audited = audit(synthesized.draft(), allowedEvidenceIds, language);
+            return MinutesFinalizationResult.of(
+                    scrubDraftEvidence(audited.draft(), allowedEvidenceIds),
+                    requested,
+                    MinutesFinalizationPolicy.Mode.FULL.name(),
+                    transcript.isBlank() ? "GROUNDED_TRANSCRIPT_UNAVAILABLE" : "GROUNDED_TRANSCRIPT_TOO_LARGE",
+                    synthesized.modelCalls() + audited.modelCalls(),
+                    synthesized.inputTokens() + audited.inputTokens(),
+                    synthesized.outputTokens() + audited.outputTokens(),
+                    synthesized.modelLatencyMs() + audited.modelLatencyMs()
+            );
+        }
+        StepResult synthesized = synthesize(
+                merged, deterministicDraft, allowedEvidenceIds, meetingTitle, language, priorMeetingContext, transcript);
+        StepResult audited = audit(synthesized.draft(), allowedEvidenceIds, language, transcript);
+        return MinutesFinalizationResult.of(
+                scrubDraftEvidence(audited.draft(), allowedEvidenceIds),
+                requested,
+                requested,
+                synthesized.fallbackUsed() || audited.fallbackUsed() ? "GROUNDED_STAGE_FALLBACK" : null,
+                synthesized.modelCalls() + audited.modelCalls(),
+                synthesized.inputTokens() + audited.inputTokens(),
+                synthesized.outputTokens() + audited.outputTokens(),
+                synthesized.modelLatencyMs() + audited.modelLatencyMs()
+        );
+    }
+
+    private String buildTranscriptBlock(List<SegmentInput> segments) {
+        if (segments == null || segments.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (SegmentInput segment : segments) {
+            if (segment == null) {
+                continue;
+            }
+            String content = segment.content() == null ? "" : segment.content().strip();
+            if (content.isEmpty()) {
+                continue;
+            }
+            String speaker = segment.speakerDisplayName() == null ? "" : segment.speakerDisplayName().strip();
+            String id = segment.segmentId() == null ? "" : segment.segmentId();
+            sb.append('[').append(id).append("] ");
+            if (!speaker.isEmpty()) {
+                sb.append(speaker).append(": ");
+            }
+            sb.append(content).append('\n');
+        }
+        return sb.toString().strip();
+    }
+
+    private boolean transcriptFitsGrounded(String transcript, String candidatesJson) {
+        int ctx = MeetingLlmBudgets.GROUNDED_CTX_SIZE;
+        int descriptorCtx = modelRuntime.descriptor().contextWindowTokens();
+        if (descriptorCtx > ctx) {
+            ctx = descriptorCtx;
+        }
+        int reserve = MeetingLlmBudgets.PROMPT_OVERHEAD_TOKENS
+                + MeetingLlmBudgets.FINAL_MAX_TOKENS
+                + MeetingLlmBudgets.SAFETY_MARGIN_TOKENS;
+        int budget = ctx - reserve;
+        TokenEstimator estimator = new ApproximateTokenEstimator();
+        int used = estimator.estimate(transcript) + estimator.estimate(candidatesJson);
+        return budget > 0 && used <= budget;
+    }
+
     private StepResult synthesize(
             ExtractionBundle merged,
             FinalNoteDraft fallback,
@@ -774,19 +882,34 @@ public final class MinutesSynthesisAndAudit {
             String language,
             PriorMeetingContext priorMeetingContext
     ) {
+        return synthesize(
+                merged, fallback, allowedEvidenceIds, meetingTitle, language, priorMeetingContext, null);
+    }
+
+    private StepResult synthesize(
+            ExtractionBundle merged,
+            FinalNoteDraft fallback,
+            Set<String> allowedEvidenceIds,
+            String meetingTitle,
+            String language,
+            PriorMeetingContext priorMeetingContext,
+            String transcriptBlock
+    ) {
         InferenceResponse response = null;
         boolean inferenceAttempted = false;
         try {
             String candidatesJson = objectMapper.writeValueAsString(toCandidateNode(merged));
             String priorBlock = priorMeetingContext.toPromptBlock();
-            String userPrompt = ExtractionPromptRules.applyLanguage(finalMinutesTemplate, language)
+            String template = transcriptBlock == null ? finalMinutesTemplate : groundedMinutesTemplate;
+            String userPrompt = ExtractionPromptRules.applyLanguage(template, language)
                     .replace("{{meetingTitle}}", meetingTitle == null ? "" : meetingTitle)
                     .replace("{{candidatesJson}}", candidatesJson)
                     .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds))
                     .replace(
                             "{{priorMeetingContext}}",
                             priorBlock.isBlank() ? "(yok)" : priorBlock
-                    );
+                    )
+                    .replace("{{transcript}}", transcriptBlock == null ? "" : transcriptBlock);
             inferenceAttempted = true;
             response = modelRuntime.infer(new InferenceRequest(
                     InferenceTaskType.FINAL_NOTE.name(),
@@ -881,13 +1004,24 @@ public final class MinutesSynthesisAndAudit {
     }
 
     private StepResult audit(FinalNoteDraft draft, Set<String> allowedEvidenceIds, String language) {
+        return audit(draft, allowedEvidenceIds, language, null);
+    }
+
+    private StepResult audit(
+            FinalNoteDraft draft,
+            Set<String> allowedEvidenceIds,
+            String language,
+            String transcriptBlock
+    ) {
         InferenceResponse response = null;
         boolean inferenceAttempted = false;
         try {
             String candidatesJson = objectMapper.writeValueAsString(toDraftNode(draft));
-            String userPrompt = ExtractionPromptRules.applyLanguage(evidenceAuditTemplate, language)
+            String template = transcriptBlock == null ? evidenceAuditTemplate : groundedAuditTemplate;
+            String userPrompt = ExtractionPromptRules.applyLanguage(template, language)
                     .replace("{{candidatesJson}}", candidatesJson)
-                    .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds));
+                    .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds))
+                    .replace("{{transcript}}", transcriptBlock == null ? "" : transcriptBlock);
             inferenceAttempted = true;
             response = modelRuntime.infer(new InferenceRequest(
                     InferenceTaskType.VALIDATION.name(),

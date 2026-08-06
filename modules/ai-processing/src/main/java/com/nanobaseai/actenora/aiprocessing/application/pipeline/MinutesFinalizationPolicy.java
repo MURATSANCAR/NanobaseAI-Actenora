@@ -30,7 +30,14 @@ public record MinutesFinalizationPolicy(
          * High evidence rejection → MANUAL_REVIEW (not EDITORIAL polish).
          * Other failures fall back to EDITORIAL with explicit audit reason.
          */
-        COMPOSER;
+        COMPOSER,
+        /**
+         * Transcript-grounded synthesis + audit: the raw meeting transcript is fed to the
+         * synthesis and audit model calls so every structured item is verified/rewritten
+         * against the real words. Falls back to FULL (candidate-grounded) when the transcript
+         * is unavailable or too large for one context window.
+         */
+        GROUNDED;
 
         public static Mode parse(String value) {
             return valueOf(requireText(value, "mode").toUpperCase(Locale.ROOT));

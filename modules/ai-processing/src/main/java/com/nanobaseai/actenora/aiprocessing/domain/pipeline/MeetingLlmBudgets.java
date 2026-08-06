@@ -17,6 +17,14 @@ public final class MeetingLlmBudgets {
     /** Operational context budget used for chunking (server may advertise 32k). */
     public static final int OPERATIONAL_CTX_SIZE = 16_384;
 
+    /**
+     * Context budget used by the transcript-grounded finalization step. The production
+     * llama-server runs with {@code -c 32768}, so the finalizer may feed the whole
+     * transcript (most meetings fit) instead of only a digest. Longer transcripts that
+     * exceed this budget fall back to candidate-grounded FULL synthesis.
+     */
+    public static final int GROUNDED_CTX_SIZE = 32_768;
+
     /** Preferred transcript tokens per extraction call. */
     public static final int TARGET_CHUNK_TOKENS = 3_500;
 

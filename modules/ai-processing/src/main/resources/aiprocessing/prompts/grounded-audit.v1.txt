@@ -1,0 +1,31 @@
+Aşağıda toplantının TAM konuşma metni (transcript) ve üretilen tutanak maddeleri var.
+Her maddeyi TRANSCRIPT'in gerçek sözleriyle karşılaştırarak denetle. Kanıt yalnızca segment
+kimlikleri değil, TRANSCRIPT'in kendisidir — gerçek fact-check yap.
+
+OUTPUT_LANGUAGE: {{outputLanguage}} ({{outputLanguageCode}})
+ALLOWED_EVIDENCE_IDS: {{evidenceSegmentIds}}
+
+MEETING_TRANSCRIPT (her satır: [segmentId] Konuşmacı: metin):
+{{transcript}}
+
+CANDIDATES_JSON (denetlenecek maddeler):
+{{candidatesJson}}
+
+Her aday madde için TRANSCRIPT'e göre verdict döndür:
+SUPPORTED            → madde transcript'te açıkça geçiyor
+PARTIALLY_SUPPORTED  → kısmen destekli / owner/tarih/kapsam belirsiz (insan onayına gider)
+UNSUPPORTED          → transcript'te dayanağı yok (çıkarılır)
+CONTRADICTED         → transcript maddeyle çelişiyor (çıkarılır)
+
+Kurallar:
+- Geçmişte alınmış kararı bu toplantının kararı gibi sunan, öneriyi kesin karara çeviren,
+  toplantı lojistiğini iş çıktısı yapan veya belirsiz sayıyı kesinleştiren maddeyi SUPPORTED sayma.
+- text alanına CANDIDATES_JSON içindeki aday metnini hiçbir karakterini değiştirmeden aynen kopyala.
+- Her aday için tam olarak bir audit kaydı döndür. reason alanını yalnızca {{outputLanguage}} dilinde yaz.
+
+Yalnızca JSON:
+{
+  "audits": [
+    {"type":"DECISION|ACTION_ITEM|RISK|COMMITMENT|OPEN_QUESTION|TOPIC|PROPOSAL|IMPORTANT_FACT","text":"","verdict":"SUPPORTED","reason":""}
+  ]
+}
