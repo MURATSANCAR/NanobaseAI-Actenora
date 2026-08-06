@@ -2,8 +2,9 @@
   "meetingTitle": "Yapay Zeka Görüşmesi",
   "meetingId": "b105cd04-4709-46aa-a494-b42c458c0258",
   "jobId": "fcdb4ab4-ba85-452a-9fda-8d38912b86a8",
-  "transcriptId": "a5db11a6-ae38-4095-9193-0d23c207e0e3",
+  "transcriptId": "c556a075-5df3-4b49-85f2-17f4bbfdf3e7",
   "noteId": null,
   "noteVersionId": null,
-  "status": "RUNNING"
+  "status": "RUNNING",
+  "transcriptReingested": "attributed"
 }

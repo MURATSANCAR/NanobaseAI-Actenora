@@ -1,0 +1,18 @@
+{
+  "meetingTitle": "Yapay Zeka Görüşmesi",
+  "meetingId": "b105cd04-4709-46aa-a494-b42c458c0258",
+  "transcriptId": "c556a075-5df3-4b49-85f2-17f4bbfdf3e7",
+  "source": "MANUAL_UPLOAD_ATTRIBUTED_REINGEST",
+  "status": "PARSED",
+  "segmentCount": 720,
+  "namedSegmentCount": 720,
+  "speakers": [
+    "Ahmet Faruk Çatlar",
+    "BURAG",
+    "BURAG AYK KESISOGLU",
+    "Berkay Albayrak",
+    "Görkem Mergenay",
+    "Murat Sancar"
+  ],
+  "reingestedAt": "2026-08-06T00:09:45Z"
+}

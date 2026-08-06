@@ -3,10 +3,11 @@
   "meetingId": "ebedbb07-bc59-400c-8b47-f9f6f233ca63",
   "meetingStatus": "ENDED",
   "jobId": "2a7507e4-c183-42d6-8b01-92f5fdf5bfe0",
-  "transcriptId": "36748824-c1e5-47b6-9bb1-c05dcc20c65f",
+  "transcriptId": "fd0b96d5-f2ed-4792-a721-50b904641128",
   "noteId": "edc787e9-b4a3-4795-954a-2648e24e9031",
   "noteVersionId": "8353f276-1f1d-498f-b3bf-be342c306dc9",
   "reviewStatus": "MANUAL_REVIEW",
   "aiConfidence": 0.85,
-  "status": "SUCCEEDED"
+  "status": "SUCCEEDED",
+  "transcriptReingested": "attributed"
 }
