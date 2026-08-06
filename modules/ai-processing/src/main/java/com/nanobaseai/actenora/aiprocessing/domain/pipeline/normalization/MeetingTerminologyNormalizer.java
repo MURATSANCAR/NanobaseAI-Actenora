@@ -1,12 +1,10 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization;
 
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Deterministic product/company ASR fixes for the AI path (FAZ-9 compatible surface rewrite).
@@ -19,28 +17,19 @@ public final class MeetingTerminologyNormalizer {
 
     private final List<Alias> aliases;
 
-    /** Surface pattern compiled once at construction (not per rewrite call). */
-    private record CompiledAlias(Pattern pattern, String canonical) {
-    }
-
-    private final List<CompiledAlias> compiled;
+    /** O(text) matcher — scales to hundred-thousand terms (single-pass token scan). */
+    private final GlossaryMatcher matcher;
 
     public MeetingTerminologyNormalizer(List<Alias> aliases) {
         List<Alias> copy = new ArrayList<>(Objects.requireNonNull(aliases, "aliases"));
-        copy.sort(Comparator
-                .comparingInt((Alias a) -> a.surface().length())
-                .reversed()
-                .thenComparing(a -> a.surface().toLowerCase(Locale.ROOT)));
         this.aliases = List.copyOf(copy);
-        List<CompiledAlias> compiledList = new ArrayList<>(copy.size());
+        Map<String, String> surfaceToCanonical = new LinkedHashMap<>();
         for (Alias al : copy) {
-            compiledList.add(new CompiledAlias(
-                    Pattern.compile(
-                            "(?<![\\p{L}\\p{N}_])" + Pattern.quote(al.surface()) + "(?![\\p{L}\\p{N}_])",
-                            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE),
-                    al.canonical()));
+            if (al != null && al.surface() != null && al.canonical() != null) {
+                surfaceToCanonical.putIfAbsent(al.surface(), al.canonical());
+            }
         }
-        this.compiled = List.copyOf(compiledList);
+        this.matcher = new GlossaryMatcher(surfaceToCanonical);
     }
 
     /**
@@ -290,27 +279,6 @@ public final class MeetingTerminologyNormalizer {
     }
 
     public String rewrite(String text) {
-        if (text == null || text.isEmpty() || compiled.isEmpty()) {
-            return text == null ? "" : text;
-        }
-        String result = text;
-        for (CompiledAlias alias : compiled) {
-            Matcher matcher = alias.pattern().matcher(result);
-            StringBuffer sb = new StringBuffer();
-            boolean changed = false;
-            while (matcher.find()) {
-                if (!matcher.group().equals(alias.canonical())) {
-                    matcher.appendReplacement(sb, Matcher.quoteReplacement(alias.canonical()));
-                    changed = true;
-                } else {
-                    matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group()));
-                }
-            }
-            matcher.appendTail(sb);
-            if (changed) {
-                result = sb.toString();
-            }
-        }
-        return result;
+        return matcher.rewrite(text);
     }
 }

@@ -1,0 +1,234 @@
+# base-glossary.csv  —  surface,canonical
+# Deterministic whole-word, case-insensitive term/ASR fixes fed into GlossaryMatcher (O(text)).
+# Rules: only surface forms that DO NOT collide with common Turkish/English words
+# (never add Getir / Meta / İş / Ziraat / Apple as bare words). Grow freely per category.
+# Lines starting with # and blank lines are ignored. First comma splits surface,canonical.
+
+# ---- Veritabanı ----
+Mayusque,MySQL
+Moyus gale,MySQL
+moyusque,MySQL
+moyus gale,MySQL
+poscree,PostgreSQL
+poscre,PostgreSQL
+Postgre,PostgreSQL
+postgres,PostgreSQL
+mongo db,MongoDB
+mongodb,MongoDB
+
+# ---- Donanım / AI altyapı ----
+g p u,GPU
+gpu,GPU
+n vidia,NVIDIA
+in vidia,NVIDIA
+invdiya,NVIDIA
+invidya,NVIDIA
+invdia,NVIDIA
+envidia,NVIDIA
+nivida,NVIDIA
+nvidia,NVIDIA
+c u d a,CUDA
+cuda,CUDA
+h 200,H200
+h200,H200
+
+# ---- IT / Yazılım / AI ----
+d w h,DWH
+dwh,DWH
+d vaş,DWH
+devaaş,DWH
+e t l,ETL
+l l m,LLM
+gpt,GPT
+çet gpt,GPT
+chat gpt,GPT
+çet cpt,GPT
+cet gpt,GPT
+kubernates,Kubernetes
+kubernetis,Kubernetes
+k8s,Kubernetes
+on prem,on-prem
+on premise,on-prem
+on premises,on-prem
+onprem,on-prem
+10 prem,on-prem
+p o c,PoC
+proof of concept,PoC
+poc,PoC
+api,API
+rest api,REST API
+grpc,gRPC
+graphql,GraphQL
+nosql,NoSQL
+sql,SQL
+json,JSON
+yaml,YAML
+sdk,SDK
+saas,SaaS
+paas,PaaS
+iaas,IaaS
+devops,DevOps
+dev ops,DevOps
+mlops,MLOps
+ci cd,CI/CD
+cicd,CI/CD
+
+# ---- Bulut / DevOps / veri ----
+aws,AWS
+azure,Azure
+gcp,GCP
+terraform,Terraform
+ansible,Ansible
+jenkins,Jenkins
+nginx,Nginx
+rabbitmq,RabbitMQ
+elasticsearch,Elasticsearch
+grafana,Grafana
+prometheus,Prometheus
+apache spark,Apache Spark
+hadoop,Hadoop
+airflow,Airflow
+snowflake,Snowflake
+databricks,Databricks
+
+# ---- Yapay zeka / veri bilimi ----
+nlp,NLP
+ocr,OCR
+iot,IoT
+rpa,RPA
+mcp,MCP
+pytorch,PyTorch
+tensorflow,TensorFlow
+hugging face,Hugging Face
+open ai,OpenAI
+chatgpt,ChatGPT
+
+# ---- Güvenlik / Fraud ----
+s i e m,SIEM
+si em,SIEM
+siem,SIEM
+soar,SOAR
+edr,EDR
+xdr,XDR
+dlp,DLP
+waf,WAF
+ddos,DDoS
+iam,IAM
+mfa,MFA
+sso,SSO
+rbac,RBAC
+pki,PKI
+hsm,HSM
+casb,CASB
+pam,PAM
+k y c,KYC
+kyc,KYC
+aml,AML
+kyt,KYT
+soc,SOC
+pentest,pentest
+pen test,pentest
+
+# ---- Finans / Bankacılık ----
+kor banking,Core Banking
+core bankin,Core Banking
+core bankacılık,Core Banking
+core banking,Core Banking
+corbanking,Core Banking
+corben king,Core Banking
+corbenk,Core Banking
+cor banking,Core Banking
+Fimple,Simple
+Simpıl,Simple
+findeks,Findeks
+findex,Findeks
+b d d k,BDDK
+bddk,BDDK
+spk,SPK
+tcmb,TCMB
+masak,MASAK
+kkb,KKB
+eft,EFT
+faast,FAST
+iban,IBAN
+mkk,MKK
+bkm,BKM
+troy,TROY
+npl,NPL
+gsyih,GSYİH
+
+# ---- Hukuk / Uyum ----
+k v k k,KVKK
+kvkk,KVKK
+gdpr,GDPR
+iso 27001,ISO 27001
+
+# ---- Sigorta ----
+re asürans,reasürans
+aktüerya,aktüerya
+bes,BES
+
+# ---- Telekom ----
+g s m,GSM
+gsm,GSM
+
+# ---- Kamu / Türkiye kurumları ----
+e devlet,e-Devlet
+uyap,UYAP
+mersis,MERSİS
+gib,GİB
+sgk,SGK
+epdk,EPDK
+
+# ============ FİRMALAR ============
+# --- Türkiye: bankalar / finans ---
+akbank,Akbank
+garanti bbva,Garanti BBVA
+yapı kredi,Yapı Kredi
+yapıkredi,Yapı Kredi
+vakıfbank,VakıfBank
+halkbank,Halkbank
+ziraat bankası,Ziraat Bankası
+qnb finansbank,QNB Finansbank
+finansbank,QNB Finansbank
+denizbank,DenizBank
+burgan bank,Burgan Bank
+papara,Papara
+enpara,Enpara
+iyzico,iyzico
+
+# --- Türkiye: telekom / holding / teknoloji ---
+turkcell,Turkcell
+türk telekom,Türk Telekom
+turk telekom,Türk Telekom
+koç holding,Koç Holding
+sabancı holding,Sabancı Holding
+arçelik,Arçelik
+aselsan,ASELSAN
+havelsan,HAVELSAN
+togg,TOGG
+trendyol,Trendyol
+hepsiburada,Hepsiburada
+logo yazılım,Logo Yazılım
+
+# --- Global: teknoloji ---
+google,Google
+microsoft,Microsoft
+maykrosoft,Microsoft
+amazon,Amazon
+oracle,Oracle
+salesforce,Salesforce
+adobe,Adobe
+atlassian,Atlassian
+vmware,VMware
+cisco,Cisco
+intel,Intel
+openai,OpenAI
+anthropic,Anthropic
+deepmind,DeepMind
+huggingface,Hugging Face
+
+# --- Global: finans / ödeme ---
+mastercard,Mastercard
+paypal,PayPal
+stripe,Stripe
