@@ -1,4 +1,5 @@
-Her karar ve aksiyon maddesini kanıt segment kimlikleriyle karşılaştır.
+Her aday maddeyi kanıt segment kimlikleriyle karşılaştır. Karar, aksiyon, risk, taahhüt,
+açık soru, konu, öneri ve önemli bilgilerin tamamını denetle.
 
 OUTPUT_LANGUAGE: {{outputLanguage}} ({{outputLanguageCode}})
 CANDIDATES_JSON:
@@ -11,10 +12,14 @@ SUPPORTED | PARTIALLY_SUPPORTED | UNSUPPORTED | CONTRADICTED
 UNSUPPORTED veya CONTRADICTED kayıtlar çıkarılacak.
 PARTIALLY_SUPPORTED insan onayına gidecek.
 reason alanını yalnızca {{outputLanguage}} dilinde yaz.
+Her aday için tam olarak bir audit kaydı döndür. text alanına CANDIDATES_JSON içindeki aday
+metnini hiçbir karakterini değiştirmeden aynen kopyala; özetleme, düzeltme veya yeniden yazma.
+Geçmişte alınmış kararı bu toplantıda alınmış gibi sunan, görüşme önerisini kesin karara çeviren,
+toplantı lojistiğini iş çıktısı yapan veya belirsiz sayıyı kesinleştiren maddeyi desteklenmiş sayma.
 
 Yalnızca JSON:
 {
   "audits": [
-    {"type":"DECISION|ACTION_ITEM|RISK|COMMITMENT|OPEN_QUESTION","text":"","verdict":"SUPPORTED","reason":""}
+    {"type":"DECISION|ACTION_ITEM|RISK|COMMITMENT|OPEN_QUESTION|TOPIC|PROPOSAL|IMPORTANT_FACT","text":"","verdict":"SUPPORTED","reason":""}
   ]
 }

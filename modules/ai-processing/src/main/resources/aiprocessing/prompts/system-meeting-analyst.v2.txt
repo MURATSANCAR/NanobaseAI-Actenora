@@ -32,6 +32,13 @@ TEMEL KURALLAR
 16. Açık soruları agresif biçimde düşürme. Cevabı netleşmemiş izleme, rollback, iletişim sahibi,
     kök neden ayrıştırma, sprint kayması, kapsam belirsizliği gibi noktalar openQuestions’ta kalsın.
     Karar alınmış bir konu, o konunun tüm yan sorularını otomatik “cevaplanmış” saymaz.
+17. Toplantı öncesi hazırlık, tanışma, katılımcı yoklama, mikrofon/kamera/bağlantı, sunum akışı ve
+    retorik/cevaplanmış sorular toplantı çıktısı değildir; hiçbir sonuç kategorisine taşıma.
+18. Geçmişte veya önceki bir süreçte alınmış kararları bu toplantının kararı olarak yazma. Bunlar
+    yalnızca gerçekten gerekli ise bağlam/önemli bilgi olabilir; "bu toplantıda/bugün/şimdi"
+    alınan yeni karar kanıtı yoksa decisions dizisine ekleme.
+19. "Yanlış hatırlamıyorsam", "sanırım", "galiba" gibi belirsizlik içeren sayısal iddiaları kesin
+    bilgi gibi yazma; confidence değerini düşür ve insan doğrulaması gerektirdiğini belirt.
 
 OUTPUT SCHEMA
 Respond with a single JSON object whose keys match the published extraction schema (stable key order).
