@@ -25,6 +25,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteR
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.NoteArtifactStoragePort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.TopicRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.IssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ProposalRepository;
@@ -56,6 +57,7 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.In
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryTopicRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryIssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryOpenQuestionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryProposalRepository;
@@ -159,6 +161,13 @@ public class MeetingIntelligencePlatformConfiguration {
     }
 
     @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
+    @ConditionalOnMissingBean(TopicRepository.class)
+    @Bean
+    public TopicRepository inMemoryTopicRepository() {
+        return new InMemoryTopicRepository();
+    }
+
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "inmemory", matchIfMissing = true)
     @ConditionalOnMissingBean(EvidenceLinkRepository.class)
     @Bean
     public EvidenceLinkRepository inMemoryEvidenceLinkRepository() {
@@ -209,13 +218,14 @@ public class MeetingIntelligencePlatformConfiguration {
             IssueRepository issues,
             ProposalRepository proposals,
             ImportantFactRepository importantFacts,
+            TopicRepository topics,
             EvidenceLinkRepository evidenceLinks,
             QualityFlagRepository qualityFlags,
             ClockPort clock
     ) {
         return new MapAiCandidatesToNoteService(
                 notes, versions, decisions, actionItems, risks, commitments,
-                openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags, clock
+                openQuestions, issues, proposals, importantFacts, topics, evidenceLinks, qualityFlags, clock
         );
     }
 
@@ -234,12 +244,13 @@ public class MeetingIntelligencePlatformConfiguration {
             IssueRepository issues,
             ProposalRepository proposals,
             ImportantFactRepository importantFacts,
+            TopicRepository topics,
             EvidenceLinkRepository evidenceLinks,
             QualityFlagRepository qualityFlags
     ) {
         return new MeetingIntelligenceApplicationService(
                 tenantContext, clock, mappingService, notes, versions, decisions, actionItems,
-                risks, commitments, openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags
+                risks, commitments, openQuestions, issues, proposals, importantFacts, topics, evidenceLinks, qualityFlags
         );
     }
 

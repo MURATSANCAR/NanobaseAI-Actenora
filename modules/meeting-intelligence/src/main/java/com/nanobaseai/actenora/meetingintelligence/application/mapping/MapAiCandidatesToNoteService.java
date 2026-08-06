@@ -10,6 +10,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.MapAiCandidatesComman
 import com.nanobaseai.actenora.meetingintelligence.api.dto.OpenQuestionCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.ProposalCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.RiskCandidateInput;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.TopicCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ActionItemRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ClockPort;
 import com.nanobaseai.actenora.meetingintelligence.application.port.CommitmentRepository;
@@ -23,6 +24,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestion
 import com.nanobaseai.actenora.meetingintelligence.application.port.ProposalRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.QualityFlagRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.RiskRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.TopicRepository;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.ActionItem;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Commitment;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Decision;
@@ -39,6 +41,7 @@ import com.nanobaseai.actenora.meetingintelligence.domain.model.Proposal;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.QualityFlag;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.QualityFlagCode;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Risk;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.Topic;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
 
 import java.time.Instant;
@@ -65,6 +68,7 @@ public final class MapAiCandidatesToNoteService {
     private final IssueRepository issueRepository;
     private final ProposalRepository proposalRepository;
     private final ImportantFactRepository importantFactRepository;
+    private final TopicRepository topicRepository;
     private final EvidenceLinkRepository evidenceLinkRepository;
     private final QualityFlagRepository qualityFlagRepository;
     private final ClockPort clock;
@@ -80,6 +84,7 @@ public final class MapAiCandidatesToNoteService {
             IssueRepository issueRepository,
             ProposalRepository proposalRepository,
             ImportantFactRepository importantFactRepository,
+            TopicRepository topicRepository,
             EvidenceLinkRepository evidenceLinkRepository,
             QualityFlagRepository qualityFlagRepository,
             ClockPort clock
@@ -94,6 +99,7 @@ public final class MapAiCandidatesToNoteService {
         this.issueRepository = Objects.requireNonNull(issueRepository);
         this.proposalRepository = Objects.requireNonNull(proposalRepository);
         this.importantFactRepository = Objects.requireNonNull(importantFactRepository);
+        this.topicRepository = Objects.requireNonNull(topicRepository);
         this.evidenceLinkRepository = Objects.requireNonNull(evidenceLinkRepository);
         this.qualityFlagRepository = Objects.requireNonNull(qualityFlagRepository);
         this.clock = Objects.requireNonNull(clock);
@@ -275,6 +281,15 @@ public final class MapAiCandidatesToNoteService {
                         "Important fact lacks evidence", EvidenceSubjectType.IMPORTANT_FACT, fact.id(), now
                 ));
             }
+        }
+
+        // Discussed topics (agenda). Persisted as their own note sub-entity so the portal renders
+        // them under "GÖRÜŞÜLEN KONULAR"; agenda items carry no clickable evidence / manual-review flag.
+        for (TopicCandidateInput candidate : candidates.topics()) {
+            Topic topic = Topic.createFromMapping(
+                    tenantId, note.id(), version.id(), candidate.text(), false, candidate.confidence(), now
+            );
+            topicRepository.save(topic);
         }
 
         for (String flag : candidates.qualityFlags()) {

@@ -48,8 +48,9 @@ class FinalNoteDraftMapperTest {
         assertEquals(1, bundle.commitments().size());
         assertTrue(bundle.issues().isEmpty());
         assertTrue(bundle.proposals().isEmpty());
-        assertEquals(1, bundle.importantFacts().size());
-        assertEquals("Delivery and release planning", bundle.importantFacts().getFirst().text());
+        assertTrue(bundle.importantFacts().isEmpty());
+        assertEquals(1, bundle.topics().size());
+        assertEquals("Delivery and release planning", bundle.topics().getFirst().text());
         assertTrue(bundle.qualityFlags().contains("LOW_CONFIDENCE"));
         assertTrue(bundle.qualityFlags().contains("REQUIRES_MANUAL_REVIEW"));
         assertEquals(0.88, bundle.confidence());

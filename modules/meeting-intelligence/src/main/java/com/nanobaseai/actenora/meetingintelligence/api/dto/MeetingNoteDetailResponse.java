@@ -22,6 +22,7 @@ public record MeetingNoteDetailResponse(
         List<IssueResponse> issues,
         List<ProposalResponse> proposals,
         List<ImportantFactResponse> importantFacts,
+        List<TopicResponse> topics,
         List<EvidenceLinkResponse> evidenceLinks,
         List<QualityFlagResponse> qualityFlags,
         Instant createdAt,

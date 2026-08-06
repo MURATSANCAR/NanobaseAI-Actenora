@@ -1,4 +1,4 @@
-.PHONY: bootstrap build test lint run stop sbom ci-build ci-test verify verify-faz27 faz28 secret-scan dep-scan semgrep deploy-portal deploy-portal-full deploy-backend prod-up prod-down prod-logs prod-ps help
+.PHONY: bootstrap build test lint run stop sbom ci-build ci-test verify verify-faz27 faz28 secret-scan dep-scan semgrep deploy-portal deploy-portal-full deploy-backend prod-preflight prod-up prod-down prod-logs prod-ps help
 
 # Single-file production compose (infrastructure/compose/docker-compose.prod.yml).
 # Override the env-file path or profiles as needed, e.g.:
@@ -52,6 +52,9 @@ deploy-portal-full:
 deploy-backend:
 	./scripts/deploy-actenora-backend.sh
 
+prod-preflight:
+	ENV_FILE=$(ENV_FILE) ./scripts/preflight-prod.sh
+
 prod-up:
 	docker compose -f $(PROD_COMPOSE) --env-file $(ENV_FILE) $(PROFILES) up -d --build
 
@@ -84,6 +87,7 @@ help:
 	@echo "  make deploy-portal  - build + deploy Actenora SPA to portal.nanobase.ai/actenora/"
 	@echo "  make deploy-portal-full - QA hub + Actenora (full production portal deploy)"
 	@echo "  make deploy-backend - build + deploy platform-backend BFF on portal.nanobase.ai"
+	@echo "  make prod-preflight - validate env/secrets/certs/endpoints before deploy"
 	@echo "  make prod-up        - build+start full prod stack (docker-compose.prod.yml)"
 	@echo "  make prod-down      - stop the prod stack"
 	@echo "  make prod-logs      - follow prod stack logs"

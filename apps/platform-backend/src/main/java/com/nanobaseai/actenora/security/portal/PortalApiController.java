@@ -1481,14 +1481,24 @@ public class PortalApiController {
         sb.append('\n').append("1. YÖNETİCİ ÖZETİ").append('\n');
         sb.append(summary.isBlank() ? "—" : summary).append('\n');
 
-        List<String> agenda = com.nanobaseai.actenora.security.delivery.ApprovedNoteContentJsonMapper
-                .parseAgendaItems(summary);
+        // Discussed topics are a first-class note entity — render them here, not in ÖNEMLİ BULGULAR.
         List<String> discussed = new ArrayList<>();
-        if (agenda != null && !agenda.isEmpty()) {
-            discussed.addAll(agenda);
+        if (note.topics() != null) {
+            for (var topic : note.topics()) {
+                if (topic != null && topic.text() != null && !topic.text().isBlank()) {
+                    discussed.add(topic.text().trim());
+                }
+            }
         }
-        // Do not borrow importantFacts as agenda — facts render in their own "ÖNEMLİ BULGULAR"
-        // section. An agenda with no real discussed topics is omitted rather than padded.
+        if (discussed.isEmpty()) {
+            // Legacy notes carried the agenda inside the executive summary ("Gündem:" prefix).
+            List<String> agenda = com.nanobaseai.actenora.security.delivery.ApprovedNoteContentJsonMapper
+                    .parseAgendaItems(summary);
+            if (agenda != null) {
+                discussed.addAll(agenda);
+            }
+        }
+        // Do not borrow importantFacts as agenda — facts render in their own "ÖNEMLİ BULGULAR" section.
         appendMinutesSection(sb, "2. GÖRÜŞÜLEN KONULAR", discussed, false);
 
         // Deterministic presentation IDs: list order = extraction/persist order (not alphabetical).

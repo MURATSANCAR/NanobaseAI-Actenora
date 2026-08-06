@@ -159,6 +159,17 @@ public final class ApprovedNoteContentJsonMapper {
                 }
             }
 
+            ArrayNode topics = root.putArray("topics");
+            if (note.topics() != null) {
+                for (var tpc : note.topics()) {
+                    if (tpc == null || tpc.text() == null || tpc.text().isBlank()) {
+                        continue;
+                    }
+                    ObjectNode row = topics.addObject();
+                    row.put("topic", tpc.text().trim());
+                }
+            }
+
             ArrayNode table = root.putArray("participant_table");
             if (participants != null) {
                 for (ParticipantRow p : participants) {

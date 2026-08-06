@@ -11,6 +11,7 @@ import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingKnowl
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.MeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.application.port.TopicRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.IssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.OpenQuestionRepository;
 import com.nanobaseai.actenora.meetingintelligence.application.port.ProposalRepository;
@@ -29,6 +30,7 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.Jd
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcMeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcMeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcTopicRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcIssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcManualReviewCaseRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.JdbcOpenQuestionRepository;
@@ -95,6 +97,11 @@ public class MeetingIntelligenceJdbcPersistenceConfiguration {
     @Bean
     ImportantFactRepository importantFactRepository(DataSource dataSource) {
         return new JdbcImportantFactRepository(new JdbcTemplate(dataSource));
+    }
+
+    @Bean
+    TopicRepository topicRepository(DataSource dataSource) {
+        return new JdbcTopicRepository(new JdbcTemplate(dataSource));
     }
 
     @Bean

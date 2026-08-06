@@ -69,6 +69,7 @@ class ApprovedNoteContentJsonMapperTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 now,
                 now
         );

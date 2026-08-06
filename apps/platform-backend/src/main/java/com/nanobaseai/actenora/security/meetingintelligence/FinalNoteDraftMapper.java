@@ -20,6 +20,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.IssueCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.OpenQuestionCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.ProposalCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.RiskCandidateInput;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.TopicCandidateInput;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -52,19 +53,34 @@ public final class FinalNoteDraftMapper {
                 draft.commitments().stream().map(FinalNoteDraftMapper::commitment).toList(),
                 draft.issues().stream().map(FinalNoteDraftMapper::issue).toList(),
                 draft.proposals().stream().map(FinalNoteDraftMapper::proposal).toList(),
-                discussedTopicsAndFacts(draft),
+                importantFacts(draft),
+                topics(draft),
                 qualityFlags,
                 draft.evidenceSegmentIds(),
                 clamp(draft.confidence())
         );
     }
 
-    /**
-     * Topics are not a first-class note entity; fold usable agenda topics into importantFacts
-     * so portal minutes can render them under GÖRÜŞÜLEN KONULAR (facts first when agenda empty).
-     */
-    private static List<ImportantFactCandidateInput> discussedTopicsAndFacts(FinalNoteDraft draft) {
+    /** Important facts only — discussed topics are now a first-class entity (see {@link #topics}). */
+    private static List<ImportantFactCandidateInput> importantFacts(FinalNoteDraft draft) {
         List<ImportantFactCandidateInput> out = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (ImportantFactCandidate fact : draft.importantFacts()) {
+            String key = normalizeFactKey(fact.text());
+            if (key.isEmpty() || !seen.add(key)) {
+                continue;
+            }
+            out.add(importantFact(fact));
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * Usable discussed topics, mapped to first-class topic candidates so the portal renders them
+     * under "GÖRÜŞÜLEN KONULAR". Previously these were folded into importantFacts (ÖNEMLİ BULGULAR).
+     */
+    private static List<TopicCandidateInput> topics(FinalNoteDraft draft) {
+        List<TopicCandidateInput> out = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
         for (TopicCandidate topic : draft.topics()) {
             if (!FinalNoteAssembler.isUsableTopic(topic)) {
@@ -74,15 +90,8 @@ public final class FinalNoteDraftMapper {
             if (key.isEmpty() || !seen.add(key)) {
                 continue;
             }
-            out.add(new ImportantFactCandidateInput(
+            out.add(new TopicCandidateInput(
                     topic.text().strip(), topic.evidenceSegmentIds(), clamp(topic.confidence())));
-        }
-        for (ImportantFactCandidate fact : draft.importantFacts()) {
-            String key = normalizeFactKey(fact.text());
-            if (key.isEmpty() || !seen.add(key)) {
-                continue;
-            }
-            out.add(importantFact(fact));
         }
         return List.copyOf(out);
     }

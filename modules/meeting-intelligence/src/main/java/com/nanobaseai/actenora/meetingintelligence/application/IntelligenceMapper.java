@@ -24,8 +24,10 @@ import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNoteVersi
 import com.nanobaseai.actenora.meetingintelligence.domain.model.ModelPromptSchemaProvenance;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.OpenQuestion;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Proposal;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.TopicResponse;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.QualityFlag;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.Risk;
+import com.nanobaseai.actenora.meetingintelligence.domain.model.Topic;
 
 import java.util.List;
 
@@ -45,6 +47,7 @@ final class IntelligenceMapper {
             List<Issue> issues,
             List<Proposal> proposals,
             List<ImportantFact> importantFacts,
+            List<Topic> topics,
             List<EvidenceLink> evidenceLinks,
             List<QualityFlag> qualityFlags
     ) {
@@ -64,6 +67,7 @@ final class IntelligenceMapper {
                 issues.stream().map(IntelligenceMapper::toIssueResponse).toList(),
                 proposals.stream().map(IntelligenceMapper::toProposalResponse).toList(),
                 importantFacts.stream().map(IntelligenceMapper::toImportantFactResponse).toList(),
+                topics.stream().map(IntelligenceMapper::toTopicResponse).toList(),
                 evidenceLinks.stream().map(IntelligenceMapper::toEvidenceResponse).toList(),
                 qualityFlags.stream().map(IntelligenceMapper::toQualityFlagResponse).toList(),
                 note.createdAt(),
@@ -202,6 +206,19 @@ final class IntelligenceMapper {
                 fact.humanApprovalStatus(),
                 fact.version(),
                 fact.updatedAt()
+        );
+    }
+
+    static TopicResponse toTopicResponse(Topic topic) {
+        return new TopicResponse(
+                topic.id(),
+                topic.noteId(),
+                topic.text(),
+                topic.requiresManualReview(),
+                topic.aiConfidence(),
+                topic.humanApprovalStatus(),
+                topic.version(),
+                topic.updatedAt()
         );
     }
 

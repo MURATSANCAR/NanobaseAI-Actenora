@@ -5,6 +5,7 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.CommitmentResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.ImportantFactResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteVersionResponse;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.TopicResponse;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNoteStatus;
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +45,7 @@ class PortalMinutesRendererTest {
         MeetingNoteDetailResponse note = new MeetingNoteDetailResponse(
                 noteId, UUID.randomUUID(), UUID.randomUUID(), null, 1, 0,
                 version, List.of(), actions, List.of(), List.of(commitment),
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), now, now
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), now, now
         );
 
         String rendered = PortalApiController.renderDraftMinutesBody(note, "Daily Standup");
@@ -73,7 +74,7 @@ class PortalMinutesRendererTest {
         MeetingNoteDetailResponse note = new MeetingNoteDetailResponse(
                 noteId, UUID.randomUUID(), UUID.randomUUID(), null, 1, 0,
                 version, List.of(), List.of(), List.of(), List.of(),
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), now, now
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), now, now
         );
         List<PortalApiController.PortalParticipantView> participants = List.of(
                 new PortalApiController.PortalParticipantView(
@@ -96,29 +97,36 @@ class PortalMinutesRendererTest {
     }
 
     @Test
-    void usesImportantFactsAsGorusulenKonularWhenAgendaAbsent() {
+    void rendersTopicsUnderGorusulenKonularAndFactsUnderOnemliBulgular() {
         UUID noteId = UUID.randomUUID();
         Instant now = Instant.parse("2026-07-29T08:00:00Z");
         MeetingNoteVersionResponse version = new MeetingNoteVersionResponse(
                 UUID.randomUUID(), noteId, 1, "Tanışma ve vizyon paylaşımı.",
                 null, null, null, null, now, MeetingNoteStatus.DRAFT
         );
+        TopicResponse topic = new TopicResponse(
+                UUID.randomUUID(), noteId,
+                "Core banking süreci ve tedarikçi seçimi.",
+                false, 0.9, null, 0, now
+        );
         ImportantFactResponse fact = new ImportantFactResponse(
                 UUID.randomUUID(), noteId,
-                "Core banking için Simple ile ilerleme kararı alındı.",
+                "Kırk tekrardan üçünde 401 görüldü.",
                 false, 0.9, null, 0, now
         );
         MeetingNoteDetailResponse note = new MeetingNoteDetailResponse(
                 noteId, UUID.randomUUID(), UUID.randomUUID(), null, 1, 0,
                 version, List.of(), List.of(), List.of(), List.of(),
-                List.of(), List.of(), List.of(), List.of(fact), List.of(), List.of(), now, now
+                List.of(), List.of(), List.of(), List.of(fact), List.of(topic), List.of(), List.of(), now, now
         );
 
         String rendered = PortalApiController.renderDraftMinutesBody(note, "BIM Tanışma");
 
+        // Discussed topics now render under GÖRÜŞÜLEN KONULAR (not folded into ÖNEMLİ BULGULAR).
         assertTrue(rendered.contains("2. GÖRÜŞÜLEN KONULAR"));
-        assertTrue(rendered.contains("Core banking için Simple ile ilerleme kararı alındı."));
-        assertFalse(rendered.contains("10. ÖNEMLİ BULGULAR"));
+        assertTrue(rendered.contains("Core banking süreci ve tedarikçi seçimi."));
+        assertTrue(rendered.contains("10. ÖNEMLİ BULGULAR"));
+        assertTrue(rendered.contains("Kırk tekrardan üçünde 401 görüldü."));
     }
 
     @Test
@@ -138,7 +146,7 @@ class PortalMinutesRendererTest {
         MeetingNoteDetailResponse note = new MeetingNoteDetailResponse(
                 noteId, UUID.randomUUID(), UUID.randomUUID(), null, 1, 0,
                 version, List.of(), List.of(), List.of(), List.of(commitment),
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), now, now
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), now, now
         );
 
         String rendered = PortalApiController.renderDraftMinutesBody(note, "Style check");

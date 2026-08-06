@@ -18,6 +18,7 @@ public record AiCandidateBundle(
         List<IssueCandidateInput> issues,
         List<ProposalCandidateInput> proposals,
         List<ImportantFactCandidateInput> importantFacts,
+        List<TopicCandidateInput> topics,
         List<String> qualityFlags,
         List<String> evidenceSegmentIds,
         double confidence
@@ -32,6 +33,7 @@ public record AiCandidateBundle(
         issues = List.copyOf(Objects.requireNonNull(issues, "issues"));
         proposals = List.copyOf(Objects.requireNonNull(proposals, "proposals"));
         importantFacts = List.copyOf(Objects.requireNonNull(importantFacts, "importantFacts"));
+        topics = List.copyOf(Objects.requireNonNull(topics, "topics"));
         qualityFlags = List.copyOf(Objects.requireNonNull(qualityFlags, "qualityFlags"));
         evidenceSegmentIds = List.copyOf(Objects.requireNonNull(evidenceSegmentIds, "evidenceSegmentIds"));
         if (confidence < 0.0d || confidence > 1.0d) {

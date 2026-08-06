@@ -38,6 +38,7 @@ import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.In
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryMeetingNoteVersionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryImportantFactRepository;
+import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryTopicRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryIssueRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryOpenQuestionRepository;
 import com.nanobaseai.actenora.meetingintelligence.infrastructure.persistence.InMemoryProposalRepository;
@@ -78,6 +79,7 @@ class MeetingIntelligenceApplicationServiceTest {
     private InMemoryIssueRepository issues;
     private InMemoryProposalRepository proposals;
     private InMemoryImportantFactRepository importantFacts;
+    private InMemoryTopicRepository topics;
     private InMemoryEvidenceLinkRepository evidenceLinks;
     private InMemoryQualityFlagRepository qualityFlags;
     private StaticTenantContextPort tenantContext;
@@ -95,6 +97,7 @@ class MeetingIntelligenceApplicationServiceTest {
         issues = new InMemoryIssueRepository();
         proposals = new InMemoryProposalRepository();
         importantFacts = new InMemoryImportantFactRepository();
+        topics = new InMemoryTopicRepository();
         evidenceLinks = new InMemoryEvidenceLinkRepository();
         qualityFlags = new InMemoryQualityFlagRepository();
         tenantContext = new StaticTenantContextPort(TenantId.of(tenantA), actor);
@@ -102,11 +105,11 @@ class MeetingIntelligenceApplicationServiceTest {
         FixedClockPort clockPort = new FixedClockPort(clock);
         MapAiCandidatesToNoteService mapping = new MapAiCandidatesToNoteService(
                 notes, versions, decisions, actionItems, risks, commitments,
-                openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags, clockPort
+                openQuestions, issues, proposals, importantFacts, topics, evidenceLinks, qualityFlags, clockPort
         );
         service = new MeetingIntelligenceApplicationService(
                 tenantContext, clockPort, mapping, notes, versions, decisions, actionItems,
-                risks, commitments, openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags
+                risks, commitments, openQuestions, issues, proposals, importantFacts, topics, evidenceLinks, qualityFlags
         );
     }
 
