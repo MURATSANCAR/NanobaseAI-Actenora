@@ -41,11 +41,20 @@ public final class CrossTypeConsistencyAuditor {
         FinalNoteDraft afterDp = subsumer.applyToDraft(draft);
         List<OpenQuestionCandidate> questions = dropAnsweredQuestions(
                 afterDp.decisions(), afterDp.openQuestions());
+        List<String> hygieneFlags = new ArrayList<>();
+        questions = new OpenQuestionHygieneFilter().filter(
+                questions,
+                afterDp.decisions(),
+                afterDp.actionItems(),
+                afterDp.commitments(),
+                hygieneFlags
+        );
         // Action ⊃ checkpoint/next-step facts (importantFacts stand in until nextSteps persist).
         List<ImportantFactCandidate> facts = dropFactsCoveredByActions(
                 afterDp.actionItems(), afterDp.importantFacts());
 
         Set<String> flags = new LinkedHashSet<>(afterDp.qualityFlags());
+        flags.addAll(hygieneFlags);
         int unresolved = flags.contains(DecisionProposalSubsumer.UNRESOLVED) ? 1 : 0;
         // Count multiple unresolved markers if present as detail suffixes — keep ≥1 when flag set.
         for (String f : flags) {

@@ -6,8 +6,10 @@ import java.util.Objects;
 
 /**
  * Builds token-bounded chunks without splitting segments; prefers marker-aware boundaries.
+ * Prefer depending on {@link ChunkingStrategy} / {@link TokenWindowChunkingStrategy} at call sites
+ * when injecting alternatives; this class remains the deterministic packing engine.
  */
-public final class TranscriptChunker {
+public final class TranscriptChunker implements ChunkingStrategy {
 
     private final TokenEstimator tokenEstimator;
 

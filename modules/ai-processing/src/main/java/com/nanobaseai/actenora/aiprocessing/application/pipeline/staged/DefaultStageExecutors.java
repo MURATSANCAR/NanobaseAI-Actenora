@@ -48,7 +48,8 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentNormalizer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunk;
-import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunker;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingStrategy;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TokenWindowChunkingStrategy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkContext;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionResult;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService;
@@ -195,7 +196,7 @@ public final class DefaultStageExecutors {
             MinutesFinalizationPolicy finalizationPolicy
     ) {
         SegmentNormalizer normalizer = new SegmentNormalizer();
-        TranscriptChunker chunker = new TranscriptChunker();
+        ChunkingStrategy chunker = new TokenWindowChunkingStrategy();
         ContextWindowGuard guard = new ContextWindowGuard();
         LimitedJsonRepair repair = new LimitedJsonRepair();
         ExtractionJsonSchemaValidator schema = new ExtractionJsonSchemaValidator();
@@ -438,7 +439,7 @@ public final class DefaultStageExecutors {
     static final class ChunkPlanExecutor implements StageExecutor {
         private final TranscriptSegmentSourcePort segments;
         private final SegmentNormalizer normalizer;
-        private final TranscriptChunker chunker;
+        private final ChunkingStrategy chunker;
         private final ContextWindowGuard guard;
         private final ModelRuntimePort modelRuntime;
         private final ProcessingArtifactRepository artifacts;
@@ -446,7 +447,7 @@ public final class DefaultStageExecutors {
         ChunkPlanExecutor(
                 TranscriptSegmentSourcePort segments,
                 SegmentNormalizer normalizer,
-                TranscriptChunker chunker,
+                ChunkingStrategy chunker,
                 ContextWindowGuard guard,
                 ModelRuntimePort modelRuntime,
                 ProcessingArtifactRepository artifacts
@@ -489,7 +490,7 @@ public final class DefaultStageExecutors {
         private final ModelRuntimePort modelRuntime;
         private final TranscriptSegmentSourcePort segments;
         private final SegmentNormalizer normalizer;
-        private final TranscriptChunker chunker;
+        private final ChunkingStrategy chunker;
         private final ContextWindowGuard guard;
         private final LimitedJsonRepair repair;
         private final ExtractionJsonSchemaValidator schema;
@@ -505,7 +506,7 @@ public final class DefaultStageExecutors {
                 ModelRuntimePort modelRuntime,
                 TranscriptSegmentSourcePort segments,
                 SegmentNormalizer normalizer,
-                TranscriptChunker chunker,
+                ChunkingStrategy chunker,
                 ContextWindowGuard guard,
                 LimitedJsonRepair repair,
                 ExtractionJsonSchemaValidator schema,

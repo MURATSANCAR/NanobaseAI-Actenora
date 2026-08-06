@@ -132,10 +132,10 @@ class ChunkSignalGateScenariosTest {
     }
 
     @Test
-    void i_groundingDoesNotPromoteHistoricalDecisionOrFollowUpDiscussion() {
+    void i_groundingKeepsInMeetingSelectionConfirmationButDropsSchedulingAsDecision() {
         EvidenceBundleGroundingPolicy policy = new EvidenceBundleGroundingPolicy();
         EvidenceIndex index = EvidenceIndex.from(List.of(
-                seg("s1", "On yedi aylık sürecin sonucunda başlangıç toplantısında Simple ile devam etme kararı verdik."),
+                seg("s1", "Aşağı yukarı 17 aylık bir süreç yaşadık. Orada Simple devam edeceğiz inşallah."),
                 seg("s2", "Biz sizinle eylülden sonra tekrar konuşalım; o zaman bir güncelleme toplantısı yaparız.")
         ));
         ExtractionBundle raw = new ExtractionBundle(
@@ -146,6 +146,30 @@ class ChunkSignalGateScenariosTest {
                 ),
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of("s1", "s2"), 0.9
+        );
+
+        ExtractionBundle grounded = policy.retainGroundedItems(raw, index);
+
+        assertEquals(1, grounded.decisions().size());
+        DecisionCandidate simple = grounded.decisions().stream()
+                .filter(d -> d.text().toLowerCase().contains("simple"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("Simple çözümü seçildi", simple.text());
+        assertTrue(grounded.qualityFlags().contains("UNSUPPORTED_DECISION"));
+    }
+
+    @Test
+    void i2_groundingStillDropsPureHistoricalNarrationWithoutSelectionConfirmation() {
+        EvidenceBundleGroundingPolicy policy = new EvidenceBundleGroundingPolicy();
+        EvidenceIndex index = EvidenceIndex.from(List.of(
+                seg("s1", "Daha önce başlangıç toplantısında başka bir çözüm değerlendirilmişti.")
+        ));
+        ExtractionBundle raw = new ExtractionBundle(
+                List.of(),
+                List.of(new DecisionCandidate("Başka çözüm seçildi", List.of("s1"), 0.95)),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of("s1"), 0.9
         );
 
         ExtractionBundle grounded = policy.retainGroundedItems(raw, index);

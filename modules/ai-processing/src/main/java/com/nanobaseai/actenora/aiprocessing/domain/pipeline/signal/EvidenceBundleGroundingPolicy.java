@@ -25,7 +25,22 @@ public final class EvidenceBundleGroundingPolicy implements BundleGroundingPolic
 
     private static final Pattern POSITIVE_DECISION = Pattern.compile(
             "(?iu)(kararlaştır|karar\\s+verd|onayla|onaylandı|kabul\\s+ed|dondur|kapattık|kapatıyoruz|"
-                    + "değişmeyecek|freeze|approve|decided|agreed|we\\s+will)"
+                    + "değişmeyecek|freeze|approve|decided|agreed|we\\s+will|"
+                    + "devam\\s+edece[gğ]iz|se[cç]tik|se[cç]ildi|tercih\\s+ettik|"
+                    + "anla[sş]maya\\s+vard[ıi]k|yola\\s+devam|netle[sş]tik|netle[sş]tirdik)"
+    );
+    /**
+     * Vendor/product selection confirmed in-meeting even when the speaker narrates the prior
+     * evaluation process (e.g. "17 aylık süreç… Simple ile devam edeceğiz").
+     */
+    private static final Pattern SELECTION_CONFIRMATION = Pattern.compile(
+            "(?iu)((?:\\S{2,40}\\s+)?(?:ile\\s+)?devam\\s+edece[gğ]iz|"
+                    + "(?:olarak|ile)\\s+ilerleyece[gğ]iz|"
+                    + "se[cç]tik|se[cç]ildi|se[cç]im(?:imiz|de)?\\b|"
+                    + "tercih\\s+(?:ettik|edildi)|"
+                    + "anla[sş]maya\\s+vard[ıi]k|"
+                    + "we\\s+(?:chose|selected|will\\s+continue\\s+with)|"
+                    + "selected\\s+(?:as|the))"
     );
     private static final Pattern SCOPE_OR_DATE = Pattern.compile(
             "(?iu)(cuma|çarşamba|pazartesi|hafta|çeyrek|sprint|api|fiyat|politika|sözleşme|"
@@ -142,8 +157,11 @@ public final class EvidenceBundleGroundingPolicy implements BundleGroundingPolic
         String ev = evidence.toLowerCase(Locale.ROOT);
         String dt = decisionText == null ? "" : decisionText.toLowerCase(Locale.ROOT);
 
+        boolean selectionConfirmed = SELECTION_CONFIRMATION.matcher(ev).find()
+                || SELECTION_CONFIRMATION.matcher(dt).find();
         if (HISTORICAL_DECISION_CONTEXT.matcher(ev).find()
-                && !CURRENT_DECISION_CONTEXT.matcher(ev).find()) {
+                && !CURRENT_DECISION_CONTEXT.matcher(ev).find()
+                && !selectionConfirmed) {
             return false;
         }
 
@@ -151,10 +169,10 @@ public final class EvidenceBundleGroundingPolicy implements BundleGroundingPolic
             return false;
         }
         if (PROPOSAL_ONLY.matcher(ev).find() && !POSITIVE_DECISION.matcher(ev).find()
-                && !closeOrFreeze(ev)) {
+                && !closeOrFreeze(ev) && !selectionConfirmed) {
             return false;
         }
-        if (POSITIVE_DECISION.matcher(ev).find() || closeOrFreeze(ev)) {
+        if (POSITIVE_DECISION.matcher(ev).find() || closeOrFreeze(ev) || selectionConfirmed) {
             return true;
         }
         if (MeetingNoisePatterns.isStatusQuoNonDecision(dt)

@@ -34,7 +34,8 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RetryDecision;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentNormalizer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunk;
-import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunker;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingStrategy;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TokenWindowChunkingStrategy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkContext;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionResult;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService;
@@ -79,7 +80,7 @@ public final class ExtractionPipelineService {
     private final PromptRegistryPort promptRegistry;
     private final ModelRuntimePort modelRuntime;
     private final SegmentNormalizer normalizer;
-    private final TranscriptChunker chunker;
+    private final ChunkingStrategy chunker;
     private final ContextWindowGuard contextWindowGuard;
     private final LimitedJsonRepair jsonRepair;
     private final ExtractionJsonSchemaValidator schemaValidator;
@@ -103,7 +104,7 @@ public final class ExtractionPipelineService {
             PromptRegistryPort promptRegistry,
             ModelRuntimePort modelRuntime,
             SegmentNormalizer normalizer,
-            TranscriptChunker chunker,
+            ChunkingStrategy chunker,
             ContextWindowGuard contextWindowGuard,
             LimitedJsonRepair jsonRepair,
             ExtractionJsonSchemaValidator schemaValidator,
@@ -138,7 +139,7 @@ public final class ExtractionPipelineService {
             PromptRegistryPort promptRegistry,
             ModelRuntimePort modelRuntime,
             SegmentNormalizer normalizer,
-            TranscriptChunker chunker,
+            ChunkingStrategy chunker,
             ContextWindowGuard contextWindowGuard,
             LimitedJsonRepair jsonRepair,
             ExtractionJsonSchemaValidator schemaValidator,
@@ -174,7 +175,7 @@ public final class ExtractionPipelineService {
             PromptRegistryPort promptRegistry,
             ModelRuntimePort modelRuntime,
             SegmentNormalizer normalizer,
-            TranscriptChunker chunker,
+            ChunkingStrategy chunker,
             ContextWindowGuard contextWindowGuard,
             LimitedJsonRepair jsonRepair,
             ExtractionJsonSchemaValidator schemaValidator,
@@ -211,7 +212,7 @@ public final class ExtractionPipelineService {
             PromptRegistryPort promptRegistry,
             ModelRuntimePort modelRuntime,
             SegmentNormalizer normalizer,
-            TranscriptChunker chunker,
+            ChunkingStrategy chunker,
             ContextWindowGuard contextWindowGuard,
             LimitedJsonRepair jsonRepair,
             ExtractionJsonSchemaValidator schemaValidator,
@@ -258,7 +259,7 @@ public final class ExtractionPipelineService {
                 promptRegistry,
                 modelRuntime,
                 new SegmentNormalizer(),
-                new TranscriptChunker(),
+                new TokenWindowChunkingStrategy(),
                 new ContextWindowGuard(),
                 new LimitedJsonRepair(),
                 new ExtractionJsonSchemaValidator(),
