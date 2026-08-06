@@ -1,5 +1,6 @@
 import { TemplateDesignToolbar } from "@/components/template/TemplateDesignToolbar";
 import { TemplateDocumentPreviewStage } from "@/components/template/TemplateDocumentPreviewStage";
+import { TemplatePropertyInspector } from "@/components/template/TemplatePropertyInspector";
 import {
   type TemplateVersionRow,
 } from "@/components/template/TemplateVersionSidebar";
@@ -29,6 +30,7 @@ export function TemplateEditorShell({
   onSelectComponent,
   onRemoveComponent,
   onMoveComponent,
+  onUpdateComponentProps,
   onSaveDraft,
   onPublish,
   onCreateDraft,
@@ -51,6 +53,7 @@ export function TemplateEditorShell({
   onSelectComponent: (id: string) => void;
   onRemoveComponent: (id: string) => void;
   onMoveComponent?: (id: string, direction: "up" | "down") => void;
+  onUpdateComponentProps?: (id: string, props: Record<string, string>) => void;
   onSaveDraft: () => void;
   onPublish: () => void;
   onCreateDraft?: () => void;
@@ -99,7 +102,18 @@ export function TemplateEditorShell({
         creatingDraft={creatingDraft}
         onCompare={onCompare}
       />
-      <TemplateDocumentPreviewStage components={components} />
+      {onUpdateComponentProps ? (
+        <div className="grid gap-4 lg:grid-cols-[minmax(15rem,19rem)_1fr]">
+          <TemplatePropertyInspector
+            component={components.find((c) => c.id === selectedId) ?? null}
+            readOnly={readOnly}
+            onChange={onUpdateComponentProps}
+          />
+          <TemplateDocumentPreviewStage components={components} />
+        </div>
+      ) : (
+        <TemplateDocumentPreviewStage components={components} />
+      )}
     </div>
   );
 }

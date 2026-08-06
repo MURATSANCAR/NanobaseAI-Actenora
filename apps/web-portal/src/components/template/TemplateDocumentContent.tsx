@@ -75,13 +75,16 @@ export function TemplateDocumentContent({
     type,
     children,
     density: d,
+    titleOverride,
   }: {
     type: TemplateComponentType;
     children: ReactNode;
     density: "compact" | "normal";
+    titleOverride?: string;
   }) {
     const accent = SECTION_ACCENT[type] ?? "border-l-slate-300";
     const heading = HEADING_ACCENT[type] ?? "text-slate-600";
+    const label = titleOverride?.trim() ? titleOverride : tb("templateComponentType", type);
     return (
       <section className={`rounded-r-md border-l-2 bg-slate-50/60 px-3 py-2 ${accent}`}>
         <h4
@@ -91,7 +94,7 @@ export function TemplateDocumentContent({
             heading,
           ].join(" ")}
         >
-          {tb("templateComponentType", type)}
+          {label}
         </h4>
         {children}
       </section>
@@ -106,13 +109,14 @@ export function TemplateDocumentContent({
     density: "compact" | "normal";
   }) {
     const label = tb("templateComponentType", component.type);
+    const titleProp = component.props.title?.trim();
 
     switch (component.type) {
       case "HEADER":
         return (
           <div className="border-b-2 border-violet-100 pb-2">
             <p className={d === "compact" ? "text-lg font-bold text-slate-900" : "text-xl font-bold text-slate-900"}>
-              {t("templates.preview.placeholder.title")}
+              {titleProp || t("templates.preview.placeholder.title")}
             </p>
             <p className="text-slate-500">{t("templates.preview.placeholder.subtitle")}</p>
             <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-violet-400">
@@ -131,7 +135,7 @@ export function TemplateDocumentContent({
         );
       case "PARTICIPANT_TABLE":
         return (
-          <SectionShell type="PARTICIPANT_TABLE" density={d}>
+          <SectionShell type="PARTICIPANT_TABLE" density={d} titleOverride={titleProp}>
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500">
@@ -158,7 +162,7 @@ export function TemplateDocumentContent({
         );
       case "AGENDA":
         return (
-          <SectionShell type="AGENDA" density={d}>
+          <SectionShell type="AGENDA" density={d} titleOverride={titleProp}>
             <ol className="space-y-1 text-slate-400">
               {[0, 1].map((i) => (
                 <li key={i} className="flex items-start gap-2">
@@ -171,7 +175,7 @@ export function TemplateDocumentContent({
         );
       case "ACTIONS":
         return (
-          <SectionShell type="ACTIONS" density={d}>
+          <SectionShell type="ACTIONS" density={d} titleOverride={titleProp}>
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-amber-100 text-amber-700/80">
@@ -196,32 +200,37 @@ export function TemplateDocumentContent({
       case "COMMITMENTS":
       case "EXECUTIVE_SUMMARY":
         return (
-          <SectionShell type={component.type} density={d}>
+          <SectionShell type={component.type} density={d} titleOverride={titleProp}>
             <p className="text-slate-400">{t("templates.preview.placeholder.section")}</p>
           </SectionShell>
         );
       case "CONFIDENTIALITY":
         return (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
-            {label} · {t("templates.preview.placeholder.classification")}
+            {label} · {component.props.text?.trim() || t("templates.preview.placeholder.classification")}
           </p>
         );
-      case "SIGNATURE":
+      case "SIGNATURE": {
+        const signatureLabel = component.props.label?.trim();
         return (
-          <div className="mt-1 grid grid-cols-2 gap-4 pt-2">
-            {[0, 1].map((i) => (
-              <div key={i}>
-                <div className="h-7 border-b border-slate-300" />
-                <p className="mt-1 text-[9px] uppercase tracking-wider text-slate-400">
-                  {t("templates.preview.placeholder.signatory")}
-                </p>
-              </div>
-            ))}
+          <div className="mt-1 space-y-1 pt-2">
+            <div className="grid grid-cols-2 gap-4">
+              {[0, 1].map((i) => (
+                <div key={i}>
+                  <div className="h-7 border-b border-slate-300" />
+                  <p className="mt-1 text-[9px] uppercase tracking-wider text-slate-400">
+                    {t("templates.preview.placeholder.signatory")}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {signatureLabel ? <p className="text-slate-500">{signatureLabel}</p> : null}
           </div>
         );
+      }
       default:
         return (
-          <SectionShell type={component.type} density={d}>
+          <SectionShell type={component.type} density={d} titleOverride={titleProp}>
             <p className="text-slate-400">{t("templates.preview.placeholder.section")}</p>
           </SectionShell>
         );

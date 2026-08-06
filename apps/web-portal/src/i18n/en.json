@@ -650,5 +650,14 @@
   "backend.approvalSubject.COMMITMENT": "Commitment",
   "backend.approvalSubject.NOTE": "Meeting note",
   "backend.approvalSubject.DELIVERY": "Delivery",
-  "backend.approvalSubject.MEETING_NOTE_VERSION": "Meeting note version"
+  "backend.approvalSubject.MEETING_NOTE_VERSION": "Meeting note version",
+  "templates.inspector.title": "Component properties",
+  "templates.inspector.selectHint": "Select a component to edit its properties.",
+  "templates.inspector.noProps": "This component has no editable properties — it is rendered from meeting data or branding.",
+  "templates.props.title": "Heading",
+  "templates.props.label": "Signatory label",
+  "templates.props.text": "Text",
+  "templates.props.format": "Page format",
+  "templates.props.src": "Logo image URL",
+  "templates.props.alt": "Logo alt text"
 }

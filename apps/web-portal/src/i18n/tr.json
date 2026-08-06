@@ -650,5 +650,14 @@
   "backend.approvalSubject.COMMITMENT": "Taahhüt",
   "backend.approvalSubject.NOTE": "Toplantı notu",
   "backend.approvalSubject.DELIVERY": "Teslimat",
-  "backend.approvalSubject.MEETING_NOTE_VERSION": "Toplantı notu sürümü"
+  "backend.approvalSubject.MEETING_NOTE_VERSION": "Toplantı notu sürümü",
+  "templates.inspector.title": "Bileşen özellikleri",
+  "templates.inspector.selectHint": "Özelliklerini düzenlemek için bir bileşen seçin.",
+  "templates.inspector.noProps": "Bu bileşenin düzenlenebilir özelliği yok — toplantı verisinden veya markadan render edilir.",
+  "templates.props.title": "Başlık",
+  "templates.props.label": "İmza etiketi",
+  "templates.props.text": "Metin",
+  "templates.props.format": "Sayfa biçimi",
+  "templates.props.src": "Logo görsel URL'si",
+  "templates.props.alt": "Logo alternatif metni"
 }

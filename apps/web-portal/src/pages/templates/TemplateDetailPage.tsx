@@ -181,6 +181,13 @@ export function TemplateDetailPage() {
     if (selectedId === id) setSelectedId(null);
   }
 
+  function updateComponentProps(id: string, props: Record<string, string>) {
+    setSchema({
+      ...schema,
+      components: schema.components.map((c) => (c.id === id ? { ...c, props } : c)),
+    });
+  }
+
   function moveComponent(id: string, direction: "up" | "down") {
     const sorted = [...schema.components].sort((a, b) => a.order - b.order);
     const index = sorted.findIndex((c) => c.id === id);
@@ -258,6 +265,7 @@ export function TemplateDetailPage() {
               onSelectComponent={setSelectedId}
               onRemoveComponent={removeComponent}
               onMoveComponent={moveComponent}
+              onUpdateComponentProps={updateComponentProps}
               onSaveDraft={() => saveMutation.mutate()}
               onPublish={() => publishMutation.mutate()}
               onCreateDraft={mutationsEnabled ? () => createDraftMutation.mutate() : undefined}
