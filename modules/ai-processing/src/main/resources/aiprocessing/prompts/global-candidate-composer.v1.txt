@@ -11,8 +11,13 @@ Rules:
   leave dueDateNormalized null unless the year is explicit in evidence.
 - Distinguish historical narration from in-meeting selection confirmation.
 - Do not emit speculative third-party gossip as open questions.
+- OPEN_QUESTION is only for unresolved follow-ups that remain after the meeting.
+  Never emit mid-meeting chat/facilitation ("any questions so far?", "does that make sense?",
+  "what examples exist / what can be done?", short confirmation fragments).
 - Prefer meetingFrame.kind INTRODUCTION_AND_EXPLORATION for intro/vision meetings;
   DECISION_CLOSING only when the meeting primarily closed decisions.
+- For RISK candidates, set mitigation when evidence states how the risk is addressed
+  (e.g. on-prem deployment for data-residency / BDDK concerns).
 
 Return JSON only:
 {
@@ -29,6 +34,7 @@ Return JSON only:
       "ownerCandidate": null,
       "dueDateText": null,
       "dueDateNormalized": null,
+      "mitigation": null,
       "evidenceSegmentIds": [],
       "source": "DIGEST",
       "confidence": 0.0

@@ -225,6 +225,174 @@ class GlobalComposerCharacterizationTest {
                         && f.evidenceSegmentIds().contains("s417")));
     }
 
+    @Test
+    void answeredOpenQuestionIsDroppedOnComposerUnionPath() {
+        List<SegmentInput> segments = List.of(
+                seg("s1", 1, "Mehmet", "Core banking çözümü Simple ile devam edilecek."),
+                seg("s2", 2, "Murat", "Core banking çözümü Simple ile devam edilecek mi?")
+        );
+        ExtractionBundle ledger = new ExtractionBundle(
+                List.of(),
+                List.of(new DecisionCandidate(
+                        "Core banking çözümü Simple ile devam edilecek.", List.of("s1"), 0.95)),
+                List.of(),
+                List.of(),
+                List.of(new com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate(
+                        "Core banking çözümü Simple ile devam edilecek mi?", List.of("s2"), 0.9)),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of("s1", "s2"),
+                0.9
+        );
+        GlobalComposition composition = new GlobalComposition(
+                null,
+                List.of(new GlobalComposition.GlobalCandidate(
+                        GlobalComposition.CandidateType.OPEN_QUESTION,
+                        "Core banking çözümü Simple ile devam edilecek mi?",
+                        null, null, null, List.of("s2"), "DIGEST", 0.9))
+        );
+        GlobalCompositionAuditor.VerifiedComposition verified =
+                new GlobalCompositionAuditor().verify(
+                        composition, segments, Set.of("Mehmet", "Murat"), Set.of("s1", "s2"));
+        ExtractionBundle unioned = new GlobalLedgerMerger().unionAndDedupe(ledger, verified.acceptedItems());
+        FinalNoteDraft accepted = new GlobalLedgerMerger().toDraft(unioned, "", false);
+        List<String> flags = new ArrayList<>();
+        FinalNoteDraft cleaned = new FinalNoteDraft(
+                accepted.executiveSummary(),
+                accepted.decisions(),
+                accepted.actionItems(),
+                accepted.risks(),
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.OpenQuestionHygieneFilter()
+                        .filter(
+                                accepted.openQuestions(),
+                                accepted.decisions(),
+                                accepted.actionItems(),
+                                accepted.commitments(),
+                                flags),
+                accepted.commitments(),
+                accepted.topics(),
+                accepted.issues(),
+                accepted.proposals(),
+                accepted.importantFacts(),
+                accepted.qualityFlags(),
+                accepted.evidenceSegmentIds(),
+                accepted.confidence(),
+                accepted.requiresManualReview()
+        );
+        assertTrue(cleaned.openQuestions().isEmpty(), "answered OQ must be dropped on COMPOSER path");
+        assertTrue(flags.contains(
+                com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency
+                        .OpenQuestionHygieneFilter.OPEN_QUESTION_HYGIENE_DROPPED));
+    }
+
+    @Test
+    void murataIletirizDoesNotAssignMuratAsOwner() {
+        List<SegmentInput> segments = List.of(
+                seg("s20", 20, "Ali BAĞATIR", "Dokümanı Murat'a iletiriz.")
+        );
+        GlobalComposition.GlobalCandidate candidate = new GlobalComposition.GlobalCandidate(
+                GlobalComposition.CandidateType.ACTION,
+                "Dokümanı iletmek",
+                "Murat",
+                null,
+                null,
+                List.of("s20"),
+                "DIGEST",
+                0.9
+        );
+        String owner = GlobalCompositionAuditor.resolveOwner(
+                candidate,
+                segments.getFirst().content(),
+                Set.of("Ali BAĞATIR", "Murat Sancar"),
+                segments
+        );
+        assertEquals("Ali BAĞATIR", owner);
+        assertFalse(GlobalCompositionAuditor.samePerson(owner, "Murat"));
+    }
+
+    @Test
+    void adjacentSpeakerBindsWhenEvidenceSegmentHasNoSpeaker() {
+        List<SegmentInput> segments = List.of(
+                seg("s30", 30, "Murat Sancar", "Eylül toplantısını organize edeceğim."),
+                new SegmentInput("s31", 31, null, 31000L, 31500L,
+                        "Güncelleme toplantısı organize edilecek.", false)
+        );
+        GlobalComposition.GlobalCandidate candidate = new GlobalComposition.GlobalCandidate(
+                GlobalComposition.CandidateType.ACTION,
+                "Güncelleme toplantısı organize edilecek",
+                null,
+                null,
+                null,
+                List.of("s31"),
+                "DIGEST",
+                0.9
+        );
+        String owner = GlobalCompositionAuditor.resolveOwner(
+                candidate,
+                "Ben güncelleme toplantısını organize edeceğim.",
+                Set.of("Murat Sancar", "Ali BAĞATIR"),
+                segments
+        );
+        assertEquals("Murat Sancar", owner);
+    }
+
+    @Test
+    void inventedIsoYearIsClearedWhenAbsentFromEvidence() {
+        assertEquals(
+                null,
+                GlobalCompositionAuditor.sanitizeDueDateNormalized(
+                        "2025-09-01", "Eylül", "Eylülden sonra güncelleme toplantısı yaparız."));
+        assertEquals(
+                "2026-09-15",
+                GlobalCompositionAuditor.sanitizeDueDateNormalized(
+                        "2026-09-15", "15 Eylül 2026", "15 Eylül 2026 tarihinde görüşelim."));
+    }
+
+    @Test
+    void composerRiskMitigationSurvivesUnion() {
+        ExtractionBundle ledger = ExtractionBundle.empty();
+        List<GlobalComposition.GlobalCandidate> accepted = List.of(
+                new GlobalComposition.GlobalCandidate(
+                        GlobalComposition.CandidateType.RISK,
+                        "Yurt dışı veri çıkışı nedeniyle BDDK ihlali riski",
+                        null, null, null,
+                        "On-premise kurulum ile veri banka içinde kalır",
+                        List.of("s50"),
+                        "DIGEST",
+                        0.95)
+        );
+        ExtractionBundle unioned = new GlobalLedgerMerger().unionAndDedupe(ledger, accepted);
+        assertEquals(1, unioned.risks().size());
+        assertTrue(unioned.risks().getFirst().mitigation().toLowerCase().contains("on-premise")
+                || unioned.risks().getFirst().mitigation().toLowerCase().contains("banka"));
+    }
+
+    @Test
+    void highRejectionMarksManualReviewNotEditorial() {
+        List<SegmentInput> segments = List.of(
+                seg("s1", 1, "Mehmet", "Tanışma toplantısı.")
+        );
+        // Many candidates with bad evidence → high rejection.
+        List<GlobalComposition.GlobalCandidate> bad = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            bad.add(new GlobalComposition.GlobalCandidate(
+                    GlobalComposition.CandidateType.ACTION,
+                    "Hayali aksiyon " + i,
+                    null, null, null,
+                    List.of("missing-" + i),
+                    "DIGEST",
+                    0.5));
+        }
+        GlobalComposition composition = new GlobalComposition(null, bad);
+        GlobalCompositionAuditor.VerifiedComposition verified =
+                new GlobalCompositionAuditor().verify(composition, segments, Set.of("Mehmet"), Set.of("s1"));
+        assertTrue(verified.highRejection());
+        assertTrue(verified.qualityFlags().contains(GlobalCompositionAuditor.FLAG_COMPOSER_HIGH_REJECTION));
+    }
+
     private static SegmentInput seg(String id, int seq, String speaker, String text) {
         return new SegmentInput(id, seq, speaker, seq * 1000L, seq * 1000L + 500L, text, false);
     }

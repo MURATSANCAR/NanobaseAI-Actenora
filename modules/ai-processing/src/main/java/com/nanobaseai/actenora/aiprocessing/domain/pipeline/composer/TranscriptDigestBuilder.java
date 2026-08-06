@@ -13,9 +13,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Builds an evidence-aware {@link TranscriptDigest}. Deterministic linguistic cues only —
- * no free-text map-reduce that drops segment ids. Long meetings are windowed; each window
- * contributes signals that retain their evidenceSegmentIds.
+ * Builds an evidence-aware {@link TranscriptDigest}.
+ * Production path: deterministic linguistic harvest over token windows (map-reduce style
+ * aggregation that always preserves evidenceSegmentIds). Optional LLM-per-window digest is
+ * intentionally deferred — free-text reduce must not drop segment ids.
  */
 public final class TranscriptDigestBuilder {
 

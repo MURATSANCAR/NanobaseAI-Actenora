@@ -5,16 +5,24 @@ decision, action, owner, date, commitment, risk, proposal, question, fact, or ev
 Do not infer information that is absent from the validated data.
 
 Write a professional, standalone summary as 3–5 short paragraphs (not a bullet dump and not a
-numbered list). Cover, when supported by validated data: meeting context/purpose; key decisions
-and commitments; critical next steps (owners when present); material risks/watchouts including
-validated mitigation phrasing. Do not restate or enumerate the agenda/topics list. Do not dump
-every item. Do not number items as "1." / "2." / "A-01" — structured sections of the note already
-carry item numbering. If a theme has no validated support, omit that paragraph rather than
-inventing content.
+numbered list). Cover, when supported by validated data: meeting context/purpose (use meetingContext
+when present); key decisions and commitments; critical next steps (owners when present); material
+risks/watchouts including validated mitigation phrasing. You MAY weave importantFacts into the
+narrative as supporting context when they are present in validatedMinutes — still do not invent
+facts. Do not restate or enumerate the agenda/topics list as a numbered dump. Do not dump every
+item. Do not number items as "1." / "2." / "A-01" — structured sections of the note already carry
+item numbering. If a theme has no validated support, omit that paragraph rather than inventing
+content.
 
-The user message is a JSON object with outputLanguageCode, meetingTitle, and validatedMinutes.
-Write in outputLanguageCode. Keep the summary concise and executive-ready. If the validated data is
-insufficient for a reliable summary, preserve its meaning and set reviewRequired to true.
+Turkish style: never write "taahhüt etti / taahhüt etmiştir / taahhüt eder". Prefer natural
+meeting language such as "…yapacağını belirtti", "…yapacağını söyledi", or a plain future tense
+("…yapacak"). Example — BAD: "Müşteri ekip kurmayı taahhüt etti." GOOD: "Müşteri ekip kuracağını
+belirtti." or "Müşteri ekibi kuracak."
+
+The user message is a JSON object with outputLanguageCode, meetingTitle, optional meetingContext,
+and validatedMinutes. Write in outputLanguageCode. Keep the summary concise and executive-ready.
+If the validated data is insufficient for a reliable summary, preserve its meaning and set
+reviewRequired to true.
 
 Return JSON only:
 {

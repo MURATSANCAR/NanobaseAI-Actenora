@@ -17,12 +17,18 @@ taahhütler, issues, riskler (+likelihood/mitigation), açık sorular, proposals
 Durum güncellemesi / tek konuşmacılı brifing olsa bile: kim neyi ne zamana bitirecek → commitments + actionItems;
 katılım yokluğu, iletilmeyen takvim, belirsiz teslim → risks ve/veya openQuestions.
 
-AÇIK SORU (openQuestions) — YÜKSEK ÖNCELİK
+AÇIK SORU (openQuestions) — YALNIZCA TOPLANTI ÇIKTISI
+Yalnızca toplantı bitince hâlâ cevapsız ve takip gerektiren maddeleri openQuestions’a yaz.
 Şunları openQuestions olarak kaydet (karar/aksiyon uydurma):
-- Doğrudan soru cümleleri (? / “mi/mı/mu/mü”, “nasıl”, “kim”, “ne zaman”, “hangi”)
-- Cevapsız bırakılan belirsizlikler: izleme/alarm, rollback/geri alma, sprint kayması, iletişim sahibi,
-  loglardan kök neden ayrıştırma, mobil/diğer istemci etkisi, test matrisi kapsamı
+- Açıkça “açık kalan soru / netleşmedi / cevapsız” diye bırakılan belirsizlikler
+- İzleme/alarm, rollback/geri alma, sprint kayması, iletişim sahibi, loglardan kök neden,
+  mobil/diğer istemci etkisi, test matrisi kapsamı, maliyet/bütçe/kapsam/teslim gibi takip maddeleri
 - “bilmiyoruz / net değil / bakacağız / emin değiliz” ile biten ama somut konusu olan noktalar
+ASLA openQuestions’a yazma (sohbet / retorik / kolaylaştırma):
+- Konuşma içi muhatap soruları: “kafanıza bir şey var mı?”, “anladınız mı?”, “çok mu doğru?”,
+  “ne dersiniz?”, “hangi örnekler var, neler yapılabilir?”
+- Tanışma, yoklama, mikrofon/kamera/bağlantı, sunum akışı, “bu noktayı açalım”
+- Cevabı aynı toplantıda verilen veya yalnızca sohbeti sürdüren kısa fragment sorular
 Aynı konu için karar alınmış olsa bile, kararın kapsamadığı yan soruyu düşürme.
 Her openQuestion.text tek başına anlaşılır olsun; zamir/bağlam kaybı olmasın.
 dueDate yalnızca konuşmada geçen tarih ifadesini aynen yaz (ISO uydurma); relativeDate kullanabilirsin.
@@ -34,6 +40,8 @@ bağlamından taşı, zamir veya “düzeltmeyi yapacak” gibi bağlamsız kıs
 Tarih ifadesini yalnızca ilgili owner clause'una bağla (Selin'in tarihi Can'a taşınmasın).
 "Yapacağım/ekleyeceğim/göndereceğim" açık self-commitment ise commitments.owner = konuşmacı olabilir;
 yalnızca konuşmacı olduğu için otomatik owner atama.
+commitments.text yazarken "taahhüt etti/etmiştir" kullanma; doğal gelecek zaman veya
+"…yapacağını belirtti" yaz (ör. "PDF sunumu gönderecek" / "PDF sunumu göndereceğini belirtti").
 KARAR DEĞİL / DOLGU: "mevcut kararı değiştirmiyoruz", "yeni karar yok", "sadece bağlam paylaşımı",
 ekran/mikrofon/UI operasyon, "bu noktayı açalım", not alma / kapanış meta cümleleri —
 bunları decisions, importantFacts, openQuestions, topics, commitments, actions veya proposals

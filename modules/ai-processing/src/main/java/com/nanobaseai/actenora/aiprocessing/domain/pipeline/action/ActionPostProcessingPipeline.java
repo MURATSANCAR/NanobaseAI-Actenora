@@ -6,6 +6,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.composer.GlobalCompositionAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.DomainRegisterNormalizer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.MeetingTerminologyNormalizer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecord;
@@ -592,6 +593,19 @@ public final class ActionPostProcessingPipeline {
             }
             String resolved = resolveOwnerToParticipant(owner, participants);
             if (resolved != null) {
+                String dative = GlobalCompositionAuditor.dativeRecipient(action.text());
+                if (GlobalCompositionAuditor.samePerson(resolved, dative)) {
+                    stats.incrementOwnersCleared();
+                    String evidenceSpeaker = firstEvidenceSpeakerName(action, segments);
+                    String fromEvidence = resolveOwnerToParticipant(evidenceSpeaker, participants);
+                    if (fromEvidence != null && !GlobalCompositionAuditor.samePerson(fromEvidence, dative)) {
+                        stats.incrementOwnersBound();
+                        out.add(action.withOwner(fromEvidence));
+                    } else {
+                        out.add(action.withOwner(null));
+                    }
+                    continue;
+                }
                 if (owner == null || owner.isBlank() || !resolved.equals(owner)) {
                     stats.incrementOwnersBound();
                 }
@@ -688,13 +702,18 @@ public final class ActionPostProcessingPipeline {
     /**
      * Pulls a leading person name / honorific from action text when the owner field is blank
      * (common with unattributed ASR where the LLM embeds "Ahmet Bey'in …" in the sentence).
+     * Dative recipients ("Murat'a iletiriz") are never treated as owners.
      */
     static String ownerHintFromActionText(String text) {
         if (text == null || text.isBlank()) {
             return null;
         }
+        String dative = GlobalCompositionAuditor.dativeRecipient(text);
         String hint = new ActionIdentityNormalizer().ownerHintFromText(text);
         if (hint != null && !hint.isBlank()) {
+            if (GlobalCompositionAuditor.samePerson(hint, dative)) {
+                return null;
+            }
             return hint;
         }
         // "Ahmet Bey'in …" / "Murat Bey'den …" / "Görkem Hocam'ın …"
@@ -702,7 +721,11 @@ public final class ActionPostProcessingPipeline {
                 "(?iu)^\\s*([\\p{L}][\\p{L}'\\-]{1,40})(?:\\s+(?:bey|han[ıi]m|hocam))?['’]?[a-zçğıöşü]*\\b"
         ).matcher(text.strip());
         if (m.find()) {
-            return m.group(1);
+            String name = m.group(1);
+            if (GlobalCompositionAuditor.samePerson(name, dative)) {
+                return null;
+            }
+            return name;
         }
         return null;
     }

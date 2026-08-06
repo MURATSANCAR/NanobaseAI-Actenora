@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.ExtractionPromptRules;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.OutputLanguagePolicy;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.StiffCommitmentPhrasingNormalizer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +40,7 @@ public final class FinalNoteAssembler {
         if (manual && flags.stream().noneMatch(f -> f.equalsIgnoreCase("LOW_CONFIDENCE"))) {
             flags.add("LOW_CONFIDENCE");
         }
-        String summary = buildSummary(bundle, lang);
+        String summary = StiffCommitmentPhrasingNormalizer.soften(buildSummary(bundle, lang));
         return new FinalNoteDraft(
                 summary,
                 bundle.decisions(),
@@ -132,7 +133,7 @@ public final class FinalNoteAssembler {
     }
 
     /** Kept for callers/tests that still filter agenda-quality topics for the topics field. */
-    static boolean isUsableTopic(TopicCandidate topic) {
+    public static boolean isUsableTopic(TopicCandidate topic) {
         if (topic == null || topic.text() == null || topic.text().isBlank()) {
             return false;
         }

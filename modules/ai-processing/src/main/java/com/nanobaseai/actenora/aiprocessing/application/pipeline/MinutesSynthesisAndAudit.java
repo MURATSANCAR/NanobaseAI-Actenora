@@ -30,6 +30,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.composer.TranscriptD
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.composer.VerifiedMinutesRenderer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.OpenQuestionHygieneFilter;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.StiffCommitmentPhrasingNormalizer;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.ExtractionPromptRules;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.OutputLanguagePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.routing.InferenceTaskType;
@@ -290,7 +291,7 @@ public final class MinutesSynthesisAndAudit {
         PriorMeetingContext prior = priorMeetingContext == null ? PriorMeetingContext.EMPTY : priorMeetingContext;
         List<SegmentInput> segs = segments == null ? List.of() : segments;
         Set<String> people = roster == null ? Set.of() : roster;
-        return switch (finalizationPolicy.mode()) {
+        MinutesFinalizationResult result = switch (finalizationPolicy.mode()) {
             case DETERMINISTIC -> MinutesFinalizationResult.of(
                     scrubDraftEvidence(deterministicDraft, allowedEvidenceIds),
                     MinutesFinalizationPolicy.Mode.DETERMINISTIC.name(),
@@ -341,6 +342,25 @@ public final class MinutesSynthesisAndAudit {
                     people
             );
         };
+        return withSoftenedCommitmentPhrasing(withAuditTrace(result));
+    }
+
+    private static MinutesFinalizationResult withSoftenedCommitmentPhrasing(MinutesFinalizationResult result) {
+        if (result == null || result.draft() == null) {
+            return result;
+        }
+        return new MinutesFinalizationResult(
+                StiffCommitmentPhrasingNormalizer.softenDraft(result.draft()),
+                result.mode(),
+                result.modelCalls(),
+                result.inputTokens(),
+                result.outputTokens(),
+                result.modelLatencyMs(),
+                result.fallbackUsed(),
+                result.requestedMode(),
+                result.effectiveMode(),
+                result.fallbackReason()
+        );
     }
 
     private static MinutesFinalizationResult withRequestedMode(MinutesFinalizationResult result, String requested) {
@@ -389,18 +409,20 @@ public final class MinutesSynthesisAndAudit {
             GlobalCompositionAuditor.VerifiedComposition verified =
                     new GlobalCompositionAuditor().verify(composition, segments, roster, allowedEvidenceIds);
             if (verified.highRejection()) {
-                MinutesFinalizationResult editorial = editorialFinalize(
-                        deterministicDraft, allowedEvidenceIds, meetingTitle, language);
+                FinalNoteDraft manual = markComposerManualReview(
+                        scrubDraftEvidence(deterministicDraft, allowedEvidenceIds),
+                        verified.qualityFlags()
+                );
                 return withAuditTrace(
                         MinutesFinalizationResult.of(
-                                addFlag(editorial.draft(), GlobalCompositionAuditor.FLAG_COMPOSER_HIGH_REJECTION),
+                                manual,
                                 requested,
-                                MinutesFinalizationPolicy.Mode.EDITORIAL.name(),
+                                "MANUAL_REVIEW",
                                 "COMPOSER_HIGH_EVIDENCE_REJECTION",
-                                editorial.modelCalls(),
-                                editorial.inputTokens(),
-                                editorial.outputTokens(),
-                                editorial.modelLatencyMs()
+                                1,
+                                0,
+                                0,
+                                0
                         )
                 );
             }
@@ -431,8 +453,11 @@ public final class MinutesSynthesisAndAudit {
             // Prefer editorial polish when configured prompt is available; prose still from accepted ledger only.
             if (editorialSummaryTemplate != null && !editorialSummaryTemplate.isBlank()) {
                 try {
+                    String meetingContext = verified.meetingFrame() == null
+                            ? null
+                            : verified.meetingFrame().text();
                     MinutesFinalizationResult polished = editorialFinalize(
-                            rendered, allowedEvidenceIds, meetingTitle, language);
+                            rendered, allowedEvidenceIds, meetingTitle, language, meetingContext);
                     FinalNoteDraft consistent = new VerifiedMinutesRenderer()
                             .assertProseConsistent(polished.draft(), verified.meetingFrame());
                     List<String> flags = new ArrayList<>(consistent.qualityFlags());
@@ -537,6 +562,33 @@ public final class MinutesSynthesisAndAudit {
         return withFlags(draft, flags);
     }
 
+    private static FinalNoteDraft markComposerManualReview(FinalNoteDraft draft, List<String> extraFlags) {
+        List<String> flags = new ArrayList<>(draft.qualityFlags());
+        if (extraFlags != null) {
+            for (String f : extraFlags) {
+                addUnique(flags, f);
+            }
+        }
+        addUnique(flags, GlobalCompositionAuditor.FLAG_COMPOSER_HIGH_REJECTION);
+        addUnique(flags, "REQUIRES_MANUAL_REVIEW");
+        return new FinalNoteDraft(
+                draft.executiveSummary(),
+                draft.decisions(),
+                draft.actionItems(),
+                draft.risks(),
+                draft.openQuestions(),
+                draft.commitments(),
+                draft.topics(),
+                draft.issues(),
+                draft.proposals(),
+                draft.importantFacts(),
+                List.copyOf(flags),
+                draft.evidenceSegmentIds(),
+                draft.confidence(),
+                true
+        );
+    }
+
     private static FinalNoteDraft withFlags(FinalNoteDraft draft, List<String> flags) {
         return new FinalNoteDraft(
                 draft.executiveSummary(),
@@ -591,6 +643,16 @@ public final class MinutesSynthesisAndAudit {
             String meetingTitle,
             String language
     ) {
+        return editorialFinalize(deterministicDraft, allowedEvidenceIds, meetingTitle, language, null);
+    }
+
+    private MinutesFinalizationResult editorialFinalize(
+            FinalNoteDraft deterministicDraft,
+            Set<String> allowedEvidenceIds,
+            String meetingTitle,
+            String language,
+            String meetingContext
+    ) {
         InferenceResponse response = null;
         boolean inferenceAttempted = false;
         try {
@@ -599,6 +661,9 @@ public final class MinutesSynthesisAndAudit {
             ObjectNode editorialInput = objectMapper.createObjectNode();
             editorialInput.put("outputLanguageCode", language == null ? "" : language);
             editorialInput.put("meetingTitle", meetingTitle == null ? "" : meetingTitle);
+            if (meetingContext != null && !meetingContext.isBlank()) {
+                editorialInput.put("meetingContext", meetingContext.strip());
+            }
             editorialInput.set("validatedMinutes", validatedMinutes);
             String systemPrompt = editorialSummaryTemplate;
             String userPrompt = objectMapper.writeValueAsString(editorialInput);

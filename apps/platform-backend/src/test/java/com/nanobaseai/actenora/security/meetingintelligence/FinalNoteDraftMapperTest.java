@@ -26,7 +26,7 @@ class FinalNoteDraftMapperTest {
                 List.of(new RiskCandidate("Timeline slip", List.of("seg-1"), 0.7)),
                 List.of(new OpenQuestionCandidate("Who owns QA?", List.of("seg-1"), 0.6)),
                 List.of(new CommitmentCandidate("Alice owns QA", "Alice", List.of("seg-1"), 0.85)),
-                List.of(new TopicCandidate("Delivery", List.of("seg-1"), 0.9)),
+                List.of(new TopicCandidate("Delivery and release planning", List.of("seg-1"), 0.9)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -48,7 +48,8 @@ class FinalNoteDraftMapperTest {
         assertEquals(1, bundle.commitments().size());
         assertTrue(bundle.issues().isEmpty());
         assertTrue(bundle.proposals().isEmpty());
-        assertTrue(bundle.importantFacts().isEmpty());
+        assertEquals(1, bundle.importantFacts().size());
+        assertEquals("Delivery and release planning", bundle.importantFacts().getFirst().text());
         assertTrue(bundle.qualityFlags().contains("LOW_CONFIDENCE"));
         assertTrue(bundle.qualityFlags().contains("REQUIRES_MANUAL_REVIEW"));
         assertEquals(0.88, bundle.confidence());

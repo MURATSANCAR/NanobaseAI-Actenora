@@ -76,8 +76,27 @@ public final class GlobalLedgerMerger {
                     }
                 }
                 case RISK -> {
-                    if (!hasSimilar(risks, RiskCandidate::text, c.text())) {
-                        risks.add(new RiskCandidate(c.text(), c.evidenceSegmentIds(), clamp(c.confidence())));
+                    RiskCandidate existing = findSimilar(risks, RiskCandidate::text, c.text());
+                    if (existing == null) {
+                        risks.add(new RiskCandidate(
+                                c.text(),
+                                c.evidenceSegmentIds(),
+                                clamp(c.confidence()),
+                                null,
+                                c.mitigation()
+                        ));
+                    } else if ((existing.mitigation() == null || existing.mitigation().isBlank())
+                            && c.mitigation() != null && !c.mitigation().isBlank()) {
+                        int idx = risks.indexOf(existing);
+                        if (idx >= 0) {
+                            risks.set(idx, new RiskCandidate(
+                                    existing.text(),
+                                    existing.evidenceSegmentIds(),
+                                    Math.max(existing.confidence(), clamp(c.confidence())),
+                                    existing.likelihood(),
+                                    c.mitigation()
+                            ));
+                        }
                     }
                 }
                 case OPEN_QUESTION -> {
@@ -138,14 +157,18 @@ public final class GlobalLedgerMerger {
     }
 
     private static <T> boolean hasSimilar(List<T> existing, Function<T, String> textOf, String candidate) {
+        return findSimilar(existing, textOf, candidate) != null;
+    }
+
+    private static <T> T findSimilar(List<T> existing, Function<T, String> textOf, String candidate) {
         SemanticCore cCore = SemanticCore.extract(ItemTextViews.comparisonCore(candidate));
         for (T item : existing) {
             SemanticCore eCore = SemanticCore.extract(ItemTextViews.comparisonCore(textOf.apply(item)));
             if (eCore.topicSimilarity(cCore) >= 0.78d && eCore.actionSimilarity(cCore) >= 0.45d) {
-                return true;
+                return item;
             }
         }
-        return false;
+        return null;
     }
 
     private static double clamp(double confidence) {

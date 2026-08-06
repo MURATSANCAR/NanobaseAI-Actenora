@@ -35,6 +35,7 @@ public record GlobalComposition(
             String ownerCandidate,
             String dueDateText,
             String dueDateNormalized,
+            String mitigation,
             List<String> evidenceSegmentIds,
             String source,
             double confidence
@@ -44,6 +45,24 @@ public record GlobalComposition(
             Objects.requireNonNull(text, "text");
             evidenceSegmentIds = List.copyOf(Objects.requireNonNull(evidenceSegmentIds, "evidenceSegmentIds"));
             source = source == null || source.isBlank() ? "DIGEST" : source;
+            if (mitigation != null && mitigation.isBlank()) {
+                mitigation = null;
+            }
+        }
+
+        /** Compatibility constructor without mitigation. */
+        public GlobalCandidate(
+                CandidateType type,
+                String text,
+                String ownerCandidate,
+                String dueDateText,
+                String dueDateNormalized,
+                List<String> evidenceSegmentIds,
+                String source,
+                double confidence
+        ) {
+            this(type, text, ownerCandidate, dueDateText, dueDateNormalized, null,
+                    evidenceSegmentIds, source, confidence);
         }
     }
 

@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ExtractionBundle;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.MeetingNoisePatterns;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentInput;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.OpenQuestionHygieneFilter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -88,7 +89,9 @@ public final class OpenQuestionCueSeeder {
             for (String raw : candidates) {
                 String cleaned = clean(raw);
                 boolean explicit = explicitlyLabeled.contains(norm(raw));
-                if (cleaned.length() < 12 || (!explicit && !looksLikeOpenQuestion(cleaned))) {
+                if (cleaned.length() < 12
+                        || OpenQuestionHygieneFilter.shouldDropAsNonOutcome(cleaned)
+                        || (!explicit && !looksLikeOpenQuestion(cleaned))) {
                     continue;
                 }
                 String key = norm(cleaned);

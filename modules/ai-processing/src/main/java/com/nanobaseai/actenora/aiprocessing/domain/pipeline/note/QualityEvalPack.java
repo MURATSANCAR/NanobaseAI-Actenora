@@ -43,6 +43,25 @@ public final class QualityEvalPack {
             FinalNoteDraft draft,
             Instant createdAt
     ) {
+        return build(
+                tenantId, jobId, meetingOccurrenceId, transcriptId, noteId,
+                servedModelId, promptVersion, schemaVersion, draft, createdAt, null
+        );
+    }
+
+    public static Map<String, Object> build(
+            UUID tenantId,
+            UUID jobId,
+            UUID meetingOccurrenceId,
+            UUID transcriptId,
+            UUID noteId,
+            String servedModelId,
+            String promptVersion,
+            String schemaVersion,
+            FinalNoteDraft draft,
+            Instant createdAt,
+            FinalizationProvenance finalization
+    ) {
         Objects.requireNonNull(draft, "draft");
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("schemaVersion", SCHEMA_VERSION);
@@ -79,6 +98,9 @@ public final class QualityEvalPack {
         root.put("confidence", draft.confidence());
         root.put("qualityFlags", List.copyOf(draft.qualityFlags()));
         root.put("executiveSummary", draft.executiveSummary() == null ? "" : draft.executiveSummary());
+        if (finalization != null) {
+            root.put("finalization", finalization.toMap());
+        }
 
         root.put("decisions", mapDecisions(draft.decisions()));
         root.put("actionItems", mapActions(draft.actionItems()));

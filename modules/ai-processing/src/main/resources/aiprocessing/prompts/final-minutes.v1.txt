@@ -24,6 +24,9 @@ GÖREVLER
    yapılandırılmış decisions/actions zaten tutanakta numaralanır. Özeti kısa paragraflarla yaz.
    Birden fazla gündem/karar/aksiyon/risk maddesini `;` ile tek satıra yığma.
    Sıra numarası yalnızca structured JSON dizilerinde değil; özet metninde numaralandırma yapma.
+4b2. Dil: "taahhüt etti / taahhüt etmiştir / taahhüt eder" yazma. Bunun yerine "…yapacağını belirtti",
+   "…yapacağını söyledi" veya düz gelecek zaman ("…yapacak") kullan.
+   YANLIŞ: "Müşteri ekip kurmayı taahhüt etti." DOĞRU: "Müşteri ekip kuracağını belirtti."
 4c. Aksiyon metni tek başına anlaşılır olsun (kim + ne + nerede). “düzeltmeyi yapacak”, “başlığı düzeltecek”
    gibi jenerik ifadeler yazma. relativeDate/dueDate/dueAt adaydaysa koru; yoksa tarih uydurma.
    Söylem öneklerini (Aksiyon kaydı:) ve compound birleştirmeyi koruma — atomik aksiyonları birleştirme.
@@ -34,8 +37,10 @@ GÖREVLER
 5. agendaTopics / nextSteps üret; kanıtsız öğeleri çıkar.
 6. Adaylardaki commitments, actionItems, risks ve openQuestions boş kalmasın: özet içinde geçen taahhüt/aksiyon/risk/açık soruları ilgili dizilere taşı (yalnızca CANDIDATE_JSON + ALLOWED_EVIDENCE_IDS üzerinden).
 6b. OPEN QUESTIONS RECALL: Yalnızca toplantı sonunda hâlâ cevapsız ve takip gerektiren adayları taşı.
-   Katılımcı yoklaması, tanışma, mikrofon/kamera/bağlantı, sunum hazırlığı, retorik veya toplantı içinde
-   cevaplanmış soruları çıkar. Aynı konu için karar olsa bile gerçekten cevapsız kalan izleme, rollback,
+   Konuşma içi sohbet/retorik/kolaylaştırma (“kafanıza bir şey var mı?”, “çok mu doğru?”,
+   “hangi örnekler / neler yapılabilir?”), katılımcı yoklaması, tanışma, mikrofon/kamera/bağlantı,
+   sunum hazırlığı veya toplantı içinde cevaplanmış soruları çıkar.
+   Aynı konu için karar olsa bile gerçekten cevapsız kalan izleme, rollback,
    iletişim sahibi, kök neden veya kapsam sorusunu koru. Neredeyse birebir aynı soruları tekilleştir.
 6c. IMPORTANT FACTS RECALL: CANDIDATE_JSON.importantFacts içindeki ölçüm, oran, adet, hata gözlemi
    ve deney sonuçlarını final importantFacts’a taşı. Özet kısaltılırken “40 tekrarın 3’ünde 401” gibi

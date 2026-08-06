@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.security.portal;
 
 import com.nanobaseai.actenora.meetingintelligence.api.dto.ActionItemResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.CommitmentResponse;
+import com.nanobaseai.actenora.meetingintelligence.api.dto.ImportantFactResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteDetailResponse;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.MeetingNoteVersionResponse;
 import com.nanobaseai.actenora.meetingintelligence.domain.model.MeetingNoteStatus;
@@ -51,10 +52,101 @@ class PortalMinutesRendererTest {
         assertTrue(rendered.contains("29.07.2026 16:00"));
         assertTrue(rendered.contains("30.07.2026 12:00"));
         assertTrue(rendered.contains("Sorumlu: Burak"));
+        assertTrue(rendered.contains("Son tarih: " + PortalApiController.DUE_DATE_NOT_DISCUSSED));
+        assertFalse(rendered.contains("Son tarih: —"));
         assertFalse(rendered.contains("Toplantıda aksiyonlar için kesin teslim tarihi belirtilmedi."));
         assertFalse(rendered.contains("Not: Aksiyonlar için yapılandırılmış son tarih bulunmuyor."));
-        assertTrue(rendered.contains("10. ÖNEMLİ BULGULAR"));
+        assertTrue(rendered.contains("4. AKSİYON PLANI"));
+        assertTrue(rendered.contains("5. RİSKLER VE MİTİGASYONLAR"));
         assertFalse(rendered.contains("BİR SONRAKİ KONTROL"));
+        assertFalse(rendered.contains("7. AÇIK SORULAR"));
+    }
+
+    @Test
+    void rendersKunyeAndOmitsEmptyOpenQuestions() {
+        UUID noteId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-07-29T08:00:00Z");
+        MeetingNoteVersionResponse version = new MeetingNoteVersionResponse(
+                UUID.randomUUID(), noteId, 1, "Tanışma ve vizyon paylaşımı.",
+                null, null, null, null, now, MeetingNoteStatus.DRAFT
+        );
+        MeetingNoteDetailResponse note = new MeetingNoteDetailResponse(
+                noteId, UUID.randomUUID(), UUID.randomUUID(), null, 1, 0,
+                version, List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), now, now
+        );
+        List<PortalApiController.PortalParticipantView> participants = List.of(
+                new PortalApiController.PortalParticipantView(
+                        UUID.randomUUID(), "Gökhan ERTÜRK", "gokhan@customer.example",
+                        "REQUIRED", "ACCEPTED", true),
+                new PortalApiController.PortalParticipantView(
+                        UUID.randomUUID(), "Murat Sancar", "murat@nanobase.ai",
+                        "REQUIRED", "ACCEPTED", false)
+        );
+
+        String rendered = PortalApiController.renderDraftMinutesBody(
+                note, "BIM Tanışma", participants);
+
+        assertTrue(rendered.contains("TOPLANTI KÜNYESİ"));
+        assertTrue(rendered.contains("Katılımcılar (Müşteri): Gökhan ERTÜRK"));
+        assertTrue(rendered.contains("Katılımcılar (NanobaseAI): Murat Sancar"));
+        assertTrue(rendered.contains("2. GÖRÜŞÜLEN KONULAR"));
+        assertFalse(rendered.contains("6. TAAHHÜTLER"));
+        assertFalse(rendered.contains("7. AÇIK SORULAR"));
+    }
+
+    @Test
+    void usesImportantFactsAsGorusulenKonularWhenAgendaAbsent() {
+        UUID noteId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-07-29T08:00:00Z");
+        MeetingNoteVersionResponse version = new MeetingNoteVersionResponse(
+                UUID.randomUUID(), noteId, 1, "Tanışma ve vizyon paylaşımı.",
+                null, null, null, null, now, MeetingNoteStatus.DRAFT
+        );
+        ImportantFactResponse fact = new ImportantFactResponse(
+                UUID.randomUUID(), noteId,
+                "Core banking için Simple ile ilerleme kararı alındı.",
+                false, 0.9, null, 0, now
+        );
+        MeetingNoteDetailResponse note = new MeetingNoteDetailResponse(
+                noteId, UUID.randomUUID(), UUID.randomUUID(), null, 1, 0,
+                version, List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of(fact), List.of(), List.of(), now, now
+        );
+
+        String rendered = PortalApiController.renderDraftMinutesBody(note, "BIM Tanışma");
+
+        assertTrue(rendered.contains("2. GÖRÜŞÜLEN KONULAR"));
+        assertTrue(rendered.contains("Core banking için Simple ile ilerleme kararı alındı."));
+        assertFalse(rendered.contains("10. ÖNEMLİ BULGULAR"));
+    }
+
+    @Test
+    void softensStiffTaahhutPhrasingInSummaryAndCommitments() {
+        UUID noteId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-07-29T08:00:00Z");
+        MeetingNoteVersionResponse version = new MeetingNoteVersionResponse(
+                UUID.randomUUID(), noteId, 1,
+                "Müşteri ekip kurmayı taahhüt etmiştir.",
+                null, null, null, null, now, MeetingNoteStatus.DRAFT
+        );
+        CommitmentResponse commitment = new CommitmentResponse(
+                UUID.randomUUID(), noteId,
+                "PDF sunumu göndermeyi taahhüt etti.",
+                "Onur", null, false, 0.9, null, null, 0, now
+        );
+        MeetingNoteDetailResponse note = new MeetingNoteDetailResponse(
+                noteId, UUID.randomUUID(), UUID.randomUUID(), null, 1, 0,
+                version, List.of(), List.of(), List.of(), List.of(commitment),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), now, now
+        );
+
+        String rendered = PortalApiController.renderDraftMinutesBody(note, "Style check");
+
+        assertTrue(rendered.contains("Müşteri ekip kuracağını belirtti."));
+        assertTrue(rendered.contains("PDF sunumu göndereceğini belirtti."));
+        assertFalse(rendered.toLowerCase().contains("taahhüt etti"));
+        assertFalse(rendered.toLowerCase().contains("taahhüt etmiştir"));
     }
 
     private static ActionItemResponse action(

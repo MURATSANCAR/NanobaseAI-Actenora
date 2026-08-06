@@ -1,5 +1,6 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.filter;
 
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.OpenQuestionHygieneFilter;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.ItemLineageRecord;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageOperation;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.lineage.LineageReasonCode;
@@ -27,7 +28,11 @@ public final class MeetingItemPolicy {
                 default -> PolicyAction.KEEP;
             };
             case OPEN_QUESTION -> act == MeetingSpeechAct.DISCUSSION_PROMPT
+                    || act == MeetingSpeechAct.STATUS_QUO
+                    || act == MeetingSpeechAct.CLOSING_META
+                    || act == MeetingSpeechAct.NOTE_INSTRUCTION
                     || isVagueDiscussion(text)
+                    || OpenQuestionHygieneFilter.shouldDropAsNonOutcome(text)
                     ? PolicyAction.DROP
                     : PolicyAction.KEEP;
             case TOPIC -> switch (act) {

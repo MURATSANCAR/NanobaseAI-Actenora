@@ -174,6 +174,7 @@ public final class GlobalMinutesComposer {
                         textOrNull(n.path("ownerCandidate")),
                         textOrNull(n.path("dueDateText")),
                         textOrNull(n.path("dueDateNormalized")),
+                        textOrNull(n.path("mitigation")),
                         readIds(n.path("evidenceSegmentIds")),
                         textOr(n.path("source"), "DIGEST"),
                         n.path("confidence").asDouble(0.75d)

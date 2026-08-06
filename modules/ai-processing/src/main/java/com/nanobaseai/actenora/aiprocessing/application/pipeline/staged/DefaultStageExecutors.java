@@ -36,6 +36,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.action.ActionPostPro
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.ActionContextualEnricher;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalizationProvenance;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.QualityEvalPack;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
@@ -962,6 +963,7 @@ public final class DefaultStageExecutors {
                 int finalizationModelCalls = 0;
                 long finalizationModelLatencyMs = 0;
                 boolean finalizationFallbackUsed = false;
+                FinalizationProvenance finalizationProvenance = null;
                 Map<String, Object> actionPostStats = null;
                 if (source == null) {
                     draft = noteAssembler.assemble(ExtractionBundle.empty(), job.language());
@@ -1007,6 +1009,14 @@ public final class DefaultStageExecutors {
                     finalizationModelCalls = finalization.modelCalls();
                     finalizationModelLatencyMs = finalization.modelLatencyMs();
                     finalizationFallbackUsed = finalization.fallbackUsed();
+                    finalizationProvenance = FinalizationProvenance.from(
+                            finalization.requestedMode(),
+                            finalization.effectiveMode(),
+                            finalization.fallbackReason(),
+                            finalization.fallbackUsed(),
+                            finalization.modelCalls(),
+                            finalization.modelLatencyMs()
+                    );
                     draft = new ActionContextualEnricher().enrich(draft, normalized);
                     ExplicitActionCueRecoverer.Result recovered =
                             new ExplicitActionCueRecoverer().recover(draft.actionItems(), normalized);
@@ -1084,7 +1094,8 @@ public final class DefaultStageExecutors {
                                 job.promptVersion(),
                                 job.schemaVersion(),
                                 draft,
-                                now
+                                now,
+                                finalizationProvenance
                         );
                         artifacts.save(ProcessingArtifact.inlineJson(
                                 job.tenantId(),
@@ -1094,6 +1105,16 @@ public final class DefaultStageExecutors {
                                 MAPPER.writeValueAsString(pack),
                                 now
                         ));
+                        if (finalizationProvenance != null) {
+                            artifacts.save(ProcessingArtifact.inlineJson(
+                                    job.tenantId(),
+                                    job.id(),
+                                    job.meetingOccurrenceId(),
+                                    FinalizationProvenance.ARTIFACT_TYPE,
+                                    MAPPER.writeValueAsString(finalizationProvenance.toMap()),
+                                    now
+                            ));
+                        }
                     } catch (Exception ignored) {
                         // Observability must not fail minutes stage.
                     }
@@ -1107,6 +1128,11 @@ public final class DefaultStageExecutors {
                 payload.put("finalizationModelCalls", finalizationModelCalls);
                 payload.put("finalizationModelLatencyMs", finalizationModelLatencyMs);
                 payload.put("finalizationFallbackUsed", finalizationFallbackUsed);
+                if (finalizationProvenance != null) {
+                    payload.put("requestedMode", finalizationProvenance.requestedMode());
+                    payload.put("effectiveMode", finalizationProvenance.effectiveMode());
+                    payload.put("fallbackReason", finalizationProvenance.fallbackReason());
+                }
                 if (actionPostStats != null) {
                     payload.put("actionPostProcessing", actionPostStats);
                 }

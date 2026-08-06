@@ -10,6 +10,7 @@ import {
   parseActionMeta,
   parseMinutesBody,
   parseSectionContent,
+  displayMinutesDue,
   type MinutesSection,
   type MinutesSectionKind,
 } from "@/lib/minutesDocument";
@@ -360,11 +361,11 @@ function PreviewSection({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="break-words">{meta.text}</p>
-                  {"owner" in meta && (meta.owner || meta.due) ? (
+                  {"owner" in meta ? (
                     <p className="mt-0.5 text-[10px] text-slate-500">
                       {[
                         meta.owner ? `${t("meeting.minutesOwner")}: ${meta.owner}` : null,
-                        meta.due ? `${t("meeting.minutesDue")}: ${meta.due}` : null,
+                        `${t("meeting.minutesDue")}: ${displayMinutesDue(meta.due, t("meeting.minutesDueUnspecified"))}`,
                       ]
                         .filter(Boolean)
                         .join(" · ")}

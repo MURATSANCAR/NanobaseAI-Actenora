@@ -6,6 +6,7 @@ export type MinutesSectionKind = "paragraph" | "list";
 /** Template sections plus presentation-only minutes blocks (not Template Studio components). */
 export type MinutesSectionType =
   | TemplateComponentType
+  | "MEETING_KUNYE"
   | "PROPOSALS"
   | "ISSUES"
   | "NEXT_CHECKPOINT";
@@ -29,6 +30,11 @@ const SECTION_SPECS: Array<{
   headings: string[];
 }> = [
   {
+    type: "MEETING_KUNYE",
+    kind: "paragraph",
+    headings: ["TOPLANTI KÜNYESİ", "TOPLANTI KUNYESI", "MEETING HEADER"],
+  },
+  {
     type: "EXECUTIVE_SUMMARY",
     kind: "paragraph",
     headings: ["YÖNETİCİ ÖZETİ", "YONETICI OZETI", "EXECUTIVE SUMMARY"],
@@ -36,7 +42,7 @@ const SECTION_SPECS: Array<{
   {
     type: "AGENDA",
     kind: "list",
-    headings: ["GÜNDEM", "GUNDEM", "AGENDA"],
+    headings: ["GÖRÜŞÜLEN KONULAR", "GORUSULEN KONULAR", "GÜNDEM", "GUNDEM", "AGENDA"],
   },
   {
     type: "DECISIONS",
@@ -46,12 +52,12 @@ const SECTION_SPECS: Array<{
   {
     type: "ACTIONS",
     kind: "list",
-    headings: ["AKSİYON MADDELERİ", "AKSIYON MADDELERI", "ACTIONS", "ACTION ITEMS"],
+    headings: ["AKSİYON PLANI", "AKSIYON PLANI", "AKSİYON MADDELERİ", "AKSIYON MADDELERI", "ACTIONS", "ACTION ITEMS"],
   },
   {
     type: "RISKS",
     kind: "list",
-    headings: ["RİSKLER", "RISKLER", "RISKS"],
+    headings: ["RİSKLER VE MİTİGASYONLAR", "RISKLER VE MITIGASYONLAR", "RİSKLER", "RISKLER", "RISKS"],
   },
   {
     type: "COMMITMENTS",
@@ -120,7 +126,7 @@ export function parseCorporateItemId(item: string): {
   };
 }
 
-/** Splits action lines like `Task (Sorumlu: Ada, Son tarih: —)` into display parts. */
+/** Splits action lines like `Task (Sorumlu: Ada, Son tarih: toplantıda belirtilmedi)` into display parts. */
 export function parseActionMeta(item: string): {
   id?: string;
   text: string;
@@ -139,6 +145,19 @@ export function parseActionMeta(item: string): {
     owner: (m[2] ?? "").trim(),
     due: (m[3] ?? "").trim(),
   };
+}
+
+/** Maps empty / em-dash due placeholders to a human "not discussed" label. */
+export function displayMinutesDue(
+  due: string | null | undefined,
+  unspecifiedLabel: string,
+): string {
+  if (due == null) return unspecifiedLabel;
+  const trimmed = due.trim();
+  if (!trimmed || trimmed === "—" || trimmed === "-" || trimmed === "–") {
+    return unspecifiedLabel;
+  }
+  return trimmed;
 }
 
 /** User-facing review reasons only — successful consistency drops are not review. */
@@ -179,9 +198,23 @@ export function hasSubsumedProposalDrop(qualityFlags: string[]): boolean {
 }
 
 function matchSectionHeading(raw: string): (typeof SECTION_SPECS)[number] | null {
-  const m = HEADING_RE.exec(raw);
-  if (!m) return null;
-  const heading = normalizeHeading(m[2] ?? "");
+  const numbered = HEADING_RE.exec(raw);
+  const headingRaw = numbered ? (numbered[2] ?? "") : raw;
+  const heading = normalizeHeading(headingRaw);
+  // Künye is emitted without a section number.
+  if (!numbered) {
+    const kunye = SECTION_SPECS.find((spec) => spec.type === "MEETING_KUNYE");
+    if (
+      kunye &&
+      kunye.headings.some((h) => {
+        const nh = normalizeHeading(h);
+        return heading === nh || heading.startsWith(nh);
+      })
+    ) {
+      return kunye;
+    }
+    return null;
+  }
   return (
     SECTION_SPECS.find((spec) =>
       spec.headings.some((h) => {
@@ -189,6 +222,18 @@ function matchSectionHeading(raw: string): (typeof SECTION_SPECS)[number] | null
         return heading === nh || heading.startsWith(nh);
       }),
     ) ?? null
+  );
+}
+
+/** Optional padding sections omitted from serialized body when empty (matches portal renderer). */
+export function shouldOmitEmptyMinutesSection(type: MinutesSectionType): boolean {
+  return (
+    type === "MEETING_KUNYE" ||
+    type === "COMMITMENTS" ||
+    type === "OPEN_QUESTIONS" ||
+    type === "ISSUES" ||
+    type === "PROPOSALS" ||
+    type === "NEXT_CHECKPOINT"
   );
 }
 
@@ -340,11 +385,12 @@ export function serializeMinutesBody(doc: MinutesDocument): string {
   lines.push("");
 
   const headings: Partial<Record<MinutesSectionType, string>> = {
+    MEETING_KUNYE: "TOPLANTI KÜNYESİ",
     EXECUTIVE_SUMMARY: "1. YÖNETİCİ ÖZETİ",
-    AGENDA: "2. GÜNDEM",
+    AGENDA: "2. GÖRÜŞÜLEN KONULAR",
     DECISIONS: "3. ALINAN KARARLAR",
-    ACTIONS: "4. AKSİYON MADDELERİ",
-    RISKS: "5. RİSKLER",
+    ACTIONS: "4. AKSİYON PLANI",
+    RISKS: "5. RİSKLER VE MİTİGASYONLAR",
     COMMITMENTS: "6. TAAHHÜTLER",
     OPEN_QUESTIONS: "7. AÇIK SORULAR",
     ISSUES: "8. SORUNLAR",
@@ -356,10 +402,16 @@ export function serializeMinutesBody(doc: MinutesDocument): string {
   for (const section of doc.sections) {
     const heading = headings[section.type];
     if (!heading) continue;
-    const labeled = heading.replace(/^\d+\./u, `${index}.`);
-    index += 1;
-    lines.push(labeled);
     const parsed = parseSectionContent(section.value, section.kind);
+    if (parsed.empty && shouldOmitEmptyMinutesSection(section.type)) {
+      continue;
+    }
+    const labeled =
+      section.type === "MEETING_KUNYE" ? heading : heading.replace(/^\d+\./u, `${index}.`);
+    if (section.type !== "MEETING_KUNYE") {
+      index += 1;
+    }
+    lines.push(labeled);
     if (parsed.empty) {
       lines.push("—");
     } else if (section.kind === "paragraph") {

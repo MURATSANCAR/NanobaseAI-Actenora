@@ -27,7 +27,8 @@ public record MinutesFinalizationPolicy(
         DETERMINISTIC,
         /**
          * Global candidate composer + grounded union + verified renderer.
-         * Falls back to EDITORIAL (or deterministic ledger render) with explicit audit reason.
+         * High evidence rejection → MANUAL_REVIEW (not EDITORIAL polish).
+         * Other failures fall back to EDITORIAL with explicit audit reason.
          */
         COMPOSER;
 

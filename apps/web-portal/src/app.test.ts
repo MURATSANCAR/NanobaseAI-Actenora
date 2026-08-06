@@ -351,6 +351,11 @@ test("minutes document parses Turkish plain-text tutanak", async () => {
 Toplantı Başlığı: teams entegrasyon toplantısı
 Durum: Taslak (LLM)
 
+TOPLANTI KÜNYESİ
+Konu: teams entegrasyon toplantısı
+Katılımcılar (Müşteri): Ada Admin
+Katılımcılar (NanobaseAI): Murat Sancar
+
 1. YÖNETİCİ ÖZETİ
 Özet metni burada.
 
@@ -358,7 +363,7 @@ Durum: Taslak (LLM)
 —
 
 3. AKSİYON MADDELERİ
-1. Murat Sancar tarafından analiz tamamlanması. (Sorumlu: Murat Sancar, Son tarih: —)
+1. Murat Sancar tarafından analiz tamamlanması. (Sorumlu: Murat Sancar, Son tarih: toplantıda belirtilmedi)
 
 4. RİSKLER
 1. Gecikme riski.
@@ -373,6 +378,9 @@ Durum: Taslak (LLM)
   assert.ok(doc);
   assert.equal(doc!.title, "teams entegrasyon toplantısı");
   assert.equal(doc!.statusLabel, "Taslak (NanobaseAI EasyMeeting)");
+  const kunye = doc!.sections.find((s) => s.type === "MEETING_KUNYE");
+  assert.ok(kunye);
+  assert.match(kunye!.value, /Katılımcılar \(Müşteri\): Ada Admin/);
   const summary = doc!.sections.find((s) => s.type === "EXECUTIVE_SUMMARY");
   assert.equal(parseSectionContent(summary!.value, "paragraph").paragraph, "Özet metni burada.");
   const actions = doc!.sections.find((s) => s.type === "ACTIONS");
@@ -384,6 +392,11 @@ Durum: Taslak (LLM)
   assert.equal(
     parseSectionContent(roundTrip!.sections.find((s) => s.type === "RISKS")!.value, "list").items[0],
     "Gecikme riski.",
+  );
+  assert.match(
+    parseSectionContent(roundTrip!.sections.find((s) => s.type === "MEETING_KUNYE")!.value, "paragraph")
+      .paragraph,
+    /Murat Sancar/,
   );
 });
 

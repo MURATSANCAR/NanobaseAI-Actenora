@@ -7,6 +7,7 @@ import com.nanobaseai.actenora.approval.api.ApprovalRequestStatus;
 import com.nanobaseai.actenora.approval.api.ApprovalRequestView;
 import com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.StiffCommitmentPhrasingNormalizer;
 import com.nanobaseai.actenora.audit.api.AuditApi;
 import com.nanobaseai.actenora.delivery.api.DeliveryApi;
 import com.nanobaseai.actenora.delivery.api.DeliveryRequestStatusView;
@@ -340,7 +341,7 @@ public class PortalApiController {
                 String approvalStatus = note.currentVersion() == null || note.currentVersion().approvalStatus() == null
                         ? "DRAFT"
                         : note.currentVersion().approvalStatus().name();
-                String body = renderDraftMinutesBody(note, meeting.title());
+                String body = renderDraftMinutesBody(note, meeting.title(), portalParticipants);
                 notes.add(new MeetingNoteView(
                         note.id(),
                         "SHARED",
@@ -442,7 +443,7 @@ public class PortalApiController {
                     commitments.add(new CommitmentItemView(
                             commitment.id(),
                             meetingId,
-                            commitment.text(),
+                            softenCommitmentPhrasing(commitment.text()),
                             commitment.owner() == null || commitment.owner().isBlank() ? "—" : commitment.owner(),
                             null,
                             commitment.confirmationStatus() == null
@@ -1448,10 +1449,21 @@ public class PortalApiController {
         return "LOW";
     }
 
+    /** Shown when an action has no resolved due date / relative cue from the meeting. */
+    static final String DUE_DATE_NOT_DISCUSSED = "toplantıda belirtilmedi";
+
     static String renderDraftMinutesBody(MeetingNoteDetailResponse note, String meetingTitle) {
+        return renderDraftMinutesBody(note, meetingTitle, List.of());
+    }
+
+    static String renderDraftMinutesBody(
+            MeetingNoteDetailResponse note,
+            String meetingTitle,
+            List<PortalParticipantView> participants
+    ) {
         String summary = note.currentVersion() == null || note.currentVersion().executiveSummary() == null
                 ? ""
-                : note.currentVersion().executiveSummary().trim();
+                : softenCommitmentPhrasing(note.currentVersion().executiveSummary().trim());
         StringBuilder sb = new StringBuilder();
         sb.append("TOPLANTI TUTANAĞI").append('\n');
         if (meetingTitle != null && !meetingTitle.isBlank()) {
@@ -1463,11 +1475,25 @@ public class PortalApiController {
         if ("DRAFT".equals(approval)) {
             sb.append("Durum: ").append(NanobaseAiBrandSanitizer.draftStatusLabel()).append('\n');
         }
+
+        appendMinutesKunye(sb, meetingTitle, participants);
+
         sb.append('\n').append("1. YÖNETİCİ ÖZETİ").append('\n');
         sb.append(summary.isBlank() ? "—" : summary).append('\n');
 
-        appendMinutesSection(sb, "2. GÜNDEM",
-                com.nanobaseai.actenora.security.delivery.ApprovedNoteContentJsonMapper.parseAgendaItems(summary));
+        List<String> agenda = com.nanobaseai.actenora.security.delivery.ApprovedNoteContentJsonMapper
+                .parseAgendaItems(summary);
+        List<String> discussed = new ArrayList<>();
+        if (agenda != null && !agenda.isEmpty()) {
+            discussed.addAll(agenda);
+        } else if (note.importantFacts() != null) {
+            for (var f : note.importantFacts()) {
+                if (f != null && f.text() != null && !f.text().isBlank()) {
+                    discussed.add(f.text().trim());
+                }
+            }
+        }
+        appendMinutesSection(sb, "2. GÖRÜŞÜLEN KONULAR", discussed, true);
 
         // Deterministic presentation IDs: list order = extraction/persist order (not alphabetical).
         List<String> decisions = new ArrayList<>();
@@ -1489,11 +1515,9 @@ public class PortalApiController {
                 decisions.add(line.toString());
             }
         }
-        appendMinutesSection(sb, "3. ALINAN KARARLAR", decisions);
+        appendMinutesSection(sb, "3. ALINAN KARARLAR", decisions, true);
 
         List<String> actions = new ArrayList<>();
-        boolean anyStructuredMissing = false;
-        boolean anyStructuredDue = false;
         boolean anyDateCueWithoutStructured = false;
         boolean anyUnresolvedRelative = false;
         if (note.actionItems() != null) {
@@ -1507,7 +1531,6 @@ public class PortalApiController {
                 String due;
                 Instant dueAtInstant = a.dueAt();
                 if (dueAtInstant != null) {
-                    anyStructuredDue = true;
                     due = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
                             .withZone(java.time.ZoneId.of("Europe/Istanbul"))
                             .format(dueAtInstant);
@@ -1515,11 +1538,9 @@ public class PortalApiController {
                     due = a.relativeDate().trim();
                     anyUnresolvedRelative = true;
                 } else if (a.dueDate() != null) {
-                    anyStructuredDue = true;
                     due = a.dueDate().toString();
                 } else {
-                    due = "—";
-                    anyStructuredMissing = true;
+                    due = DUE_DATE_NOT_DISCUSSED;
                     if (containsDateCue(a.text())) {
                         anyDateCueWithoutStructured = true;
                     }
@@ -1536,15 +1557,13 @@ public class PortalApiController {
                 actions.add(line.append(')').toString());
             }
         }
-        appendMinutesSection(sb, "4. AKSİYON MADDELERİ", actions);
+        appendMinutesSection(sb, "4. AKSİYON PLANI", actions, true);
         if (!actions.isEmpty()) {
             if (anyDateCueWithoutStructured) {
                 sb.append("Not: Aksiyon metninde tarih ifadesi bulundu ancak yapılandırılmış son tarih çözümlenemedi.")
                         .append('\n');
             } else if (anyUnresolvedRelative) {
                 sb.append("Not: Tarih henüz takvim değerine çözümlenemedi.").append('\n');
-            } else if (anyStructuredMissing && !anyStructuredDue) {
-                sb.append("Not: Aksiyonlar için yapılandırılmış son tarih bulunmuyor.").append('\n');
             }
         }
 
@@ -1567,12 +1586,14 @@ public class PortalApiController {
                 risks.add(line.toString());
             }
         }
-        appendMinutesSection(sb, "5. RİSKLER", risks);
+        appendMinutesSection(sb, "5. RİSKLER VE MİTİGASYONLAR", risks, true);
+
+        // Empty commitments / open questions are omitted — chatty OQs must not pad the minutes.
         appendMinutesSection(sb, "6. TAAHHÜTLER", note.commitments() == null ? List.of()
                 : note.commitments().stream()
                 .filter(Objects::nonNull)
                 .map(c -> {
-                    String text = c.text() == null ? "" : c.text().trim();
+                    String text = softenCommitmentPhrasing(c.text() == null ? "" : c.text().trim());
                     String owner = c.owner() == null || c.owner().isBlank() ? null : c.owner().trim();
                     if (owner == null) {
                         return text;
@@ -1580,21 +1601,70 @@ public class PortalApiController {
                     return text + " (Sorumlu: " + owner + ")";
                 })
                 .filter(t -> t != null && !t.isBlank())
-                .toList());
+                .toList(), false);
         appendMinutesSection(sb, "7. AÇIK SORULAR", note.openQuestions() == null ? List.of()
-                : note.openQuestions().stream().map(q -> q.text()).filter(Objects::nonNull).toList());
+                : note.openQuestions().stream().map(q -> q.text()).filter(Objects::nonNull).toList(), false);
         appendMinutesSection(sb, "8. SORUNLAR", note.issues() == null ? List.of()
-                : note.issues().stream().map(i -> i.text()).filter(Objects::nonNull).toList());
+                : note.issues().stream().map(i -> i.text()).filter(Objects::nonNull).toList(), false);
         appendMinutesSection(sb, "9. ÖNERİLER — HENÜZ KARAR DEĞİL", note.proposals() == null ? List.of()
-                : note.proposals().stream().map(p -> p.text()).filter(Objects::nonNull).toList());
-        appendMinutesSection(sb, "10. ÖNEMLİ BULGULAR", note.importantFacts() == null ? List.of()
-                : note.importantFacts().stream().map(f -> f.text()).filter(Objects::nonNull).toList());
+                : note.proposals().stream().map(p -> p.text()).filter(Objects::nonNull).toList(), false);
+        // Facts already rendered under görüşülen konular when agenda was empty.
+        boolean factsUsedAsDiscussed = (agenda == null || agenda.isEmpty())
+                && note.importantFacts() != null
+                && !note.importantFacts().isEmpty();
+        if (!factsUsedAsDiscussed) {
+            appendMinutesSection(sb, "10. ÖNEMLİ BULGULAR", note.importantFacts() == null ? List.of()
+                    : note.importantFacts().stream().map(f -> f.text()).filter(Objects::nonNull).toList(), false);
+        }
         return sb.toString().trim();
+    }
+
+    private static void appendMinutesKunye(
+            StringBuilder sb,
+            String meetingTitle,
+            List<PortalParticipantView> participants
+    ) {
+        sb.append('\n').append("TOPLANTI KÜNYESİ").append('\n');
+        if (meetingTitle != null && !meetingTitle.isBlank()) {
+            sb.append("Konu: ").append(meetingTitle.trim()).append('\n');
+        }
+        if (participants == null || participants.isEmpty()) {
+            return;
+        }
+        List<String> customer = new ArrayList<>();
+        List<String> host = new ArrayList<>();
+        for (PortalParticipantView p : participants) {
+            if (p == null) {
+                continue;
+            }
+            String name = p.displayName() == null || p.displayName().isBlank()
+                    ? (p.email() == null || p.email().isBlank() ? null : p.email().trim())
+                    : p.displayName().trim();
+            if (name == null) {
+                continue;
+            }
+            if (p.external()) {
+                customer.add(name);
+            } else {
+                host.add(name);
+            }
+        }
+        if (!customer.isEmpty()) {
+            sb.append("Katılımcılar (Müşteri): ").append(String.join(", ", customer)).append('\n');
+        }
+        if (!host.isEmpty()) {
+            sb.append("Katılımcılar (NanobaseAI): ").append(String.join(", ", host)).append('\n');
+        }
     }
 
     /** Presentation-only corporate id (K-01 / A-01 / R-01); not persisted. */
     private static String corporateId(String prefix, int oneBasedIndex) {
         return prefix + "-" + String.format(java.util.Locale.ROOT, "%02d", oneBasedIndex);
+    }
+
+    /** Softens stiff "taahhüt etti" phrasing for display (also applied at finalization). */
+    private static String softenCommitmentPhrasing(String text) {
+        return StiffCommitmentPhrasingNormalizer.soften(text);
     }
 
     private static String blankToNull(String value) {
@@ -1657,20 +1727,38 @@ public class PortalApiController {
     }
 
     private static void appendMinutesSection(StringBuilder sb, String title, List<String> items) {
-        sb.append('\n').append(title).append('\n');
-        if (items == null || items.isEmpty()) {
-            sb.append("—").append('\n');
+        appendMinutesSection(sb, title, items, true);
+    }
+
+    /**
+     * @param emitWhenEmpty when false, skip the entire section if there are no items
+     *                      (used for commitments / open questions so empty placeholders do not pad minutes).
+     */
+    private static void appendMinutesSection(
+            StringBuilder sb,
+            String title,
+            List<String> items,
+            boolean emitWhenEmpty
+    ) {
+        List<String> nonBlank = new ArrayList<>();
+        if (items != null) {
+            for (String item : items) {
+                if (item != null && !item.isBlank()) {
+                    nonBlank.add(item.trim());
+                }
+            }
+        }
+        if (nonBlank.isEmpty()) {
+            if (!emitWhenEmpty) {
+                return;
+            }
+            sb.append('\n').append(title).append('\n').append("—").append('\n');
             return;
         }
+        sb.append('\n').append(title).append('\n');
         int i = 1;
-        for (String item : items) {
-            if (item == null || item.isBlank()) {
-                continue;
-            }
-            sb.append(i++).append(". ").append(item.trim()).append('\n');
-        }
-        if (i == 1) {
-            sb.append("—").append('\n');
+        for (String item : nonBlank) {
+            sb.append(i++).append(". ").append(item).append('\n');
         }
     }
 

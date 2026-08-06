@@ -44,6 +44,21 @@ public final class GlobalCompositionAuditor {
             "(?iu)\\b(ben|ben\\s+de)\\b.{0,40}\\b(yapaca[gğ][ıi]m|edece[gğ]im|g[oö]r[uü][sş]ece[gğ]im|"
                     + "konu[sş]aca[gğ][ıi]m)\\b"
     );
+    /**
+     * "Murat'a iletiriz / göndereceğiz" — dative recipient is NOT the owner.
+     * First-person plural delivery to someone else → speaker owns (or null), never the recipient.
+     */
+    private static final Pattern DATIVE_RECIPIENT_FORWARD = Pattern.compile(
+            "(?iu)\\b([\\p{L}][\\p{L}.'-]{1,40})['’]?(?:ya|ye|na|ne|a|e)\\s+"
+                    + "(iletiriz|iletece[gğ]iz|g[oö]ndeririz|g[oö]nderece[gğ]iz|"
+                    + "payla[sş][ıi]r[ıi]z|payla[sş]aca[gğ][ıi]z|ula[sş]t[ıi]r[ıi]r[ıi]z)\\b"
+    );
+    private static final Pattern WE_FORWARD = Pattern.compile(
+            "(?iu)\\b(biz|biz\\s+de)\\b.{0,80}\\b(iletiriz|iletece[gğ]iz|g[oö]ndeririz|g[oö]nderece[gğ]iz)\\b"
+    );
+    private static final Pattern ISO_DATE = Pattern.compile(
+            "(?iu)\\b(20\\d{2})[-/.](\\d{1,2})[-/.](\\d{1,2})\\b"
+    );
     private static final double HIGH_REJECTION_RATIO = 0.65d;
 
     public VerifiedComposition verify(
@@ -79,7 +94,8 @@ public final class GlobalCompositionAuditor {
                 rejected++;
                 continue;
             }
-            GlobalComposition.GlobalCandidate normalized = sanitizeOwner(candidate, evidence, people, segments);
+            GlobalComposition.GlobalCandidate normalized =
+                    sanitizeCandidate(candidate, evidence, people, segments);
             if (!semanticallyGrounded(normalized, evidence)) {
                 rejected++;
                 continue;
@@ -133,23 +149,26 @@ public final class GlobalCompositionAuditor {
                     + "toplant[ıi]|takip|i\\s+will|we\\s+will)"
     );
 
-    private static GlobalComposition.GlobalCandidate sanitizeOwner(
+    private static GlobalComposition.GlobalCandidate sanitizeCandidate(
             GlobalComposition.GlobalCandidate candidate,
             String evidence,
             Set<String> roster,
             List<SegmentInput> segments
     ) {
-        if (candidate.type() != GlobalComposition.CandidateType.ACTION
-                && candidate.type() != GlobalComposition.CandidateType.COMMITMENT) {
-            return candidate;
+        String owner = candidate.ownerCandidate();
+        if (candidate.type() == GlobalComposition.CandidateType.ACTION
+                || candidate.type() == GlobalComposition.CandidateType.COMMITMENT) {
+            owner = resolveOwner(candidate, evidence, roster, segments);
         }
-        String owner = resolveOwner(candidate, evidence, roster, segments);
+        String dueText = candidate.dueDateText();
+        String dueNorm = sanitizeDueDateNormalized(candidate.dueDateNormalized(), dueText, evidence);
         return new GlobalComposition.GlobalCandidate(
                 candidate.type(),
                 candidate.text(),
                 owner,
-                candidate.dueDateText(),
-                candidate.dueDateNormalized(),
+                dueText,
+                dueNorm,
+                candidate.mitigation(),
                 candidate.evidenceSegmentIds(),
                 candidate.source(),
                 candidate.confidence()
@@ -157,8 +176,39 @@ public final class GlobalCompositionAuditor {
     }
 
     /**
-     * Owner priority: grammatical self → first-person speaker → subject-does →
+     * Drop invented calendar years: keep spoken dueDateText, clear dueDateNormalized when the year
+     * is not present in evidence (e.g. "Eylül" must not become 2025-09-01).
+     */
+    static String sanitizeDueDateNormalized(String dueDateNormalized, String dueDateText, String evidence) {
+        String normalized = dueDateNormalized == null ? null : dueDateNormalized.strip();
+        if (normalized == null || normalized.isBlank()) {
+            // Also reject ISO stuffed into dueDateText when year is absent from evidence.
+            if (dueDateText != null) {
+                var iso = ISO_DATE.matcher(dueDateText);
+                if (iso.find() && !evidenceContainsYear(evidence, iso.group(1))) {
+                    return null;
+                }
+            }
+            return null;
+        }
+        var iso = ISO_DATE.matcher(normalized);
+        if (iso.find() && !evidenceContainsYear(evidence, iso.group(1))) {
+            return null;
+        }
+        return normalized;
+    }
+
+    private static boolean evidenceContainsYear(String evidence, String year) {
+        if (evidence == null || year == null || year.isBlank()) {
+            return false;
+        }
+        return evidence.contains(year);
+    }
+
+    /**
+     * Owner priority: grammatical self → first-person / we-forward speaker → subject-does →
      * with-person (speaker owns, mentioned person is collaborator) → candidate if roster → null.
+     * Dative recipients ("X'e iletiriz") are never owners.
      */
     static String resolveOwner(
             GlobalComposition.GlobalCandidate candidate,
@@ -166,34 +216,53 @@ public final class GlobalCompositionAuditor {
             Set<String> roster,
             List<SegmentInput> segments
     ) {
+        String dativeRecipient = dativeRecipient(evidence);
         var grammar = OWNER_GRAMMAR.matcher(evidence);
         if (grammar.find()) {
             String name = grammar.group(1).strip();
-            String resolved = matchRoster(name, roster);
-            if (resolved != null) {
-                return resolved;
+            if (!samePerson(name, dativeRecipient)) {
+                String resolved = matchRoster(name, roster);
+                if (resolved != null) {
+                    return resolved;
+                }
             }
         }
-        if (FIRST_PERSON.matcher(evidence).find() || WITH_PERSON.matcher(evidence).find()) {
+        if (FIRST_PERSON.matcher(evidence).find()
+                || WITH_PERSON.matcher(evidence).find()
+                || WE_FORWARD.matcher(evidence).find()
+                || dativeRecipient != null) {
             String speaker = speakerForEvidence(candidate.evidenceSegmentIds(), segments);
             String resolved = matchRoster(speaker, roster);
-            if (resolved != null) {
+            if (resolved != null && !samePerson(resolved, dativeRecipient)) {
                 return resolved;
             }
-            if (speaker != null && !speaker.isBlank()) {
+            if (speaker != null && !speaker.isBlank() && !samePerson(speaker, dativeRecipient)) {
                 return speaker;
+            }
+            if (dativeRecipient != null) {
+                return null;
             }
         }
         var subject = SUBJECT_DOES.matcher(evidence);
         if (subject.find()) {
             String name = subject.group(1).strip();
-            String resolved = matchRoster(name, roster);
-            if (resolved != null) {
-                return resolved;
+            if (!samePerson(name, dativeRecipient)) {
+                String resolved = matchRoster(name, roster);
+                if (resolved != null) {
+                    return resolved;
+                }
             }
         }
         String candidateOwner = candidate.ownerCandidate();
         if (candidateOwner != null && !candidateOwner.isBlank()) {
+            if (samePerson(candidateOwner, dativeRecipient)) {
+                String speaker = speakerForEvidence(candidate.evidenceSegmentIds(), segments);
+                String resolved = matchRoster(speaker, roster);
+                if (resolved != null) {
+                    return resolved;
+                }
+                return speaker != null && !speaker.isBlank() ? speaker : null;
+            }
             // Collaborator mention must not become owner when first-person/with-person applies.
             if (evidence.toLowerCase(Locale.ROOT).matches("(?s).*\\b(ben|biz)\\b.*")
                     && evidence.toLowerCase(Locale.ROOT).contains("ile")) {
@@ -208,13 +277,50 @@ public final class GlobalCompositionAuditor {
         return null;
     }
 
+    /** Exposed for post-processing owner hints — dative recipients must not become owners. */
+    public static String dativeRecipient(String evidenceOrText) {
+        if (evidenceOrText == null || evidenceOrText.isBlank()) {
+            return null;
+        }
+        var m = DATIVE_RECIPIENT_FORWARD.matcher(evidenceOrText);
+        if (m.find()) {
+            return m.group(1).strip();
+        }
+        return null;
+    }
+
+    public static boolean samePerson(String a, String b) {
+        if (a == null || b == null || a.isBlank() || b.isBlank()) {
+            return false;
+        }
+        String na = a.strip().toLowerCase(Locale.ROOT);
+        String nb = b.strip().toLowerCase(Locale.ROOT);
+        return na.equals(nb) || na.contains(nb) || nb.contains(na);
+    }
+
     private static String speakerForEvidence(List<String> ids, List<SegmentInput> segments) {
+        if (ids == null || ids.isEmpty() || segments == null || segments.isEmpty()) {
+            return null;
+        }
         Set<String> want = new HashSet<>(ids);
+        Set<Integer> sequences = new HashSet<>();
         for (SegmentInput segment : segments) {
-            if (want.contains(segment.segmentId())
-                    && segment.speakerDisplayName() != null
-                    && !segment.speakerDisplayName().isBlank()) {
-                return segment.speakerDisplayName();
+            if (want.contains(segment.segmentId())) {
+                sequences.add(segment.sequence());
+                if (segment.speakerDisplayName() != null && !segment.speakerDisplayName().isBlank()) {
+                    return segment.speakerDisplayName();
+                }
+            }
+        }
+        // Adjacent-turn fallback: cue on evidence id without speaker → nearest ±1 sequence speaker.
+        for (SegmentInput segment : segments) {
+            if (segment.speakerDisplayName() == null || segment.speakerDisplayName().isBlank()) {
+                continue;
+            }
+            for (int seq : sequences) {
+                if (Math.abs(segment.sequence() - seq) == 1) {
+                    return segment.speakerDisplayName();
+                }
             }
         }
         return null;

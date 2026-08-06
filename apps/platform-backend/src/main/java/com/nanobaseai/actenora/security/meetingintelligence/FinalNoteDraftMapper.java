@@ -3,12 +3,14 @@ package com.nanobaseai.actenora.security.meetingintelligence;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.CommitmentCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DecisionCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteAssembler;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.FinalNoteDraft;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ImportantFactCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.IssueCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.OpenQuestionCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ProposalCandidate;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.RiskCandidate;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.TopicCandidate;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.ActionItemCandidateInput;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.AiCandidateBundle;
 import com.nanobaseai.actenora.meetingintelligence.api.dto.CommitmentCandidateInput;
@@ -20,8 +22,11 @@ import com.nanobaseai.actenora.meetingintelligence.api.dto.ProposalCandidateInpu
 import com.nanobaseai.actenora.meetingintelligence.api.dto.RiskCandidateInput;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Maps AI Processing {@link FinalNoteDraft} into Meeting Intelligence candidate DTOs.
@@ -47,11 +52,46 @@ public final class FinalNoteDraftMapper {
                 draft.commitments().stream().map(FinalNoteDraftMapper::commitment).toList(),
                 draft.issues().stream().map(FinalNoteDraftMapper::issue).toList(),
                 draft.proposals().stream().map(FinalNoteDraftMapper::proposal).toList(),
-                draft.importantFacts().stream().map(FinalNoteDraftMapper::importantFact).toList(),
+                discussedTopicsAndFacts(draft),
                 qualityFlags,
                 draft.evidenceSegmentIds(),
                 clamp(draft.confidence())
         );
+    }
+
+    /**
+     * Topics are not a first-class note entity; fold usable agenda topics into importantFacts
+     * so portal minutes can render them under GÖRÜŞÜLEN KONULAR (facts first when agenda empty).
+     */
+    private static List<ImportantFactCandidateInput> discussedTopicsAndFacts(FinalNoteDraft draft) {
+        List<ImportantFactCandidateInput> out = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (TopicCandidate topic : draft.topics()) {
+            if (!FinalNoteAssembler.isUsableTopic(topic)) {
+                continue;
+            }
+            String key = normalizeFactKey(topic.text());
+            if (key.isEmpty() || !seen.add(key)) {
+                continue;
+            }
+            out.add(new ImportantFactCandidateInput(
+                    topic.text().strip(), topic.evidenceSegmentIds(), clamp(topic.confidence())));
+        }
+        for (ImportantFactCandidate fact : draft.importantFacts()) {
+            String key = normalizeFactKey(fact.text());
+            if (key.isEmpty() || !seen.add(key)) {
+                continue;
+            }
+            out.add(importantFact(fact));
+        }
+        return List.copyOf(out);
+    }
+
+    private static String normalizeFactKey(String text) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+        return text.strip().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private static DecisionCandidateInput decision(DecisionCandidate candidate) {

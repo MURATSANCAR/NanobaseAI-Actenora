@@ -182,6 +182,10 @@ public final class VerifiedMinutesRenderer {
         if (!decisions.isBlank()) {
             appendParagraph(sb, "Toplantıda netleşen kararlar: " + decisions);
         }
+        String facts = joinProse(ledger.importantFacts(), f -> f.text());
+        if (!facts.isBlank() && (meetingFrame == null || meetingFrame.text() == null || meetingFrame.text().isBlank())) {
+            appendParagraph(sb, "Görüşülen başlıca konular: " + facts);
+        }
         String actions = joinProse(ledger.actionItems(), a -> {
             String owner = a.owner() == null || a.owner().isBlank() ? "" : a.owner() + " — ";
             return owner + a.text();
@@ -189,7 +193,12 @@ public final class VerifiedMinutesRenderer {
         if (!actions.isBlank()) {
             appendParagraph(sb, "Sonraki adımlar: " + actions);
         }
-        String risks = joinProse(ledger.risks(), r -> r.text());
+        String risks = joinProse(ledger.risks(), r -> {
+            String mitigation = r.mitigation() == null || r.mitigation().isBlank()
+                    ? ""
+                    : " Azaltma: " + r.mitigation().strip();
+            return r.text() + mitigation;
+        });
         if (!risks.isBlank()) {
             appendParagraph(sb, "İzlenmesi gereken riskler: " + risks);
         }

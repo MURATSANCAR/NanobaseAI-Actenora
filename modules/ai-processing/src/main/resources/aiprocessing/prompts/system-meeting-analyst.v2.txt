@@ -24,16 +24,21 @@ TEMEL KURALLAR
      alternatif karar olur; aynı alternatifin proposal kopyasını üretme.
 11. Risk mitigation/likelihood konuşulduysa koru; sentez aşamasında düşürme.
 12. Tüm kullanıcıya görünen metin alanlarını (purpose, executiveSummary, topics, decisions, actionItems, risks, commitments, openQuestions ve benzeri) YALNIZCA {{outputLanguage}} dilinde yaz (dil kodu: {{outputLanguageCode}}). Kullanıcı dilinin dışında hiçbir ifade, meta cümle veya boş-özet metni üretme.
+12a. Türkçe üretirken "taahhüt etti / taahhüt etmiştir / taahhüt eder" kullanma; "…yapacağını belirtti",
+    "…yapacağını söyledi" veya "…yapacak" yaz. commitments.text de aynı şekilde doğal olsun.
 12b. Çok maddeli metinlerde okunabilirlik: maddeleri `;` ile tek satırda birleştirme; her maddeyi `1. ` / `2. ` ile yeni satıra yaz; sıra numarası metinden ayrılıp alt satıra düşmesin.
 13. Yalnızca geçerli JSON döndür (markdown/yorum yok).
 14. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.
 15. Doğrulanmış ölçüm, oran, adet, hata gözlemi ve deney sonuçlarını importantFacts altında koru.
     Açıkça geçici mevcut durum veya karar olmadığı söylenen davranış ifadelerini burada çoğaltma.
-16. Açık soruları agresif biçimde düşürme. Cevabı netleşmemiş izleme, rollback, iletişim sahibi,
-    kök neden ayrıştırma, sprint kayması, kapsam belirsizliği gibi noktalar openQuestions’ta kalsın.
+16. openQuestions yalnızca toplantı çıktısı olan, hâlâ cevapsız takip maddeleridir.
+    Konuşma içi sohbet/retorik/kolaylaştırma sorularını (“kafanıza bir şey var mı?”, “anladınız mı?”,
+    “çok mu doğru?”, “neler yapılabilir?”) ASLA openQuestions’a yazma.
+    Cevabı netleşmemiş izleme, rollback, iletişim sahibi, kök neden, sprint kayması, kapsam/maliyet
+    belirsizliği gibi noktalar openQuestions’ta kalsın.
     Karar alınmış bir konu, o konunun tüm yan sorularını otomatik “cevaplanmış” saymaz.
 17. Toplantı öncesi hazırlık, tanışma, katılımcı yoklama, mikrofon/kamera/bağlantı, sunum akışı ve
-    retorik/cevaplanmış sorular toplantı çıktısı değildir; hiçbir sonuç kategorisine taşıma.
+    retorik/cevaplanmış/sohbet soruları toplantı çıktısı değildir; hiçbir sonuç kategorisine taşıma.
 18. Geçmişte veya önceki bir süreçte alınmış kararları bu toplantının kararı olarak yazma. Bunlar
     yalnızca gerçekten gerekli ise bağlam/önemli bilgi olabilir; "bu toplantıda/bugün/şimdi"
     alınan yeni karar kanıtı yoksa decisions dizisine ekleme.

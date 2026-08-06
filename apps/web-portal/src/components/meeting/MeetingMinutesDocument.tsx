@@ -15,7 +15,9 @@ import {
   parseActionMeta,
   parseCorporateItemId,
   parseSectionContent,
+  displayMinutesDue,
   reviewBannerReasons,
+  shouldOmitEmptyMinutesSection,
   type MinutesDocument,
   type MinutesSection,
   type MinutesSectionType,
@@ -25,11 +27,12 @@ import { collectPersonNames } from "@/lib/personNames";
 import type { TemplateComponentType } from "@/types/template";
 
 const SECTION_TITLE_KEYS: Partial<Record<MinutesSectionType, MessageKey>> = {
+  MEETING_KUNYE: "meeting.minutesSection.MEETING_KUNYE",
   EXECUTIVE_SUMMARY: "backend.templateComponentType.EXECUTIVE_SUMMARY",
-  AGENDA: "backend.templateComponentType.AGENDA",
+  AGENDA: "meeting.minutesSection.AGENDA",
   DECISIONS: "backend.templateComponentType.DECISIONS",
-  ACTIONS: "backend.templateComponentType.ACTIONS",
-  RISKS: "backend.templateComponentType.RISKS",
+  ACTIONS: "meeting.minutesSection.ACTIONS",
+  RISKS: "meeting.minutesSection.RISKS",
   COMMITMENTS: "backend.templateComponentType.COMMITMENTS",
   OPEN_QUESTIONS: "backend.templateComponentType.OPEN_QUESTIONS",
   ISSUES: "meeting.minutesSection.ISSUES",
@@ -197,7 +200,12 @@ export function MeetingMinutesDocument({
       ) : null}
 
       <div className="meeting-note-body">
-        {document.sections.map((section, index) => (
+        {document.sections
+          .filter((section) => {
+            const parsed = parseSectionContent(section.value, section.kind);
+            return !(parsed.empty && shouldOmitEmptyMinutesSection(section.type));
+          })
+          .map((section, index) => (
           <MinutesSectionCard
             key={section.type}
             section={section}
@@ -210,7 +218,7 @@ export function MeetingMinutesDocument({
                 : undefined
             }
           />
-        ))}
+          ))}
       </div>
 
       <div className="relative z-10 px-4 py-3 sm:px-6">
@@ -232,6 +240,7 @@ export function MeetingMinutesDocument({
 
 function isEditableTemplateSection(type: MinutesSectionType): type is TemplateComponentType {
   return (
+    type !== "MEETING_KUNYE" &&
     type !== "PROPOSALS" &&
     type !== "ISSUES" &&
     type !== "NEXT_CHECKPOINT"
@@ -431,7 +440,9 @@ function ActionTable({
                 <td className="px-3 py-2.5 text-slate-800">
                   <HighlightPersonNames text={meta.text} names={personNames} />
                 </td>
-                <td className="px-3 py-2.5 text-slate-700">{meta.due ?? "—"}</td>
+                <td className="px-3 py-2.5 text-slate-700">
+                  {displayMinutesDue(meta.due, t("meeting.minutesDueUnspecified"))}
+                </td>
               </tr>
             );
           })}

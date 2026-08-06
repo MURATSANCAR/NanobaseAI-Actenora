@@ -52,4 +52,26 @@ class QualityEvalPackTest {
         assertTrue(pack.get("qualityFlags").toString().contains("CONSISTENCY_AUDIT_PASSED"));
         assertEquals(noteId.toString(), ((Map<?, ?>) pack.get("ids")).get("noteId"));
     }
+
+    @Test
+    void includesFinalizationProvenanceWhenProvided() {
+        FinalNoteDraft draft = new FinalNoteDraft(
+                "Özet", List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0.5, true
+        );
+        FinalizationProvenance provenance = FinalizationProvenance.from(
+                "COMPOSER", "MANUAL_REVIEW", "COMPOSER_HIGH_EVIDENCE_REJECTION", true, 1, 9L
+        );
+        Map<String, Object> pack = QualityEvalPack.build(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), "model", "pv", "schema", draft, Instant.parse("2026-08-05T00:00:00Z"),
+                provenance
+        );
+        @SuppressWarnings("unchecked")
+        Map<String, Object> fin = (Map<String, Object>) pack.get("finalization");
+        assertEquals("COMPOSER", fin.get("requestedMode"));
+        assertEquals("MANUAL_REVIEW", fin.get("effectiveMode"));
+        assertEquals("COMPOSER_HIGH_EVIDENCE_REJECTION", fin.get("fallbackReason"));
+        assertEquals(true, fin.get("fallbackUsed"));
+    }
 }
