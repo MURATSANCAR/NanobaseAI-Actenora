@@ -59,6 +59,12 @@ nitelenen davranış değişikliği ifadelerini importantFacts'a taşıma.
 Riskte konuşulan mitigation/likelihood varsa mutlaka doldur (ör. "erken smoke", HIGH/MEDIUM/LOW).
 Tüm metin alanlarını yalnızca {{outputLanguage}} dilinde yaz; kullanıcı dilinin dışında ifade üretme.
 ASR/ürün adı: Mayusque/Moyusque → MySQL; konuşma dili “reçete” → gereksinim dokümanı (PRD yazma).
+ASR/finans-AI terimleri (anlamı değiştirme, sadece terimi düzelt): invdiya/invidya → NVIDIA;
+d vaş/devaaş → DWH (veri ambarı); “10 prem”/on prem → on-prem; castateler/cais → use-case;
+corbanking/corben king → core banking; boğa → Boğa (tedarikçi); Fırat → Fırat (işlem izleme/AML);
+çeç/pitu → GPT. BDDK/KVKK aynen kalır.
+Yumuşak Türkçe taahhütleri kaçırma: “…yapacağım/göndereceğim/ayarlayacağım”, “…için toplantı ayarla”,
+“Eylülden sonra/önümüzdeki ay konuşalım”, “…koordine et” → actionItems (owner=konuşmacı, relativeDate aynen).
 candidateId formatı: chunk-{n}-{type}-{seq} (ör. chunk-1-decision-01).
 
 Aşağıdaki JSON şemasında yanıt ver (yalnızca JSON):

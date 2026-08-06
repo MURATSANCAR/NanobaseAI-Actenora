@@ -1,6 +1,7 @@
-Aşağıda toplantının TAM konuşma metni (transcript) ve önceki aşamalardan gelen aday bilgiler var.
-Görevin: adayları TAM TRANSCRIPT'e dayanarak doğrulamak, düzeltmek ve profesyonel bir toplantı
-tutanağı veri modeli üretmek. Aday listesi bir başlangıç noktasıdır; nihai gerçek TRANSCRIPT'tir.
+Aşağıda toplantının katılımcı listesi ve TAM konuşma metni (transcript) ile önceki aşamalardan gelen
+aday bilgiler var. Görevin: adayları TAM TRANSCRIPT'e dayanarak doğrulamak, eksikleri tamamlamak ve
+profesyonel bir toplantı tutanağı veri modeli üretmek. Aday listesi başlangıç noktasıdır; nihai gerçek
+TRANSCRIPT'tir.
 
 MEETING_TITLE: {{meetingTitle}}
 OUTPUT_LANGUAGE: {{outputLanguage}} ({{outputLanguageCode}})
@@ -8,7 +9,7 @@ PRIOR_MEETING_CONTEXT:
 {{priorMeetingContext}}
 ALLOWED_EVIDENCE_IDS: {{evidenceSegmentIds}}
 
-MEETING_TRANSCRIPT (her satır: [segmentId] Konuşmacı: metin):
+KAYNAK (KATILIMCILAR + KONUŞMA):
 {{transcript}}
 
 CANDIDATE_JSON (önceki aşama adayları — doğrulanacak taslak):
@@ -16,25 +17,39 @@ CANDIDATE_JSON (önceki aşama adayları — doğrulanacak taslak):
 
 GROUNDING KURALLARI
 1. Her karar/aksiyon/risk/taahhüt/açık soru/önemli bilgi maddesini TRANSCRIPT'in gerçek sözleriyle
-   karşılaştır. Transcript'te açık dayanağı olmayan adayı SİL. Transcript destekliyorsa koru.
-2. Transcript'te olup adaylarda eksik kalan gerçek karar/aksiyon/taahhüt/riski EKLE (yalnızca
-   TRANSCRIPT'e ve ALLOWED_EVIDENCE_IDS'e dayanarak; kanıt segmenti olmayan madde üretme).
-3. Her maddenin owner/tarih/rakam/karar durumunu transcript'teki ifadeye göre DÜZELT; adaydaki hata
-   varsa transcript esas alınır. Tarih ifadesini konuşmadaki haliyle koru; ISO/yıl uydurma.
-4. evidenceSegmentIds değerlerini gerçek dayanak segment kimlikleriyle doldur (ALLOWED_EVIDENCE_IDS içinden).
-5. Öneri ≠ karar. "Henüz karar değil / bakalım / değerlendirelim" → proposals. Kesin olarak seçilen → decisions.
-6. Status-quo/dolgu ("mevcut kararı değiştirmiyoruz", "yeni karar yok", "sadece bağlam"), toplantı
-   lojistiği (mikrofon/kamera/ekran/tanışma/yoklama), retorik/cevaplanmış sohbet soruları hiçbir
-   çıktı kategorisine girmez — tamamen at.
-7. openQuestions yalnızca toplantı sonunda hâlâ cevapsız, takip gerektiren maddelerdir.
-8. Geçmişte alınmış kararı bu toplantının kararı yapma. "Yanlış hatırlamıyorsam/sanırım/galiba" ile
-   verilen sayıyı kesin bilgi yapma; confidence düşür.
-9. executiveSummary: 3–5 kısa paragraf, TRANSCRIPT'e sadık, doğal ve yönetici seviyesinde; madde
-   numarası/bullet dump yok. En fazla ~180 kelime.
-10. Türkçe dil: "taahhüt etti/etmiştir/eder" yazma; "…yapacağını belirtti / …yapacak" kullan.
-11. Tüm kullanıcıya görünen metinleri YALNIZCA {{outputLanguage}} dilinde yaz.
-12. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.
-13. Yalnızca geçerli JSON döndür (markdown/yorum yok).
+   karşılaştır. Transcript AÇIKÇA ÇELİŞİYORSA sil. Yalnızca "kanıt segmentine tam bağlanamadı" diye
+   silme — transcript destekliyorsa koru.
+2. Transcript'te olup adaylarda eksik kalan gerçek karar/aksiyon/taahhüt/risk/sonraki-adımı EKLE
+   (yalnızca TRANSCRIPT'e dayanarak; kanıtsız madde üretme).
+3. YUMUŞAK TAAHHÜT & SONRAKİ ADIM (recall — çok önemli): Türkçede aksiyonlar çoğu zaman gevşek ifade
+   edilir. Şu kalıpları actionItems veya nextSteps olarak MUTLAKA yakala:
+   - "…yapacağım / göndereceğim / ayarlayacağım / hazırlayacağım / paylaşacağım" (owner = konuşmacı)
+   - "…için bir toplantı ayarla / organize edelim", "…ile görüşelim / konuşalım"
+   - "Eylülden sonra / önümüzdeki ay / bir sonraki toplantıda …" (zaman = relativeDate, aynen koru)
+   - "…koordine et", "…gönderelim / iletelim"
+   Her actionItems.text tek başına anlaşılır olsun (kim + ne + varsa kime/nerede).
+4. owner/tarih/rakam/karar durumunu transcript'teki ifadeye göre DÜZELT; adaydaki hata varsa transcript
+   esas alınır. Tarihi konuşmadaki haliyle koru; ISO/yıl uydurma.
+5. evidenceSegmentIds değerlerini gerçek dayanak segment kimlikleriyle doldur (ALLOWED_EVIDENCE_IDS içinden).
+6. KARAR vs BAĞLAM: Geçmişte / bu toplantıdan ÖNCE alınmış kararları decisions'a YAZMA; bunlar
+   importantFacts'e gider. decisions yalnızca "bu toplantıda/bugün" varılan yeni mutabakatlardır.
+   (Örn. daha önce tamamlanmış tedarikçi/ürün seçimi = importantFacts, bu toplantının kararı değil.)
+7. Öneri ≠ karar. "Henüz karar değil / bakalım / değerlendirelim" → proposals. Kesin seçilen → decisions.
+8. Status-quo/dolgu, toplantı lojistiği (mikrofon/kamera/ekran/tanışma/yoklama), retorik/cevaplanmış
+   sohbet soruları hiçbir çıktı kategorisine girmez — tamamen at.
+9. openQuestions yalnızca toplantı sonunda hâlâ cevapsız, takip gerektiren maddelerdir (ör. netleşmemiş
+   maliyet/bütçe, önceliklendirme, kapsam belirsizliği).
+10. KATILIMCILAR: executiveSummary'nin ilk cümlesinde KATILIMCILAR listesindeki kişileri rolleriyle
+    kısaca belirt. Listede olmayan kişi/rol UYDURMA; yalnızca verilen listeyi kullan.
+11. DİL/ASR normalizasyonu (kullanıcıya görünen metinde doğru terimleri yaz; transcript'te bozuk geçebilir):
+    invdiya/invidya→NVIDIA; d vaş/devaaş/dvaş→DWH (veri ambarı); "10 prem"/on prem→on-prem;
+    castateler/cais/keys→use-case; corbanking/corben king→core banking; boğa→Boğa (tedarikçi);
+    Fırat→Fırat (işlem izleme/AML); çeç/pitu→GPT; BDDK/KVKK aynen. Anlamı değiştirme, sadece terimi düzelt.
+12. Türkçe: "taahhüt etti/etmiştir/eder" yazma; "…yapacağını belirtti / …yapacak" kullan.
+13. executiveSummary: 3–5 kısa paragraf, TRANSCRIPT'e sadık, doğal, yönetici seviyesinde; madde
+    numarası/bullet dump yok. Tüm kullanıcıya görünen metinleri YALNIZCA {{outputLanguage}} dilinde yaz.
+14. confidence: 0.90–1.00 açık; 0.75–0.89 büyük ölçüde açık; 0.50–0.74 dolaylı; <0.50 sunma/manuel inceleme.
+15. Yalnızca geçerli JSON döndür (markdown/yorum yok).
 
 Yalnızca şu JSON'u döndür:
 {
