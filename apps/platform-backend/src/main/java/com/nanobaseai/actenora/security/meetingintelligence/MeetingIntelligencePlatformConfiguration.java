@@ -317,7 +317,7 @@ public class MeetingIntelligencePlatformConfiguration {
                     "${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai/easymeeting}")
                     String portalBaseUrl,
             @org.springframework.beans.factory.annotation.Value(
-                    "${actenora.delivery.draft-minutes-ready.additional-recipients:muratsancar@nanobase.ai}")
+                    "${actenora.delivery.draft-minutes-ready.additional-recipients:}")
                     String additionalDraftRecipients
     ) {
         return new MeetingIntelligenceHandoffAdapter(
