@@ -76,6 +76,23 @@ public final class PersonIdentityNormalizer {
         return raw == null || raw.isBlank() || GENERIC_SPEAKER.matcher(raw.strip()).matches();
     }
 
+    /**
+     * Soft person match for dedupe / alias compare: exact identity key, or unique
+     * short↔full first-token equivalence (e.g. {@code Murat} ≈ {@code Murat Sancar}).
+     */
+    public static boolean softMatch(String left, String right) {
+        String leftKey = identityKey(left);
+        String rightKey = identityKey(right);
+        if (leftKey.isBlank() || rightKey.isBlank()) {
+            return false;
+        }
+        if (leftKey.equals(rightKey)) {
+            return true;
+        }
+        boolean shortForm = tokenCount(leftKey) == 1 || tokenCount(rightKey) == 1;
+        return shortForm && tokenEquivalent(firstToken(leftKey), firstToken(rightKey));
+    }
+
     public static Optional<String> resolveUnique(String candidate, Collection<String> roster) {
         String candidateKey = identityKey(candidate);
         if (candidateKey.isBlank() || roster == null || roster.isEmpty()) {

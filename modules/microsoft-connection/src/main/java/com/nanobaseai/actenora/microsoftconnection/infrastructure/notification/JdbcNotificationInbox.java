@@ -35,22 +35,39 @@ public final class JdbcNotificationInbox implements NotificationInbox {
         String consumer = consumerName.trim();
         String notification = notificationId.trim();
         Boolean claimed = jdbc.execute((ConnectionCallback<Boolean>) connection -> {
-            Savepoint savepoint = connection.setSavepoint("graph_notification_claim");
-            try (PreparedStatement ps = connection.prepareStatement("""
-                    INSERT INTO microsoftconnection.notification_inbox (consumer_name, notification_id)
-                    VALUES (?, ?)
-                    """)) {
-                ps.setString(1, consumer);
-                ps.setString(2, notification);
-                ps.executeUpdate();
-                connection.releaseSavepoint(savepoint);
-                return true;
-            } catch (SQLException ex) {
-                connection.rollback(savepoint);
-                if (isUniqueViolation(ex)) {
-                    return false;
+            boolean restoreAutoCommit = false;
+            if (connection.getAutoCommit()) {
+                connection.setAutoCommit(false);
+                restoreAutoCommit = true;
+            }
+            try {
+                Savepoint savepoint = connection.setSavepoint("graph_notification_claim");
+                try (PreparedStatement ps = connection.prepareStatement("""
+                        INSERT INTO microsoftconnection.notification_inbox (consumer_name, notification_id)
+                        VALUES (?, ?)
+                        """)) {
+                    ps.setString(1, consumer);
+                    ps.setString(2, notification);
+                    ps.executeUpdate();
+                    connection.releaseSavepoint(savepoint);
+                    if (restoreAutoCommit) {
+                        connection.commit();
+                    }
+                    return true;
+                } catch (SQLException ex) {
+                    connection.rollback(savepoint);
+                    if (restoreAutoCommit) {
+                        connection.commit();
+                    }
+                    if (isUniqueViolation(ex)) {
+                        return false;
+                    }
+                    throw ex;
                 }
-                throw ex;
+            } finally {
+                if (restoreAutoCommit) {
+                    connection.setAutoCommit(true);
+                }
             }
         });
         return Boolean.TRUE.equals(claimed);

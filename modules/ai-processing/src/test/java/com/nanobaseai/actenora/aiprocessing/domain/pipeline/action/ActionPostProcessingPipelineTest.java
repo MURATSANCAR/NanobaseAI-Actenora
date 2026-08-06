@@ -309,6 +309,57 @@ class ActionPostProcessingPipelineTest {
     }
 
     @Test
+    void ownedAndBlankNearDuplicatesMergeKeepingOwner() {
+        var dedup = deduplicator.deduplicate(List.of(
+                action("WhatsApp grubu oluşturulacak.", "Murat Sancar", List.of("seg-wa")),
+                action("WhatsApp grubunu oluşturmak ve hızlıca yazışmak.", null, List.of("seg-wa"))
+        ));
+        assertEquals(1, dedup.actions().size());
+        assertEquals(1, dedup.removed());
+        assertEquals(
+                "Murat Sancar",
+                requireActionContaining(dedup.actions(), "WhatsApp").owner()
+        );
+    }
+
+    @Test
+    void shortAndFullOwnerAliasesMergePreferringFullerDisplay() {
+        var dedup = deduplicator.deduplicate(List.of(
+                action("Analiz dokümanını paylaşacak.", "Murat", List.of("seg-an")),
+                action("Analiz dokümanını paylaşma işini tamamlayacak.", "Murat Sancar", List.of("seg-an"))
+        ));
+        assertEquals(1, dedup.actions().size());
+        assertEquals(
+                "Murat Sancar",
+                requireActionContaining(dedup.actions(), "Analiz").owner()
+        );
+    }
+
+    @Test
+    void blankOwnerPrefersAssigneeCueInTextOverEvidenceNarrator() {
+        ActionItemCandidate in = action(
+                "Murat, ERP panelini gösterecek.",
+                null,
+                List.of("s3")
+        );
+        var result = pipeline.postProcess(
+                List.of(in),
+                List.of(),
+                new ActionPostProcessingPipeline.Context(
+                        segments(),
+                        Set.of("Murat Sancar", "Burak", "Can", "Selin"),
+                        MEETING_START,
+                        IST,
+                        "meeting-owner-cue"
+                )
+        );
+        assertEquals(
+                "Murat Sancar",
+                requireActionContaining(result.actions(), "ERP paneli").owner()
+        );
+    }
+
+    @Test
     void sameOwnerDifferentActionsAreNotDeduplicated() {
         var dedup = deduplicator.deduplicate(List.of(
                 action("Correlation ID ekleyecek.", "Can", List.of("s1")),

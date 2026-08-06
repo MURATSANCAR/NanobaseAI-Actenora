@@ -53,4 +53,12 @@ class PersonIdentityNormalizerTest {
                 List.of("Ali", "Ali BAĞATIR", "Ali Yılmaz"))
                 .size());
     }
+
+    @Test
+    void softMatchEquatesShortAndFullNamesButNotDistinctPeople() {
+        assertTrue(PersonIdentityNormalizer.softMatch("Murat", "Murat Sancar"));
+        assertTrue(PersonIdentityNormalizer.softMatch("Murat Sancar", "murat.sancar@example.com"));
+        assertTrue(!PersonIdentityNormalizer.softMatch("Burak", "Murat"));
+        assertTrue(!PersonIdentityNormalizer.softMatch("Can", "Selin"));
+    }
 }

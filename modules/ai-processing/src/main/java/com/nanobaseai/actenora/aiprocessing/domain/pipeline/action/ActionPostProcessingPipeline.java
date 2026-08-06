@@ -599,18 +599,19 @@ public final class ActionPostProcessingPipeline {
                 continue;
             }
             if (owner == null || owner.isBlank()) {
-                String evidenceSpeaker = firstEvidenceSpeakerName(action, segments);
-                String fromEvidence = resolveOwnerToParticipant(evidenceSpeaker, participants);
-                if (fromEvidence != null) {
-                    stats.incrementOwnersBound();
-                    out.add(action.withOwner(fromEvidence));
-                    continue;
-                }
+                // Prefer assignee cue in the action text over evidence narrator.
                 String fromText = ownerHintFromActionText(action.text());
                 String boundFromText = resolveOwnerToParticipant(fromText, participants);
                 if (boundFromText != null) {
                     stats.incrementOwnersBound();
                     out.add(action.withOwner(boundFromText));
+                    continue;
+                }
+                String evidenceSpeaker = firstEvidenceSpeakerName(action, segments);
+                String fromEvidence = resolveOwnerToParticipant(evidenceSpeaker, participants);
+                if (fromEvidence != null) {
+                    stats.incrementOwnersBound();
+                    out.add(action.withOwner(fromEvidence));
                     continue;
                 }
                 out.add(action);

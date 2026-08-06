@@ -113,6 +113,8 @@ actenora:
       # Explicit opt-in: artifacts contain meeting content and require an access-controlled volume.
       enabled: ${ACTENORA_AI_EVAL_EXPORT_ENABLED:false}
       root: ${ACTENORA_AI_EVAL_EXPORT_ROOT:./var/eval-artifacts}
+      # Operator prune window for scripts/ops/verify-eval-export-dir.sh (export stays off by default).
+      retention-days: ${ACTENORA_AI_EVAL_EXPORT_RETENTION_DAYS:30}
     provider:
       # offline (local only) | nanobaseai — public surfaces never expose third-party stack names
       # offline/mock = MockLocalProvider. nanobaseai = OpenAI-compatible chat/completions at base-url.

@@ -57,6 +57,7 @@ services:
       ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID: ${ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID:-nanobase-qwen36-35b-a3b-mtp}
       ACTENORA_AI_EVAL_EXPORT_ENABLED: ${ACTENORA_AI_EVAL_EXPORT_ENABLED:-false}
       ACTENORA_AI_EVAL_EXPORT_ROOT: /app/var/eval-artifacts
+      ACTENORA_AI_EVAL_EXPORT_RETENTION_DAYS: ${ACTENORA_AI_EVAL_EXPORT_RETENTION_DAYS:-30}
       # legacy = monolithic ExtractionPipelineService (proven quality on 35B);
       # staged = DAG (NORMALIZE→TRIAGE→EXTRACT…) — EXTRACT JSON still flaky on CPU.
       ACTENORA_AI_PIPELINE_MODE: ${ACTENORA_AI_PIPELINE_MODE:-legacy}
@@ -99,6 +100,9 @@ services:
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
       MAIL_SMTP_STARTTLS_ENABLE: ${MAIL_SMTP_STARTTLS_ENABLE:-false}
       MAIL_SMTP_SSL_ENABLE: ${MAIL_SMTP_SSL_ENABLE:-false}
+    volumes:
+      # Explicit: portal override must keep the eval mount (export stays off until ACL verified).
+      - ${ACTENORA_AI_EVAL_EXPORT_HOST_ROOT:-../../artifacts/eval/runtime}:/app/var/eval-artifacts
 
 networks:
   nanobase-ai-gateway:

@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.aiprocessing.domain.pipeline.action;
 
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ActionItemCandidate;
+import com.nanobaseai.actenora.sharedkernel.domain.PersonIdentityNormalizer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -154,9 +155,7 @@ public final class ActionDeduplicator {
         ActionItemCandidate primary = prefer(a, b);
         ActionItemCandidate secondary = primary == a ? b : a;
         String text = preferText(primary, secondary);
-        String owner = primary.owner() != null && !primary.owner().isBlank()
-                ? primary.owner()
-                : secondary.owner();
+        String owner = preferOwnerDisplay(primary.owner(), secondary.owner());
         String dueDate = firstNonBlank(primary.dueDate(), secondary.dueDate());
         String relative = firstNonBlank(primary.relativeDate(), secondary.relativeDate());
         String dueAt = firstNonBlank(primary.dueAt(), secondary.dueAt());
@@ -232,24 +231,54 @@ public final class ActionDeduplicator {
         return identity.canonicalCore(p).length() >= identity.canonicalCore(s).length() ? p : s;
     }
 
+    private String preferOwnerDisplay(String left, String right) {
+        boolean leftBlank = left == null || left.isBlank();
+        boolean rightBlank = right == null || right.isBlank();
+        if (leftBlank) {
+            return right;
+        }
+        if (rightBlank) {
+            return left;
+        }
+        if (!PersonIdentityNormalizer.softMatch(left, right)) {
+            return left;
+        }
+        String leftKey = PersonIdentityNormalizer.identityKey(left);
+        String rightKey = PersonIdentityNormalizer.identityKey(right);
+        int leftTokens = leftKey.isBlank() ? 0 : leftKey.split("\\s+").length;
+        int rightTokens = rightKey.isBlank() ? 0 : rightKey.split("\\s+").length;
+        if (rightTokens > leftTokens) {
+            return right;
+        }
+        if (leftTokens > rightTokens) {
+            return left;
+        }
+        return left.length() >= right.length() ? left : right;
+    }
+
     static boolean looksCompound(String text) {
         return text != null && text.contains(";");
     }
 
     /**
-     * Owners match when equal. Both blank also match so near-duplicates without roster
-     * binding (unattributed transcripts) can still be merged by core + evidence.
+     * Owners match when equal (including soft short↔full name). A blank {@code owner}
+     * field is compatible with a filled one so LLM+cue near-duplicates can merge;
+     * {@link #merge} keeps the non-blank / fuller display. Distinct filled owners never match.
+     * Uses the raw owner field for blankness so text-embedded product names are not treated
+     * as owners via {@link ActionIdentityNormalizer#canonicalOwner}.
      */
     boolean sameOwner(ActionItemCandidate a, ActionItemCandidate b) {
-        String left = identity.canonicalOwner(a);
-        String right = identity.canonicalOwner(b);
-        if (left.isBlank() && right.isBlank()) {
+        boolean leftBlank = a.owner() == null || a.owner().isBlank();
+        boolean rightBlank = b.owner() == null || b.owner().isBlank();
+        if (leftBlank || rightBlank) {
             return true;
         }
-        if (left.isBlank() || right.isBlank()) {
-            return false;
+        String left = identity.canonicalOwner(a);
+        String right = identity.canonicalOwner(b);
+        if (left.equals(right)) {
+            return true;
         }
-        return left.equals(right);
+        return PersonIdentityNormalizer.softMatch(left, right);
     }
 
     public static boolean evidenceOverlap(List<String> a, List<String> b) {
