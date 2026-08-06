@@ -650,6 +650,10 @@ public class PortalApiController {
     ) {
         require(Permission.MEETING_READ);
         meetingApi.getMeeting(meetingId);
+        List<String> participantRoster = meetingApi.listParticipants(meetingId).stream()
+                .map(ParticipantResponse::displayName)
+                .filter(Objects::nonNull)
+                .toList();
         if (transcriptApi.isEmpty()) {
             markStub(response);
             return new TranscriptView(List.of(), List.of());
@@ -672,8 +676,9 @@ public class PortalApiController {
                         .toList();
             }
             List<String> speakers = transcriptApi.get().listSpeakersForMeeting(principalTenantId(), meetingId);
-            List<Map<String, Object>> segmentPayload =
-                    segments.stream().map(PortalApiController::toTranscriptSegment).toList();
+            List<Map<String, Object>> segmentPayload = segments.stream()
+                    .map(segment -> toTranscriptSegment(segment, participantRoster))
+                    .toList();
             return new TranscriptView(segmentPayload, speakers);
         } catch (TranscriptDomainException ex) {
             if ("TRANSCRIPT_NOT_FOUND".equals(ex.code())) {
@@ -683,14 +688,22 @@ public class PortalApiController {
         }
     }
 
-    private static Map<String, Object> toTranscriptSegment(TranscriptSegmentView segment) {
+    private static Map<String, Object> toTranscriptSegment(
+            TranscriptSegmentView segment,
+            List<String> participantRoster
+    ) {
+        SpeakerConfidenceAssessment.Result speaker =
+                SpeakerConfidenceAssessment.assess(segment.speaker(), participantRoster);
         return Map.of(
                 "id", segment.id(),
                 "speaker", segment.speaker(),
                 "text", segment.text(),
                 "startMs", segment.startMs(),
                 "endMs", segment.endMs(),
-                "markers", segment.markers()
+                "markers", segment.markers(),
+                "speakerResolutionStatus", speaker.status(),
+                "speakerConfidence", speaker.confidence(),
+                "speakerReviewRequired", speaker.reviewRequired()
         );
     }
 

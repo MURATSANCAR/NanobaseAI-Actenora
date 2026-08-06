@@ -15,8 +15,21 @@ public final class InMemoryTranscriptPollWorkStore implements TranscriptPollWork
     private final Map<String, MutableWork> work = new ConcurrentHashMap<>();
 
     @Override
-    public void enqueue(UUID tenantId, UUID meetingOccurrenceId, Instant now) {
-        work.putIfAbsent(key(tenantId, meetingOccurrenceId), new MutableWork(tenantId, meetingOccurrenceId, now));
+    public synchronized void enqueue(UUID tenantId, UUID meetingOccurrenceId, Instant now) {
+        String key = key(tenantId, meetingOccurrenceId);
+        MutableWork existing = work.get(key);
+        if (existing == null) {
+            work.put(key, new MutableWork(tenantId, meetingOccurrenceId, now));
+            return;
+        }
+        if ("COMPLETED".equals(existing.status)) {
+            existing.status = "PENDING";
+            existing.attemptCount = 0;
+            existing.nextAttemptAt = now;
+            existing.claimedAt = null;
+            existing.failureCode = null;
+            existing.updatedAt = now;
+        }
     }
 
     @Override

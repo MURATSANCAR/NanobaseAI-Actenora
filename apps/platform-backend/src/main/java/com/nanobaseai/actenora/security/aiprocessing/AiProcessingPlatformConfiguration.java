@@ -226,8 +226,11 @@ public class AiProcessingPlatformConfiguration {
     }
 
     @Bean
-    TranscriptSegmentSourcePort transcriptSegmentSource(TranscriptSegmentRepository segments) {
-        return new TranscriptSegmentSourceAdapter(segments);
+    TranscriptSegmentSourcePort transcriptSegmentSource(
+            TranscriptSegmentRepository segments,
+            com.nanobaseai.actenora.transcript.application.port.out.TenantDictionaryRepository dictionaries
+    ) {
+        return new TranscriptSegmentSourceAdapter(segments, dictionaries);
     }
 
     @Bean(name = "singleModelRuntimePort")

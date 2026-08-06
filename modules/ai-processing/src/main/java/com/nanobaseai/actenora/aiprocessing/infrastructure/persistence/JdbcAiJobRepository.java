@@ -190,6 +190,23 @@ public class JdbcAiJobRepository implements AiJobRepository {
     }
 
     @Override
+    public Optional<AiJob> findActiveByMeetingAndCapability(
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability capability
+    ) {
+        String sql = "SELECT " + COLUMNS + """
+                 FROM aiprocessing.ai_jobs
+                 WHERE tenant_id = ? AND meeting_occurrence_id = ? AND requested_capability = ?
+                   AND status IN ('QUEUED', 'RUNNING')
+                 ORDER BY queued_at ASC
+                 LIMIT 1
+                """;
+        return jdbc.query(sql, ROW_MAPPER, tenantId, meetingOccurrenceId, capability.name())
+                .stream().findFirst();
+    }
+
+    @Override
     public List<AiJob> findByStatus(AiJobStatus status) {
         String sql = "SELECT " + COLUMNS + " FROM aiprocessing.ai_jobs WHERE status = ?";
         return jdbc.query(sql, ROW_MAPPER, status.name());

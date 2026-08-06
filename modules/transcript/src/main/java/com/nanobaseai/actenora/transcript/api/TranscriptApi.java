@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.transcript.api;
 
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.sharedkernel.domain.PersonIdentityNormalizer;
 import com.nanobaseai.actenora.sharedkernel.port.storage.AuthorizedUrl;
 import com.nanobaseai.actenora.transcript.api.dto.TranscriptCommandResponse;
 import com.nanobaseai.actenora.transcript.api.dto.TranscriptDownloadAuthorizationResponse;
@@ -169,6 +170,23 @@ public class TranscriptApi {
                 .map(TranscriptSegmentView::speaker)
                 .distinct()
                 .toList();
+    }
+
+    /**
+     * True only when the latest processable transcript contains at least one real
+     * speaker label. Generic ASR placeholders must not stop attribution re-polling.
+     */
+    public boolean hasSpeakerAttributionForMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
+        try {
+            return listSegmentsForMeeting(tenantId, meetingOccurrenceId).stream()
+                    .map(TranscriptSegmentView::speaker)
+                    .anyMatch(speaker -> !PersonIdentityNormalizer.isGenericSpeakerLabel(speaker));
+        } catch (TranscriptDomainException ex) {
+            if ("TRANSCRIPT_NOT_FOUND".equals(ex.code())) {
+                return false;
+            }
+            throw ex;
+        }
     }
 
     public TranscriptDownloadAuthorizationResponse authorizeDownload(

@@ -26,7 +26,11 @@ public final class JdbcTranscriptPollWorkStore implements TranscriptPollWorkStor
                     tenant_id, meeting_occurrence_id, status, attempt_count,
                     next_attempt_at, created_at, updated_at
                 ) VALUES (?, ?, 'PENDING', 0, ?, ?, ?)
-                ON CONFLICT (tenant_id, meeting_occurrence_id) DO NOTHING
+                ON CONFLICT (tenant_id, meeting_occurrence_id) DO UPDATE
+                SET status = 'PENDING', attempt_count = 0, next_attempt_at = EXCLUDED.next_attempt_at,
+                    claimed_at = NULL, completed_at = NULL, failure_code = NULL,
+                    updated_at = EXCLUDED.updated_at
+                WHERE microsoftconnection.transcript_poll_work.status = 'COMPLETED'
                 """,
                 tenantId, meetingOccurrenceId, Timestamp.from(now), Timestamp.from(now), Timestamp.from(now));
     }

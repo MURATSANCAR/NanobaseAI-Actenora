@@ -27,6 +27,7 @@ import com.nanobaseai.actenora.meetingintelligence.domain.validation.ValidationP
 import com.nanobaseai.actenora.security.notification.PlatformUserNotificationPublisher;
 import com.nanobaseai.actenora.sharedkernel.domain.PersonIdentityNormalizer;
 import com.nanobaseai.actenora.sharedkernel.domain.TenantId;
+import com.nanobaseai.actenora.transcript.api.TranscriptApi;
 import org.springframework.beans.factory.ObjectProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,7 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
     private final java.util.function.Supplier<MeetingNoteApprovalService> noteApprovalService;
     private final String portalBaseUrl;
     private final List<String> additionalDraftRecipients;
+    private final Optional<TranscriptApi> transcriptApi;
 
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Istanbul");
 
@@ -201,6 +203,26 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
             String portalBaseUrl,
             List<String> additionalDraftRecipients
     ) {
+        this(meetingIntelligenceApi, evidenceValidationApi, segmentSource, auditPort, meetingApi,
+                noteArtifactStorage, notificationPublisher, deliveryApi, deliveryWorker,
+                noteApprovalService, portalBaseUrl, additionalDraftRecipients, Optional.empty());
+    }
+
+    public MeetingIntelligenceHandoffAdapter(
+            MeetingIntelligenceApi meetingIntelligenceApi,
+            EvidenceValidationApi evidenceValidationApi,
+            TranscriptSegmentSourcePort segmentSource,
+            MeetingIntelligenceAuditPort auditPort,
+            Optional<MeetingApi> meetingApi,
+            NoteArtifactStoragePort noteArtifactStorage,
+            Optional<PlatformUserNotificationPublisher> notificationPublisher,
+            Optional<DeliveryApi> deliveryApi,
+            Optional<DeliveryWorker> deliveryWorker,
+            java.util.function.Supplier<MeetingNoteApprovalService> noteApprovalService,
+            String portalBaseUrl,
+            List<String> additionalDraftRecipients,
+            Optional<TranscriptApi> transcriptApi
+    ) {
         this.meetingIntelligenceApi = Objects.requireNonNull(meetingIntelligenceApi, "meetingIntelligenceApi");
         this.evidenceValidationApi = Objects.requireNonNull(evidenceValidationApi, "evidenceValidationApi");
         this.segmentSource = Objects.requireNonNull(segmentSource, "segmentSource");
@@ -215,11 +237,27 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
                 ? "https://portal.nanobase.ai/easymeeting"
                 : portalBaseUrl.trim();
         this.additionalDraftRecipients = normalizeEmails(additionalDraftRecipients);
+        this.transcriptApi = transcriptApi == null ? Optional.empty() : transcriptApi;
     }
 
     @Override
     public Optional<UUID> handoff(HandoffCommand command) {
         Objects.requireNonNull(command, "command");
+
+        if (isStaleTranscript(command)) {
+            auditPort.record(
+                    command.tenantId(),
+                    "system:ai-handoff",
+                    "STALE_TRANSCRIPT_HANDOFF_DROPPED",
+                    "MeetingOccurrence",
+                    command.meetingOccurrenceId(),
+                    Map.of("jobId", command.jobId().toString(),
+                            "transcriptId", command.transcriptId().toString()),
+                    Instant.now());
+            log.warn("Dropped stale AI handoff meetingId={} transcriptId={} jobId={}",
+                    command.meetingOccurrenceId(), command.transcriptId(), command.jobId());
+            return Optional.empty();
+        }
 
         reconcileTranscriptAttendance(command);
         ValidationExecutionResult validation = runValidation(command);
@@ -268,6 +306,14 @@ public final class MeetingIntelligenceHandoffAdapter implements MeetingNoteHando
         notifyDraftInApp(command, note);
         openApprovalIfActive(command, note);
         return Optional.of(note.id());
+    }
+
+    private boolean isStaleTranscript(HandoffCommand command) {
+        return transcriptApi
+                .flatMap(api -> api.latestProcessableTranscriptIdForMeeting(
+                        TenantId.of(command.tenantId()), command.meetingOccurrenceId()))
+                .filter(latest -> !latest.equals(command.transcriptId()))
+                .isPresent();
     }
 
     /**

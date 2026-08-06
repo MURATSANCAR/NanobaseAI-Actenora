@@ -99,7 +99,9 @@ public class MicrosoftConnectionPlatformConfiguration {
             FixedTenantContext fixedTenantContext,
             SubscriptionStore subscriptionStore,
             MicrosoftGraphSpringProperties graphProperties,
-            MeetingAttendanceSyncService meetingAttendanceSyncService
+            MeetingAttendanceSyncService meetingAttendanceSyncService,
+            @Value("${actenora.ai.eval-export.enabled:false}") boolean evalExportEnabled,
+            @Value("${actenora.ai.eval-export.root:./var/eval-artifacts}") String evalExportRoot
     ) {
         return new TeamsTranscriptIngestService(
                 microsoftConnectionApi,
@@ -108,7 +110,10 @@ public class MicrosoftConnectionPlatformConfiguration {
                 fixedTenantContext,
                 subscriptionStore,
                 graphProperties.getDefaultMailboxUserId(),
-                meetingAttendanceSyncService
+                meetingAttendanceSyncService,
+                evalExportEnabled
+                        ? new FilesystemTranscriptEvalExportSink(java.nio.file.Path.of(evalExportRoot))
+                        : TranscriptEvalExportSink.noop()
         );
     }
 
@@ -127,7 +132,8 @@ public class MicrosoftConnectionPlatformConfiguration {
             @Value("${actenora.microsoft-graph.transcript-poll-stale-claim:PT15M}") Duration staleClaim,
             @Value("${actenora.microsoft-graph.transcript-poll-batch-size:50}") int batchSize,
             @Value("${actenora.microsoft-graph.transcript-poll-backoff-base:PT1M}") Duration backoffBase,
-            @Value("${actenora.microsoft-graph.transcript-poll-backoff-cap:PT1H}") Duration backoffCap
+            @Value("${actenora.microsoft-graph.transcript-poll-backoff-cap:PT1H}") Duration backoffCap,
+            @Value("${actenora.microsoft-graph.transcript-attribution-recheck-window:P30D}") Duration attributionRecheckWindow
     ) {
         return new TeamsTranscriptPollScheduler(
                 teamsTranscriptIngestService,
@@ -141,7 +147,8 @@ public class MicrosoftConnectionPlatformConfiguration {
                 maxAge,
                 staleClaim,
                 batchSize,
-                observability
+                observability,
+                attributionRecheckWindow
         );
     }
 

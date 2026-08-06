@@ -208,6 +208,9 @@ export interface TranscriptSegment {
   startMs: number;
   endMs: number;
   markers: MarkerKind[];
+  speakerResolutionStatus: "RESOLVED_ROSTER" | "RESOLVED_ALIAS" | "UNRESOLVED" | "MISSING";
+  speakerConfidence: number;
+  speakerReviewRequired: boolean;
 }
 
 export interface TranscriptResponse {

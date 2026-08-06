@@ -32,7 +32,8 @@ class TranscriptPollWorkStoreTest {
 
         store.complete(tenantId, meetingId, now.plusSeconds(60));
         store.enqueue(tenantId, meetingId, now.plusSeconds(120));
-        assertEquals(0, store.countPending());
+        assertEquals(1, store.countPending());
+        assertEquals(1, store.claimDue(now.plusSeconds(120), 10, Duration.ofMinutes(15)).size());
     }
 
     @Test

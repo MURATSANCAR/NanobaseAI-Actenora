@@ -1,6 +1,7 @@
 package com.nanobaseai.actenora.aiprocessing.infrastructure.persistence;
 
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository;
+import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactExportSink;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingArtifact;
 import com.nanobaseai.actenora.sharedkernel.persistence.jdbc.JdbcInstant;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,14 +29,23 @@ public final class JdbcProcessingArtifactRepository implements ProcessingArtifac
     );
 
     private final JdbcTemplate jdbc;
+    private final ProcessingArtifactExportSink exportSink;
 
     public JdbcProcessingArtifactRepository(JdbcTemplate jdbcTemplate) {
+        this(jdbcTemplate, ProcessingArtifactExportSink.noop());
+    }
+
+    public JdbcProcessingArtifactRepository(
+            JdbcTemplate jdbcTemplate,
+            ProcessingArtifactExportSink exportSink
+    ) {
         this.jdbc = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate");
+        this.exportSink = Objects.requireNonNull(exportSink, "exportSink");
     }
 
     @Override
     public void save(ProcessingArtifact artifact) {
-        jdbc.update(
+        int inserted = jdbc.update(
                 """
                         INSERT INTO aiprocessing.processing_artifact (
                             id, tenant_id, job_id, meeting_occurrence_id, artifact_type,
@@ -55,6 +65,9 @@ public final class JdbcProcessingArtifactRepository implements ProcessingArtifac
                 artifact.payloadJson().orElse(null),
                 JdbcInstant.toTimestamp(artifact.createdAt())
         );
+        if (inserted == 1) {
+            exportSink.export(artifact);
+        }
     }
 
     @Override

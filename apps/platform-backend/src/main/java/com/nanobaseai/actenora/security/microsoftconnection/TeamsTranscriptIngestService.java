@@ -37,6 +37,7 @@ public final class TeamsTranscriptIngestService {
     private final String defaultMailboxUserId;
     private final SubscriptionStore subscriptionStore;
     private final MeetingAttendanceSyncService attendanceSyncService;
+    private final TranscriptEvalExportSink evalExportSink;
 
     public TeamsTranscriptIngestService(
             MicrosoftConnectionApi microsoftConnectionApi,
@@ -47,6 +48,20 @@ public final class TeamsTranscriptIngestService {
             String defaultMailboxUserId,
             MeetingAttendanceSyncService attendanceSyncService
     ) {
+        this(microsoftConnectionApi, transcriptApi, meetingApi, tenantContext, subscriptionStore,
+                defaultMailboxUserId, attendanceSyncService, TranscriptEvalExportSink.noop());
+    }
+
+    public TeamsTranscriptIngestService(
+            MicrosoftConnectionApi microsoftConnectionApi,
+            TranscriptApi transcriptApi,
+            MeetingApi meetingApi,
+            FixedTenantContext tenantContext,
+            SubscriptionStore subscriptionStore,
+            String defaultMailboxUserId,
+            MeetingAttendanceSyncService attendanceSyncService,
+            TranscriptEvalExportSink evalExportSink
+    ) {
         this.microsoftConnectionApi = Objects.requireNonNull(microsoftConnectionApi);
         this.transcriptApi = Objects.requireNonNull(transcriptApi);
         this.meetingApi = Objects.requireNonNull(meetingApi);
@@ -54,6 +69,7 @@ public final class TeamsTranscriptIngestService {
         this.subscriptionStore = Objects.requireNonNull(subscriptionStore);
         this.defaultMailboxUserId = defaultMailboxUserId;
         this.attendanceSyncService = Objects.requireNonNull(attendanceSyncService);
+        this.evalExportSink = Objects.requireNonNull(evalExportSink);
     }
 
     public PollResult pollMeeting(TenantId tenantId, UUID meetingOccurrenceId) {
@@ -93,6 +109,13 @@ public final class TeamsTranscriptIngestService {
                 ref.transcriptId(),
                 content.get().body(),
                 null);
+        try {
+            evalExportSink.export(
+                    tenantId, meetingOccurrenceId, uploaded.transcriptId(), content.get().body());
+        } catch (RuntimeException ex) {
+            log.warn("Transcript eval export failed meetingId={} transcriptId={}: {}",
+                    meetingOccurrenceId, uploaded.transcriptId(), ex.getMessage());
+        }
         log.info(
                 "Teams transcript ingested meetingId={} transcriptId={} duplicate={}",
                 meetingOccurrenceId,

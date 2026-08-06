@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.AiJobRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingJobDependencyRepository;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 
 import java.time.Instant;
@@ -75,6 +76,20 @@ public final class InMemoryAiJobRepository implements AiJobRepository {
                 .filter(job -> job.transcriptId().equals(transcriptId))
                 .filter(job -> job.taskType().equals(taskType))
                 .max(Comparator.comparing(AiJob::queuedAt));
+    }
+
+    @Override
+    public Optional<AiJob> findActiveByMeetingAndCapability(
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            AiCapability capability
+    ) {
+        return store.values().stream()
+                .filter(job -> job.tenantId().equals(tenantId))
+                .filter(job -> job.meetingOccurrenceId().equals(meetingOccurrenceId))
+                .filter(job -> job.requestedCapability() == capability)
+                .filter(job -> job.status().isActive())
+                .min(Comparator.comparing(AiJob::queuedAt));
     }
 
     @Override

@@ -7,6 +7,9 @@ export interface SegmentLike {
   startMs: number;
   endMs: number;
   markers?: string[];
+  speakerResolutionStatus?: string;
+  speakerConfidence?: number;
+  speakerReviewRequired?: boolean;
 }
 
 /** Consecutive same-speaker utterances merged into one readable turn/paragraph. */
@@ -46,6 +49,12 @@ export function groupConsecutiveSpeakerTurns<T extends SegmentLike>(
       prev.text = joinUtteranceText(prev.text, seg.text);
       prev.endMs = Math.max(prev.endMs, seg.endMs);
       prev.markers = mergeMarkers(prev.markers, seg.markers);
+      prev.speakerConfidence = Math.min(
+        prev.speakerConfidence ?? 1,
+        seg.speakerConfidence ?? 1,
+      );
+      prev.speakerReviewRequired = Boolean(prev.speakerReviewRequired || seg.speakerReviewRequired);
+      if (seg.speakerReviewRequired) prev.speakerResolutionStatus = seg.speakerResolutionStatus;
       continue;
     }
     turns.push({

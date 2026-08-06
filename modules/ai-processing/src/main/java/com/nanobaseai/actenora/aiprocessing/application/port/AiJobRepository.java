@@ -2,6 +2,7 @@ package com.nanobaseai.actenora.aiprocessing.application.port;
 
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.job.ProcessingStage;
 
 import java.time.Instant;
@@ -32,6 +33,13 @@ public interface AiJobRepository {
             UUID tenantId,
             UUID transcriptId,
             String taskType
+    );
+
+    /** Active extraction work for the meeting, regardless of transcript revision or stage. */
+    Optional<AiJob> findActiveByMeetingAndCapability(
+            UUID tenantId,
+            UUID meetingOccurrenceId,
+            AiCapability capability
     );
 
     List<AiJob> findByStatus(AiJobStatus status);

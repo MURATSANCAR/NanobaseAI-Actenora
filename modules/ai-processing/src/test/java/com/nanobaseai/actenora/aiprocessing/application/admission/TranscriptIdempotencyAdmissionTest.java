@@ -25,6 +25,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TranscriptIdempotencyAdmissionTest {
 
     @Test
+    void rejectsNewTranscriptWhileSameMeetingExtractionIsActive() {
+        InMemoryAiJobRepository jobs = new InMemoryAiJobRepository();
+        FairJobScheduler scheduler = new FairJobScheduler(
+                jobs, new InMemoryAiAttemptRepository(), permissivePolicy(), successRouter());
+        DefaultAdmissionController admission = new DefaultAdmissionController(
+                jobs, permissivePolicy(), successRouter(), scheduler);
+        UUID tenant = UUID.randomUUID();
+        UUID meeting = UUID.randomUUID();
+        UUID firstTranscript = UUID.randomUUID();
+        Instant now = Instant.parse("2026-08-06T10:00:00Z");
+
+        assertTrue(admission.admit(command(tenant, meeting, firstTranscript, now)).admitted());
+        AdmissionController.AdmissionDecision second = admission.admit(
+                command(tenant, meeting, UUID.randomUUID(), now.plusSeconds(1)));
+
+        assertFalse(second.admitted());
+        assertTrue(second.rejectReason().contains("meeting_already_processing"));
+    }
+
+    @Test
     void rejectsSucceededExtractionUnlessForceReprocess() {
         InMemoryAiJobRepository jobs = new InMemoryAiJobRepository();
         FairJobScheduler scheduler = new FairJobScheduler(
@@ -95,6 +115,18 @@ class TranscriptIdempotencyAdmissionTest {
                 return Set.of("local");
             }
         };
+    }
+
+    private static AdmissionController.SubmitAiJobCommand command(
+            UUID tenant,
+            UUID meeting,
+            UUID transcript,
+            Instant now
+    ) {
+        return new AdmissionController.SubmitAiJobCommand(
+                tenant, meeting, transcript, "CHUNK_EXTRACTION", JobPriority.NORMAL,
+                AiCapability.TRANSCRIPT_EXTRACTION, "pv", "sv", "tr", 10, null,
+                UUID.randomUUID(), now, false);
     }
 
     private static ModelRouter successRouter() {

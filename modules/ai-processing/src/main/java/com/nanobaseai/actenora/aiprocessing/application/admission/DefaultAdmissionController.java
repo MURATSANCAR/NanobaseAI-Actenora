@@ -68,6 +68,16 @@ public final class DefaultAdmissionController implements AdmissionController {
                             "already_extracted: job " + prior.id() + " succeeded; pass forceReprocess=true to rerun");
                 }
             }
+            Optional<AiJob> activeMeeting = jobs.findActiveByMeetingAndCapability(
+                    command.tenantId(), command.meetingOccurrenceId(), command.requestedCapability());
+            if (activeMeeting.isPresent()
+                    && !activeMeeting.get().transcriptId().equals(command.transcriptId())) {
+                AiJob prior = activeMeeting.get();
+                return AdmissionDecision.rejected(
+                        "meeting_already_processing: job " + prior.id()
+                                + " transcript=" + prior.transcriptId()
+                                + " status=" + prior.status());
+            }
         }
 
         int running = jobs.countByTenantAndStatus(command.tenantId(), AiJobStatus.RUNNING);

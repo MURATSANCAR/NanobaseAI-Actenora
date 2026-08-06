@@ -245,6 +245,14 @@ export function ConversationPanel({
                     <div className="mb-1 flex flex-wrap items-center gap-2">
                       <strong className="text-xs text-slate-800">{turn.speaker}</strong>
                       <span className="font-mono text-[10px] text-slate-400">{formatMs(turn.startMs)}</span>
+                      {turn.speakerReviewRequired ? (
+                        <span
+                          className="rounded-full bg-rose-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-800 ring-1 ring-rose-200"
+                          title={`${t("meeting.speakerConfidence")}: ${Math.round((turn.speakerConfidence ?? 0) * 100)}%`}
+                        >
+                          {t("meeting.unresolvedSpeaker")}
+                        </span>
+                      ) : null}
                       {markers
                         .filter((m): m is MarkerKind => MARKERS.includes(m as MarkerKind))
                         .map((m) => (

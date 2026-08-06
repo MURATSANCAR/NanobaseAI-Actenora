@@ -38,6 +38,7 @@ public final class TeamsTranscriptPollScheduler {
     private final int maxAttempts;
     private final Duration maxAge;
     private final Duration staleClaimAfter;
+    private final Duration attributionRecheckWindow;
     private final int batchSize;
     private final GraphObservability observability;
 
@@ -55,6 +56,25 @@ public final class TeamsTranscriptPollScheduler {
             int batchSize,
             GraphObservability observability
     ) {
+        this(ingestService, meetingApi, tenantContext, subscriptionStore, transcriptApi, workStore,
+                backoff, maxAttempts, maxAge, staleClaimAfter, batchSize, observability, Duration.ofDays(30));
+    }
+
+    public TeamsTranscriptPollScheduler(
+            TeamsTranscriptIngestService ingestService,
+            MeetingApi meetingApi,
+            FixedTenantContext tenantContext,
+            SubscriptionStore subscriptionStore,
+            TranscriptApi transcriptApi,
+            TranscriptPollWorkStore workStore,
+            ExponentialBackoff backoff,
+            int maxAttempts,
+            Duration maxAge,
+            Duration staleClaimAfter,
+            int batchSize,
+            GraphObservability observability,
+            Duration attributionRecheckWindow
+    ) {
         this.ingestService = Objects.requireNonNull(ingestService);
         this.meetingApi = Objects.requireNonNull(meetingApi);
         this.tenantContext = Objects.requireNonNull(tenantContext);
@@ -68,6 +88,10 @@ public final class TeamsTranscriptPollScheduler {
         this.maxAttempts = maxAttempts;
         this.maxAge = Objects.requireNonNull(maxAge);
         this.staleClaimAfter = Objects.requireNonNull(staleClaimAfter);
+        this.attributionRecheckWindow = Objects.requireNonNull(attributionRecheckWindow);
+        if (attributionRecheckWindow.isNegative()) {
+            throw new IllegalArgumentException("attributionRecheckWindow must not be negative");
+        }
         this.batchSize = batchSize;
         this.observability = observability;
     }
@@ -99,7 +123,7 @@ public final class TeamsTranscriptPollScheduler {
                 MeetingListResponse page = meetingApi.listMeetings(new CursorPageRequest(null, null, cursor, 100));
                 for (MeetingResponse meeting : page.items()) {
                     if (isReadyForTranscriptPoll(meeting, now)
-                            && needsPoll(meeting, TenantId.of(tenantId))) {
+                            && needsPoll(meeting, TenantId.of(tenantId), now)) {
                         workStore.enqueue(tenantId, meeting.id(), now);
                     }
                 }
@@ -132,15 +156,30 @@ public final class TeamsTranscriptPollScheduler {
                 boolean transcriptOk = result == TeamsTranscriptIngestService.PollResult.INGESTED
                         || result == TeamsTranscriptIngestService.PollResult.ALREADY_INGESTED;
                 boolean attendanceOk;
+                MeetingResponse meeting;
                 try {
                     tenantContext.use(tenantId, CalendarMeetingUpsertAdapter.SYSTEM_ACTOR);
-                    attendanceOk = !needsAttendanceRefresh(meetingApi.getMeeting(target.meetingOccurrenceId()));
+                    meeting = meetingApi.getMeeting(target.meetingOccurrenceId());
+                    attendanceOk = !needsAttendanceRefresh(meeting);
                 } catch (RuntimeException ex) {
+                    meeting = null;
                     attendanceOk = false;
                 }
-                if (transcriptOk && attendanceOk) {
+                boolean attributionPending = transcriptOk
+                        && meeting != null
+                        && withinAttributionRecheckWindow(meeting, now)
+                        && !transcriptApi.hasSpeakerAttributionForMeeting(tenantId, target.meetingOccurrenceId());
+                if (transcriptOk && attendanceOk && !attributionPending) {
                     workStore.complete(target.tenantId(), target.meetingOccurrenceId(), now);
                     recordPoll(result.name().toLowerCase());
+                } else if (attributionPending) {
+                    // Attribution can be enabled after the first unattributed VTT was stored.
+                    // Keep a bounded, capped-backoff probe alive instead of terminally completing.
+                    workStore.reschedule(
+                            target.tenantId(), target.meetingOccurrenceId(), attempt,
+                            now.plus(backoff.delayForAttempt(Math.min(attempt - 1, maxAttempts - 1))),
+                            "SPEAKER_ATTRIBUTION_PENDING", now);
+                    recordPoll("attribution_pending");
                 } else {
                     String code = transcriptOk ? "ATTENDANCE_PENDING" : "TRANSCRIPT_NOT_AVAILABLE";
                     rescheduleOrDeadLetter(target, attempt, code, now);
@@ -160,10 +199,25 @@ public final class TeamsTranscriptPollScheduler {
      * attendance was never applied (all invitees stuck in INVITED/ACCEPTED/TENTATIVE).
      */
     boolean needsPoll(MeetingResponse meeting, TenantId tenantId) {
+        return needsPoll(meeting, tenantId, Instant.now());
+    }
+
+    boolean needsPoll(MeetingResponse meeting, TenantId tenantId, Instant now) {
         if (!transcriptApi.hasTranscriptForMeeting(tenantId, meeting.id())) {
             return true;
         }
-        return needsAttendanceRefresh(meeting);
+        if (needsAttendanceRefresh(meeting)) {
+            return true;
+        }
+        return withinAttributionRecheckWindow(meeting, now)
+                && !transcriptApi.hasSpeakerAttributionForMeeting(tenantId, meeting.id());
+    }
+
+    private boolean withinAttributionRecheckWindow(MeetingResponse meeting, Instant now) {
+        Instant endedAt = meeting.actualEndAt() != null ? meeting.actualEndAt() : meeting.scheduledEndAt();
+        return endedAt != null
+                && !endedAt.isAfter(now)
+                && !endedAt.plus(attributionRecheckWindow).isBefore(now);
     }
 
     private boolean needsAttendanceRefresh(MeetingResponse meeting) {

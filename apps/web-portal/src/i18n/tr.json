@@ -409,6 +409,8 @@
   "meeting.pipeline.state.done": "Tamam",
   "meeting.pipeline.state.failed": "Başarısız",
   "filter.speaker": "Konuşmacı",
+  "meeting.unresolvedSpeaker": "Konuşmacı doğrulanmalı",
+  "meeting.speakerConfidence": "Konuşmacı güveni",
   "filter.marker": "İşaret",
   "filter.allSpeakers": "Tüm konuşmacılar",
   "filter.allMarkers": "Tüm işaretler",

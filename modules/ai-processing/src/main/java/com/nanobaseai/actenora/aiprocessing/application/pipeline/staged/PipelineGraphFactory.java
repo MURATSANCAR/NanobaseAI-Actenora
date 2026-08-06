@@ -4,6 +4,7 @@ import com.nanobaseai.actenora.aiprocessing.application.port.AiJobRepository;
 import com.nanobaseai.actenora.aiprocessing.application.port.ProcessingJobDependencyRepository;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiCapability;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJob;
+import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobException;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobSla;
 import com.nanobaseai.actenora.aiprocessing.domain.job.AiJobStatus;
 import com.nanobaseai.actenora.aiprocessing.domain.job.JobPriority;
@@ -96,6 +97,14 @@ public final class PipelineGraphFactory {
             AiJob root = existing.get();
             return new GraphAdmission(root, null, null, false);
         }
+        jobs.findActiveByMeetingAndCapability(
+                        tenantId, meetingOccurrenceId, AiCapability.TRANSCRIPT_EXTRACTION)
+                .filter(active -> !active.transcriptId().equals(transcriptId))
+                .ifPresent(active -> {
+                    throw AiJobException.duplicate(
+                            "meeting_already_processing: job " + active.id()
+                                    + " transcript=" + active.transcriptId());
+                });
         String rootKey = forceReprocess
                 ? baseKey + ":force:" + UUID.randomUUID()
                 : baseKey;

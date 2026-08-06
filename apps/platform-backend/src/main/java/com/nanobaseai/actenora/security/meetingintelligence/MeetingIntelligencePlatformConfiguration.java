@@ -312,6 +312,7 @@ public class MeetingIntelligencePlatformConfiguration {
             ObjectProvider<com.nanobaseai.actenora.delivery.api.DeliveryApi> deliveryApi,
             ObjectProvider<com.nanobaseai.actenora.delivery.application.worker.DeliveryWorker> deliveryWorker,
             ObjectProvider<com.nanobaseai.actenora.meetingintelligence.application.MeetingNoteApprovalService> noteApprovalService,
+            ObjectProvider<com.nanobaseai.actenora.transcript.api.TranscriptApi> transcriptApi,
             @org.springframework.beans.factory.annotation.Value(
                     "${actenora.delivery.portal-link.base-url:https://portal.nanobase.ai/easymeeting}")
                     String portalBaseUrl,
@@ -331,7 +332,8 @@ public class MeetingIntelligencePlatformConfiguration {
                 Optional.ofNullable(deliveryWorker.getIfAvailable()),
                 noteApprovalService::getIfAvailable,
                 portalBaseUrl,
-                MeetingIntelligenceHandoffAdapter.parseAdditionalRecipients(additionalDraftRecipients)
+                MeetingIntelligenceHandoffAdapter.parseAdditionalRecipients(additionalDraftRecipients),
+                Optional.ofNullable(transcriptApi.getIfAvailable())
         );
     }
 

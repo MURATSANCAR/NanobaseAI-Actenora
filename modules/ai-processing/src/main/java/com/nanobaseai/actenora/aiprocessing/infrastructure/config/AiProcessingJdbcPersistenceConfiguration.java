@@ -15,12 +15,14 @@ import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.JdbcRetry
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.JdbcRoutingDecisionStore;
 import com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.JdbcShadowExecutionStore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
+import java.nio.file.Path;
 
 @Configuration
 @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "jdbc")
@@ -49,9 +51,18 @@ public class AiProcessingJdbcPersistenceConfiguration {
     @Bean
     @Primary
     com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactRepository
-    processingArtifactRepository(DataSource dataSource) {
+    processingArtifactRepository(
+            DataSource dataSource,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+            @Value("${actenora.ai.eval-export.enabled:false}") boolean exportEnabled,
+            @Value("${actenora.ai.eval-export.root:./var/eval-artifacts}") String exportRoot
+    ) {
+        com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactExportSink sink = exportEnabled
+                ? new com.nanobaseai.actenora.aiprocessing.infrastructure.export.FilesystemProcessingArtifactExportSink(
+                        Path.of(exportRoot), objectMapper)
+                : com.nanobaseai.actenora.aiprocessing.application.port.ProcessingArtifactExportSink.noop();
         return new com.nanobaseai.actenora.aiprocessing.infrastructure.persistence.JdbcProcessingArtifactRepository(
-                new JdbcTemplate(dataSource));
+                new JdbcTemplate(dataSource), sink);
     }
 
     @Bean

@@ -409,6 +409,8 @@
   "meeting.pipeline.state.done": "Done",
   "meeting.pipeline.state.failed": "Failed",
   "filter.speaker": "Speaker",
+  "meeting.unresolvedSpeaker": "Speaker needs review",
+  "meeting.speakerConfidence": "Speaker confidence",
   "filter.marker": "Marker",
   "filter.allSpeakers": "All speakers",
   "filter.allMarkers": "All markers",
