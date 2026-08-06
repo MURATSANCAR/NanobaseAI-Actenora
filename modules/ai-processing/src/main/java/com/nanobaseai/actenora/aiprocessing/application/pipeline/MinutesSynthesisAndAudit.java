@@ -32,6 +32,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.composer.TranscriptD
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.composer.VerifiedMinutesRenderer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeConsistencyAuditor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.OpenQuestionHygieneFilter;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.ExecutiveSummarySanitizer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.normalization.StiffCommitmentPhrasingNormalizer;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.ExtractionPromptRules;
 import com.nanobaseai.actenora.aiprocessing.domain.prompt.OutputLanguagePolicy;
@@ -357,7 +358,33 @@ public final class MinutesSynthesisAndAudit {
                     segs
             );
         };
-        return withSoftenedCommitmentPhrasing(withAuditTrace(result));
+        return withCleanExecutiveSummary(withSoftenedCommitmentPhrasing(withAuditTrace(result)));
+    }
+
+    /** Strip numbered-dump / section-header debris the model sometimes crams into the summary. */
+    private static MinutesFinalizationResult withCleanExecutiveSummary(MinutesFinalizationResult result) {
+        if (result == null || result.draft() == null) {
+            return result;
+        }
+        FinalNoteDraft draft = result.draft();
+        String original = draft.executiveSummary() == null ? "" : draft.executiveSummary();
+        String cleaned = ExecutiveSummarySanitizer.clean(original);
+        if (cleaned.equals(original)) {
+            return result;
+        }
+        FinalNoteDraft cleanedDraft = withEditorialSummary(draft, cleaned, false);
+        return new MinutesFinalizationResult(
+                cleanedDraft,
+                result.mode(),
+                result.modelCalls(),
+                result.inputTokens(),
+                result.outputTokens(),
+                result.modelLatencyMs(),
+                result.fallbackUsed(),
+                result.requestedMode(),
+                result.effectiveMode(),
+                result.fallbackReason()
+        );
     }
 
     private static MinutesFinalizationResult withSoftenedCommitmentPhrasing(MinutesFinalizationResult result) {
