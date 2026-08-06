@@ -18,7 +18,7 @@ import {
   validateDesignSchema,
 } from "@/lib/templateStandards";
 import { designSchemaToJson } from "@/lib/templateNoteBody";
-import type { DesignSchema, TemplateComponentType } from "@/types/template";
+import type { DesignSchema, TemplateComponentType, TemplateStatusMessage } from "@/types/template";
 import { useI18n } from "@/i18n";
 import { ArrowLeft } from "lucide-react";
 
@@ -84,7 +84,7 @@ export function TemplateDetailPage() {
   const [activeVersionNumber, setActiveVersionNumber] = useState<number | null>(null);
   const [schema, setSchema] = useState<DesignSchema>(() => buildStandardDesignSchema());
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<TemplateStatusMessage | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareLeft, setCompareLeft] = useState<number | null>(null);
   const [compareRight, setCompareRight] = useState<number | null>(null);
@@ -125,7 +125,7 @@ export function TemplateDetailPage() {
       setActiveVersionNumber(version.versionNumber);
       setSchema(buildStandardDesignSchema());
     },
-    onError: () => setStatusMessage(t("admin.savePendingBackend")),
+    onError: () => setStatusMessage({ text: t("admin.savePendingBackend"), tone: "error" }),
   });
 
   const saveMutation = useMutation({
@@ -136,11 +136,11 @@ export function TemplateDetailPage() {
       });
     },
     onSuccess: async () => {
-      setStatusMessage(t("templates.editor.saved"));
+      setStatusMessage({ text: t("templates.editor.saved"), tone: "success" });
       await qc.invalidateQueries({ queryKey: queryKeys.templateDetail(templateId) });
       await qc.invalidateQueries({ queryKey: queryKeys.templates });
     },
-    onError: () => setStatusMessage(t("admin.savePendingBackend")),
+    onError: () => setStatusMessage({ text: t("admin.savePendingBackend"), tone: "error" }),
   });
 
   const publishMutation = useMutation({
@@ -149,21 +149,21 @@ export function TemplateDetailPage() {
       return api.publishTemplateVersion(templateId, activeVersion.id);
     },
     onSuccess: async () => {
-      setStatusMessage(t("templates.editor.published"));
+      setStatusMessage({ text: t("templates.editor.published"), tone: "success" });
       await qc.invalidateQueries({ queryKey: queryKeys.templateDetail(templateId) });
       await qc.invalidateQueries({ queryKey: queryKeys.templates });
     },
-    onError: () => setStatusMessage(t("admin.savePendingBackend")),
+    onError: () => setStatusMessage({ text: t("admin.savePendingBackend"), tone: "error" }),
   });
 
   const defaultMutation = useMutation({
     mutationFn: () => api.setDefaultTemplate(templateId),
     onSuccess: async () => {
-      setStatusMessage(t("templates.default.updated"));
+      setStatusMessage({ text: t("templates.default.updated"), tone: "success" });
       await qc.invalidateQueries({ queryKey: queryKeys.templateDetail(templateId) });
       await qc.invalidateQueries({ queryKey: queryKeys.templates });
     },
-    onError: () => setStatusMessage(t("templates.default.requiresPublished")),
+    onError: () => setStatusMessage({ text: t("templates.default.requiresPublished"), tone: "error" }),
   });
 
   function addComponent(type: TemplateComponentType) {
@@ -179,6 +179,24 @@ export function TemplateDetailPage() {
   function removeComponent(id: string) {
     setSchema({ ...schema, components: schema.components.filter((c) => c.id !== id) });
     if (selectedId === id) setSelectedId(null);
+  }
+
+  function moveComponent(id: string, direction: "up" | "down") {
+    const sorted = [...schema.components].sort((a, b) => a.order - b.order);
+    const index = sorted.findIndex((c) => c.id === id);
+    if (index < 0) return;
+    const swapWith = direction === "up" ? index - 1 : index + 1;
+    if (swapWith < 0 || swapWith >= sorted.length) return;
+    const current = sorted[index];
+    const neighbour = sorted[swapWith];
+    setSchema({
+      ...schema,
+      components: schema.components.map((c) => {
+        if (c.id === current.id) return { ...c, order: neighbour.order };
+        if (c.id === neighbour.id) return { ...c, order: current.order };
+        return c;
+      }),
+    });
   }
 
   const status = q.isLoading ? "loading" : q.isError ? "error" : !detail ? "empty" : "ready";
@@ -239,6 +257,7 @@ export function TemplateDetailPage() {
               onAddComponent={addComponent}
               onSelectComponent={setSelectedId}
               onRemoveComponent={removeComponent}
+              onMoveComponent={moveComponent}
               onSaveDraft={() => saveMutation.mutate()}
               onPublish={() => publishMutation.mutate()}
               onCreateDraft={mutationsEnabled ? () => createDraftMutation.mutate() : undefined}

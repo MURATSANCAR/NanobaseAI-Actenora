@@ -33,6 +33,13 @@ export interface DesignSchema {
 
 export type TemplateVersionStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
+export type TemplateStatusTone = "success" | "error";
+
+export interface TemplateStatusMessage {
+  text: string;
+  tone: TemplateStatusTone;
+}
+
 export interface TemplateValidationIssue {
   code: "EMPTY_DESIGN" | "DUPLICATE_ORDER" | "DUPLICATE_ID" | "FORBIDDEN_PROP";
   messageKey: MessageKey;

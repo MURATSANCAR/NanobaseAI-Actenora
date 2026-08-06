@@ -1,3 +1,4 @@
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { TemplateComponentPalette } from "@/components/template/TemplateComponentPalette";
 import { TemplateDesignCanvas } from "@/components/template/TemplateDesignCanvas";
 import { TemplateValidationBanner } from "@/components/template/TemplateValidationBanner";
@@ -5,7 +6,11 @@ import {
   TemplateVersionSidebar,
   type TemplateVersionRow,
 } from "@/components/template/TemplateVersionSidebar";
-import type { DesignComponent, TemplateValidationIssue } from "@/types/template";
+import type {
+  DesignComponent,
+  TemplateStatusMessage,
+  TemplateValidationIssue,
+} from "@/types/template";
 import type { TemplateComponentType } from "@/types/template";
 import { useI18n } from "@/i18n";
 
@@ -25,6 +30,7 @@ export function TemplateDesignToolbar({
   onAddComponent,
   onSelectComponent,
   onRemoveComponent,
+  onMoveComponent,
   onSaveDraft,
   onPublish,
   onCreateDraft,
@@ -43,11 +49,12 @@ export function TemplateDesignToolbar({
   readOnly?: boolean;
   saving?: boolean;
   publishing?: boolean;
-  statusMessage?: string | null;
+  statusMessage?: TemplateStatusMessage | null;
   onSelectVersion: (version: number) => void;
   onAddComponent: (type: TemplateComponentType) => void;
   onSelectComponent: (id: string) => void;
   onRemoveComponent: (id: string) => void;
+  onMoveComponent?: (id: string, direction: "up" | "down") => void;
   onSaveDraft?: () => void;
   onPublish?: () => void;
   onCreateDraft?: () => void;
@@ -78,6 +85,7 @@ export function TemplateDesignToolbar({
           selectedId={selectedId}
           onSelect={onSelectComponent}
           onRemove={onRemoveComponent}
+          onMove={onMoveComponent}
           readOnly={readOnly}
           emptyMessage={t("templates.canvas.empty")}
           versionLabel={versionLabel}
@@ -125,7 +133,24 @@ export function TemplateDesignToolbar({
         ) : null}
       </div>
       {validationIssues.length ? <TemplateValidationBanner issues={validationIssues} /> : null}
-      {statusMessage ? <p className="text-sm text-amber-800">{statusMessage}</p> : null}
+      {statusMessage ? (
+        <p
+          className={[
+            "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm",
+            statusMessage.tone === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-700",
+          ].join(" ")}
+          role="status"
+        >
+          {statusMessage.tone === "success" ? (
+            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+          ) : (
+            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
+          )}
+          {statusMessage.text}
+        </p>
+      ) : null}
     </div>
   );
 }

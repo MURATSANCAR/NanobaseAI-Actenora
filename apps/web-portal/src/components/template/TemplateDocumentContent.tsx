@@ -42,11 +42,18 @@ export function TemplateDocumentContent({
     .filter((c) => !BRAND_HANDLED.includes(c.type))
     .sort((a, b) => a.order - b.order);
 
+  // Keep the canvas and the preview in agreement: the branded header/footer and
+  // the page number are only chrome for the LOGO/FOOTER/PAGE_NUMBER components,
+  // so they must appear only when those components are actually in the schema.
+  const hasLogo = components.some((c) => c.type === "LOGO");
+  const hasFooter = components.some((c) => c.type === "FOOTER");
+  const hasPageNumber = components.some((c) => c.type === "PAGE_NUMBER");
+
   const textSize = density === "compact" ? "text-[11px] leading-relaxed" : "text-xs leading-relaxed";
 
   return (
     <div className={`flex h-full min-h-full flex-col gap-3 text-slate-700 ${textSize}`}>
-      <TemplateBrandHeader compact={density === "compact"} />
+      {hasLogo ? <TemplateBrandHeader compact={density === "compact"} /> : null}
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
         {bodyComponents.length ? (
           bodyComponents.map((component) => (
@@ -56,7 +63,11 @@ export function TemplateDocumentContent({
           <p className="my-auto text-center text-slate-400">{t("templates.preview.empty")}</p>
         )}
       </div>
-      <TemplateBrandFooter pageLabel={t("templates.preview.placeholder.page")} />
+      {hasFooter || hasPageNumber ? (
+        <TemplateBrandFooter
+          pageLabel={hasPageNumber ? t("templates.preview.placeholder.page") : undefined}
+        />
+      ) : null}
     </div>
   );
 

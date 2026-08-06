@@ -9,6 +9,7 @@ import { MetricCard } from "@/components/qa/MetricCard";
 import { PageShell } from "@/components/qa/PageShell";
 import { StatusBadge } from "@/components/qa/StatusBadge";
 import { AsyncState, DataTable, PaginationBar } from "@/components/ui/AsyncState";
+import { InlineFeedback, type FeedbackMessage } from "@/components/ui/InlineFeedback";
 import { useI18n } from "@/i18n";
 import { sanitizeProductCopy } from "@/lib/brandSanitize";
 import { AlertTriangle, Layers } from "lucide-react";
@@ -20,7 +21,7 @@ export function TemplateStudioPage() {
   const { t, tb } = useI18n();
   const [name, setName] = useState("");
   const [locale, setLocale] = useState("en");
-  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState<FeedbackMessage | null>(null);
   const q = useQuery({
     queryKey: queryKeys.templates,
     queryFn: () => api.listTemplates(),
@@ -29,19 +30,19 @@ export function TemplateStudioPage() {
   const createMutation = useMutation({
     mutationFn: () => api.createTemplate({ name: name.trim(), locale }),
     onSuccess: async () => {
-      setSavedMessage(t("admin.templateSaved"));
+      setSavedMessage({ text: t("admin.templateSaved"), tone: "success" });
       setName("");
       await queryClient.invalidateQueries({ queryKey: queryKeys.templates });
     },
-    onError: () => setSavedMessage(t("admin.savePendingBackend")),
+    onError: () => setSavedMessage({ text: t("admin.savePendingBackend"), tone: "error" }),
   });
   const defaultMutation = useMutation({
     mutationFn: (templateId: string) => api.setDefaultTemplate(templateId),
     onSuccess: async () => {
-      setSavedMessage(t("templates.default.updated"));
+      setSavedMessage({ text: t("templates.default.updated"), tone: "success" });
       await queryClient.invalidateQueries({ queryKey: queryKeys.templates });
     },
-    onError: () => setSavedMessage(t("templates.default.requiresPublished")),
+    onError: () => setSavedMessage({ text: t("templates.default.requiresPublished"), tone: "error" }),
   });
   const status =
     q.isLoading ? "loading" : q.isError ? "error" : !q.data?.items.length ? "empty" : "ready";
@@ -82,7 +83,7 @@ export function TemplateStudioPage() {
           >
             {t("admin.saveTemplate")}
           </button>
-          {savedMessage ? <p className="text-sm text-amber-800">{savedMessage}</p> : null}
+          <InlineFeedback message={savedMessage} />
         </div>
       ) : null}
       <AsyncState status={status} error={q.error} emptyTitle={t("async.empty")} emptyDescription={t("templates.description")}>
@@ -205,7 +206,7 @@ export function ModelManagementPage() {
   const { t, tb, locale } = useI18n();
   const [baseUrl, setBaseUrl] = useState("http://127.0.0.1:8000");
   const [enabled, setEnabled] = useState(true);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<FeedbackMessage | null>(null);
   const [jobsCursor, setJobsCursor] = useState<string | undefined>();
   const jobsParams = useMemo(() => ({ cursor: jobsCursor, limit: 25 }), [jobsCursor]);
 
@@ -244,20 +245,22 @@ export function ModelManagementPage() {
         enabled,
       }),
     onSuccess: async () => {
-      setMessage(t("intelligence.saved"));
+      setMessage({ text: t("intelligence.saved"), tone: "success" });
       await queryClient.invalidateQueries({ queryKey: queryKeys.intelligence });
     },
-    onError: (err: Error) => setMessage(err.message || t("intelligence.saveFailed")),
+    onError: (err: Error) => setMessage({ text: err.message || t("intelligence.saveFailed"), tone: "error" }),
   });
   const testMutation = useMutation({
     mutationFn: () => api.testNanobaseAiConnection(),
     onSuccess: async (data) => {
       setMessage(
-        data.healthy ? t("intelligence.testOk") : t("intelligence.testFailed"),
+        data.healthy
+          ? { text: t("intelligence.testOk"), tone: "success" }
+          : { text: t("intelligence.testFailed"), tone: "error" },
       );
       await queryClient.invalidateQueries({ queryKey: queryKeys.intelligence });
     },
-    onError: (err: Error) => setMessage(err.message || t("intelligence.testFailed")),
+    onError: (err: Error) => setMessage({ text: err.message || t("intelligence.testFailed"), tone: "error" }),
   });
 
   if (!auth.isLoading && !auth.nav("models")) {

@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import type { DesignComponent } from "@/types/template";
 import { useI18n } from "@/i18n";
 
@@ -57,6 +57,7 @@ export function TemplateDesignCanvas({
   selectedId,
   onSelect,
   onRemove,
+  onMove,
   readOnly,
   emptyMessage,
   compact = false,
@@ -66,6 +67,7 @@ export function TemplateDesignCanvas({
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   onRemove?: (id: string) => void;
+  onMove?: (id: string, direction: "up" | "down") => void;
   readOnly?: boolean;
   emptyMessage: string;
   compact?: boolean;
@@ -73,6 +75,9 @@ export function TemplateDesignCanvas({
 }) {
   const { t, tb } = useI18n();
   const sorted = [...components].sort((a, b) => a.order - b.order);
+  const selectedIndex = selectedId ? sorted.findIndex((c) => c.id === selectedId) : -1;
+  const canMoveUp = selectedIndex > 0;
+  const canMoveDown = selectedIndex >= 0 && selectedIndex < sorted.length - 1;
 
   if (compact) {
     return (
@@ -111,6 +116,30 @@ export function TemplateDesignCanvas({
               </>
             )}
           </select>
+          {onMove ? (
+            <>
+              <button
+                type="button"
+                className="btn-secondary shrink-0 px-2.5 py-1.5"
+                disabled={readOnly || !canMoveUp}
+                aria-label={t("component.moveUp")}
+                title={t("component.moveUp")}
+                onClick={() => selectedId && onMove(selectedId, "up")}
+              >
+                <ArrowUp className="h-4 w-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                className="btn-secondary shrink-0 px-2.5 py-1.5"
+                disabled={readOnly || !canMoveDown}
+                aria-label={t("component.moveDown")}
+                title={t("component.moveDown")}
+                onClick={() => selectedId && onMove(selectedId, "down")}
+              >
+                <ArrowDown className="h-4 w-4" aria-hidden />
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             className="btn-secondary shrink-0 px-2.5 py-1.5"

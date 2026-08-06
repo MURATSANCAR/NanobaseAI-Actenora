@@ -3,7 +3,12 @@ import { TemplateDocumentPreviewStage } from "@/components/template/TemplateDocu
 import {
   type TemplateVersionRow,
 } from "@/components/template/TemplateVersionSidebar";
-import type { DesignComponent, DesignSchema, TemplateValidationIssue } from "@/types/template";
+import type {
+  DesignComponent,
+  DesignSchema,
+  TemplateStatusMessage,
+  TemplateValidationIssue,
+} from "@/types/template";
 import type { TemplateComponentType } from "@/types/template";
 import { useI18n } from "@/i18n";
 
@@ -23,6 +28,7 @@ export function TemplateEditorShell({
   onAddComponent,
   onSelectComponent,
   onRemoveComponent,
+  onMoveComponent,
   onSaveDraft,
   onPublish,
   onCreateDraft,
@@ -39,11 +45,12 @@ export function TemplateEditorShell({
   canEdit: boolean;
   saving: boolean;
   publishing: boolean;
-  statusMessage?: string | null;
+  statusMessage?: TemplateStatusMessage | null;
   onSelectVersion: (version: number) => void;
   onAddComponent: (type: TemplateComponentType) => void;
   onSelectComponent: (id: string) => void;
   onRemoveComponent: (id: string) => void;
+  onMoveComponent?: (id: string, direction: "up" | "down") => void;
   onSaveDraft: () => void;
   onPublish: () => void;
   onCreateDraft?: () => void;
@@ -85,6 +92,7 @@ export function TemplateEditorShell({
         onAddComponent={onAddComponent}
         onSelectComponent={onSelectComponent}
         onRemoveComponent={onRemoveComponent}
+        onMoveComponent={onMoveComponent}
         onSaveDraft={onSaveDraft}
         onPublish={onPublish}
         onCreateDraft={onCreateDraft}
