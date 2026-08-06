@@ -114,7 +114,164 @@ public final class MeetingTerminologyNormalizer {
         // ---- Telekom ----
         a.add(new Alias("g s m", "GSM"));
 
+        addSectorTerms(a);
+        addCompanies(a);
         return new MeetingTerminologyNormalizer(a);
+    }
+
+    /**
+     * Broad multi-sector acronym/term set. Surface forms are safe because rewriting only
+     * triggers on whole-word matches (Turkish suffixes like "API'ler" are preserved, and
+     * "api" never touches "apiler"). Casing-only canonicals are harmless when already correct.
+     */
+    private static void addSectorTerms(List<Alias> a) {
+        // Genel IT / Yazılım (kısaltma → doğru yazım)
+        for (String s : List.of("api", "rest", "grpc", "graphql", "sdk", "ide", "sql", "nosql",
+                "json", "xml", "yaml", "html", "css", "http", "https", "tcp", "udp", "dns", "cdn",
+                "vpn", "ssl", "tls", "ssh", "url", "uri", "ui", "ux", "cli", "orm", "crud",
+                "saas", "paas", "iaas", "mvp", "sla", "kpi", "roi", "okr", "rfp", "rfq", "nda",
+                "b2b", "b2c", "erp", "crm", "hris", "cms", "dms")) {
+            a.add(new Alias(s, s.toUpperCase(java.util.Locale.ROOT)));
+        }
+        a.add(new Alias("saas", "SaaS"));
+        a.add(new Alias("paas", "PaaS"));
+        a.add(new Alias("iaas", "IaaS"));
+        a.add(new Alias("devops", "DevOps"));
+        a.add(new Alias("dev ops", "DevOps"));
+        a.add(new Alias("mlops", "MLOps"));
+        a.add(new Alias("ci cd", "CI/CD"));
+        a.add(new Alias("cicd", "CI/CD"));
+        a.add(new Alias("microservice", "microservice"));
+
+        // Bulut / DevOps / veri altyapı
+        a.add(new Alias("aws", "AWS"));
+        a.add(new Alias("azure", "Azure"));
+        a.add(new Alias("gcp", "GCP"));
+        a.add(new Alias("terraform", "Terraform"));
+        a.add(new Alias("ansible", "Ansible"));
+        a.add(new Alias("jenkins", "Jenkins"));
+        a.add(new Alias("nginx", "Nginx"));
+        a.add(new Alias("rabbitmq", "RabbitMQ"));
+        a.add(new Alias("elasticsearch", "Elasticsearch"));
+        a.add(new Alias("grafana", "Grafana"));
+        a.add(new Alias("prometheus", "Prometheus"));
+        a.add(new Alias("spark", "Spark"));
+        a.add(new Alias("hadoop", "Hadoop"));
+        a.add(new Alias("airflow", "Airflow"));
+        a.add(new Alias("snowflake", "Snowflake"));
+        a.add(new Alias("databricks", "Databricks"));
+
+        // Yapay zeka / veri bilimi
+        a.add(new Alias("nlp", "NLP"));
+        a.add(new Alias("ocr", "OCR"));
+        a.add(new Alias("iot", "IoT"));
+        a.add(new Alias("rpa", "RPA"));
+        a.add(new Alias("mcp", "MCP"));
+        a.add(new Alias("pytorch", "PyTorch"));
+        a.add(new Alias("tensorflow", "TensorFlow"));
+        a.add(new Alias("hugging face", "Hugging Face"));
+        a.add(new Alias("open ai", "OpenAI"));
+        a.add(new Alias("chatgpt", "ChatGPT"));
+        a.add(new Alias("embedding", "embedding"));
+        a.add(new Alias("fine tuning", "fine-tuning"));
+        a.add(new Alias("fine-tuning", "fine-tuning"));
+
+        // Güvenlik
+        for (String s : List.of("iam", "mfa", "sso", "rbac", "pki", "hsm", "waf", "ddos",
+                "soc", "dlp", "edr", "xdr", "vpn", "pam", "casb")) {
+            a.add(new Alias(s, s.toUpperCase(java.util.Locale.ROOT)));
+        }
+        a.add(new Alias("2 fa", "2FA"));
+        a.add(new Alias("pen test", "pentest"));
+
+        // Finans / Bankacılık
+        for (String s : List.of("spk", "tcmb", "eft", "iban", "aml", "npl", "roa", "roe",
+                "kkb", "masak", "mkk", "vkn", "tckn", "atm", "otp", "ftp", "gsyih")) {
+            a.add(new Alias(s, s.toUpperCase(java.util.Locale.ROOT)));
+        }
+        a.add(new Alias("faast", "FAST"));
+        a.add(new Alias("basel", "Basel"));
+        a.add(new Alias("swift kodu", "SWIFT kodu"));
+        a.add(new Alias("mobil bankac", "mobil bankacılık")); // guarded by word boundary on suffix
+
+        // Sigorta
+        a.add(new Alias("reasürans", "reasürans"));
+        a.add(new Alias("re asürans", "reasürans"));
+        a.add(new Alias("aktüerya", "aktüerya"));
+        a.add(new Alias("bes", "BES"));
+
+        // Hukuk / Uyum
+        a.add(new Alias("gdpr", "GDPR"));
+        a.add(new Alias("kvkk", "KVKK"));
+        a.add(new Alias("iso 27001", "ISO 27001"));
+
+        // Sağlık / Enerji / Perakende / Otomotiv (genel kısaltmalar)
+        a.add(new Alias("hbys", "HBYS"));
+        a.add(new Alias("epdk", "EPDK"));
+        a.add(new Alias("scada", "SCADA"));
+        a.add(new Alias("plc", "PLC"));
+        a.add(new Alias("wms", "WMS"));
+        a.add(new Alias("pim", "PIM"));
+        a.add(new Alias("can bus", "CAN bus"));
+    }
+
+    /**
+     * Popüler firma adları (Türkiye + global). Yalnızca yaygın Türkçe/İngilizce sözcüklerle
+     * ÇAKIŞMAYAN, ayırt edici adlar — "Getir/Meta/Apple/İş/Ziraat" gibi kelime-firma çakışmaları
+     * kasıtlı olarak dışarıda; onlar per-tenant sözlükten eklenmeli.
+     */
+    private static void addCompanies(List<Alias> a) {
+        // --- Türkiye: bankalar / finans ---
+        a.add(new Alias("akbank", "Akbank"));
+        a.add(new Alias("garanti bbva", "Garanti BBVA"));
+        a.add(new Alias("yapı kredi", "Yapı Kredi"));
+        a.add(new Alias("yapıkredi", "Yapı Kredi"));
+        a.add(new Alias("vakıfbank", "VakıfBank"));
+        a.add(new Alias("halkbank", "Halkbank"));
+        a.add(new Alias("ziraat bankası", "Ziraat Bankası"));
+        a.add(new Alias("qnb finansbank", "QNB Finansbank"));
+        a.add(new Alias("finansbank", "QNB Finansbank"));
+        a.add(new Alias("denizbank", "DenizBank"));
+        a.add(new Alias("burgan bank", "Burgan Bank"));
+        a.add(new Alias("papara", "Papara"));
+        a.add(new Alias("enpara", "Enpara"));
+        a.add(new Alias("iyzico", "iyzico"));
+
+        // --- Türkiye: telekom / holding / teknoloji ---
+        a.add(new Alias("turkcell", "Turkcell"));
+        a.add(new Alias("türk telekom", "Türk Telekom"));
+        a.add(new Alias("turk telekom", "Türk Telekom"));
+        a.add(new Alias("koç holding", "Koç Holding"));
+        a.add(new Alias("sabancı holding", "Sabancı Holding"));
+        a.add(new Alias("arçelik", "Arçelik"));
+        a.add(new Alias("aselsan", "ASELSAN"));
+        a.add(new Alias("havelsan", "HAVELSAN"));
+        a.add(new Alias("togg", "TOGG"));
+        a.add(new Alias("trendyol", "Trendyol"));
+        a.add(new Alias("hepsiburada", "Hepsiburada"));
+        a.add(new Alias("logo yazılım", "Logo Yazılım"));
+
+        // --- Global: teknoloji ---
+        a.add(new Alias("google", "Google"));
+        a.add(new Alias("microsoft", "Microsoft"));
+        a.add(new Alias("maykrosoft", "Microsoft"));
+        a.add(new Alias("amazon", "Amazon"));
+        a.add(new Alias("oracle", "Oracle"));
+        a.add(new Alias("salesforce", "Salesforce"));
+        a.add(new Alias("adobe", "Adobe"));
+        a.add(new Alias("atlassian", "Atlassian"));
+        a.add(new Alias("vmware", "VMware"));
+        a.add(new Alias("cisco", "Cisco"));
+        a.add(new Alias("intel", "Intel"));
+        a.add(new Alias("openai", "OpenAI"));
+        a.add(new Alias("anthropic", "Anthropic"));
+        a.add(new Alias("deepmind", "DeepMind"));
+        a.add(new Alias("huggingface", "Hugging Face"));
+
+        // --- Global: finans / ödeme ---
+        a.add(new Alias("mastercard", "Mastercard"));
+        a.add(new Alias("paypal", "PayPal"));
+        a.add(new Alias("stripe", "Stripe"));
     }
 
     public String rewrite(String text) {
