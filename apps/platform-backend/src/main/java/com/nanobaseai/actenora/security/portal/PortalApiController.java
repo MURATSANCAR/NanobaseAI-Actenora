@@ -2041,16 +2041,14 @@ public class PortalApiController {
     }
 
     private Optional<ResolvedNotePdf> resolveFallbackPdf(TenantId tenantId, UUID noteId) {
-        if (meetingIntelligenceApi.isEmpty() || objectStorage.isEmpty()) {
+        if (objectStorage.isEmpty()) {
             return Optional.empty();
         }
-        MeetingNoteDetailResponse detail = meetingIntelligenceApi.get().getNoteDetail(noteId);
-        if (detail.currentVersion() == null || detail.currentVersion().id() == null) {
-            return Optional.empty();
-        }
-        UUID versionId = detail.currentVersion().id();
-        String storageKey = "tenants/" + tenantId.value() + "/notes/" + versionId + "/fallback.pdf";
-        if (!objectStorage.get().exists(storageKey)) {
+        // Primary key is the stable noteId (matches the write side). Fall back to the legacy
+        // version-keyed object so PDFs written before this fix stay resolvable.
+        String noteKey = "tenants/" + tenantId.value() + "/notes/" + noteId + "/fallback.pdf";
+        String storageKey = objectStorage.get().exists(noteKey) ? noteKey : legacyFallbackPdfKey(tenantId, noteId);
+        if (storageKey == null || !objectStorage.get().exists(storageKey)) {
             return Optional.empty();
         }
         Optional<ObjectMetadata> meta = objectStorage.get().metadata(storageKey);
@@ -2058,6 +2056,18 @@ public class PortalApiController {
         Instant createdAt = meta.map(ObjectMetadata::lastModified).orElse(null);
         UUID documentId = UUID.nameUUIDFromBytes(storageKey.getBytes(StandardCharsets.UTF_8));
         return Optional.of(new ResolvedNotePdf(documentId, storageKey, sizeBytes, createdAt));
+    }
+
+    /** Legacy fallback PDFs were keyed by the note's current version id (see resolveFallbackPdf). */
+    private String legacyFallbackPdfKey(TenantId tenantId, UUID noteId) {
+        if (meetingIntelligenceApi.isEmpty()) {
+            return null;
+        }
+        MeetingNoteDetailResponse detail = meetingIntelligenceApi.get().getNoteDetail(noteId);
+        if (detail.currentVersion() == null || detail.currentVersion().id() == null) {
+            return null;
+        }
+        return "tenants/" + tenantId.value() + "/notes/" + detail.currentVersion().id() + "/fallback.pdf";
     }
 
     private record ResolvedNotePdf(

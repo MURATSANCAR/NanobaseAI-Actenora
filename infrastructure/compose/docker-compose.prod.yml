@@ -1,0 +1,380 @@
+# Actenora — single-file PRODUCTION compose (self-contained, one command).
+#
+# Design goals:
+#   * ONE file, ONE env-file, ONE `up` command — no -f layering to reason about.
+#   * Fail-closed: every real secret is `${VAR:?required}`; boot aborts if missing.
+#   * Prod posture baked in: jdbc + jdbc-rabbit, Entra/MSAL auth, Graph mail,
+#     openai-compatible embeddings, NO mailhog, data services not exposed to host.
+#   * Hardened runtime: read_only rootfs, no-new-privileges, tmpfs, healthchecks.
+#
+# Usage (on the server):
+#   cp infrastructure/compose/.env.prod.example /etc/nanobaseai/actenora.prod.env   # then fill in
+#   docker compose -f infrastructure/compose/docker-compose.prod.yml \
+#     --env-file /etc/nanobaseai/actenora.prod.env up -d --build
+#
+# Profiles:
+#   (default) data plane + platform-backend + web-portal
+#   ai        adds the ai-orchestrator health sidecar
+#   gpu       adds a self-hosted vLLM LLM container (requires an NVIDIA GPU host)
+#
+# The LLM (35B) is EXTERNAL by default (ACTENORA_AI_PROVIDER_BASE_URL →
+# host.docker.internal:8010). Enable `--profile gpu` only on a GPU host and then
+# set ACTENORA_AI_PROVIDER_BASE_URL=http://vllm:8000.
+
+name: actenora-prod
+
+services:
+  # ----------------------------------------------------------------- data plane
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: actenora-prod-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-actenora}
+      POSTGRES_USER: ${POSTGRES_USER:-actenora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [data-network]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-actenora} -d ${POSTGRES_DB:-actenora}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: actenora-prod-rabbitmq
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-actenora}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD required}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ../rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ../rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    networks: [data-network, app-network]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "rabbitmq-diagnostics -q check_running && rabbitmqctl authenticate_user \"$${RABBITMQ_DEFAULT_USER:-actenora}\" \"$${RABBITMQ_DEFAULT_PASS}\" >/dev/null",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 40s
+    restart: unless-stopped
+
+  rabbitmq-init:
+    image: curlimages/curl:8.12.1
+    container_name: actenora-prod-rabbitmq-init
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_MANAGEMENT_PORT: "15672"
+      RABBITMQ_USER: ${RABBITMQ_USER:-actenora}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD required}
+      DEFINITIONS_FILE: /definitions.json
+    volumes:
+      - ../rabbitmq/definitions.json:/definitions.json:ro
+      - ../rabbitmq/import-definitions.sh:/import-definitions.sh:ro
+    entrypoint: ["/bin/sh", "/import-definitions.sh"]
+    networks: [data-network, app-network]
+    restart: "no"
+
+  redis:
+    image: redis:7-alpine
+    container_name: actenora-prod-redis
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        exec redis-server /usr/local/etc/redis/redis.conf --appendonly yes --save "60 1"
+    volumes:
+      - ../redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-data:/data
+    networks: [data-network]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: actenora-prod-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${OBJECT_STORAGE_ACCESS_KEY:?OBJECT_STORAGE_ACCESS_KEY required}
+      MINIO_ROOT_PASSWORD: ${OBJECT_STORAGE_SECRET_KEY:?OBJECT_STORAGE_SECRET_KEY required}
+    volumes:
+      - minio-data:/data
+    networks: [data-network, app-network]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    container_name: actenora-prod-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      OBJECT_STORAGE_ENDPOINT: http://minio:9000
+      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY}
+      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY}
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-actenora}
+      OBJECT_STORAGE_TENANT_PREFIX_ROOT: ${OBJECT_STORAGE_TENANT_PREFIX_ROOT:-tenants}
+    volumes:
+      - ../minio/init-buckets.sh:/init-buckets.sh:ro
+    entrypoint: ["/bin/sh", "/init-buckets.sh"]
+    networks: [data-network]
+    restart: "no"
+
+  # ------------------------------------------------------------- platform backend
+  platform-backend:
+    build:
+      context: ../..
+      dockerfile: apps/platform-backend/Dockerfile
+    image: actenora-platform-backend:prod
+    container_name: actenora-prod-platform-backend
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      rabbitmq-init: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    environment:
+      # --- profile & posture -------------------------------------------------
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      ACTENORA_ENV: ${ACTENORA_ENV:-production}
+      PLATFORM_BACKEND_PORT: "8080"
+      ACTENORA_PERSISTENCE_MODE: jdbc
+      ACTENORA_MESSAGING_MODE: jdbc-rabbit
+      ACTENORA_ALLOW_DEFAULT_SECRETS: "false"
+      # --- datastores --------------------------------------------------------
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-actenora}
+      POSTGRES_USER: ${POSTGRES_USER:-actenora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-actenora}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: ${RABBITMQ_USER:-actenora}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      ACTENORA_REDIS_COORDINATION_ENABLED: "true"
+      OBJECT_STORAGE_ENDPOINT: http://minio:9000
+      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY}
+      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY}
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-actenora}
+      OBJECT_STORAGE_TENANT_PREFIX_ROOT: ${OBJECT_STORAGE_TENANT_PREFIX_ROOT:-tenants}
+      ACTENORA_OBJECT_STORAGE_ENABLED: "true"
+      # --- auth / identity (Entra) ------------------------------------------
+      ACTENORA_AUTH_MODE: ${ACTENORA_AUTH_MODE:-entra}
+      ACTENORA_PORTAL_AUTH_MODE: ${ACTENORA_PORTAL_AUTH_MODE:-msal}
+      ACTENORA_ENTRA_ISSUER_URI: ${ACTENORA_ENTRA_ISSUER_URI:?ACTENORA_ENTRA_ISSUER_URI required}
+      ACTENORA_ENTRA_AUDIENCE: ${ACTENORA_ENTRA_AUDIENCE:?ACTENORA_ENTRA_AUDIENCE required}
+      ACTENORA_CORS_ALLOWED_ORIGINS: ${ACTENORA_CORS_ALLOWED_ORIGINS:?ACTENORA_CORS_ALLOWED_ORIGINS required}
+      # --- shared secrets ----------------------------------------------------
+      ACTENORA_PORTAL_LINK_SECRET: ${ACTENORA_PORTAL_LINK_SECRET:?ACTENORA_PORTAL_LINK_SECRET required}
+      ACTENORA_DELIVERY_WEBHOOK_SECRET: ${ACTENORA_DELIVERY_WEBHOOK_SECRET:?ACTENORA_DELIVERY_WEBHOOK_SECRET required}
+      ACTENORA_DELIVERY_PORTAL_LINK_BASE_URL: ${ACTENORA_DELIVERY_PORTAL_LINK_BASE_URL:?ACTENORA_DELIVERY_PORTAL_LINK_BASE_URL required}
+      # --- Microsoft Graph (Teams sync + mail delivery) ----------------------
+      ACTENORA_MICROSOFT_GRAPH_ENABLED: ${ACTENORA_MICROSOFT_GRAPH_ENABLED:-true}
+      ACTENORA_MICROSOFT_GRAPH_AUTH_MODE: ${ACTENORA_MICROSOFT_GRAPH_AUTH_MODE:-CERTIFICATE}
+      ACTENORA_MICROSOFT_GRAPH_TENANT_ID: ${ACTENORA_MICROSOFT_GRAPH_TENANT_ID:?ACTENORA_MICROSOFT_GRAPH_TENANT_ID required}
+      ACTENORA_MICROSOFT_GRAPH_CLIENT_ID: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_ID:?ACTENORA_MICROSOFT_GRAPH_CLIENT_ID required}
+      ACTENORA_MICROSOFT_GRAPH_CLIENT_SECRET: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_SECRET:-}
+      ACTENORA_MICROSOFT_GRAPH_CERTIFICATE_PEM_PATH: ${ACTENORA_MICROSOFT_GRAPH_CERTIFICATE_PEM_PATH:-/run/secrets/graph/cert.pem}
+      ACTENORA_MICROSOFT_GRAPH_PRIVATE_KEY_PEM_PATH: ${ACTENORA_MICROSOFT_GRAPH_PRIVATE_KEY_PEM_PATH:-/run/secrets/graph/key.pem}
+      ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE: ${ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE:?ACTENORA_MICROSOFT_GRAPH_CLIENT_STATE required}
+      ACTENORA_MICROSOFT_GRAPH_DEFAULT_MAILBOX_USER_ID: ${ACTENORA_MICROSOFT_GRAPH_DEFAULT_MAILBOX_USER_ID:-}
+      # --- mail delivery (Graph Mail.Send; no SMTP) --------------------------
+      ACTENORA_DELIVERY_MAIL_PROVIDER: ${ACTENORA_DELIVERY_MAIL_PROVIDER:-microsoft-graph}
+      ACTENORA_DELIVERY_GRAPH_SENDER: ${ACTENORA_DELIVERY_GRAPH_SENDER:?ACTENORA_DELIVERY_GRAPH_SENDER required}
+      ACTENORA_DELIVERY_MAIL_FROM: ${ACTENORA_DELIVERY_MAIL_FROM:?ACTENORA_DELIVERY_MAIL_FROM required}
+      ACTENORA_DELIVERY_MAIL_FROM_DISPLAY_NAME: ${ACTENORA_DELIVERY_MAIL_FROM_DISPLAY_NAME:-NanobaseAI EasyMeeting}
+      ACTENORA_DELIVERY_DRAFT_MINUTES_READY_ADDITIONAL_RECIPIENTS: ${ACTENORA_DELIVERY_DRAFT_MINUTES_READY_ADDITIONAL_RECIPIENTS:-}
+      # Graph delivery does not use SMTP; disable the mail health probe so no
+      # SMTP server is required, and give spring.mail.host a harmless value.
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      # --- LLM (external by default; use --profile gpu + vllm:8000 otherwise) -
+      ACTENORA_AI_PROVIDER_KIND: ${ACTENORA_AI_PROVIDER_KIND:-nanobaseai}
+      ACTENORA_AI_PROVIDER_BASE_URL: ${ACTENORA_AI_PROVIDER_BASE_URL:-http://host.docker.internal:8010}
+      ACTENORA_AI_PROVIDER_READ_TIMEOUT: ${ACTENORA_AI_PROVIDER_READ_TIMEOUT:-7200s}
+      ACTENORA_AI_PROVIDER_MAX_ATTEMPTS: ${ACTENORA_AI_PROVIDER_MAX_ATTEMPTS:-5}
+      ACTENORA_AI_PROVIDER_FAST_EXTRACTION_SERVED_MODEL_ID: ${ACTENORA_AI_PROVIDER_FAST_EXTRACTION_SERVED_MODEL_ID:-nanobase-qwen36-35b-a3b-mtp}
+      ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID: ${ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID:-nanobase-qwen36-35b-a3b-mtp}
+      ACTENORA_AI_PIPELINE_MODE: ${ACTENORA_AI_PIPELINE_MODE:-legacy}
+      ACTENORA_AI_FINALIZATION_MODE: ${ACTENORA_AI_FINALIZATION_MODE:-editorial}
+      ACTENORA_AI_WORKER_ENABLED: ${ACTENORA_AI_WORKER_ENABLED:-true}
+      # --- embeddings (openai-compatible; hash forbidden in prod) -------------
+      ACTENORA_KNOWLEDGE_EMBEDDING_MODE: ${ACTENORA_KNOWLEDGE_EMBEDDING_MODE:-openai-compatible}
+      ACTENORA_KNOWLEDGE_EMBEDDING_BASE_URL: ${ACTENORA_KNOWLEDGE_EMBEDDING_BASE_URL:?ACTENORA_KNOWLEDGE_EMBEDDING_BASE_URL required}
+      ACTENORA_KNOWLEDGE_EMBEDDING_MODEL_ID: ${ACTENORA_KNOWLEDGE_EMBEDDING_MODEL_ID:?ACTENORA_KNOWLEDGE_EMBEDDING_MODEL_ID required}
+      ACTENORA_KNOWLEDGE_EMBEDDING_DIMENSIONS: ${ACTENORA_KNOWLEDGE_EMBEDDING_DIMENSIONS:-1024}
+      ACTENORA_KNOWLEDGE_EMBEDDING_API_KEY: ${ACTENORA_KNOWLEDGE_EMBEDDING_API_KEY:-}
+    # Bind to loopback only; a host nginx/TLS terminator fronts it.
+    ports:
+      - "127.0.0.1:${ACTENORA_PLATFORM_BACKEND_HOST_PORT:-8088}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/tmp:size=64m,mode=1777
+    volumes:
+      # Graph certificate + private key (read-only). Point the *_PEM_PATH envs here.
+      - ${ACTENORA_GRAPH_SECRETS_HOST_DIR:-./secrets/graph}:/run/secrets/graph:ro
+    security_opt:
+      - no-new-privileges:true
+    networks: [app-network, data-network, ai-network]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 24
+      start_period: 120s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- web portal
+  web-portal:
+    build:
+      context: ../..
+      dockerfile: apps/web-portal/Dockerfile
+      args:
+        VITE_API_MODE: http
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?VITE_API_BASE_URL required}
+        VITE_PORTAL_AUTH_MODE: ${VITE_PORTAL_AUTH_MODE:-msal}
+        VITE_ENTRA_CLIENT_ID: ${VITE_ENTRA_CLIENT_ID:?VITE_ENTRA_CLIENT_ID required}
+        VITE_ENTRA_TENANT_ID: ${VITE_ENTRA_TENANT_ID:?VITE_ENTRA_TENANT_ID required}
+        VITE_ENTRA_API_SCOPE: ${VITE_ENTRA_API_SCOPE:?VITE_ENTRA_API_SCOPE required}
+    image: actenora-web-portal:prod
+    container_name: actenora-prod-web-portal
+    depends_on:
+      platform-backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORTAL_HOST_PORT:-3000}:8080"
+    security_opt:
+      - no-new-privileges:true
+    networks: [app-network]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ | grep -q html"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---------------------------------------------- ai-orchestrator (health only)
+  ai-orchestrator:
+    profiles: ["ai"]
+    build:
+      context: ../..
+      dockerfile: apps/ai-orchestrator/Dockerfile
+    image: actenora-ai-orchestrator:prod
+    container_name: actenora-prod-ai-orchestrator
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      AI_ORCHESTRATOR_HOST: 0.0.0.0
+      AI_ORCHESTRATOR_PORT: "8000"
+      QWEN_BASE_URL: ${QWEN_BASE_URL:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      ACTENORA_AI_EGRESS_DENY_PUBLIC: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    networks: [ai-network, data-network]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  # --------------------------- self-hosted LLM (opt-in; requires NVIDIA GPU) ---
+  # Enable with `--profile gpu` AND set ACTENORA_AI_PROVIDER_BASE_URL=http://vllm:8000
+  # (+ ACTENORA_KNOWLEDGE_EMBEDDING_BASE_URL if you serve embeddings here too).
+  vllm:
+    profiles: ["gpu"]
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:latest}
+    container_name: actenora-prod-vllm
+    command:
+      - "--model"
+      - "${VLLM_MODEL:?VLLM_MODEL required (HF id or local path)}"
+      - "--served-model-name"
+      - "${ACTENORA_AI_PROVIDER_FINAL_SERVED_MODEL_ID:-nanobase-qwen36-35b-a3b-mtp}"
+      - "--max-model-len"
+      - "${VLLM_MAX_MODEL_LEN:-16384}"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    volumes:
+      - ${VLLM_MODELS_HOST_DIR:-./models}:/models
+      - vllm-hf-cache:/root/.cache/huggingface
+    networks: [ai-network]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${VLLM_GPU_COUNT:-1}
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health | grep -q . || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 300s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    name: actenora-prod-postgres-data
+  rabbitmq-data:
+    name: actenora-prod-rabbitmq-data
+  redis-data:
+    name: actenora-prod-redis-data
+  minio-data:
+    name: actenora-prod-minio-data
+  vllm-hf-cache:
+    name: actenora-prod-vllm-hf-cache
+
+networks:
+  app-network:
+    name: actenora-prod-app-network
+    driver: bridge
+  data-network:
+    name: actenora-prod-data-network
+    driver: bridge
+  ai-network:
+    name: actenora-prod-ai-network
+    driver: bridge

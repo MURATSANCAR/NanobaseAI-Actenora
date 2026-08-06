@@ -297,7 +297,9 @@ public final class PlatformApprovedNoteFinalDeliveryAdapter implements ApprovedN
         try {
             byte[] pdf = pdfRenderer.render(doc);
             UUID documentId = UUID.randomUUID();
-            String storageKey = "tenants/" + tenantId.value() + "/notes/" + noteVersionId + "/fallback.pdf";
+            // Key the fallback by the stable noteId (not the version id): approval bumps the note
+            // version, so a version-keyed object could never be resolved back on the read side.
+            String storageKey = "tenants/" + tenantId.value() + "/notes/" + noteId + "/fallback.pdf";
             if (objectStorage.isPresent()) {
                 objectStorage.get().put(ObjectPutRequest.ofBytes(storageKey, pdf, "application/pdf"));
             }
