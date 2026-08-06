@@ -19,6 +19,12 @@ public final class MeetingTerminologyNormalizer {
 
     private final List<Alias> aliases;
 
+    /** Surface pattern compiled once at construction (not per rewrite call). */
+    private record CompiledAlias(Pattern pattern, String canonical) {
+    }
+
+    private final List<CompiledAlias> compiled;
+
     public MeetingTerminologyNormalizer(List<Alias> aliases) {
         List<Alias> copy = new ArrayList<>(Objects.requireNonNull(aliases, "aliases"));
         copy.sort(Comparator
@@ -26,6 +32,15 @@ public final class MeetingTerminologyNormalizer {
                 .reversed()
                 .thenComparing(a -> a.surface().toLowerCase(Locale.ROOT)));
         this.aliases = List.copyOf(copy);
+        List<CompiledAlias> compiledList = new ArrayList<>(copy.size());
+        for (Alias al : copy) {
+            compiledList.add(new CompiledAlias(
+                    Pattern.compile(
+                            "(?<![\\p{L}\\p{N}_])" + Pattern.quote(al.surface()) + "(?![\\p{L}\\p{N}_])",
+                            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE),
+                    al.canonical()));
+        }
+        this.compiled = List.copyOf(compiledList);
     }
 
     /**
@@ -275,15 +290,12 @@ public final class MeetingTerminologyNormalizer {
     }
 
     public String rewrite(String text) {
-        if (text == null || text.isEmpty() || aliases.isEmpty()) {
+        if (text == null || text.isEmpty() || compiled.isEmpty()) {
             return text == null ? "" : text;
         }
         String result = text;
-        for (Alias alias : aliases) {
-            Pattern pattern = Pattern.compile(
-                    "(?<![\\p{L}\\p{N}_])" + Pattern.quote(alias.surface()) + "(?![\\p{L}\\p{N}_])",
-                    Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-            Matcher matcher = pattern.matcher(result);
+        for (CompiledAlias alias : compiled) {
+            Matcher matcher = alias.pattern().matcher(result);
             StringBuffer sb = new StringBuffer();
             boolean changed = false;
             while (matcher.find()) {
