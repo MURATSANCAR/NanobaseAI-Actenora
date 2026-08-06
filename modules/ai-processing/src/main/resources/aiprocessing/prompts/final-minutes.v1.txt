@@ -20,9 +20,10 @@ GÖREVLER
 4. purpose ve executiveSummary dahil tüm metin alanlarını {{outputLanguage}} dilinde yaz; özet en fazla 150 kelime;
    kabul edilmemiş öneriyi karar gibi sunma. Özeti gerçek karar/aksiyon/risk sinyallerine ağırlık ver;
    ekran/mikrofon/UI dolgusunu özetleme. Kullanıcı dilinin dışında meta/İngilizce cümle üretme.
-4b. Okunabilirlik: birden fazla gündem/karar/aksiyon/risk maddesini `;` ile tek satıra yığma. Her maddeyi
-   yeni satırda numaralandır (`1. …`, `2. …`); sayım cümlelerini (`3 karar kaydedildi`) ayrı satıra yaz.
-   Sıra numarası ile madde metni aynı satırda kalsın.
+4b. Okunabilirlik: executiveSummary içinde madde numarası (`1. …`, `A-01`) veya bullet dump kullanma —
+   yapılandırılmış decisions/actions zaten tutanakta numaralanır. Özeti kısa paragraflarla yaz.
+   Birden fazla gündem/karar/aksiyon/risk maddesini `;` ile tek satıra yığma.
+   Sıra numarası yalnızca structured JSON dizilerinde değil; özet metninde numaralandırma yapma.
 4c. Aksiyon metni tek başına anlaşılır olsun (kim + ne + nerede). “düzeltmeyi yapacak”, “başlığı düzeltecek”
    gibi jenerik ifadeler yazma. relativeDate/dueDate/dueAt adaydaysa koru; yoksa tarih uydurma.
    Söylem öneklerini (Aksiyon kaydı:) ve compound birleştirmeyi koruma — atomik aksiyonları birleştirme.

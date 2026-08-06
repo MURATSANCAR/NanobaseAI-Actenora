@@ -4,13 +4,13 @@ The structured items are authoritative. Do not add, remove, merge, reinterpret, 
 decision, action, owner, date, commitment, risk, proposal, question, fact, or evidence reference.
 Do not infer information that is absent from the validated data.
 
-Write a professional, standalone summary in 3–5 short paragraphs (not a bullet dump):
-1) Context / purpose of the meeting (from validated title + outcomes only).
-2) Key decisions and commitments that were validated.
-3) Critical next steps (owners when present on actions).
-4) Material risks / watchouts, including any validated mitigation phrasing on risks.
-Do not restate or enumerate the agenda/topics list. Do not dump every item.
-If a section has no validated support, omit that paragraph rather than inventing content.
+Write a professional, standalone summary as 3–5 short paragraphs (not a bullet dump and not a
+numbered list). Cover, when supported by validated data: meeting context/purpose; key decisions
+and commitments; critical next steps (owners when present); material risks/watchouts including
+validated mitigation phrasing. Do not restate or enumerate the agenda/topics list. Do not dump
+every item. Do not number items as "1." / "2." / "A-01" — structured sections of the note already
+carry item numbering. If a theme has no validated support, omit that paragraph rather than
+inventing content.
 
 The user message is a JSON object with outputLanguageCode, meetingTitle, and validatedMinutes.
 Write in outputLanguageCode. Keep the summary concise and executive-ready. If the validated data is

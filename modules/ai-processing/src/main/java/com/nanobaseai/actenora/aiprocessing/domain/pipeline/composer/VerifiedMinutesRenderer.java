@@ -176,35 +176,51 @@ public final class VerifiedMinutesRenderer {
         if (meetingFrame != null && meetingFrame.text() != null && !meetingFrame.text().isBlank()) {
             sb.append(meetingFrame.text().strip());
         }
-        appendSection(sb, "Kararlar", ledger.decisions(), d -> d.text());
-        appendSection(sb, "Aksiyonlar", ledger.actionItems(), a -> {
-            String owner = a.owner() == null || a.owner().isBlank() ? "" : a.owner() + ": ";
+        // Structured items are already numbered in the note UI/PDF — summary must stay prose,
+        // never "1. / 2." or A-01 style dumps.
+        String decisions = joinProse(ledger.decisions(), d -> d.text());
+        if (!decisions.isBlank()) {
+            appendParagraph(sb, "Toplantıda netleşen kararlar: " + decisions);
+        }
+        String actions = joinProse(ledger.actionItems(), a -> {
+            String owner = a.owner() == null || a.owner().isBlank() ? "" : a.owner() + " — ";
             return owner + a.text();
         });
-        appendSection(sb, "Riskler", ledger.risks(), r -> r.text());
+        if (!actions.isBlank()) {
+            appendParagraph(sb, "Sonraki adımlar: " + actions);
+        }
+        String risks = joinProse(ledger.risks(), r -> r.text());
+        if (!risks.isBlank()) {
+            appendParagraph(sb, "İzlenmesi gereken riskler: " + risks);
+        }
         if (sb.isEmpty()) {
             return "Toplantı çıktıları doğrulandı; ayrıntılar yapılandırılmış maddelerde yer almaktadır.";
         }
         return sb.toString().strip();
     }
 
-    private static <T> void appendSection(
-            StringBuilder sb,
-            String title,
-            List<T> items,
-            Function<T, String> textOf
-    ) {
-        if (items == null || items.isEmpty()) {
-            return;
-        }
+    private static void appendParagraph(StringBuilder sb, String paragraph) {
         if (!sb.isEmpty()) {
             sb.append("\n\n");
         }
-        sb.append(title).append(':');
-        int i = 1;
-        for (T item : items) {
-            sb.append('\n').append(i++).append(". ").append(textOrEmpty(textOf.apply(item)));
+        sb.append(paragraph.strip());
+    }
+
+    private static <T> String joinProse(List<T> items, Function<T, String> textOf) {
+        if (items == null || items.isEmpty()) {
+            return "";
         }
+        List<String> parts = new ArrayList<>();
+        for (T item : items) {
+            String t = textOrEmpty(textOf.apply(item));
+            if (!t.isBlank()) {
+                if (!t.endsWith(".") && !t.endsWith(";") && !t.endsWith("?")) {
+                    t = t + ".";
+                }
+                parts.add(t);
+            }
+        }
+        return String.join(" ", parts);
     }
 
     private static String textOrEmpty(String text) {
