@@ -4,6 +4,8 @@ import com.nanobaseai.actenora.microsoftconnection.application.model.AccessToken
 import com.nanobaseai.actenora.microsoftconnection.application.port.MicrosoftTokenProvider;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.config.MicrosoftGraphProperties;
 import com.nanobaseai.actenora.sharedkernel.time.InstantClock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -18,12 +20,44 @@ import java.util.Objects;
  */
 public final class MutableMicrosoftTokenProvider implements MicrosoftTokenProvider {
 
+    private static final Logger log = LoggerFactory.getLogger(MutableMicrosoftTokenProvider.class);
+
+    /** Delegate used when credentials are incomplete at startup — fails only when actually used. */
+    private static final MicrosoftTokenProvider UNCONFIGURED = new MicrosoftTokenProvider() {
+        @Override
+        public AccessToken getAccessToken() {
+            throw new IllegalStateException(
+                    "Microsoft Graph connection is not configured. Set the tenant/client/credentials "
+                            + "on the Teams settings screen.");
+        }
+
+        @Override
+        public AccessToken refreshAccessToken() {
+            return getAccessToken();
+        }
+    };
+
     private final InstantClock clock;
     private volatile MicrosoftTokenProvider delegate;
 
     public MutableMicrosoftTokenProvider(MicrosoftGraphProperties initial, InstantClock clock) {
         this.clock = Objects.requireNonNull(clock, "clock");
-        this.delegate = build(Objects.requireNonNull(initial, "initial"), clock);
+        this.delegate = buildOrDeferred(Objects.requireNonNull(initial, "initial"));
+    }
+
+    /**
+     * Builds the delegate but tolerates incomplete boot-time credentials: the module can be enabled
+     * with blank/partial config so an admin can supply credentials at runtime via the portal without
+     * the application failing to start. Runtime {@link #rebuild} still throws on invalid input.
+     */
+    private MicrosoftTokenProvider buildOrDeferred(MicrosoftGraphProperties props) {
+        try {
+            return build(props, clock);
+        } catch (RuntimeException ex) {
+            log.warn("Microsoft Graph credentials incomplete at startup ({}). Connection is inactive "
+                    + "until configured via the Teams settings screen.", ex.getMessage());
+            return UNCONFIGURED;
+        }
     }
 
     @Override

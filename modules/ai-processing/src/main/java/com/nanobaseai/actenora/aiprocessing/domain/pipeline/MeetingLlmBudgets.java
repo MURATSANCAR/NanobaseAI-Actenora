@@ -3,8 +3,12 @@ package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
 /**
  * Production token budgets for the meeting-minutes pipeline on Qwen3.6-35B-A3B (CPU).
  *
- * <p>Server {@code --ctx-size} is typically 32_768. Pipeline chunking still uses
- * {@link #OPERATIONAL_CTX_SIZE} (16_384) so prompt+chunk+output stay well under KV.
+ * <p>Server {@code --ctx-size} is 32_768 with {@code -np 1} (verified in prod), so a single
+ * request may use the full window. Chunking and the per-chunk {@code assertFits} guard therefore
+ * use {@link #OPERATIONAL_CTX_SIZE} (32_768). The earlier 16_384 clamp silently dropped chunks on
+ * dense, many-short-segment transcripts: the rendered extraction prompt (per-segment UUID
+ * evidence-ids + speaker-role labels, which scale with segment COUNT, not content size) overflowed
+ * 16_384 even for a target-sized chunk, and the failed chunk — with its decisions — was discarded.
  *
  * <p>Critical distinction:
  * <ul>
@@ -14,8 +18,8 @@ package com.nanobaseai.actenora.aiprocessing.domain.pipeline;
  */
 public final class MeetingLlmBudgets {
 
-    /** Operational context budget used for chunking (server may advertise 32k). */
-    public static final int OPERATIONAL_CTX_SIZE = 16_384;
+    /** Operational context budget used for chunking. Matches the prod llama-server {@code -c 32768 -np 1}. */
+    public static final int OPERATIONAL_CTX_SIZE = 32_768;
 
     /**
      * Context budget used by the transcript-grounded finalization step. The production
@@ -72,8 +76,8 @@ public final class MeetingLlmBudgets {
     }
 
     /**
-     * Clamp a registry context window to the operational llama-server ctx-size.
-     * Registry may advertise the model native 32k; the running server uses 16k.
+     * Clamp a registry context window to the operational llama-server ctx-size (32k).
+     * Registry may advertise a larger native window; the running server uses 32k with -np 1.
      */
     public static int operationalContextWindow(int registryOrNativeContextWindow) {
         if (registryOrNativeContextWindow <= 0) {

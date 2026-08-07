@@ -935,6 +935,17 @@ public final class MinutesSynthesisAndAudit {
         return sb.toString().strip();
     }
 
+    /**
+     * Turkish + UUID-dense transcripts tokenize ~1.4-1.5x higher than the len/4
+     * {@link ApproximateTokenEstimator} predicts. Without this correction the fit check admitted
+     * grounding blocks whose real token count saturated the KV window (observed 30_405 real tokens
+     * against an estimate that cleared a ~21_076 budget in 32_768), leaving too little room for the
+     * reserved output: the synthesis JSON truncated (finish_reason=length), collapsed to
+     * SYNTHESIS_FALLBACK, capped confidence to ~0.5 and dropped decisions. Correcting the estimate
+     * makes oversized meetings degrade cleanly to candidate-grounded FULL synthesis instead.
+     */
+    private static final double GROUNDED_TOKEN_DENSITY_FACTOR = 1.5d;
+
     private boolean transcriptFitsGrounded(String transcript, String candidatesJson) {
         int ctx = MeetingLlmBudgets.GROUNDED_CTX_SIZE;
         int descriptorCtx = modelRuntime.descriptor().contextWindowTokens();
@@ -946,7 +957,8 @@ public final class MinutesSynthesisAndAudit {
                 + MeetingLlmBudgets.SAFETY_MARGIN_TOKENS;
         int budget = ctx - reserve;
         TokenEstimator estimator = new ApproximateTokenEstimator();
-        int used = estimator.estimate(transcript) + estimator.estimate(candidatesJson);
+        int rawUsed = estimator.estimate(transcript) + estimator.estimate(candidatesJson);
+        int used = (int) Math.ceil(rawUsed * GROUNDED_TOKEN_DENSITY_FACTOR);
         return budget > 0 && used <= budget;
     }
 
