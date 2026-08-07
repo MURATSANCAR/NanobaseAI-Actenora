@@ -207,6 +207,7 @@ class PortalApiBindingTest {
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi.class),
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.modelmanagement.api.ModelManagementApi.class),
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService.class),
+                optionalBeans.getBeanProvider(com.nanobaseai.actenora.security.microsoftconnection.GraphConnectionService.class),
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.aiprocessing.api.AiProcessingApi.class),
                 optionalBeans.getBeanProvider(AuditApi.class),
                 optionalBeans.getBeanProvider(com.nanobaseai.actenora.security.microsoftconnection.GraphObservability.class),

@@ -12,7 +12,18 @@ import { AsyncState, DataTable, PaginationBar } from "@/components/ui/AsyncState
 import { InlineFeedback, type FeedbackMessage } from "@/components/ui/InlineFeedback";
 import { useI18n } from "@/i18n";
 import { sanitizeProductCopy } from "@/lib/brandSanitize";
+import type { TeamsConnectionTestResult } from "@/api/types";
 import { AlertTriangle, Layers } from "lucide-react";
+
+const GRAPH_APP_PERMISSIONS = [
+  "OnlineMeetings.Read.All",
+  "OnlineMeetingTranscript.Read.All",
+  "Calendars.Read",
+  "Mail.Send",
+  "User.Read.All",
+] as const;
+
+const ENTRA_ADMIN_URL = "https://entra.microsoft.com";
 
 export function TemplateStudioPage() {
   const api = useApi();
@@ -131,15 +142,90 @@ export function TeamsSettingsPage() {
   const api = useApi();
   const queryClient = useQueryClient();
   const { t, tb } = useI18n();
+  const isAdmin = auth.user?.role === "ADMIN";
+
   const q = useQuery({
     queryKey: queryKeys.teams,
     queryFn: () => api.getTeamsSettings(),
     enabled: auth.nav("teams"),
   });
-  const updateMutation = useMutation({
+  const conn = useQuery({
+    queryKey: queryKeys.teamsConnection,
+    queryFn: () => api.getTeamsConnection(),
+    enabled: auth.nav("teams") && isAdmin,
+  });
+
+  const [form, setForm] = useState({
+    authMode: "CERTIFICATE",
+    tenantId: "",
+    clientId: "",
+    clientSecret: "",
+    certificatePemPath: "",
+    privateKeyPemPath: "",
+    graphBaseUrl: "https://graph.microsoft.com",
+    authorityHost: "https://login.microsoftonline.com",
+    scope: "https://graph.microsoft.com/.default",
+    defaultMailboxUserId: "",
+    enabled: true,
+  });
+  const [message, setMessage] = useState<FeedbackMessage | null>(null);
+  const [testResult, setTestResult] = useState<TeamsConnectionTestResult | null>(null);
+
+  useEffect(() => {
+    const d = conn.data;
+    if (!d) return;
+    setForm({
+      authMode: d.authMode || "CERTIFICATE",
+      tenantId: d.tenantId ?? "",
+      clientId: d.clientId ?? "",
+      clientSecret: "",
+      certificatePemPath: d.certificatePemPath ?? "",
+      privateKeyPemPath: d.privateKeyPemPath ?? "",
+      graphBaseUrl: d.graphBaseUrl || "https://graph.microsoft.com",
+      authorityHost: d.authorityHost || "https://login.microsoftonline.com",
+      scope: d.scope || "https://graph.microsoft.com/.default",
+      defaultMailboxUserId: d.defaultMailboxUserId ?? "",
+      enabled: d.enabled,
+    });
+  }, [conn.data]);
+
+  const autoJoinMutation = useMutation({
     mutationFn: (autoJoinEnabled: boolean) => api.updateTeamsSettings({ autoJoinEnabled }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.teams });
+    },
+  });
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      api.updateTeamsConnection({
+        enabled: form.enabled,
+        graphBaseUrl: form.graphBaseUrl.trim(),
+        authorityHost: form.authorityHost.trim(),
+        tenantId: form.tenantId.trim(),
+        clientId: form.clientId.trim(),
+        scope: form.scope.trim(),
+        authMode: form.authMode,
+        clientSecret: form.clientSecret, // blank keeps the stored secret
+        certificatePemPath: form.certificatePemPath.trim(),
+        privateKeyPemPath: form.privateKeyPemPath.trim(),
+        defaultMailboxUserId: form.defaultMailboxUserId.trim(),
+      }),
+    onSuccess: async () => {
+      setMessage({ text: t("teams.saved"), tone: "success" });
+      setForm((f) => ({ ...f, clientSecret: "" }));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.teamsConnection });
+    },
+    onError: (err: Error) => setMessage({ text: err.message || t("teams.saveFailed"), tone: "error" }),
+  });
+  const testMutation = useMutation({
+    mutationFn: () => api.testTeamsConnection(),
+    onSuccess: (data) => {
+      setTestResult(data);
+      setMessage({ text: data.healthy ? t("teams.test.ok") : t("teams.test.failed"), tone: data.healthy ? "success" : "error" });
+    },
+    onError: (err: Error) => {
+      setTestResult(null);
+      setMessage({ text: err.message || t("teams.test.failed"), tone: "error" });
     },
   });
 
@@ -148,6 +234,11 @@ export function TeamsSettingsPage() {
   }
 
   const status = q.isLoading ? "loading" : q.isError ? "error" : !q.data ? "empty" : "ready";
+  const upd = (key: keyof typeof form, value: string | boolean) =>
+    setForm((f) => ({ ...f, [key]: value }) as typeof f);
+  const isCertificate = form.authMode === "CERTIFICATE";
+  const moduleAvailable = conn.data ? conn.data.available : true;
+  const canEdit = isAdmin && moduleAvailable;
 
   return (
     <PageShell titleKey="teams.title" subtitleKey="teams.description" maxWidth="max-w-4xl">
@@ -177,18 +268,200 @@ export function TeamsSettingsPage() {
               </p>
             </div>
           </div>
+
+          {isAdmin ? (
+            <div className="card-static mt-4 space-y-4 p-5" data-testid="teams-connection">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("teams.connection.section")}</h2>
+                <p className="mt-1 text-sm text-slate-600">{t("teams.connection.description")}</p>
+              </div>
+              {!moduleAvailable ? (
+                <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {t("teams.connection.disabledNote")}
+                </p>
+              ) : null}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="label-text">{t("teams.field.authMode")}</span>
+                  <select
+                    className="input-field"
+                    value={form.authMode}
+                    disabled={!canEdit}
+                    onChange={(e) => upd("authMode", e.target.value)}
+                  >
+                    <option value="CERTIFICATE">{t("teams.field.authModeCertificate")}</option>
+                    <option value="CLIENT_SECRET">{t("teams.field.authModeSecret")}</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 self-end text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={form.enabled}
+                    disabled={!canEdit}
+                    onChange={(e) => upd("enabled", e.target.checked)}
+                  />
+                  {t("teams.field.enabled")}
+                </label>
+                <label className="block">
+                  <span className="label-text">{t("teams.field.tenantId")}</span>
+                  <input
+                    className="input-field font-mono text-sm"
+                    value={form.tenantId}
+                    disabled={!canEdit}
+                    autoComplete="off"
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    onChange={(e) => upd("tenantId", e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="label-text">{t("teams.field.clientId")}</span>
+                  <input
+                    className="input-field font-mono text-sm"
+                    value={form.clientId}
+                    disabled={!canEdit}
+                    autoComplete="off"
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    onChange={(e) => upd("clientId", e.target.value)}
+                  />
+                </label>
+
+                {isCertificate ? (
+                  <>
+                    <label className="block">
+                      <span className="label-text">{t("teams.field.certificatePath")}</span>
+                      <input
+                        className="input-field font-mono text-sm"
+                        value={form.certificatePemPath}
+                        disabled={!canEdit}
+                        autoComplete="off"
+                        placeholder="/etc/actenora/graph-cert.pem"
+                        onChange={(e) => upd("certificatePemPath", e.target.value)}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="label-text">{t("teams.field.keyPath")}</span>
+                      <input
+                        className="input-field font-mono text-sm"
+                        value={form.privateKeyPemPath}
+                        disabled={!canEdit}
+                        autoComplete="off"
+                        placeholder="/etc/actenora/graph-key.pem"
+                        onChange={(e) => upd("privateKeyPemPath", e.target.value)}
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label className="block sm:col-span-2">
+                    <span className="label-text">{t("teams.field.clientSecret")}</span>
+                    <input
+                      className="input-field font-mono text-sm"
+                      type="password"
+                      value={form.clientSecret}
+                      disabled={!canEdit}
+                      autoComplete="new-password"
+                      placeholder={t("teams.field.clientSecretKeep")}
+                      onChange={(e) => upd("clientSecret", e.target.value)}
+                    />
+                    <span className="mt-1 block text-xs text-slate-500">
+                      {conn.data?.secretConfigured ? t("teams.field.clientSecretSet") : t("teams.field.clientSecretNone")}
+                    </span>
+                  </label>
+                )}
+
+                <label className="block">
+                  <span className="label-text">{t("teams.field.mailbox")}</span>
+                  <input
+                    className="input-field font-mono text-sm"
+                    value={form.defaultMailboxUserId}
+                    disabled={!canEdit}
+                    autoComplete="off"
+                    placeholder="meetings@contoso.com"
+                    onChange={(e) => upd("defaultMailboxUserId", e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="label-text">{t("teams.field.scope")}</span>
+                  <input
+                    className="input-field font-mono text-sm"
+                    value={form.scope}
+                    disabled={!canEdit}
+                    autoComplete="off"
+                    onChange={(e) => upd("scope", e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="label-text">{t("teams.field.graphBaseUrl")}</span>
+                  <input
+                    className="input-field font-mono text-sm"
+                    value={form.graphBaseUrl}
+                    disabled={!canEdit}
+                    autoComplete="off"
+                    onChange={(e) => upd("graphBaseUrl", e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="label-text">{t("teams.field.authorityHost")}</span>
+                  <input
+                    className="input-field font-mono text-sm"
+                    value={form.authorityHost}
+                    disabled={!canEdit}
+                    autoComplete="off"
+                    onChange={(e) => upd("authorityHost", e.target.value)}
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!canEdit || saveMutation.isPending}
+                  onClick={() => saveMutation.mutate()}
+                >
+                  {t("teams.action.save")}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={!canEdit || testMutation.isPending}
+                  onClick={() => testMutation.mutate()}
+                >
+                  {t("teams.action.test")}
+                </button>
+              </div>
+              <InlineFeedback message={message} />
+              {testResult ? (
+                <div className="flex flex-col gap-1 rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <StatusBadge
+                      label={testResult.healthy ? t("teams.test.ok") : t("teams.test.failed")}
+                      status={testResult.healthy ? "healthy" : "failed"}
+                    />
+                    <span className="text-xs text-slate-500">
+                      {t("teams.test.latency")}: {testResult.latencyMs} ms
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600">{testResult.detail}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {isAdmin ? <TeamsSetupGuide /> : null}
+
           <div className="card-static mt-4 space-y-3 p-4">
             <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("admin.teamsPreferences")}</h2>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 checked={q.data.autoJoinEnabled}
-                disabled={updateMutation.isPending || auth.user?.role !== "ADMIN"}
-                onChange={(e) => updateMutation.mutate(e.target.checked)}
+                disabled={autoJoinMutation.isPending || !isAdmin}
+                onChange={(e) => autoJoinMutation.mutate(e.target.checked)}
               />
               {t("teams.autoJoin")}
             </label>
-            {updateMutation.isError ? (
+            {autoJoinMutation.isError ? (
               <p className="text-xs text-amber-800">{t("admin.savePendingBackend")}</p>
             ) : null}
           </div>
@@ -196,6 +469,57 @@ export function TeamsSettingsPage() {
         ) : null}
       </AsyncState>
     </PageShell>
+  );
+}
+
+function TeamsSetupGuide() {
+  const { t } = useI18n();
+  const steps: Array<{ title: string; body: string; withPermissions?: boolean }> = [
+    { title: t("teams.guide.step1Title"), body: t("teams.guide.step1Body") },
+    { title: t("teams.guide.step2Title"), body: t("teams.guide.step2Body") },
+    { title: t("teams.guide.step3Title"), body: t("teams.guide.step3Body"), withPermissions: true },
+    { title: t("teams.guide.step4Title"), body: t("teams.guide.step4Body") },
+  ];
+  return (
+    <details className="card-static mt-4 p-5">
+      <summary className="cursor-pointer text-sm font-bold uppercase tracking-wide text-slate-500">
+        {t("teams.guide.title")}
+      </summary>
+      <div className="mt-3 space-y-4">
+        <p className="text-sm text-slate-600">{t("teams.guide.intro")}</p>
+        <a
+          href={ENTRA_ADMIN_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-secondary inline-block text-sm"
+        >
+          {t("teams.guide.openEntra")}
+        </a>
+        <ol className="space-y-3">
+          {steps.map((step) => (
+            <li key={step.title} className="border-l-2 border-violet-200 pl-3">
+              <p className="text-sm font-semibold text-slate-800">{step.title}</p>
+              <p className="mt-1 text-sm text-slate-600">{step.body}</p>
+              {step.withPermissions ? (
+                <div className="mt-2">
+                  <p className="text-xs font-semibold text-slate-500">{t("teams.guide.permissionsLabel")}</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {GRAPH_APP_PERMISSIONS.map((perm) => (
+                      <code
+                        key={perm}
+                        className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700"
+                      >
+                        {perm}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </details>
   );
 }
 

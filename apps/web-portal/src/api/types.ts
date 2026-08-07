@@ -458,6 +458,46 @@ export interface TeamsSettings extends CompositionAware {
   autoJoinEnabled: boolean;
 }
 
+export type GraphAuthMode = "CERTIFICATE" | "CLIENT_SECRET";
+
+export interface TeamsConnection extends CompositionAware {
+  /** false when the microsoft-graph module is not enabled on this runtime. */
+  available: boolean;
+  enabled: boolean;
+  graphBaseUrl: string;
+  authorityHost: string;
+  tenantId: string;
+  clientId: string;
+  scope: string;
+  authMode: GraphAuthMode | string;
+  /** Whether a client secret is stored. The secret value itself is never returned. */
+  secretConfigured: boolean;
+  certificatePemPath: string;
+  privateKeyPemPath: string;
+  defaultMailboxUserId: string;
+}
+
+export interface UpdateTeamsConnectionBody {
+  enabled?: boolean;
+  graphBaseUrl?: string;
+  authorityHost?: string;
+  tenantId?: string;
+  clientId?: string;
+  scope?: string;
+  authMode?: GraphAuthMode | string;
+  /** Blank / omitted keeps the currently stored secret; a value replaces it. */
+  clientSecret?: string;
+  certificatePemPath?: string;
+  privateKeyPemPath?: string;
+  defaultMailboxUserId?: string;
+}
+
+export interface TeamsConnectionTestResult {
+  healthy: boolean;
+  latencyMs: number;
+  detail: string;
+}
+
 export interface NanobaseAiConnection {
   productName: string;
   mode: "nanobaseai" | "offline" | string;
@@ -600,6 +640,9 @@ export interface ApiClient {
   lockNoteTemplate(meetingId: string, noteId: string, templateVersionId: string): Promise<NoteTemplateLock>;
   getTeamsSettings(): Promise<TeamsSettings>;
   updateTeamsSettings(body: { autoJoinEnabled: boolean }): Promise<TeamsSettings>;
+  getTeamsConnection(): Promise<TeamsConnection>;
+  updateTeamsConnection(body: UpdateTeamsConnectionBody): Promise<TeamsConnection>;
+  testTeamsConnection(): Promise<TeamsConnectionTestResult>;
   getNanobaseAiConnection(): Promise<NanobaseAiConnection>;
   updateNanobaseAiConnection(body: {
     baseUrl?: string;

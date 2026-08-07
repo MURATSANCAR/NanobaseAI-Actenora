@@ -74,42 +74,27 @@ public class MicrosoftConnectionModuleConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(MicrosoftTokenProvider.class)
-    MicrosoftTokenProvider microsoftTokenProvider(MicrosoftGraphProperties props, InstantClock clock) {
-        if (props.authMode() == MicrosoftGraphProperties.AuthMode.CERTIFICATE) {
-            var material = PemCredentialsLoader.load(
-                    props.certificatePemPath().orElseThrow(),
-                    props.privateKeyPemPath().orElseThrow()
-            );
-            CertificateCredential credential = new CertificateCredential(
-                    props.tenantId(),
-                    props.clientId(),
-                    props.authorityHost().toString(),
-                    material.certificate(),
-                    material.privateKey(),
-                    props.scope()
-            );
-            return new CertificateMicrosoftTokenProvider(credential, clock);
-        }
-        ClientSecretCredential credential = new ClientSecretCredential(
-                props.tenantId(),
-                props.clientId(),
-                props.clientSecret().orElseThrow(() -> new IllegalStateException(
-                        "Client secret required when auth-mode=CLIENT_SECRET (local/test only)")),
-                props.authorityHost().toString(),
-                props.scope()
-        );
-        return new ClientSecretMicrosoftTokenProvider(credential, clock);
+    MutableMicrosoftTokenProvider microsoftTokenProvider(MicrosoftGraphProperties props, InstantClock clock) {
+        // Runtime-swappable so the admin-editable Graph connection can re-point credentials
+        // without a restart. Initial delegate is built from startup properties/env.
+        return new MutableMicrosoftTokenProvider(props, clock);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(MutableGraphEndpoint.class)
+    MutableGraphEndpoint mutableGraphEndpoint(MicrosoftGraphProperties props) {
+        return new MutableGraphEndpoint(props.graphBaseUrl());
     }
 
     @Bean
     @ConditionalOnMissingBean(GraphHttpClient.class)
     GraphHttpClient graphHttpClient(
-            MicrosoftGraphProperties props,
+            MutableGraphEndpoint graphEndpoint,
             MicrosoftTokenProvider tokenProvider,
             ObjectProvider<GraphTelemetry> telemetry
     ) {
         return new GraphHttpClient(
-                props.graphBaseUrl(),
+                graphEndpoint,
                 tokenProvider,
                 HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(),
                 GraphSleeper.THREAD,

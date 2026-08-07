@@ -225,6 +225,17 @@ function createHttpApiClient(baseUrl: string): ApiClient {
         method: "PUT",
         body: JSON.stringify(body),
       }),
+    getTeamsConnection: () => httpJson(baseUrl, "/api/v1/portal/teams/connection"),
+    updateTeamsConnection: (body) =>
+      httpJson(baseUrl, "/api/v1/portal/teams/connection", {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }),
+    testTeamsConnection: () =>
+      httpJson(baseUrl, "/api/v1/portal/teams/connection/test", {
+        method: "POST",
+        body: "{}",
+      }),
     getNanobaseAiConnection: () => httpJson(baseUrl, "/api/v1/portal/intelligence/connection"),
     updateNanobaseAiConnection: (body) =>
       httpJson(baseUrl, "/api/v1/portal/intelligence/connection", {
@@ -295,6 +306,7 @@ export const queryKeys = {
   noteTemplateLock: (meetingId: string, noteId: string) =>
     ["note-template-lock", meetingId, noteId] as const,
   teams: ["teams-settings"] as const,
+  teamsConnection: ["teams-connection"] as const,
   intelligence: ["nanobaseai-connection"] as const,
   models: ["models"] as const,
   jobs: (params: object) => ["ai-jobs", params] as const,

@@ -45,6 +45,15 @@ public final class MutableMicrosoftTokenProvider implements MicrosoftTokenProvid
         this.delegate = build(Objects.requireNonNull(props, "props"), clock);
     }
 
+    /**
+     * Validates that a provider can be constructed from the given properties (e.g. PEM material
+     * loads, required credential fields present) without swapping the live delegate. Throws the
+     * same exceptions {@link #rebuild(MicrosoftGraphProperties)} would.
+     */
+    public void validate(MicrosoftGraphProperties props) {
+        build(Objects.requireNonNull(props, "props"), clock);
+    }
+
     static MicrosoftTokenProvider build(MicrosoftGraphProperties props, InstantClock clock) {
         if (props.authMode() == MicrosoftGraphProperties.AuthMode.CERTIFICATE) {
             var material = PemCredentialsLoader.load(

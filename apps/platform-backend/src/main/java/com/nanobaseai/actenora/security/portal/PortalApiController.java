@@ -44,6 +44,7 @@ import com.nanobaseai.actenora.operations.api.OperationsApi;
 import com.nanobaseai.actenora.operations.application.OperationsViews;
 import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiBrandSanitizer;
 import com.nanobaseai.actenora.security.aiprocessing.NanobaseAiConnectionService;
+import com.nanobaseai.actenora.security.microsoftconnection.GraphConnectionService;
 import com.nanobaseai.actenora.security.microsoftconnection.GraphObservability;
 import com.nanobaseai.actenora.security.microsoftconnection.TeamsTranscriptPollScheduler;
 import com.nanobaseai.actenora.notification.api.NotificationApi;
@@ -127,6 +128,7 @@ public class PortalApiController {
     private final Optional<ModelManagementApi> modelManagementApi;
     private final PortalTeamsPreferencesStore teamsPreferencesStore;
     private final Optional<NanobaseAiConnectionService> nanobaseAiConnectionService;
+    private final Optional<GraphConnectionService> graphConnectionService;
     private final Optional<AiProcessingApi> aiProcessingApi;
     private final Optional<AuditApi> auditApi;
     private final String graphClientId;
@@ -150,6 +152,7 @@ public class PortalApiController {
             ObjectProvider<MicrosoftConnectionApi> microsoftConnectionApi,
             ObjectProvider<ModelManagementApi> modelManagementApi,
             ObjectProvider<NanobaseAiConnectionService> nanobaseAiConnectionService,
+            ObjectProvider<GraphConnectionService> graphConnectionService,
             ObjectProvider<AiProcessingApi> aiProcessingApi,
             ObjectProvider<AuditApi> auditApi,
             ObjectProvider<GraphObservability> graphObservability,
@@ -173,6 +176,7 @@ public class PortalApiController {
         this.microsoftConnectionApi = Optional.ofNullable(microsoftConnectionApi.getIfAvailable());
         this.modelManagementApi = Optional.ofNullable(modelManagementApi.getIfAvailable());
         this.nanobaseAiConnectionService = Optional.ofNullable(nanobaseAiConnectionService.getIfAvailable());
+        this.graphConnectionService = Optional.ofNullable(graphConnectionService.getIfAvailable());
         this.aiProcessingApi = Optional.ofNullable(aiProcessingApi.getIfAvailable());
         this.auditApi = Optional.ofNullable(auditApi.getIfAvailable());
         this.graphObservability = Optional.ofNullable(graphObservability.getIfAvailable());
@@ -1154,6 +1158,46 @@ public class PortalApiController {
         return buildTeamsSettings(principal.tenantId().value(), null);
     }
 
+    @GetMapping("/teams/connection")
+    @RequiresPermission(Permission.TENANT_ADMINISTER)
+    public TeamsConnectionView teamsConnection(HttpServletResponse response) {
+        require(Permission.TENANT_ADMINISTER);
+        if (graphConnectionService.isEmpty()) {
+            markStub(response);
+            return TeamsConnectionView.disabled();
+        }
+        return toTeamsConnectionView(graphConnectionService.get().current());
+    }
+
+    @PutMapping("/teams/connection")
+    @RequiresPermission(Permission.TENANT_ADMINISTER)
+    public TeamsConnectionView updateTeamsConnection(@RequestBody UpdateTeamsConnectionBody body) {
+        require(Permission.TENANT_ADMINISTER);
+        GraphConnectionService service = requireGraphConnection();
+        GraphConnectionService.ConnectionView updated = service.update(new GraphConnectionService.UpdateCommand(
+                body == null ? null : body.enabled(),
+                body == null ? null : body.graphBaseUrl(),
+                body == null ? null : body.authorityHost(),
+                body == null ? null : body.tenantId(),
+                body == null ? null : body.clientId(),
+                body == null ? null : body.scope(),
+                body == null ? null : body.authMode(),
+                body == null ? null : body.clientSecret(),
+                body == null ? null : body.certificatePemPath(),
+                body == null ? null : body.privateKeyPemPath(),
+                body == null ? null : body.defaultMailboxUserId()
+        ));
+        return toTeamsConnectionView(updated);
+    }
+
+    @PostMapping("/teams/connection/test")
+    @RequiresPermission(Permission.TENANT_ADMINISTER)
+    public TeamsConnectionTestView testTeamsConnection() {
+        require(Permission.TENANT_ADMINISTER);
+        GraphConnectionService.TestResult result = requireGraphConnection().testConnection();
+        return new TeamsConnectionTestView(result.healthy(), result.latencyMs(), result.detail());
+    }
+
     @GetMapping("/intelligence/connection")
     @RequiresPermission(Permission.MODEL_CONTROL)
     public NanobaseAiConnectionView intelligenceConnection() {
@@ -2015,6 +2059,32 @@ public class PortalApiController {
                 ));
     }
 
+    private GraphConnectionService requireGraphConnection() {
+        return graphConnectionService.orElseThrow(() ->
+                new ActenoraException(
+                        "GRAPH_CONNECTION_UNAVAILABLE",
+                        "Microsoft Teams connection settings are not available on this runtime "
+                                + "(enable actenora.microsoft-graph)."
+                ));
+    }
+
+    private static TeamsConnectionView toTeamsConnectionView(GraphConnectionService.ConnectionView view) {
+        return new TeamsConnectionView(
+                true,
+                view.enabled(),
+                view.graphBaseUrl(),
+                view.authorityHost(),
+                view.tenantId(),
+                view.clientId(),
+                view.scope(),
+                view.authMode(),
+                view.secretConfigured(),
+                view.certificatePemPath(),
+                view.privateKeyPemPath(),
+                view.defaultMailboxUserId()
+        );
+    }
+
     private void requireNoteBelongsToMeeting(UUID meetingId, UUID noteId) {
         if (meetingIntelligenceApi.isEmpty()) {
             return;
@@ -2532,6 +2602,52 @@ public class PortalApiController {
     }
 
     public record UpdateTeamsSettingsBody(boolean autoJoinEnabled) {
+    }
+
+    /**
+     * Admin-editable Microsoft Graph / Teams connection. The client secret is never returned —
+     * {@code secretConfigured} reports whether one is set.
+     */
+    public record TeamsConnectionView(
+            boolean available,
+            boolean enabled,
+            String graphBaseUrl,
+            String authorityHost,
+            String tenantId,
+            String clientId,
+            String scope,
+            String authMode,
+            boolean secretConfigured,
+            String certificatePemPath,
+            String privateKeyPemPath,
+            String defaultMailboxUserId
+    ) {
+        static TeamsConnectionView disabled() {
+            return new TeamsConnectionView(
+                    false, false,
+                    "https://graph.microsoft.com",
+                    "https://login.microsoftonline.com",
+                    "", "", "https://graph.microsoft.com/.default",
+                    "CERTIFICATE", false, "", "", "");
+        }
+    }
+
+    public record UpdateTeamsConnectionBody(
+            Boolean enabled,
+            String graphBaseUrl,
+            String authorityHost,
+            String tenantId,
+            String clientId,
+            String scope,
+            String authMode,
+            String clientSecret,
+            String certificatePemPath,
+            String privateKeyPemPath,
+            String defaultMailboxUserId
+    ) {
+    }
+
+    public record TeamsConnectionTestView(boolean healthy, long latencyMs, String detail) {
     }
 
     public record UpdateIntelligenceConnectionBody(

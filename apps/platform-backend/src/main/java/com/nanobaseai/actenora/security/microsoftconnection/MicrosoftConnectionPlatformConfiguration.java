@@ -7,7 +7,10 @@ import com.nanobaseai.actenora.meetingintelligence.api.ledger.ContinuityLedgerAp
 import com.nanobaseai.actenora.microsoftconnection.api.MicrosoftConnectionApi;
 import com.nanobaseai.actenora.microsoftconnection.application.PollingFallbackService;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.MutableMicrosoftTokenProvider;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.config.MicrosoftGraphSpringProperties;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphHttpClient;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.MutableGraphEndpoint;
 import com.nanobaseai.actenora.sharedkernel.messaging.ExponentialBackoff;
 import com.nanobaseai.actenora.transcript.api.TranscriptApi;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +38,47 @@ import java.util.UUID;
 @EnableScheduling
 @ConditionalOnProperty(name = "actenora.microsoft-graph.enabled", havingValue = "true")
 public class MicrosoftConnectionPlatformConfiguration {
+
+    @Bean
+    SecretCipher graphSecretCipher(
+            @Value("${actenora.secrets.encryption-key:}") String encryptionKey
+    ) {
+        return new SecretCipher(encryptionKey);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "actenora.persistence.mode", havingValue = "jdbc")
+    GraphConnectionSettingsStore jdbcGraphConnectionSettingsStore(
+            JdbcTemplate jdbcTemplate,
+            SecretCipher graphSecretCipher
+    ) {
+        return new JdbcGraphConnectionSettingsStore(jdbcTemplate, graphSecretCipher);
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            name = "actenora.persistence.mode",
+            havingValue = "inmemory",
+            matchIfMissing = true)
+    GraphConnectionSettingsStore inMemoryGraphConnectionSettingsStore() {
+        return new InMemoryGraphConnectionSettingsStore();
+    }
+
+    @Bean
+    GraphConnectionService graphConnectionService(
+            GraphConnectionSettingsStore graphConnectionSettingsStore,
+            MutableMicrosoftTokenProvider mutableMicrosoftTokenProvider,
+            MutableGraphEndpoint mutableGraphEndpoint,
+            GraphHttpClient graphHttpClient,
+            MicrosoftGraphSpringProperties graphProperties
+    ) {
+        return new GraphConnectionService(
+                graphConnectionSettingsStore,
+                mutableMicrosoftTokenProvider,
+                mutableGraphEndpoint,
+                graphHttpClient,
+                graphProperties);
+    }
 
     @Bean
     GraphMailboxSyncService graphMailboxSyncService(

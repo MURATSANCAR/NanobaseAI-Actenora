@@ -81,6 +81,10 @@ management:
 actenora:
   persistence:
     mode: ${ACTENORA_PERSISTENCE_MODE:inmemory}
+  secrets:
+    # Base64 AES key (16/24/32 bytes) used to encrypt admin-entered secrets at rest
+    # (e.g. the Microsoft Graph client secret). Required to persist a client secret in jdbc mode.
+    encryption-key: ${ACTENORA_SECRETS_ENCRYPTION_KEY:}
   tenancy:
     require-security-context: ${ACTENORA_TENANCY_REQUIRE_SECURITY_CONTEXT:false}
   object-storage:
