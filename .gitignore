@@ -2,6 +2,10 @@
 target/
 build/
 out/
+# ...but NOT hexagonal-architecture source packages named "application/port/out"
+# (the bare "out/" above was silently excluding real source from the repo).
+!**/application/port/out/
+!**/application/port/out/**
 dist/
 *.class
 *.jar
