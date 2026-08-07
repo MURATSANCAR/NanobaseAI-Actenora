@@ -7,12 +7,19 @@ dependencies = [
     "fastapi>=0.115.12",
     "uvicorn[standard]>=0.34.2",
     "httpx>=0.28.1",
+    "pydantic>=2.7",
     "actenora-observability",
     "actenora-test-support",
 ]
 
 [project.optional-dependencies]
 dev = []
+# On-prem embeddings + semantic chunking. torch must come from the CPU wheel index
+# (see Dockerfile) to avoid pulling the multi-GB CUDA build on a CPU-only host.
+ml = [
+    "sentence-transformers>=3.0,<4",
+    "numpy>=1.26",
+]
 
 [build-system]
 requires = ["hatchling"]

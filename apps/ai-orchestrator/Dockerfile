@@ -22,12 +22,25 @@ RUN pip install --no-cache-dir \
       "fastapi>=0.115.12" \
       "uvicorn[standard]>=0.34.2" \
       "httpx>=0.28.1" \
+      "pydantic>=2.7" \
     && pip install --no-cache-dir --no-deps "/app/apps/ai-orchestrator"
+
+# On-prem embeddings: install the CPU-only torch wheel (the default index pulls the multi-GB
+# CUDA build) then sentence-transformers, and bake the embedding model into the image so runtime
+# needs no public egress (data stays on-prem — BDDK requirement).
+ENV EMBEDDING_MODEL=intfloat/multilingual-e5-small \
+    HF_HOME=/app/hf-cache
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch>=2.2,<3" \
+    && pip install --no-cache-dir "sentence-transformers>=3.0,<4" "numpy>=1.26" \
+    && python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['EMBEDDING_MODEL'])" \
+    && chown -R actenora:actenora /app/hf-cache
 
 ENV PYTHONPATH=/app/apps/ai-orchestrator/src \
     AI_ORCHESTRATOR_HOST=0.0.0.0 \
     AI_ORCHESTRATOR_PORT=8000 \
-    ACTENORA_ENV=local
+    ACTENORA_ENV=local \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1
 
 USER actenora
 EXPOSE 8000
