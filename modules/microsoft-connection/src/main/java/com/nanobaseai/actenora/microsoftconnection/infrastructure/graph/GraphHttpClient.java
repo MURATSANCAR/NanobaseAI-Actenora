@@ -16,13 +16,14 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Graph HTTP executor with 401 token refresh, 404 availability retry, 429 Retry-After, and 5xx backoff.
  */
 public final class GraphHttpClient {
 
-    private final URI graphBaseUrl;
+    private final Supplier<URI> graphBaseUrl;
     private final MicrosoftTokenProvider tokenProvider;
     private final HttpClient httpClient;
     private final GraphSleeper sleeper;
@@ -86,6 +87,33 @@ public final class GraphHttpClient {
             GraphEgressPolicy egressPolicy,
             GraphTelemetry telemetry
     ) {
+        this(
+                fixedBaseUrl(graphBaseUrl),
+                tokenProvider,
+                httpClient,
+                sleeper,
+                serverBackoff,
+                maxAttempts,
+                notFoundMaxAttempts,
+                egressPolicy,
+                telemetry);
+    }
+
+    /**
+     * Primary constructor. The base URL is resolved lazily on every request so it can be
+     * re-pointed at runtime (admin-editable Graph connection) without rebuilding gateways.
+     */
+    public GraphHttpClient(
+            Supplier<URI> graphBaseUrl,
+            MicrosoftTokenProvider tokenProvider,
+            HttpClient httpClient,
+            GraphSleeper sleeper,
+            ExponentialBackoff serverBackoff,
+            int maxAttempts,
+            int notFoundMaxAttempts,
+            GraphEgressPolicy egressPolicy,
+            GraphTelemetry telemetry
+    ) {
         this.graphBaseUrl = Objects.requireNonNull(graphBaseUrl, "graphBaseUrl");
         this.tokenProvider = Objects.requireNonNull(tokenProvider, "tokenProvider");
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
@@ -101,7 +129,17 @@ public final class GraphHttpClient {
         this.notFoundMaxAttempts = notFoundMaxAttempts;
         this.egressPolicy = Objects.requireNonNull(egressPolicy, "egressPolicy");
         this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
-        this.egressPolicy.assertAllowed(graphBaseUrl);
+        this.egressPolicy.assertAllowed(currentBaseUrl());
+    }
+
+    private static Supplier<URI> fixedBaseUrl(URI graphBaseUrl) {
+        URI value = Objects.requireNonNull(graphBaseUrl, "graphBaseUrl");
+        return () -> value;
+    }
+
+    private URI currentBaseUrl() {
+        URI value = graphBaseUrl.get();
+        return Objects.requireNonNull(value, "graphBaseUrl");
     }
 
     public static GraphHttpClient defaults(URI graphBaseUrl, MicrosoftTokenProvider tokenProvider) {
@@ -307,7 +345,7 @@ public final class GraphHttpClient {
         if (absoluteOrRelative.startsWith("http://") || absoluteOrRelative.startsWith("https://")) {
             resolved = URI.create(absoluteOrRelative);
         } else {
-            String base = graphBaseUrl.toString();
+            String base = currentBaseUrl().toString();
             if (!base.endsWith("/")) {
                 base = base + "/";
             }
@@ -319,7 +357,7 @@ public final class GraphHttpClient {
     }
 
     public URI graphBaseUrl() {
-        return graphBaseUrl;
+        return currentBaseUrl();
     }
 
     public HttpRequest authorizedGet(String absoluteOrRelative, AccessToken token) {

@@ -21,14 +21,11 @@ import com.nanobaseai.actenora.microsoftconnection.application.port.OutlookDraft
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionGateway;
 import com.nanobaseai.actenora.microsoftconnection.application.port.SubscriptionStore;
 import com.nanobaseai.actenora.microsoftconnection.application.port.TranscriptGateway;
-import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.CertificateCredential;
-import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.CertificateMicrosoftTokenProvider;
-import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.ClientSecretCredential;
-import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.ClientSecretMicrosoftTokenProvider;
-import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.PemCredentialsLoader;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.auth.MutableMicrosoftTokenProvider;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphCalendarGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphDirectoryGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphHttpClient;
+import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.MutableGraphEndpoint;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphEgressPolicy;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphMailGateway;
 import com.nanobaseai.actenora.microsoftconnection.infrastructure.graph.GraphOnlineMeetingGateway;
