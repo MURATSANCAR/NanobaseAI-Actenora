@@ -10,11 +10,24 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# --- Heavy, rarely-changing layer: on-prem embeddings ---
+# Install the CPU-only torch wheel (the default index pulls the multi-GB CUDA build) then
+# sentence-transformers, and bake the embedding model into the image so runtime needs no public
+# egress (data stays on-prem — BDDK requirement). This is placed BEFORE the app source COPY so
+# ordinary code changes don't invalidate it (no model re-download on every rebuild).
+ENV EMBEDDING_MODEL=BAAI/bge-m3 \
+    HF_HOME=/app/hf-cache
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch>=2.2,<3" \
+    && pip install --no-cache-dir "sentence-transformers>=3.0,<4" "numpy>=1.26" \
+    && python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['EMBEDDING_MODEL'])" \
+    && chown -R actenora:actenora /app/hf-cache
+
+# --- App layer: dependencies + source (changes often, cheap to rebuild) ---
 COPY apps/ai-orchestrator/pyproject.toml /app/apps/ai-orchestrator/pyproject.toml
-COPY apps/ai-orchestrator/src /app/apps/ai-orchestrator/src
 COPY packages/observability/python /app/packages/observability/python
 COPY packages/test-support/python /app/packages/test-support/python
 COPY pyproject.toml /app/pyproject.toml
+COPY apps/ai-orchestrator/src /app/apps/ai-orchestrator/src
 
 RUN pip install --no-cache-dir \
       "/app/packages/observability/python" \
@@ -24,16 +37,6 @@ RUN pip install --no-cache-dir \
       "httpx>=0.28.1" \
       "pydantic>=2.7" \
     && pip install --no-cache-dir --no-deps "/app/apps/ai-orchestrator"
-
-# On-prem embeddings: install the CPU-only torch wheel (the default index pulls the multi-GB
-# CUDA build) then sentence-transformers, and bake the embedding model into the image so runtime
-# needs no public egress (data stays on-prem — BDDK requirement).
-ENV EMBEDDING_MODEL=BAAI/bge-m3 \
-    HF_HOME=/app/hf-cache
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch>=2.2,<3" \
-    && pip install --no-cache-dir "sentence-transformers>=3.0,<4" "numpy>=1.26" \
-    && python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['EMBEDDING_MODEL'])" \
-    && chown -R actenora:actenora /app/hf-cache
 
 ENV PYTHONPATH=/app/apps/ai-orchestrator/src \
     AI_ORCHESTRATOR_HOST=0.0.0.0 \
@@ -45,7 +48,7 @@ ENV PYTHONPATH=/app/apps/ai-orchestrator/src \
 USER actenora
 EXPOSE 8000
 
-HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=10 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=12 \
   CMD curl -fsS http://127.0.0.1:8000/actuator/health/liveness | grep -q UP
 
 CMD ["sh", "-c", "uvicorn actenora_orchestrator.main:app --host ${AI_ORCHESTRATOR_HOST:-0.0.0.0} --port ${AI_ORCHESTRATOR_PORT:-8000}"]

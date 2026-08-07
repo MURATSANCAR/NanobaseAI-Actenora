@@ -8,13 +8,45 @@ from typing import Any
 
 import httpx
 from actenora_observability import format_log
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from actenora_orchestrator.egress import AiEgressDeniedError, assert_ai_egress_allowed
 
 app = FastAPI(title="Actenora AI Orchestrator", version="0.1.0")
+
+
+@app.exception_handler(RequestValidationError)
+async def _log_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # Log the exact rejected fields so a caller's 422 is diagnosable (bodies are not otherwise logged).
+    print(format_log("ai-orchestrator", "WARN", f"422 {request.url.path}: {exc.errors()}"))
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+
+@app.on_event("startup")
+def _warmup_embeddings() -> None:
+    # Load the embedding model in a background thread so the server is live immediately while the
+    # model warms. Retries cover the torch "meta tensor" first-load quirk so real traffic hits a
+    # ready model instead of falling back.
+    if os.environ.get("EMBEDDING_WARMUP", "true").strip().lower() != "true":
+        return
+    import threading
+
+    def _run() -> None:
+        from actenora_orchestrator import embeddings
+
+        for attempt in range(5):
+            try:
+                embeddings.embed(["warmup"])
+                print(format_log("ai-orchestrator", "INFO", "embedding-warmup-ok"))
+                return
+            except Exception as exc:  # noqa: BLE001 — retry transient first-load errors
+                print(format_log("ai-orchestrator", "WARN", f"embedding-warmup-retry {attempt}: {exc}"))
+        print(format_log("ai-orchestrator", "ERROR", "embedding-warmup-failed"))
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 class HealthStatus(str, Enum):
@@ -173,9 +205,11 @@ class ChunkSegment(BaseModel):
 
 class SemanticChunkRequest(BaseModel):
     segments: list[ChunkSegment] = Field(..., min_length=1)
-    max_tokens: int = Field(3500, ge=256, le=32768)
-    min_tokens: int = Field(800, ge=0, le=32768)
-    breakpoint_percentile: float = Field(90.0, ge=50.0, le=100.0)
+    # Permissive bounds: the caller's chunk budget can legitimately be large; never reject a
+    # well-formed request over a tuning number (extraction must not silently fall back on 422).
+    max_tokens: int = Field(3500, ge=64)
+    min_tokens: int = Field(800, ge=0)
+    breakpoint_percentile: float = Field(90.0, ge=0.0, le=100.0)
 
 
 class SemanticChunk(BaseModel):
@@ -209,6 +243,12 @@ def semantic_chunk_endpoint(request: SemanticChunkRequest) -> SemanticChunkRespo
     from actenora_orchestrator import embeddings
     from actenora_orchestrator.semantic_chunk import semantic_chunk
 
+    print(format_log(
+        "ai-orchestrator",
+        "INFO",
+        f"semantic-chunk req: segs={len(request.segments)} max_tokens={request.max_tokens} "
+        f"min_tokens={request.min_tokens} bp={request.breakpoint_percentile}",
+    ))
     try:
         chunks = semantic_chunk(
             [seg.model_dump() for seg in request.segments],
