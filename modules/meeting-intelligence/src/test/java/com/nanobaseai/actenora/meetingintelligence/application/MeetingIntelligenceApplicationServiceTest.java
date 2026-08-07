@@ -146,7 +146,7 @@ class MeetingIntelligenceApplicationServiceTest {
                         List.of(),
                         List.of(),
                         List.of(),
-                        List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0.8),
+                        List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0.8),
                 "model-qwen",
                 "prompt-v3",
                 "schema-v1",
@@ -238,10 +238,10 @@ class MeetingIntelligenceApplicationServiceTest {
                 tenantContext, clockPort,
                 new MapAiCandidatesToNoteService(
                         notes, versions, decisions, actionItems, risks, commitments,
-                        openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags, clockPort
+                        openQuestions, issues, proposals, importantFacts, topics, evidenceLinks, qualityFlags, clockPort
                 ),
                 notes, versions, decisions, actionItems, risks, commitments,
-                openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags
+                openQuestions, issues, proposals, importantFacts, topics, evidenceLinks, qualityFlags
         );
 
         assertThrows(com.nanobaseai.actenora.meetingintelligence.domain.exception.MeetingNoteNotFoundException.class,
@@ -298,11 +298,11 @@ class MeetingIntelligenceApplicationServiceTest {
         FixedClockPort clockPort = new FixedClockPort(clock);
         MapAiCandidatesToNoteService mapping = new MapAiCandidatesToNoteService(
                 notes, versions, decisions, actionItems, risks, commitments,
-                openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags, clockPort
+                openQuestions, issues, proposals, importantFacts, topics, evidenceLinks, qualityFlags, clockPort
         );
         MeetingIntelligenceApplicationService reloaded = new MeetingIntelligenceApplicationService(
                 tenantContext, clockPort, mapping, notes, versions, decisions, actionItems,
-                risks, commitments, openQuestions, issues, proposals, importantFacts, evidenceLinks, qualityFlags
+                risks, commitments, openQuestions, issues, proposals, importantFacts, topics, evidenceLinks, qualityFlags
         );
 
         MeetingNoteDetailResponse detail = reloaded.noteDetail(noteId);
@@ -324,7 +324,7 @@ class MeetingIntelligenceApplicationServiceTest {
                         List.of(new ActionItemCandidateInput("Draft plan", "alice", "2026-08-01", List.of("seg-2"), 0.8)),
                         List.of(new RiskCandidateInput("Vendor delay", List.of("seg-3"), 0.7)),
                         List.of(new OpenQuestionCandidateInput("Who owns QA?", List.of("seg-4"), 0.6)),
-                        List.of(new CommitmentCandidateInput("Deliver by Friday", "bob", List.of("seg-5"), 0.85)), List.of(), List.of(), List.of(), List.of("LOW_CONFIDENCE"), List.of("seg-root"), 0.88),
+                        List.of(new CommitmentCandidateInput("Deliver by Friday", "bob", List.of("seg-5"), 0.85)), List.of(), List.of(), List.of(), List.of(), List.of("LOW_CONFIDENCE"), List.of("seg-root"), 0.88),
                 "model-qwen",
                 "prompt-v3",
                 "schema-v1",

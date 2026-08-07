@@ -141,16 +141,17 @@ class MeetingIntelligenceAuthBindingTest {
         var issues = miConfig.inMemoryIssueRepository();
         var proposals = miConfig.inMemoryProposalRepository();
         var importantFacts = miConfig.inMemoryImportantFactRepository();
+        var topics = miConfig.inMemoryTopicRepository();
         var evidence = miConfig.inMemoryEvidenceLinkRepository();
         var qualityFlags = miConfig.inMemoryQualityFlagRepository();
         var clockPort = miConfig.meetingIntelligenceClockPort();
         var tenantPort = miConfig.meetingIntelligenceTenantContextPort();
         var mapping = miConfig.mapAiCandidatesToNoteService(
                 notes, versions, decisions, actionItems, risks, commitments, openQuestions,
-                issues, proposals, importantFacts, evidence, qualityFlags, clockPort);
+                issues, proposals, importantFacts, topics, evidence, qualityFlags, clockPort);
         var miService = miConfig.meetingIntelligenceApplicationService(
                 tenantPort, clockPort, mapping, notes, versions, decisions, actionItems,
-                risks, commitments, openQuestions, issues, proposals, importantFacts, evidence, qualityFlags);
+                risks, commitments, openQuestions, issues, proposals, importantFacts, topics, evidence, qualityFlags);
         meetingIntelligenceApi = miConfig.meetingIntelligenceApi(miService);
         segmentSource = new InMemoryTranscriptSegmentSource();
         var runs = miConfig.inMemoryValidationRunRepository();
