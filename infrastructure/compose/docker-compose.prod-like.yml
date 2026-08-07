@@ -247,6 +247,10 @@ services:
       ACTENORA_AI_FINALIZATION_TIMEOUT_SECONDS: ${ACTENORA_AI_FINALIZATION_TIMEOUT_SECONDS:-1800}
       ACTENORA_AI_FINALIZATION_FAILURE_MODE: ${ACTENORA_AI_FINALIZATION_FAILURE_MODE:-deterministic}
       ACTENORA_AI_WORKER_ENABLED: ${ACTENORA_AI_WORKER_ENABLED:-true}
+      # Embedding-based semantic chunking via the on-prem ai-orchestrator (falls back to the
+      # token-window chunker on any error). Requires the ai-orchestrator service to be reachable.
+      ACTENORA_AI_SEMANTIC_CHUNKING_ENABLED: ${ACTENORA_AI_SEMANTIC_CHUNKING_ENABLED:-true}
+      ACTENORA_AI_ORCHESTRATOR_BASE_URL: ${ACTENORA_AI_ORCHESTRATOR_BASE_URL:-http://actenora-prodlike-ai-orchestrator:8000}
     ports:
       - "${PLATFORM_BACKEND_PORT:-8080}:8080"
     extra_hosts:
