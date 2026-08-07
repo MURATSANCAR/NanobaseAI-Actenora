@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir \
 # On-prem embeddings: install the CPU-only torch wheel (the default index pulls the multi-GB
 # CUDA build) then sentence-transformers, and bake the embedding model into the image so runtime
 # needs no public egress (data stays on-prem — BDDK requirement).
-ENV EMBEDDING_MODEL=intfloat/multilingual-e5-small \
+ENV EMBEDDING_MODEL=BAAI/bge-m3 \
     HF_HOME=/app/hf-cache
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch>=2.2,<3" \
     && pip install --no-cache-dir "sentence-transformers>=3.0,<4" "numpy>=1.26" \

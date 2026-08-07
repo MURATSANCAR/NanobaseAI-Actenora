@@ -11,8 +11,8 @@ import os
 from functools import lru_cache
 from typing import List
 
-# Small, strong multilingual model (Turkish included), CPU-friendly (~118M params).
-MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
+# Strong multilingual model (Turkish included). Default BAAI/bge-m3 (1024-dim, 8192 ctx, MIT).
+MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-m3")
 
 
 @lru_cache(maxsize=1)
@@ -23,9 +23,15 @@ def _model():
     return SentenceTransformer(MODEL_NAME)
 
 
+# Only the e5 family expects a "passage:"/"query:" instruction prefix. bge-m3, gte, etc. take
+# raw text — prefixing them would degrade quality, so the prefix is model-conditional.
+_NEEDS_E5_PREFIX = "e5" in MODEL_NAME.lower()
+
+
 def _prepare(text: str) -> str:
-    # e5 models expect an instruction prefix; "passage:" is the retrieval-corpus convention.
     stripped = text.strip()
+    if not _NEEDS_E5_PREFIX:
+        return stripped
     if stripped.startswith(("query:", "passage:")):
         return stripped
     return f"passage: {stripped}"
