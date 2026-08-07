@@ -314,14 +314,31 @@ public class AiProcessingPlatformConfiguration {
             com.nanobaseai.actenora.aiprocessing.domain.pipeline.signal.ChunkExtractionService chunkExtractionService,
             PipelineQualityMetricsPort pipelineQualityMetrics,
             MeetingQualityProperties meetingQualityProperties,
-            AiPipelineProperties pipelineProperties
+            AiPipelineProperties pipelineProperties,
+            @Value("${actenora.ai.semantic-chunking.enabled:false}") boolean semanticChunkingEnabled,
+            @Value("${actenora.ai.orchestrator.base-url:}") String orchestratorBaseUrl,
+            @Value("${actenora.ai.semantic-chunking.breakpoint-percentile:90.0}") double breakpointPercentile,
+            @Value("${actenora.ai.semantic-chunking.timeout-ms:8000}") long semanticChunkingTimeoutMs
     ) {
         MeetingQualityProperties.install(meetingQualityProperties);
+        // Default: deterministic token-window chunking. When the flag is on AND the on-prem
+        // orchestrator URL is set, topic-aware semantic chunking is used, falling back to the
+        // token-window strategy on any error (see SemanticChunkingStrategy).
+        com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingStrategy chunker =
+                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunker();
+        if (semanticChunkingEnabled && orchestratorBaseUrl != null && !orchestratorBaseUrl.isBlank()) {
+            chunker = new com.nanobaseai.actenora.aiprocessing.infrastructure.chunking.SemanticChunkingStrategy(
+                    chunker,
+                    orchestratorBaseUrl,
+                    true,
+                    breakpointPercentile,
+                    java.time.Duration.ofMillis(semanticChunkingTimeoutMs));
+        }
         return new ExtractionPipelineService(
                 promptRegistry,
                 modelRuntime,
                 new com.nanobaseai.actenora.aiprocessing.domain.pipeline.SegmentNormalizer(),
-                new com.nanobaseai.actenora.aiprocessing.domain.pipeline.TranscriptChunker(),
+                chunker,
                 new com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard(),
                 new com.nanobaseai.actenora.aiprocessing.infrastructure.json.LimitedJsonRepair(),
                 new com.nanobaseai.actenora.aiprocessing.infrastructure.json.ExtractionJsonSchemaValidator(),
