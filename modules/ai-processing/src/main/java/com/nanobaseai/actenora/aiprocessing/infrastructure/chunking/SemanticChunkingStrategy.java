@@ -55,7 +55,12 @@ public final class SemanticChunkingStrategy implements ChunkingStrategy {
                 enabled,
                 breakpointPercentile,
                 requestTimeout,
-                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build(),
+                HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(3))
+                        // Force HTTP/1.1: the default HTTP/2 client attempts an h2c upgrade that the
+                        // uvicorn (h11) orchestrator rejects, which drops the request body -> 422.
+                        .version(HttpClient.Version.HTTP_1_1)
+                        .build(),
                 new ObjectMapper());
     }
 
