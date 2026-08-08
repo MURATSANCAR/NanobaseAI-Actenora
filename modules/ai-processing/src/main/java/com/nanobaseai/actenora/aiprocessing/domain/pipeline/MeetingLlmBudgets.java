@@ -29,6 +29,16 @@ public final class MeetingLlmBudgets {
      */
     public static final int GROUNDED_CTX_SIZE = 65_536;
 
+    /**
+     * Transcript-token ceiling for the grounded finalization path. Grounded re-reads the WHOLE
+     * transcript, so its wall-clock cost grows with transcript length — on CPU (~23 tok/s prompt
+     * processing) a large meeting takes longer than any fixed timeout. Above this ceiling the
+     * finalizer routes to candidate-grounded FULL, whose cost is bounded by the number of extracted
+     * items (not transcript length) and therefore stays fast and reliable for ANY meeting duration.
+     * Grounded stays reserved for short meetings where the full-transcript re-verify is cheap.
+     */
+    public static final int GROUNDED_MAX_TRANSCRIPT_TOKENS = 12_000;
+
     /** Preferred transcript tokens per extraction call. */
     public static final int TARGET_CHUNK_TOKENS = 3_500;
 

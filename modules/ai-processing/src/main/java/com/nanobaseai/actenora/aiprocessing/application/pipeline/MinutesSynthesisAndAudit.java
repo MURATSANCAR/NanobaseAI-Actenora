@@ -947,6 +947,13 @@ public final class MinutesSynthesisAndAudit {
     private static final double GROUNDED_TOKEN_DENSITY_FACTOR = 1.5d;
 
     private boolean transcriptFitsGrounded(String transcript, String candidatesJson) {
+        TokenEstimator estimator = new ApproximateTokenEstimator();
+        // Time guard (scalable): grounded re-reads the whole transcript, so its wall-clock cost grows
+        // with transcript length. Above the ceiling, route to FULL (cost bounded by extracted-item
+        // count) so finalization stays fast and NEVER times out, no matter how long the meeting is.
+        if (estimator.estimate(transcript) > MeetingLlmBudgets.GROUNDED_MAX_TRANSCRIPT_TOKENS) {
+            return false;
+        }
         int ctx = MeetingLlmBudgets.GROUNDED_CTX_SIZE;
         int descriptorCtx = modelRuntime.descriptor().contextWindowTokens();
         if (descriptorCtx > ctx) {
@@ -956,7 +963,6 @@ public final class MinutesSynthesisAndAudit {
                 + MeetingLlmBudgets.FINAL_MAX_TOKENS
                 + MeetingLlmBudgets.SAFETY_MARGIN_TOKENS;
         int budget = ctx - reserve;
-        TokenEstimator estimator = new ApproximateTokenEstimator();
         int rawUsed = estimator.estimate(transcript) + estimator.estimate(candidatesJson);
         int used = (int) Math.ceil(rawUsed * GROUNDED_TOKEN_DENSITY_FACTOR);
         return budget > 0 && used <= budget;
