@@ -23,11 +23,11 @@ public final class MeetingLlmBudgets {
 
     /**
      * Context budget used by the transcript-grounded finalization step. The production
-     * llama-server runs with {@code -c 32768}, so the finalizer may feed the whole
-     * transcript (most meetings fit) instead of only a digest. Longer transcripts that
-     * exceed this budget fall back to candidate-grounded FULL synthesis.
+     * llama-server runs with {@code -c 65536} (model n_ctx_train is 262144, so this is safe),
+     * so the finalizer feeds the whole transcript for far more meetings — long BİM-scale
+     * meetings now stay on the higher-quality grounded path instead of degrading to FULL.
      */
-    public static final int GROUNDED_CTX_SIZE = 32_768;
+    public static final int GROUNDED_CTX_SIZE = 65_536;
 
     /** Preferred transcript tokens per extraction call. */
     public static final int TARGET_CHUNK_TOKENS = 3_500;
@@ -94,5 +94,23 @@ public final class MeetingLlmBudgets {
             return DEFAULT_MAX_TOKENS;
         }
         return Math.min(registryOrNativeMaxOutput, DEFAULT_MAX_TOKENS);
+    }
+
+    /** Turkish + UUID-dense prompts tokenize ~1.5x above the len/4 estimate; correct before budgeting. */
+    public static final double PROMPT_TOKEN_DENSITY_FACTOR = 1.5d;
+
+    /** Floor so a finalization call always generates a usable note even when the prompt is huge. */
+    public static final int MIN_FINALIZATION_OUTPUT_TOKENS = 1_536;
+
+    /**
+     * Largest generation cap that still fits {@code contextWindow} after a (density-corrected)
+     * prompt, clamped to {@code ceilingMaxOutput} and floored at {@link #MIN_FINALIZATION_OUTPUT_TOKENS}.
+     * Prevents the finalization request from exceeding llama's context (HTTP 400) for large meetings —
+     * the failure mode where a job "succeeds" but persists no note.
+     */
+    public static int fittingMaxOutput(int promptTokensEstimate, int contextWindow, int ceilingMaxOutput) {
+        int correctedPrompt = (int) Math.ceil(Math.max(0, promptTokensEstimate) * PROMPT_TOKEN_DENSITY_FACTOR);
+        int available = contextWindow - correctedPrompt - SAFETY_MARGIN_TOKENS;
+        return Math.max(MIN_FINALIZATION_OUTPUT_TOKENS, Math.min(ceilingMaxOutput, available));
     }
 }

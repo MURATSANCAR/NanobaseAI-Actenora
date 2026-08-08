@@ -28,6 +28,13 @@ GROUNDING KURALLARI
    - "Eylülden sonra / önümüzdeki ay / bir sonraki toplantıda …" (zaman = relativeDate, aynen koru)
    - "…koordine et", "…gönderelim / iletelim"
    Her actionItems.text tek başına anlaşılır olsun (kim + ne + varsa kime/nerede).
+   OWNER + TARİH (zorunlu, sık atlanıyor): "bitirecek / gönderecek / tamamlayacağım / hazırlayacak"
+   fiilinin ÖZNESİNİ owner yap ve tarihi yalnızca o owner'a bağla. Transcript'te owner açıkça geçiyorsa
+   actionItems.owner'ı ASLA null bırakma; her ayrı kişi+iş ikilisini ayrı madde yap, birleştirme.
+   ÖRNEK: "Ali dokümanı önümüzdeki Cuma gönderecek; ben raporu Çarşamba bitireceğim" →
+   [{"text":"Dokümanı gönder","owner":"Ali","relativeDate":"önümüzdeki Cuma"},
+    {"text":"Raporu bitir","owner":"<konuşan kişinin adı>","relativeDate":"Çarşamba"}]
+   Takvim iletmeyen / teslim vermeyen kişiyi de openQuestions veya bekleyen actionItems olarak yakala.
 4. owner/tarih/rakam/karar durumunu transcript'teki ifadeye göre DÜZELT; adaydaki hata varsa transcript
    esas alınır. Tarihi konuşmadaki haliyle koru; ISO/yıl uydurma.
 5. evidenceSegmentIds değerlerini gerçek dayanak segment kimlikleriyle doldur (ALLOWED_EVIDENCE_IDS içinden).

@@ -992,21 +992,31 @@ public final class MinutesSynthesisAndAudit {
             String userPrompt = ExtractionPromptRules.applyLanguage(template, language)
                     .replace("{{meetingTitle}}", meetingTitle == null ? "" : meetingTitle)
                     .replace("{{candidatesJson}}", candidatesJson)
-                    .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds))
+                    // Evidence ids travel inline (grounded: transcript [id] tags; FULL: candidatesJson) —
+                    // the joined 500+ UUID list added ~5k tokens and pushed large-meeting prompts past
+                    // llama's context (HTTP 400 -> SYNTHESIS fallback -> no note persisted).
+                    .replace("{{evidenceSegmentIds}}", "")
                     .replace(
                             "{{priorMeetingContext}}",
                             priorBlock.isBlank() ? "(yok)" : priorBlock
                     )
                     .replace("{{transcript}}", transcriptBlock == null ? "" : transcriptBlock);
+            String systemRules = ExtractionPromptRules.systemRulesFor(language);
+            int ctx = Math.max(
+                    MeetingLlmBudgets.GROUNDED_CTX_SIZE,
+                    modelRuntime.descriptor().contextWindowTokens());
+            int promptTokens = new ApproximateTokenEstimator().estimate(systemRules + "\n" + userPrompt);
+            int maxOut = MeetingLlmBudgets.fittingMaxOutput(
+                    promptTokens, ctx, MeetingLlmBudgets.FINAL_MAX_TOKENS);
             inferenceAttempted = true;
             response = modelRuntime.infer(new InferenceRequest(
                     InferenceTaskType.FINAL_NOTE.name(),
                     "pv-meeting-final-note-v1",
                     InMemoryPromptRegistry.FINAL_NOTE_PROMPT_ID,
-                    ExtractionPromptRules.systemRulesFor(language),
+                    systemRules,
                     userPrompt,
                     List.copyOf(allowedEvidenceIds),
-                    MeetingLlmBudgets.FINAL_MAX_TOKENS,
+                    maxOut,
                     timeoutSeconds
             ));
             JsonNode node = parseSynthesisJson(response.rawText());
@@ -1108,17 +1118,24 @@ public final class MinutesSynthesisAndAudit {
             String template = transcriptBlock == null ? evidenceAuditTemplate : groundedAuditTemplate;
             String userPrompt = ExtractionPromptRules.applyLanguage(template, language)
                     .replace("{{candidatesJson}}", candidatesJson)
-                    .replace("{{evidenceSegmentIds}}", String.join(",", allowedEvidenceIds))
+                    .replace("{{evidenceSegmentIds}}", "")
                     .replace("{{transcript}}", transcriptBlock == null ? "" : transcriptBlock);
+            String systemRules = ExtractionPromptRules.systemRulesFor(language);
+            int ctx = Math.max(
+                    MeetingLlmBudgets.GROUNDED_CTX_SIZE,
+                    modelRuntime.descriptor().contextWindowTokens());
+            int promptTokens = new ApproximateTokenEstimator().estimate(systemRules + "\n" + userPrompt);
+            int maxOut = MeetingLlmBudgets.fittingMaxOutput(
+                    promptTokens, ctx, MeetingLlmBudgets.AUDIT_MAX_TOKENS);
             inferenceAttempted = true;
             response = modelRuntime.infer(new InferenceRequest(
                     InferenceTaskType.VALIDATION.name(),
                     "pv-meeting-validation-v1",
                     InMemoryPromptRegistry.VALIDATION_PROMPT_ID,
-                    ExtractionPromptRules.systemRulesFor(language),
+                    systemRules,
                     userPrompt,
                     List.copyOf(allowedEvidenceIds),
-                    MeetingLlmBudgets.AUDIT_MAX_TOKENS,
+                    maxOut,
                     timeoutSeconds
             ));
             JsonNode root = parseAuditJson(response.rawText());
