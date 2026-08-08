@@ -138,8 +138,11 @@ corbanking,Core Banking
 corben king,Core Banking
 corbenk,Core Banking
 cor banking,Core Banking
-Fimple,Simple
-Simpıl,Simple
+# Core banking tedarikçisi: gerçek ad "Fimple" (ASR sık "simple/simpıl" duyuyor)
+simple,Fimple
+simpıl,Fimple
+fimpıl,Fimple
+simpil,Fimple
 findeks,Findeks
 findex,Findeks
 b d d k,BDDK
@@ -232,3 +235,11 @@ huggingface,Hugging Face
 mastercard,Mastercard
 paypal,PayPal
 stripe,Stripe
+
+# ---- Şirketler / kurumlar (ASR garble'ları) ----
+nano beyin,Nanobase
+nanobeyin,Nanobase
+nano base,Nanobase
+nanobeyz,Nanobase
+fiba bank,Fibabank
+yutomat ai,Yutomat.ai
