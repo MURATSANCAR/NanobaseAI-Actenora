@@ -467,6 +467,23 @@ public class MeetingIntelligencePlatformConfiguration {
     }
 
     @Bean
+    public com.nanobaseai.actenora.security.meetingintelligence.EmbeddingConnectionService embeddingConnectionService(
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.mode:hash}") String mode,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.base-url:}") String baseUrl,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.model-id:}") String modelId,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.dimensions:1024}") int dimensions,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${actenora.knowledge.embedding.api-key:}") String apiKey
+    ) {
+        return new com.nanobaseai.actenora.security.meetingintelligence.EmbeddingConnectionService(
+                mode, baseUrl, modelId, dimensions, apiKey);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(NoteArtifactStoragePort.class)
     public NoteArtifactStoragePort noteArtifactStoragePort(
             ObjectProvider<ObjectStorage> objectStorage

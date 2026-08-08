@@ -61,6 +61,18 @@ public final class AttributionGroundingPostProcessor {
                     + "elbette|aynen|malesef)",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
+    /** Second-person delegation ("sen ... koordine et", "X'e ilet"): the DOER is the addressee. */
+    private static final Pattern DELEGATION = Pattern.compile(
+            "\\b(sen|siz)\\b.{0,60}?(koordine|organize|ilet|gönder\\w*|ayarla\\w*|yap\\w*|hallet\\w*|"
+                    + "bak\\w*|görüş\\w*|takip et\\w*|hazırla\\w*|paylaş\\w*)"
+                    + "|(koordine et|organize et|görüşün|toplantı ayarla|talimat)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
+    /** Turkish vocative addressee: "Murat bey", "Ayşe hanım" -> capture the name. */
+    private static final Pattern VOCATIVE = Pattern.compile(
+            "([\\p{Lu}][\\p{L}]+)\\s+(bey|hanım|hanim|abi|hocam|hoca|kardeşim)\\b",
+            Pattern.UNICODE_CASE);
+
     public FinalNoteDraft apply(FinalNoteDraft draft, List<SegmentInput> segments, Set<String> roster) {
         if (draft == null || segments == null || segments.isEmpty()) {
             return draft;
@@ -79,7 +91,7 @@ public final class AttributionGroundingPostProcessor {
 
         List<ActionItemCandidate> actions = new ArrayList<>();
         for (ActionItemCandidate a : draft.actionItems()) {
-            actions.add(correctActionOwner(a, byId, changed));
+            actions.add(correctActionOwner(a, byId, roster, changed));
         }
         List<CommitmentCandidate> commitments = new ArrayList<>();
         for (CommitmentCandidate c : draft.commitments()) {
@@ -131,15 +143,66 @@ public final class AttributionGroundingPostProcessor {
     }
 
     private ActionItemCandidate correctActionOwner(
-            ActionItemCandidate a, Map<String, SegmentInput> byId, boolean[] changed) {
-        String speaker = selfCommitSpeaker(a.evidenceSegmentIds(), byId);
-        if (speaker != null && !speaker.equalsIgnoreCase(nz(a.owner()))) {
+            ActionItemCandidate a, Map<String, SegmentInput> byId, Set<String> roster, boolean[] changed) {
+        // 1) first-person commitment -> owner is the speaker
+        String owner = selfCommitSpeaker(a.evidenceSegmentIds(), byId);
+        // 2) delegation ("sen ... koordine et ... Murat bey") -> owner is the addressee, not the asker
+        if (owner == null) {
+            owner = delegationOwner(a.evidenceSegmentIds(), byId, roster);
+        }
+        if (owner != null && !owner.equalsIgnoreCase(nz(a.owner()))) {
             changed[0] = true;
             return new ActionItemCandidate(
-                    a.text(), speaker, a.dueDate(), a.evidenceSegmentIds(), a.confidence(),
+                    a.text(), owner, a.dueDate(), a.evidenceSegmentIds(), a.confidence(),
                     a.ownerType(), a.priority(), a.relativeDate(), a.dueAt());
         }
         return a;
+    }
+
+    /** In a delegation utterance, the doer is the vocative addressee (matched to the roster). */
+    private String delegationOwner(
+            List<String> evidenceIds, Map<String, SegmentInput> byId, Set<String> roster) {
+        if (evidenceIds == null) {
+            return null;
+        }
+        for (String id : evidenceIds) {
+            SegmentInput s = byId.get(id);
+            if (s == null || s.content() == null) {
+                continue;
+            }
+            String content = s.content();
+            if (!DELEGATION.matcher(content).find()) {
+                continue;
+            }
+            var m = VOCATIVE.matcher(content);
+            while (m.find()) {
+                String firstName = m.group(1);
+                String rosterName = matchRoster(firstName, roster);
+                if (rosterName != null) {
+                    return rosterName;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Match a vocative first name ("Murat") to a full roster name ("Murat Sancar"). */
+    private static String matchRoster(String firstName, Set<String> roster) {
+        if (firstName == null || roster == null) {
+            return null;
+        }
+        for (String r : roster) {
+            String clean = cleanSpeaker(r);
+            if (clean == null) {
+                continue;
+            }
+            for (String word : clean.split("\\s+")) {
+                if (word.equalsIgnoreCase(firstName)) {
+                    return clean;
+                }
+            }
+        }
+        return null;
     }
 
     private CommitmentCandidate correctCommitmentOwner(
