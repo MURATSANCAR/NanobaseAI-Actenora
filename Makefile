@@ -1,4 +1,4 @@
-.PHONY: bootstrap build test lint run stop sbom ci-build ci-test verify verify-faz27 faz28 secret-scan dep-scan semgrep deploy-portal deploy-portal-full deploy-backend prod-preflight prod-up prod-down prod-logs prod-ps help
+.PHONY: bootstrap build test lint run stop sbom ci-build ci-test verify verify-faz27 faz28 secret-scan dep-scan semgrep deploy-portal deploy-portal-full deploy-backend prod-preflight prod-up prod-down prod-logs prod-ps bundle bundle-push help
 
 # Single-file production compose (infrastructure/compose/docker-compose.prod.yml).
 # Override the env-file path or profiles as needed, e.g.:
@@ -67,6 +67,19 @@ prod-logs:
 prod-ps:
 	docker compose -f $(PROD_COMPOSE) --env-file $(ENV_FILE) ps
 
+# Customer Docker bundle (pre-built images → single shippable tar).
+#   make bundle BUNDLE_TAG=v1.0.0 BUNDLE_ENV=/path/to/customer.env
+#   make bundle-push BUNDLE_TAG=v1.0.0 BUNDLE_REGISTRY=your.registry/ns/
+BUNDLE_TAG ?=
+BUNDLE_ENV ?=
+BUNDLE_REGISTRY ?=
+
+bundle:
+	./scripts/package/build-bundle.sh $(if $(BUNDLE_TAG),--tag $(BUNDLE_TAG),) $(if $(BUNDLE_ENV),--env-file $(BUNDLE_ENV),)
+
+bundle-push:
+	./scripts/package/build-bundle.sh $(if $(BUNDLE_TAG),--tag $(BUNDLE_TAG),) --registry $(BUNDLE_REGISTRY) --push
+
 help:
 	@echo "Actenora monorepo targets:"
 	@echo "  make bootstrap      - install toolchains & deps"
@@ -92,6 +105,8 @@ help:
 	@echo "  make prod-down      - stop the prod stack"
 	@echo "  make prod-logs      - follow prod stack logs"
 	@echo "  make prod-ps        - show prod stack status"
+	@echo "  make bundle         - build the customer Docker bundle (offline tar) → dist/"
+	@echo "  make bundle-push    - build + push app images to a registry (BUNDLE_REGISTRY=)"
 
 verify:
 	./scripts/verify-faz2

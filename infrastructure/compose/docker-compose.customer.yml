@@ -20,8 +20,6 @@
 
 name: actenora
 
-x-image-tag: &image-tag ${ACTENORA_IMAGE_TAG:-latest}
-
 services:
   # ----------------------------------------------------------------- data plane
   postgres:
@@ -33,7 +31,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+      - ${ACTENORA_INFRA_DIR:-..}/postgres/init:/docker-entrypoint-initdb.d:ro
     networks: [data-network]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-actenora} -d ${POSTGRES_DB:-actenora}"]
@@ -53,8 +51,8 @@ services:
       RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
-      - ../rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - ../rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ${ACTENORA_INFRA_DIR:-..}/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ${ACTENORA_INFRA_DIR:-..}/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     networks: [data-network, app-network]
     healthcheck:
       test:
@@ -81,8 +79,8 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD required}
       DEFINITIONS_FILE: /definitions.json
     volumes:
-      - ../rabbitmq/definitions.json:/definitions.json:ro
-      - ../rabbitmq/import-definitions.sh:/import-definitions.sh:ro
+      - ${ACTENORA_INFRA_DIR:-..}/rabbitmq/definitions.json:/definitions.json:ro
+      - ${ACTENORA_INFRA_DIR:-..}/rabbitmq/import-definitions.sh:/import-definitions.sh:ro
     entrypoint: ["/bin/sh", "/import-definitions.sh"]
     networks: [data-network, app-network]
     restart: "no"
@@ -95,7 +93,7 @@ services:
       - |
         exec redis-server /usr/local/etc/redis/redis.conf --appendonly yes --save "60 1"
     volumes:
-      - ../redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ${ACTENORA_INFRA_DIR:-..}/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - redis-data:/data
     networks: [data-network]
     healthcheck:
@@ -137,7 +135,7 @@ services:
       OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-actenora}
       OBJECT_STORAGE_TENANT_PREFIX_ROOT: ${OBJECT_STORAGE_TENANT_PREFIX_ROOT:-tenants}
     volumes:
-      - ../minio/init-buckets.sh:/init-buckets.sh:ro
+      - ${ACTENORA_INFRA_DIR:-..}/minio/init-buckets.sh:/init-buckets.sh:ro
     entrypoint: ["/bin/sh", "/init-buckets.sh"]
     networks: [data-network]
     restart: "no"
