@@ -15,6 +15,7 @@ import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTyp
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.consistency.CrossTypeMeetingItemSubsumer;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.note.FinalNoteConfidencePolicy;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ChunkingConfig;
+import com.nanobaseai.actenora.aiprocessing.domain.pipeline.attribution.AttributionGroundingPostProcessor;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.ContextWindowGuard;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.DeterministicExtractionValidator;
 import com.nanobaseai.actenora.aiprocessing.domain.pipeline.EvidenceNearMissConfig;
@@ -387,6 +388,9 @@ public final class ExtractionPipelineService {
                 applied.stats().incrementExplicitActionCuesRecovered();
             }
             note = applied.draft();
+            // Ground attribution/classification against transcript speaker labels: fix self-commitment
+            // owners, drop answered/logistics open questions, reclassify prior decisions -> facts.
+            note = new AttributionGroundingPostProcessor().apply(note, normalized, roster);
             note = new CrossTypeMeetingItemSubsumer().applyToDraft(note);
             note = new CrossTypeConsistencyAuditor().audit(note, finalization.fallbackUsed());
             metrics.setActionPostProcessingStats(applied.stats().toArtifactMap(
