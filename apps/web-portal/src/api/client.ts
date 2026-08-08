@@ -247,6 +247,13 @@ function createHttpApiClient(baseUrl: string): ApiClient {
         method: "POST",
         body: "{}",
       }),
+    getEmbeddingConnection: () =>
+      httpJson(baseUrl, "/api/v1/portal/intelligence/embedding/connection"),
+    testEmbeddingConnection: (body) =>
+      httpJson(baseUrl, "/api/v1/portal/intelligence/embedding/connection/test", {
+        method: "POST",
+        body: JSON.stringify(body ?? {}),
+      }),
     getModelHealth: () => httpJson(baseUrl, "/api/v1/portal/model-control/health"),
     listAiJobs: (params) => httpJson(baseUrl, `/api/v1/portal/ai-jobs${q(params)}`),
     getOperationsOverview: () => httpJson(baseUrl, "/api/v1/portal/operations/overview"),
@@ -308,6 +315,7 @@ export const queryKeys = {
   teams: ["teams-settings"] as const,
   teamsConnection: ["teams-connection"] as const,
   intelligence: ["nanobaseai-connection"] as const,
+  embeddingConnection: ["embedding-connection"] as const,
   models: ["models"] as const,
   jobs: (params: object) => ["ai-jobs", params] as const,
   operations: ["operations"] as const,

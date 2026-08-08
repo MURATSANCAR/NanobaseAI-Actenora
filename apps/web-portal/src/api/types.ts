@@ -511,6 +511,35 @@ export interface NanobaseAiConnection {
   checkedAt: string;
 }
 
+export interface EmbeddingConnection {
+  /** hash (local) | openai-compatible (prod). */
+  mode: string;
+  /** true when mode=openai-compatible and a base URL is set. */
+  configured: boolean;
+  endpointHost: string;
+  baseUrl: string;
+  modelId: string;
+  dimensions: number;
+  /** Whether an API key is stored. The key value itself is never returned. */
+  apiKeyConfigured: boolean;
+  checkedAt: string;
+}
+
+export interface EmbeddingConnectionTestBody {
+  /** All optional — blank/omitted falls back to the configured value. */
+  baseUrl?: string;
+  modelId?: string;
+  apiKey?: string;
+  dimensions?: number;
+}
+
+export interface EmbeddingConnectionTestResult {
+  healthy: boolean;
+  latencyMs: number;
+  detail: string;
+  dimensions: number;
+}
+
 export interface TemplateListResponse extends CompositionAware {
   items: TemplateSummary[];
 }
@@ -650,6 +679,8 @@ export interface ApiClient {
     servedModelIds?: string[];
   }): Promise<NanobaseAiConnection>;
   testNanobaseAiConnection(): Promise<NanobaseAiConnection>;
+  getEmbeddingConnection(): Promise<EmbeddingConnection>;
+  testEmbeddingConnection(body?: EmbeddingConnectionTestBody): Promise<EmbeddingConnectionTestResult>;
   getModelHealth(): Promise<ModelHealthResponse>;
   listAiJobs(params?: { cursor?: string; limit?: number }): Promise<CursorPage<AiJob>>;
   getOperationsOverview(): Promise<OperationsOverview>;

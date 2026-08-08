@@ -12,7 +12,7 @@ import { AsyncState, DataTable, PaginationBar } from "@/components/ui/AsyncState
 import { InlineFeedback, type FeedbackMessage } from "@/components/ui/InlineFeedback";
 import { useI18n } from "@/i18n";
 import { sanitizeProductCopy } from "@/lib/brandSanitize";
-import type { TeamsConnectionTestResult } from "@/api/types";
+import type { EmbeddingConnectionTestResult, TeamsConnectionTestResult } from "@/api/types";
 import { AlertTriangle, Layers } from "lucide-react";
 
 const GRAPH_APP_PERMISSIONS = [
@@ -531,12 +531,22 @@ export function ModelManagementPage() {
   const [baseUrl, setBaseUrl] = useState("http://127.0.0.1:8000");
   const [enabled, setEnabled] = useState(true);
   const [message, setMessage] = useState<FeedbackMessage | null>(null);
+  const [embBaseUrl, setEmbBaseUrl] = useState("");
+  const [embModelId, setEmbModelId] = useState("");
+  const [embApiKey, setEmbApiKey] = useState("");
+  const [embMessage, setEmbMessage] = useState<FeedbackMessage | null>(null);
+  const [embResult, setEmbResult] = useState<EmbeddingConnectionTestResult | null>(null);
   const [jobsCursor, setJobsCursor] = useState<string | undefined>();
   const jobsParams = useMemo(() => ({ cursor: jobsCursor, limit: 25 }), [jobsCursor]);
 
   const connection = useQuery({
     queryKey: queryKeys.intelligence,
     queryFn: () => api.getNanobaseAiConnection(),
+    enabled: auth.nav("models"),
+  });
+  const embedding = useQuery({
+    queryKey: queryKeys.embeddingConnection,
+    queryFn: () => api.getEmbeddingConnection(),
     enabled: auth.nav("models"),
   });
   const q = useQuery({
@@ -561,6 +571,12 @@ export function ModelManagementPage() {
       setEnabled(connection.data.enabled);
     }
   }, [connection.data]);
+  useEffect(() => {
+    if (embedding.data) {
+      setEmbBaseUrl(embedding.data.baseUrl);
+      setEmbModelId(embedding.data.modelId);
+    }
+  }, [embedding.data]);
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -585,6 +601,24 @@ export function ModelManagementPage() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.intelligence });
     },
     onError: (err: Error) => setMessage({ text: err.message || t("intelligence.testFailed"), tone: "error" }),
+  });
+  const embTestMutation = useMutation({
+    mutationFn: () =>
+      api.testEmbeddingConnection({
+        baseUrl: embBaseUrl.trim() || undefined,
+        modelId: embModelId.trim() || undefined,
+        apiKey: embApiKey.trim() || undefined,
+      }),
+    onSuccess: (data) => {
+      setEmbResult(data);
+      setEmbMessage(
+        data.healthy
+          ? { text: t("embedding.testOk"), tone: "success" }
+          : { text: t("embedding.testFailed"), tone: "error" },
+      );
+    },
+    onError: (err: Error) =>
+      setEmbMessage({ text: err.message || t("embedding.testFailed"), tone: "error" }),
   });
 
   if (!auth.isLoading && !auth.nav("models")) {
@@ -665,6 +699,87 @@ export function ModelManagementPage() {
         {connection.data?.statusDetail ? (
           <p className="text-xs text-slate-500">{connection.data.statusDetail}</p>
         ) : null}
+      </div>
+
+      <div className="card-static mb-6 space-y-4 p-5" data-testid="embedding-connection">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+              {t("embedding.section")}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">{t("embedding.description")}</p>
+          </div>
+          {embResult ? (
+            <StatusBadge
+              label={embResult.healthy ? t("embedding.healthy") : t("embedding.unreachable")}
+              status={embResult.healthy ? "healthy" : "failed"}
+            />
+          ) : embedding.data ? (
+            <StatusBadge
+              label={
+                embedding.data.configured
+                  ? t("embedding.configured")
+                  : t("embedding.notConfigured")
+              }
+              status={embedding.data.configured ? "healthy" : "pending"}
+            />
+          ) : null}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block sm:col-span-2">
+            <span className="label-text">{t("embedding.endpoint")}</span>
+            <input
+              className="input-field font-mono text-sm"
+              value={embBaseUrl}
+              onChange={(e) => setEmbBaseUrl(e.target.value)}
+              placeholder="http://127.0.0.1:8000"
+              autoComplete="off"
+            />
+          </label>
+          <label className="block">
+            <span className="label-text">{t("embedding.model")}</span>
+            <input
+              className="input-field font-mono text-sm"
+              value={embModelId}
+              onChange={(e) => setEmbModelId(e.target.value)}
+              placeholder="bge-m3"
+              autoComplete="off"
+            />
+          </label>
+          <label className="block">
+            <span className="label-text">{t("embedding.apiKey")}</span>
+            <input
+              type="password"
+              className="input-field font-mono text-sm"
+              value={embApiKey}
+              onChange={(e) => setEmbApiKey(e.target.value)}
+              placeholder={embedding.data?.apiKeyConfigured ? "••••••" : ""}
+              autoComplete="off"
+            />
+          </label>
+          <div className="text-sm text-slate-600 sm:col-span-2">
+            <span className="label-text">{t("embedding.dimensions")}</span>
+            <p className="font-mono text-xs">
+              {embedding.data?.dimensions ?? "—"}
+              {embResult ? ` · ${t("embedding.latency")}: ${embResult.latencyMs} ms` : ""}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={embTestMutation.isPending || !embBaseUrl.trim()}
+            onClick={() => embTestMutation.mutate()}
+          >
+            {t("embedding.test")}
+          </button>
+        </div>
+        <InlineFeedback message={embMessage} />
+        {embResult?.detail ? (
+          <p className="text-xs text-slate-500">{embResult.detail}</p>
+        ) : null}
+        <p className="text-xs text-slate-400">{t("embedding.applyHint")}</p>
       </div>
 
       <AsyncState status={status} error={q.error}>
